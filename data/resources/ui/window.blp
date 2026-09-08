@@ -42,10 +42,6 @@ menu view_menu {
       action: "win.select-mode";
     }
 
-    item {
-      label: _("Sync Now");
-      action: "app.sync";
-    }
   }
 
   section {
@@ -228,9 +224,10 @@ template $MomentumWindow: Adw.ApplicationWindow {
             }
 
             [end]
-            Adw.Spinner sync_spinner {
-              visible: false;
-              tooltip-text: _("Syncing…");
+            Button sync_button {
+              icon-name: "view-refresh-symbolic";
+              tooltip-text: _("Sync Now");
+              action-name: "app.sync";
             }
           }
 

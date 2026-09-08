@@ -62,7 +62,7 @@ mod imp {
         #[template_child]
         pub add_entry: TemplateChild<gtk::Entry>,
         #[template_child]
-        pub sync_spinner: TemplateChild<adw::Spinner>,
+        pub sync_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub sync_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -119,7 +119,7 @@ mod imp {
                 task_box: Default::default(),
                 current_list: Default::default(),
                 add_entry: Default::default(),
-                sync_spinner: Default::default(),
+                sync_button: Default::default(),
                 sync_label: Default::default(),
                 banner: Default::default(),
                 add_clamp: Default::default(),
@@ -764,6 +764,7 @@ impl MomentumWindow {
     fn update_sync_button(&self) {
         let imp = self.imp();
         let on = self.sync_configured();
+        imp.sync_button.set_visible(on);
         imp.sync_label.set_visible(on && !imp.rows.borrow().is_empty());
         let last = imp.settings.int64("last-sync-ms") as u64;
         imp.sync_label.set_text(&if last == 0 {
@@ -3264,6 +3265,7 @@ impl MomentumWindow {
         // HIG: say what is happening right away, but only animate if it takes a while,
         // so a one-second sync does not flash a spinner.
         imp.sync_label.set_text(&gettext("Syncing…"));
+        imp.sync_button.set_sensitive(false);
         glib::timeout_add_seconds_local_once(
             1,
             glib::clone!(
@@ -3271,7 +3273,8 @@ impl MomentumWindow {
                 self,
                 move || {
                     if w.imp().syncing.get() {
-                        w.imp().sync_spinner.set_visible(true);
+                        w.imp().sync_button.set_child(Some(&adw::Spinner::new()));
+                        w.imp().sync_button.set_tooltip_text(Some(&gettext("Syncing…")));
                     }
                 }
             ),
@@ -3302,7 +3305,9 @@ impl MomentumWindow {
                 .unwrap();
                 let imp = w.imp();
                 imp.syncing.set(false);
-                imp.sync_spinner.set_visible(false);
+                imp.sync_button.set_icon_name("view-refresh-symbolic");
+                imp.sync_button.set_tooltip_text(Some(&gettext("Sync Now")));
+                imp.sync_button.set_sensitive(true);
                 w.update_sync_button();
                 match result {
                     Ok((mut synced, r)) => {
