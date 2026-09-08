@@ -25,5 +25,6 @@
       <default>'manual'</default>
       <summary>Task list sort order</summary>
     </key>
+    <key name="colorful-labels" type="b"><default>true</default><summary>Colour-code projects and tags</summary></key>
   </schema>
 </schemalist>

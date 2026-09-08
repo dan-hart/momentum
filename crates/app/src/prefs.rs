@@ -23,6 +23,8 @@ mod imp {
         pub auto_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub compress_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub colorful_row: TemplateChild<adw::SwitchRow>,
     }
     #[glib::object_subclass]
     impl ObjectSubclass for MomentumPrefs {
@@ -49,6 +51,7 @@ mod imp {
             }
             s.bind("auto-sync", &*self.auto_row, "active").build();
             s.bind("compress", &*self.compress_row, "active").build();
+            s.bind("colorful-labels", &*self.colorful_row, "active").build();
             for (purpose, row) in [
                 ("nextcloud", self.password_row.clone()),
                 ("encryption", self.encrypt_row.clone()),

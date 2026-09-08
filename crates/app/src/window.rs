@@ -189,6 +189,22 @@ pub fn fmt_day(day: &str) -> String {
     }
 }
 
+/// CSS colour string from the sync data → `#rrggbb` for Pango markup.
+fn hex_color(color: &str) -> Option<String> {
+    let c = gtk::gdk::RGBA::parse(color).ok()?;
+    Some(format!(
+        "#{:02x}{:02x}{:02x}",
+        (c.red() * 255.0) as u8,
+        (c.green() * 255.0) as u8,
+        (c.blue() * 255.0) as u8
+    ))
+}
+fn tag_color(g: &Tag) -> Option<&str> {
+    g.color
+        .as_deref()
+        .or_else(|| g.theme.get("primary").and_then(Value::as_str))
+}
+
 /// "1h 30m", "45m", "2h" → ms
 pub fn parse_ms(s: &str) -> Option<f64> {
     let mut total = 0.0;
@@ -258,6 +274,14 @@ impl MomentumWindow {
                 #[weak(rename_to = w)]
                 self,
                 move |_, _| w.refresh_tasks()
+            ),
+        );
+        imp.settings.connect_changed(
+            Some("colorful-labels"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.refresh()
             ),
         );
         imp.search_bar.set_key_capture_widget(Some(self));
@@ -526,6 +550,7 @@ impl MomentumWindow {
         let store = imp.store.borrow();
         self.sidebar_row(&gettext("Today"), "starred-symbolic", Some(View::Today), None, None);
         self.sidebar_row(&gettext("Projects"), "", None, None, Some("projects-collapsed"));
+        let colorful = imp.settings.boolean("colorful-labels");
         if !imp.settings.boolean("projects-collapsed") {
             for p in store
                 .state
@@ -537,7 +562,7 @@ impl MomentumWindow {
                     &p.title,
                     "folder-symbolic",
                     Some(View::Project(p.id.clone())),
-                    p.color(),
+                    p.color().filter(|_| colorful),
                     None,
                 );
             }
@@ -545,10 +570,7 @@ impl MomentumWindow {
         self.sidebar_row(&gettext("Tags"), "", None, None, Some("tags-collapsed"));
         if !imp.settings.boolean("tags-collapsed") {
             for t in store.state.tag.iter().filter(|t| t.id != TODAY_TAG_ID) {
-                let color = t
-                    .color
-                    .as_deref()
-                    .or_else(|| t.theme.get("primary").and_then(Value::as_str));
+                let color = tag_color(t).filter(|_| colorful);
                 self.sidebar_row(&t.title, "tag-symbolic", Some(View::Tag(t.id.clone())), color, None);
             }
         }
@@ -590,18 +612,12 @@ impl MomentumWindow {
 
     fn task_row(&self, t: &Task, store: &Store, indent: bool) {
         let imp = self.imp();
+        let colorful = imp.settings.boolean("colorful-labels");
         let mut sub = vec![];
         // Outside a project view, lead with the project name in the project's own colour.
         if !matches!(*imp.view.borrow(), View::Project(_)) {
             if let Some(p) = store.state.project.entities.get(&t.project_id) {
-                let hex = p.color().and_then(|c| gtk::gdk::RGBA::parse(c).ok()).map(|c| {
-                    format!(
-                        "#{:02x}{:02x}{:02x}",
-                        (c.red() * 255.0) as u8,
-                        (c.green() * 255.0) as u8,
-                        (c.blue() * 255.0) as u8
-                    )
-                });
+                let hex = p.color().filter(|_| colorful).and_then(hex_color);
                 let title = glib::markup_escape_text(&p.title);
                 sub.push(match hex {
                     Some(h) => format!("<span foreground=\"{h}\">●</span> {title}"),
@@ -619,7 +635,11 @@ impl MomentumWindow {
         }
         for tag in &t.tag_ids {
             if let Some(g) = store.state.tag.entities.get(tag) {
-                sub.push(format!("#{}", glib::markup_escape_text(&g.title)));
+                let name = glib::markup_escape_text(&g.title);
+                sub.push(match tag_color(g).filter(|_| colorful).and_then(hex_color) {
+                    Some(h) => format!("<span foreground=\"{h}\">#{name}</span>"),
+                    None => format!("#{name}"),
+                });
             }
         }
         let row = adw::ActionRow::builder()

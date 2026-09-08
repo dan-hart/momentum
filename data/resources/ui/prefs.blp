@@ -46,6 +46,15 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     }
 
     Adw.PreferencesGroup {
+      title: _("Appearance");
+
+      Adw.SwitchRow colorful_row {
+        title: _("Colour-code projects and tags");
+        subtitle: _("Use the colours from your Super Productivity data");
+      }
+    }
+
+    Adw.PreferencesGroup {
       title: _("Backup");
 
       Adw.ButtonRow {
