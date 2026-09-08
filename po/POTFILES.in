@@ -1,0 +1,6 @@
+data/io.github.danhart.Momentum.desktop.in.in
+data/io.github.danhart.Momentum.gschema.xml.in
+data/io.github.danhart.Momentum.metainfo.xml.in.in
+data/resources/ui/shortcuts.ui
+data/resources/ui/window.ui
+src/application.rs

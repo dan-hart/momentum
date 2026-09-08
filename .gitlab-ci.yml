@@ -1,0 +1,51 @@
+stages:
+  - check
+  - test
+  - deploy
+
+include:
+  - project: "GNOME/citemplates"
+    file: "templates/default-rules.yml"
+  - project: "GNOME/citemplates"
+    file: "flatpak/flatpak_ci_initiative.yml"
+  - component: "gitlab.gnome.org/GNOME/citemplates/basic-release@25.1"
+
+variables:
+  BUNDLE: "momentum-nightly.flatpak"
+  MANIFEST_PATH: "build-aux/io.github.danhart.Momentum.Devel.json"
+  FLATPAK_MODULE: "momentum"
+  APP_ID: "io.github.danhart.Momentum.Devel"
+  RUNTIME_REPO: "https://nightly.gnome.org/gnome-nightly.flatpakrepo"
+
+flatpak@x86_64:
+  image: 'quay.io/gnome_infrastructure/gnome-runtime-images:gnome-50'
+  extends: ".flatpak@x86_64"
+
+flatpak@aarch64:
+  image: 'quay.io/gnome_infrastructure/gnome-runtime-images:gnome-50'
+  extends: ".flatpak@aarch64"
+
+# Configure and run rustfmt
+# Exits and builds fails if on bad format
+rustfmt:
+  image: "rust:slim"
+  stage: check
+  script:
+    - rustup component add rustfmt
+    - rustc -Vv && cargo -Vv
+    - cargo fmt --version
+    - cargo fmt --all -- --color=always --check
+
+.flatpak-command: &flatpak-command
+  image: 'quay.io/gnome_infrastructure/gnome-runtime-images:gnome-50'
+  tags:
+    - flatpak
+  script:
+    - flatpak-builder --user --disable-rofiles-fuse --keep-build-dirs --stop-at=${FLATPAK_MODULE} flatpak_app ${MANIFEST_PATH}
+    - flatpak build-finish --share=network flatpak_app
+    - echo "cd .. && ${COMMAND}" | flatpak-builder --user --disable-rofiles-fuse --build-shell=${FLATPAK_MODULE} flatpak_app ${MANIFEST_PATH}
+
+cargo-clippy:
+  <<: *flatpak-command
+  variables:
+    COMMAND: "cargo clippy --all-targets --workspace --all-features -- -D warnings"
