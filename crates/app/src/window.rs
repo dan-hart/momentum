@@ -1289,6 +1289,23 @@ impl MomentumWindow {
         if imp.syncing.replace(true) {
             return;
         }
+        // HIG: say what is happening right away, but only animate if it takes a while,
+        // so a one-second sync does not flash a spinner.
+        imp.sync_label.set_text(&gettext("Syncing…"));
+        imp.sync_button.set_sensitive(false);
+        glib::timeout_add_seconds_local_once(
+            1,
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move || {
+                    if w.imp().syncing.get() {
+                        w.imp().sync_button.set_child(Some(&adw::Spinner::new()));
+                        w.imp().sync_button.set_tooltip_text(Some(&gettext("Syncing…")));
+                    }
+                }
+            ),
+        );
         let mut cfg = self.nextcloud_cfg();
         let snapshot = imp.store.borrow().clone();
         let n_pending = snapshot.pending.len();
@@ -1309,6 +1326,10 @@ impl MomentumWindow {
                 .unwrap();
                 let imp = w.imp();
                 imp.syncing.set(false);
+                imp.sync_button.set_icon_name("emblem-synchronizing-symbolic");
+                imp.sync_button.set_tooltip_text(Some(&gettext("Sync Now")));
+                imp.sync_button.set_sensitive(true);
+                w.update_sync_button();
                 match result {
                     Ok((mut synced, r)) => {
                         // Re-apply anything dispatched while the sync ran, keeping it pending.
