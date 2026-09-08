@@ -8,8 +8,8 @@
   <name xml:lang="en">Momentum</name>
   <shortdesc xml:lang="en">Plan your day and track your time</shortdesc>
   <description xml:lang="en">A native GNOME task planner and time tracker compatible with Super Productivity data and sync.</description>
-  <homepage rdf:resource="https://github.com/danhart/momentum" />
-  <bug-database rdf:resource="https://github.com/danhart/momentum/issues" />
+  <homepage rdf:resource="https://github.com/dan-hart/momentum" />
+  <bug-database rdf:resource="https://github.com/dan-hart/momentum/issues" />
   <license rdf:resource="http://usefulinc.com/doap/licenses/gpl" />
 
   <category rdf:resource="http://api.gnome.org/doap-extensions#apps" />
@@ -22,7 +22,7 @@
       <foaf:account>
         <foaf:OnlineAccount>
           <foaf:accountServiceHomepage rdf:resource="https://github.com" />
-          <foaf:accountName>danhart</foaf:accountName>
+          <foaf:accountName>dan-hart</foaf:accountName>
         </foaf:OnlineAccount>
       </foaf:account>
     </foaf:Person>

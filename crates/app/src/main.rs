@@ -3,6 +3,7 @@
 
 mod application;
 mod config;
+mod demo;
 mod keyring;
 mod prefs;
 mod shortcuts;

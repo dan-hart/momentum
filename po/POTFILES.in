@@ -1,6 +1,6 @@
-data/io.github.danhart.Momentum.desktop.in.in
-data/io.github.danhart.Momentum.gschema.xml.in
-data/io.github.danhart.Momentum.metainfo.xml.in.in
+data/io.github.dan_hart.Momentum.desktop.in.in
+data/io.github.dan_hart.Momentum.gschema.xml.in
+data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 data/resources/ui/prefs.blp
 data/resources/ui/shortcuts.blp
 data/resources/ui/window.blp

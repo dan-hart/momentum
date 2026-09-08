@@ -12,9 +12,9 @@ include:
 
 variables:
   BUNDLE: "momentum-nightly.flatpak"
-  MANIFEST_PATH: "build-aux/io.github.danhart.Momentum.Devel.json"
+  MANIFEST_PATH: "build-aux/io.github.dan_hart.Momentum.Devel.json"
   FLATPAK_MODULE: "momentum"
-  APP_ID: "io.github.danhart.Momentum.Devel"
+  APP_ID: "io.github.dan_hart.Momentum.Devel"
   RUNTIME_REPO: "https://nightly.gnome.org/gnome-nightly.flatpakrepo"
 
 flatpak@x86_64:

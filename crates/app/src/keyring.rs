@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
 //! Nextcloud password in the Secret Service (or the portal-backed file keyring when sandboxed).
-const ATTRS: [(&str, &str); 2] = [("app", "io.github.danhart.Momentum"), ("purpose", "nextcloud")];
+const ATTRS: [(&str, &str); 2] = [("app", "io.github.dan_hart.Momentum"), ("purpose", "nextcloud")];
 
 pub fn get() -> Option<String> {
     async_io::block_on(async {

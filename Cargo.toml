@@ -7,7 +7,7 @@ version = "0.1.0"
 authors = ["Dan Hart <race-unbent-water@duck.com>"]
 edition = "2021"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/danhart/momentum"
+repository = "https://github.com/dan-hart/momentum"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

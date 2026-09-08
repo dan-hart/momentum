@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Momentum
-Comment=Plan your day and track your time
+Comment=Plan your day
 Type=Application
 Exec=momentum
 Terminal=false

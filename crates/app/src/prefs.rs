@@ -7,7 +7,7 @@ use gtk::{gio, glib};
 mod imp {
     use super::*;
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(resource = "/io/github/danhart/Momentum/ui/prefs.ui")]
+    #[template(resource = "/io/github/dan_hart/Momentum/ui/prefs.ui")]
     pub struct MomentumPrefs {
         #[template_child]
         pub server_row: TemplateChild<adw::EntryRow>,

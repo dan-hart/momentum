@@ -11,10 +11,10 @@ from pathlib import Path
 CUR = {
     "name": "Momentum",
     "project": "momentum",
-    "app_id": "io.github.danhart.Momentum",
+    "app_id": "io.github.dan_hart.Momentum",
     "author": "Dan Hart",
     "email": "race-unbent-water@duck.com",
-    "repo": "https://github.com/danhart/momentum",
+    "repo": "https://github.com/dan-hart/momentum",
 }
 
 root = Path(__file__).resolve().parent.parent
@@ -50,7 +50,10 @@ for rel in tracked:
     p = root / rel
     if p.suffix in {".png", ".lock"} or not p.is_file():
         continue
-    text = p.read_text(encoding="utf-8")
+    try:
+        text = p.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        continue
     out = text
     for a, b in subs:
         out = out.replace(a, b)

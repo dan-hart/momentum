@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dan Hart 2026 <race-unbent-water@duck.com> -->
+<component type="desktop-application">
+  <id>@app-id@</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Momentum</name>
+  <summary>Plan your day</summary>
+  <description>
+    <p>Momentum is a task planner for GNOME. Plan what you will do today, keep projects and tags tidy, and get out of the way.</p>
+    <p>It reads, writes and syncs the same data as Super Productivity, so it works alongside the desktop, Android and iOS apps through a shared Nextcloud folder.</p>
+    <ul>
+      <li>Today, project and tag views</li>
+      <li>Guided task creation with due day, estimate, tags and notes</li>
+      <li>Nextcloud sync and backup import</li>
+      <li>Keyboard first, with system-wide shortcuts</li>
+      <li>Adaptive layout for phones and desktops</li>
+    </ul>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.1.0/data/resources/screenshots/today.png</image>
+      <caption>Today view with projects and tags in the sidebar</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.1.0/data/resources/screenshots/new-task.png</image>
+      <caption>Creating a task with a due day, estimate and tags</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/dan-hart/momentum</url>
+  <url type="bugtracker">https://github.com/dan-hart/momentum/issues</url>
+  <url type="vcs-browser">https://github.com/dan-hart/momentum</url>
+  <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0" date="2026-09-08">
+      <description>
+        <p>First preview.</p>
+        <ul>
+          <li>Today, project and tag views with a guided New Task dialog</li>
+          <li>Nextcloud sync compatible with Super Productivity</li>
+          <li>Backup import and export</li>
+          <li>System-wide shortcuts through the GlobalShortcuts portal</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <developer id="io.github.dan_hart">
+    <name translate="no">Dan Hart</name>
+  </developer>
+  <branding>
+    <color type="primary" scheme_preference="light">#ffbe6f</color>
+    <color type="primary" scheme_preference="dark">#c64600</color>
+  </branding>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+  <update_contact>race-unbent-water@duck.com</update_contact>
+  <translation type="gettext">@gettext-package@</translation>
+  <launchable type="desktop-id">@app-id@.desktop</launchable>
+</component>

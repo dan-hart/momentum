@@ -1,5 +1,5 @@
 {
-    "id": "io.github.danhart.Momentum.Devel",
+    "id": "io.github.dan_hart.Momentum.Devel",
     "runtime": "org.gnome.Platform",
     "runtime-version": "50",
     "sdk": "org.gnome.Sdk",

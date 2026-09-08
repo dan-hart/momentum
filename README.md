@@ -26,8 +26,8 @@ flatpak install --user flathub org.gnome.Sdk//50 org.gnome.Platform//50 \
   org.freedesktop.Sdk.Extension.rust-stable//25.08 \
   org.freedesktop.Sdk.Extension.llvm22//25.08 org.flatpak.Builder
 flatpak run org.flatpak.Builder --user --install --force-clean flatpak_app \
-  build-aux/io.github.danhart.Momentum.Devel.json
-flatpak run io.github.danhart.Momentum.Devel
+  build-aux/io.github.dan_hart.Momentum.Devel.json
+flatpak run io.github.dan_hart.Momentum.Devel
 ```
 
 Or open the folder in GNOME Builder and press Run.

@@ -154,7 +154,7 @@ impl MomentumApplication {
 
     fn setup_css(&self) {
         let provider = gtk::CssProvider::new();
-        provider.load_from_resource("/io/github/danhart/Momentum/style.css");
+        provider.load_from_resource("/io/github/dan_hart/Momentum/style.css");
         if let Some(display) = gdk::Display::default() {
             gtk::style_context_add_provider_for_display(&display, &provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
@@ -170,8 +170,8 @@ impl MomentumApplication {
             .application_icon(*APP_ID)
             .developer_name("Dan Hart")
             .license_type(gtk::License::Gpl30)
-            .website("https://github.com/danhart/momentum")
-            .issue_url("https://github.com/danhart/momentum/issues")
+            .website("https://github.com/dan-hart/momentum")
+            .issue_url("https://github.com/dan-hart/momentum/issues")
             .version(*VERSION)
             .translator_credits(gettext("translator-credits"))
             .developers(Self::authors())
@@ -194,7 +194,7 @@ impl Default for MomentumApplication {
     fn default() -> Self {
         glib::Object::builder()
             .property("application-id", *APP_ID)
-            .property("resource-base-path", "/io/github/danhart/Momentum/")
+            .property("resource-base-path", "/io/github/dan_hart/Momentum/")
             .build()
     }
 }

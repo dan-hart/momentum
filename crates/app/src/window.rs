@@ -27,7 +27,7 @@ mod imp {
     use super::*;
 
     #[derive(gtk::CompositeTemplate)]
-    #[template(resource = "/io/github/danhart/Momentum/ui/window.ui")]
+    #[template(resource = "/io/github/dan_hart/Momentum/ui/window.ui")]
     pub struct MomentumWindow {
         #[template_child]
         pub split_view: TemplateChild<adw::NavigationSplitView>,
@@ -61,7 +61,12 @@ mod imp {
 
     impl Default for MomentumWindow {
         fn default() -> Self {
-            let dir = glib::user_data_dir().join("momentum");
+            let demo = std::env::var_os("MOMENTUM_DEMO").is_some();
+            let dir = if demo {
+                glib::tmp_dir().join("momentum-demo")
+            } else {
+                glib::user_data_dir().join("momentum")
+            };
             Self {
                 split_view: Default::default(),
                 sidebar_list: Default::default(),
@@ -74,7 +79,11 @@ mod imp {
                 toast_overlay: Default::default(),
                 empty: Default::default(),
                 settings: gio::Settings::new(*APP_ID),
-                store: RefCell::new(Store::load(dir)),
+                store: RefCell::new(if demo {
+                    crate::demo::store(dir)
+                } else {
+                    Store::load(dir)
+                }),
                 view: RefCell::new(View::Today),
                 views: Default::default(),
                 rows: Default::default(),
@@ -102,10 +111,15 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
-            if *PROFILE == "Devel" {
+            let demo = std::env::var_os("MOMENTUM_DEMO").is_some();
+            if *PROFILE == "Devel" && !demo {
                 obj.add_css_class("devel");
             }
-            obj.load_window_size();
+            if demo {
+                obj.set_default_size(800, 560); // small enough that mutter does not auto-maximise it
+            } else {
+                obj.load_window_size();
+            }
             // libadwaita ≥ 1.6 follows the system accent colour through the settings portal;
             // nothing here hard-codes colours, so the whole UI inherits it.
             let sm = adw::StyleManager::default();
@@ -306,6 +320,12 @@ impl MomentumWindow {
         self.refresh();
         if imp.settings.boolean("auto-sync") && self.sync_configured() {
             self.sync();
+        }
+        if let Some(path) = std::env::var_os("MOMENTUM_SCREENSHOT") {
+            if std::env::var_os("MOMENTUM_SCREENSHOT_DIALOG").is_some() {
+                self.new_task_dialog();
+            }
+            crate::demo::screenshot(self.upcast_ref(), path.into());
         }
     }
 
@@ -599,14 +619,38 @@ impl MomentumWindow {
         let Some(task) = store.state.task.entities.get(id).cloned() else {
             return;
         };
-        let sub_tasks = task
+        let sub_tasks: Vec<Task> = task
             .sub_task_ids
             .iter()
             .filter_map(|i| store.state.task.entities.get(i).cloned())
             .collect();
         drop(store);
-        self.dispatch(Action::DeleteTask { task, sub_tasks });
-        self.toast(&gettext("Task deleted"));
+        self.dispatch(Action::DeleteTask {
+            task: task.clone(),
+            sub_tasks: sub_tasks.clone(),
+        });
+        // HIG: destructive actions get an undo toast rather than a confirmation dialog.
+        let toast = adw::Toast::builder()
+            .title(gettext("Task deleted"))
+            .button_label(gettext("Undo"))
+            .build();
+        toast.connect_button_clicked(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_| {
+                w.dispatch(Action::AddTask {
+                    task: task.clone(),
+                    bottom: true,
+                });
+                for st in &sub_tasks {
+                    w.dispatch(Action::AddSubTask {
+                        task: st.clone(),
+                        parent_id: task.id.clone(),
+                    });
+                }
+            }
+        ));
+        self.imp().toast_overlay.add_toast(toast);
     }
 
     fn check_reminders(&self) {
