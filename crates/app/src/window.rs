@@ -589,7 +589,7 @@ impl MomentumWindow {
         let imp = self.imp();
         let on = self.sync_configured();
         imp.sync_button.set_visible(on);
-        imp.sync_label.set_visible(on);
+        imp.sync_label.set_visible(on && !imp.rows.borrow().is_empty());
         let last = imp.settings.int64("last-sync-ms") as u64;
         imp.sync_label.set_text(&if last == 0 {
             gettext("Not synced yet")
@@ -852,7 +852,7 @@ impl MomentumWindow {
         }
     }
 
-    pub fn refresh(&self) {
+    fn update_context_actions(&self) {
         let view = self.imp().view.borrow().clone();
         let (editable, deletable) = match &view {
             View::Project(id) => (true, id != INBOX_PROJECT_ID),
@@ -864,6 +864,9 @@ impl MomentumWindow {
                 a.set_enabled(on);
             }
         }
+    }
+
+    pub fn refresh(&self) {
         let (done, _) = self.done_tasks();
         // Menu item stays visible but disabled when there is nothing to archive (HIG).
         if let Some(a) = self.lookup_action("archive-done").and_downcast::<gio::SimpleAction>() {
@@ -1179,6 +1182,7 @@ impl MomentumWindow {
 
     fn refresh_tasks(&self) {
         let imp = self.imp();
+        self.update_context_actions();
         imp.task_list.remove_all();
         imp.rows.borrow_mut().clear();
         let store = imp.store.borrow();
@@ -1223,12 +1227,15 @@ impl MomentumWindow {
             for t in tasks {
                 let day = t.due_day.clone().unwrap_or_default();
                 if day != current_day {
+                    let first = current_day.is_empty();
                     current_day = day.clone();
                     let label = gtk::Label::builder()
                         .label(fmt_day(&day))
                         .xalign(0.0)
-                        .margin_top(12)
-                        .margin_bottom(4)
+                        .margin_start(12)
+                        .margin_end(12)
+                        .margin_top(if first { 10 } else { 28 })
+                        .margin_bottom(6)
                         .css_classes(["heading"])
                         .build();
                     imp.task_list.append(
@@ -1299,6 +1306,7 @@ impl MomentumWindow {
         }
         imp.empty.set_visible(imp.rows.borrow().is_empty());
         imp.task_list.set_visible(!imp.rows.borrow().is_empty());
+        self.update_sync_button();
     }
 
     // ---- actions ---------------------------------------------------------
