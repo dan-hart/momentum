@@ -202,6 +202,17 @@ template $MomentumWindow: Adw.ApplicationWindow {
                   ]
                 }
 
+                Label sync_label {
+                  visible: false;
+                  margin-top: 12;
+                  xalign: 0.5;
+
+                  styles [
+                    "dim-label",
+                    "caption",
+                  ]
+                }
+
                 Adw.StatusPage empty {
                   icon-name: "io.github.dan_hart.Momentum-symbolic";
                   title: _("Nothing here yet");

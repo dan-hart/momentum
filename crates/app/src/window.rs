@@ -42,6 +42,8 @@ mod imp {
         #[template_child]
         pub sync_button: TemplateChild<gtk::Button>,
         #[template_child]
+        pub sync_label: TemplateChild<gtk::Label>,
+        #[template_child]
         pub search_bar: TemplateChild<gtk::SearchBar>,
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -56,6 +58,9 @@ mod imp {
         pub rows: RefCell<Vec<String>>,
         pub filter: RefCell<String>,
         pub color_css: RefCell<String>,
+        pub tag_popover: gtk::Popover,
+        pub tag_list: gtk::ListBox,
+        pub tag_matches: RefCell<Vec<String>>,
         pub color_provider: gtk::CssProvider,
         pub syncing: Cell<bool>,
         pub notified: RefCell<HashSet<String>>,
@@ -76,6 +81,7 @@ mod imp {
                 task_list: Default::default(),
                 add_entry: Default::default(),
                 sync_button: Default::default(),
+                sync_label: Default::default(),
                 search_bar: Default::default(),
                 search_entry: Default::default(),
                 toast_overlay: Default::default(),
@@ -91,6 +97,12 @@ mod imp {
                 rows: Default::default(),
                 filter: Default::default(),
                 color_css: Default::default(),
+                tag_popover: gtk::Popover::builder().autohide(false).has_arrow(false).build(),
+                tag_list: gtk::ListBox::builder()
+                    .selection_mode(gtk::SelectionMode::Single)
+                    .css_classes(["navigation-sidebar"])
+                    .build(),
+                tag_matches: Default::default(),
                 color_provider: gtk::CssProvider::new(),
                 syncing: Cell::new(false),
                 notified: Default::default(),
@@ -136,6 +148,11 @@ mod imp {
         }
     }
     impl WidgetImpl for MomentumWindow {}
+    impl Drop for MomentumWindow {
+        fn drop(&mut self) {
+            self.tag_popover.unparent();
+        }
+    }
     impl WindowImpl for MomentumWindow {
         fn close_request(&self) -> glib::Propagation {
             if let Err(err) = self.obj().save_window_size() {
@@ -285,6 +302,7 @@ impl MomentumWindow {
             ),
         );
         imp.search_bar.set_key_capture_widget(Some(self));
+        self.setup_tag_completion();
         imp.search_entry.connect_search_changed(glib::clone!(
             #[weak(rename_to = w)]
             self,
@@ -369,6 +387,7 @@ impl MomentumWindow {
                 glib::ControlFlow::Break,
                 move || {
                     w.check_reminders();
+                    w.update_sync_button();
                     glib::ControlFlow::Continue
                 }
             ),
@@ -407,11 +426,159 @@ impl MomentumWindow {
             .all(|k| !s.string(k).trim().is_empty())
     }
     fn update_sync_button(&self) {
-        self.imp().sync_button.set_visible(self.sync_configured());
+        let imp = self.imp();
+        let on = self.sync_configured();
+        imp.sync_button.set_visible(on);
+        imp.sync_label.set_visible(on);
+        let last = imp.settings.int64("last-sync-ms") as u64;
+        imp.sync_label.set_text(&if last == 0 {
+            gettext("Not synced yet")
+        } else {
+            let secs = now_ms().saturating_sub(last) / 1000;
+            let ago = match secs {
+                0..=59 => format!("{secs} {}", gettext("seconds ago")),
+                60..=3599 => format!("{} {}", secs / 60, gettext("minutes ago")),
+                3600..=86399 => format!("{} {}", secs / 3600, gettext("hours ago")),
+                _ => format!("{} {}", secs / 86400, gettext("days ago")),
+            };
+            format!("{} {ago}", gettext("Last synced"))
+        });
     }
     fn focused_task(&self) -> Option<String> {
         let row = self.imp().task_list.focus_child()?.downcast::<gtk::ListBoxRow>().ok()?;
         self.imp().rows.borrow().get(row.index() as usize).cloned()
+    }
+
+    /// `#` autocomplete in the add-task entry: a popover of matching tags, driven by the keyboard.
+    fn setup_tag_completion(&self) {
+        let imp = self.imp();
+        imp.tag_popover.set_parent(&*imp.add_entry);
+        imp.tag_popover.set_position(gtk::PositionType::Bottom);
+        imp.tag_popover.set_child(Some(
+            &gtk::ScrolledWindow::builder()
+                .propagate_natural_height(true)
+                .max_content_height(240)
+                .child(&imp.tag_list)
+                .build(),
+        ));
+        imp.add_entry.connect_changed(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_| w.update_tag_completion()
+        ));
+        imp.tag_list.connect_row_activated(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_, row| w.accept_tag_completion(row.index())
+        ));
+        let keys = gtk::EventControllerKey::builder()
+            .propagation_phase(gtk::PropagationPhase::Capture)
+            .build();
+        keys.connect_key_pressed(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            #[upgrade_or]
+            glib::Propagation::Proceed,
+            move |_, key, _, _| {
+                let imp = w.imp();
+                if !imp.tag_popover.is_visible() {
+                    return glib::Propagation::Proceed;
+                }
+                use gtk::gdk::Key;
+                let selected = imp.tag_list.selected_row().map(|r| r.index()).unwrap_or(0);
+                let count = imp.tag_matches.borrow().len() as i32;
+                match key {
+                    Key::Down | Key::Up => {
+                        let next = if key == Key::Down {
+                            (selected + 1) % count
+                        } else {
+                            (selected + count - 1) % count
+                        };
+                        imp.tag_list.select_row(imp.tag_list.row_at_index(next).as_ref());
+                        glib::Propagation::Stop
+                    }
+                    Key::Return | Key::KP_Enter | Key::Tab => {
+                        w.accept_tag_completion(selected);
+                        glib::Propagation::Stop
+                    }
+                    Key::Escape => {
+                        imp.tag_popover.popdown();
+                        glib::Propagation::Stop
+                    }
+                    _ => glib::Propagation::Proceed,
+                }
+            }
+        ));
+        imp.add_entry.add_controller(keys);
+    }
+
+    /// The `#word` under the cursor, as (start byte offset, text without `#`).
+    fn hash_word_at_cursor(&self) -> Option<(usize, String)> {
+        let entry = &self.imp().add_entry;
+        let text = entry.text();
+        let cursor: usize = text
+            .char_indices()
+            .nth(entry.position() as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(text.len());
+        let start = text[..cursor].rfind(char::is_whitespace).map(|i| i + 1).unwrap_or(0);
+        let word = &text[start..cursor];
+        word.strip_prefix('#').map(|w| (start, w.to_string()))
+    }
+
+    fn update_tag_completion(&self) {
+        let imp = self.imp();
+        let Some((_, prefix)) = self.hash_word_at_cursor() else {
+            imp.tag_popover.popdown();
+            return;
+        };
+        let store = imp.store.borrow();
+        let lower = prefix.to_lowercase();
+        let matches: Vec<String> = store
+            .state
+            .tag
+            .iter()
+            .filter(|t| t.id != TODAY_TAG_ID && t.title.to_lowercase().starts_with(&lower))
+            .map(|t| t.title.clone())
+            .take(8)
+            .collect();
+        drop(store);
+        imp.tag_list.remove_all();
+        for m in &matches {
+            imp.tag_list.append(
+                &gtk::Label::builder()
+                    .label(format!("#{m}"))
+                    .xalign(0.0)
+                    .margin_start(6)
+                    .margin_end(6)
+                    .build(),
+            );
+        }
+        *imp.tag_matches.borrow_mut() = matches;
+        if imp.tag_matches.borrow().is_empty() {
+            imp.tag_popover.popdown();
+        } else {
+            imp.tag_list.select_row(imp.tag_list.row_at_index(0).as_ref());
+            imp.tag_popover.popup();
+        }
+    }
+
+    fn accept_tag_completion(&self, index: i32) {
+        let imp = self.imp();
+        let Some(name) = imp.tag_matches.borrow().get(index.max(0) as usize).cloned() else {
+            return;
+        };
+        let Some((start, prefix)) = self.hash_word_at_cursor() else {
+            return;
+        };
+        let entry = &imp.add_entry;
+        let text = entry.text().to_string();
+        let end = start + 1 + prefix.len();
+        let new = format!("{}#{name} {}", &text[..start], text[end..].trim_start());
+        let cursor = text[..start].chars().count() + name.chars().count() + 2;
+        imp.tag_popover.popdown();
+        entry.set_text(&new);
+        entry.set_position(cursor as i32);
     }
 
     pub fn toast(&self, msg: &str) {
@@ -1152,7 +1319,9 @@ impl MomentumWindow {
                         synced.pending.extend(live);
                         synced.save().ok();
                         *imp.store.borrow_mut() = synced;
+                        imp.settings.set_int64("last-sync-ms", now_ms() as i64).ok();
                         w.refresh();
+                        w.update_sync_button();
                         tracing::info!(
                             "sync ok: downloaded={} uploaded={} ops_uploaded={} sync_version={}",
                             r.downloaded,
