@@ -27,6 +27,7 @@ Everything below is implemented and working in the Linux app.
 | View | Contents | Notes |
 |---|---|---|
 | **Today** | Top-level tasks due today, in the stored Today order, then any other task due today | Open tasks first, done tasks after. The Today membership follows upstream's virtual TODAY tag rule: `dueWithTime` if set, else `dueDay == today`. |
+| **Tonight** | Today's tasks that carry the "Evening" tag (case-insensitive) | In the Today view these tasks are split into a second "Tonight" section under the day's tasks. Quick-add and the dialog from this view add today's date and the Evening tag, creating the tag if needed. Dropping a task here does the same. |
 | **Coming Up** | Open top-level tasks due in the next 7 days (default) or 30 days | Grouped into one section per day with a relative heading (Tomorrow, Friday, 14 October). No day label on rows. |
 | **Archive** | Archived tasks from both archive tiers, newest completion first | Read-only rows: no checkbox, no drag, no menu. Paged 100 at a time with a Show More button. |
 | **Search** | Live results across everything | See 2.7. |

@@ -12,13 +12,20 @@ pub fn store(dir: std::path::PathBuf) -> Store {
     let _ = std::fs::remove_dir_all(&dir);
     let mut s = Store::load(dir);
     let (work, home) = (Project::new("Momentum"), Project::new("Home"));
-    let (urgent, gnome) = (Tag::new("urgent"), Tag::new("gnome"));
-    let (wid, hid, uid, gid) = (work.id.clone(), home.id.clone(), urgent.id.clone(), gnome.id.clone());
+    let (urgent, gnome, evening) = (Tag::new("urgent"), Tag::new("gnome"), Tag::new("Evening"));
+    let (wid, hid, uid, gid, eid) = (
+        work.id.clone(),
+        home.id.clone(),
+        urgent.id.clone(),
+        gnome.id.clone(),
+        evening.id.clone(),
+    );
     for a in [
         Action::AddProject { project: work },
         Action::AddProject { project: home },
         Action::AddTag { tag: urgent },
         Action::AddTag { tag: gnome },
+        Action::AddTag { tag: evening },
     ] {
         s.dispatch(a);
     }
@@ -37,6 +44,8 @@ pub fn store(dir: std::path::PathBuf) -> Store {
         mk("Write release notes for 0.1", &wid, 1_800_000.0, &[], true),
         mk("Test with Orca and high contrast", &wid, 2_700_000.0, &[&gid], true),
         mk("Book dentist appointment", &hid, 600_000.0, &[], true),
+        mk("Read two chapters", &hid, 1_800_000.0, &[&eid], true),
+        mk("Prep tomorrow's lunch", &hid, 900_000.0, &[&eid], true),
         mk("Plan weekend hike", &hid, 0.0, &[], false),
         mk("Submit Flathub verification", &wid, 900_000.0, &[&gid], false),
     ] {

@@ -29,8 +29,8 @@ Momentum whenever you are on your Linux machine.
 
 ## Highlights
 
-- **Today, Coming Up, projects and tags.** Today is the plan. Coming Up shows the next 7 or
-  30 days grouped by day. Every project and tag is one click away in the sidebar.
+- **Today, Tonight, Coming Up, projects and tags.** Today is the plan, with an evening
+  section for tasks tagged "Evening". Coming Up shows the next 7 or 30 days grouped by day. Every project and tag is one click away in the sidebar.
 - **Guided task creation.** Title, project, due day with a calendar, estimate, tag chips
   and notes in one dialog. Or type `Fix the bug #work 1h 30m` into the quick-add box, with
   `#` autocomplete for your tags.

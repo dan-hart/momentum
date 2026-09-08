@@ -11,7 +11,7 @@ All notable changes to Momentum are documented here. The format follows
 First preview.
 
 ### Added
-- Today, Coming Up (7 or 30 days), project, tag, Archive and Search views
+- Today (with a Tonight section for "Evening"-tagged tasks), Tonight, Coming Up (7 or 30 days), project, tag, Archive and Search views
 - Guided New Task dialog with project, due day, estimate, tags and notes
 - `#tag` autocomplete and `1h 30m` estimates in the quick-add box
 - Repeating tasks with a repeat badge and plain-language schedule text

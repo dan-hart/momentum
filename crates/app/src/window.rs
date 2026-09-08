@@ -36,6 +36,7 @@ pub enum MenuKind {
 #[derive(Clone, PartialEq)]
 pub enum View {
     Today,
+    Tonight,
     Upcoming,
     Archive,
     Search,
@@ -1297,6 +1298,13 @@ impl MomentumWindow {
         let store = imp.store.borrow();
         self.sidebar_row(&gettext("Today"), "starred-symbolic", Some(View::Today), None, None);
         self.sidebar_row(
+            &gettext("Tonight"),
+            "weather-clear-night-symbolic",
+            Some(View::Tonight),
+            None,
+            None,
+        );
+        self.sidebar_row(
             &gettext("Coming Up"),
             "x-office-calendar-symbolic",
             Some(View::Upcoming),
@@ -1551,9 +1559,44 @@ impl MomentumWindow {
         self.update_sync_button();
     }
 
+    /// The "Evening" tag (case-insensitive) marks Tonight tasks.
+    fn evening_tag_id(store: &Store) -> Option<String> {
+        store
+            .state
+            .tag
+            .iter()
+            .find(|t| t.title.eq_ignore_ascii_case("evening"))
+            .map(|t| t.id.clone())
+    }
+    fn ensure_evening_tag(&self) -> String {
+        if let Some(id) = Self::evening_tag_id(&self.imp().store.borrow()) {
+            return id;
+        }
+        let tag = Tag::new("Evening");
+        let id = tag.id.clone();
+        self.imp().store.borrow_mut().dispatch(Action::AddTag { tag });
+        id
+    }
+    fn is_tonight(store: &Store, t: &Task) -> bool {
+        Self::evening_tag_id(store).is_some_and(|e| t.tag_ids.contains(&e))
+    }
+
     fn view_task_ids(&self, store: &Store) -> Vec<String> {
         match &*self.imp().view.borrow() {
             View::Today => store.state.today_ids(),
+            View::Tonight => store
+                .state
+                .today_ids()
+                .into_iter()
+                .filter(|id| {
+                    store
+                        .state
+                        .task
+                        .entities
+                        .get(id)
+                        .is_some_and(|t| Self::is_tonight(store, t))
+                })
+                .collect(),
             View::Upcoming | View::Archive | View::Search => vec![],
             View::Project(id) => store
                 .state
@@ -1614,7 +1657,7 @@ impl MomentumWindow {
             }
         }
         if let Some(d) = &t.due_day {
-            if !matches!(*imp.view.borrow(), View::Today | View::Upcoming) {
+            if !matches!(*imp.view.borrow(), View::Today | View::Tonight | View::Upcoming) {
                 sub.push(glib::markup_escape_text(&fmt_day(d)).to_string());
             }
         }
@@ -1699,6 +1742,7 @@ impl MomentumWindow {
         let store = imp.store.borrow();
         let title = match &*imp.view.borrow() {
             View::Today => gettext("Today"),
+            View::Tonight => gettext("Tonight"),
             View::Upcoming => gettext("Coming Up"),
             View::Archive => gettext("Archive"),
             View::Search => gettext("Search"),
@@ -1853,7 +1897,22 @@ impl MomentumWindow {
                 list.reverse();
             }
         }
+        if *imp.view.borrow() == View::Today {
+            for list in [&mut open, &mut done] {
+                list.sort_by_key(|t| Self::is_tonight(&store, t)); // stable: keeps order within each group
+            }
+        }
+        let split_tonight =
+            *imp.view.borrow() == View::Today && open.iter().chain(done.iter()).any(|t| Self::is_tonight(&store, t));
+        let mut rendered_section: Option<bool> = None; // Some(is_tonight) of the current section
         for t in open.into_iter().chain(done) {
+            if split_tonight {
+                let tonight = Self::is_tonight(&store, t);
+                if rendered_section != Some(tonight) {
+                    rendered_section = Some(tonight);
+                    self.new_section(Some(&if tonight { gettext("Tonight") } else { gettext("Today") }));
+                }
+            }
             self.task_row(t, &store, false, false);
             for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
                 self.task_row(s, &store, true, false);
@@ -1899,8 +1958,11 @@ impl MomentumWindow {
         let mut task = Task::new(&words.join(" "), &project);
         task.time_estimate = est;
         let view = imp.view.borrow().clone();
-        if view == View::Today {
+        if matches!(view, View::Today | View::Tonight) {
             task.due_day = Some(today_str());
+        }
+        if view == View::Tonight {
+            task.tag_ids.push(self.ensure_evening_tag());
         }
         if let View::Tag(id) = &view {
             tags.push(imp.store.borrow().state.tag.entities[id].title.clone());
@@ -1949,6 +2011,33 @@ impl MomentumWindow {
         let today = today_str();
         drop(store);
         match dest {
+            View::Tonight => {
+                let evening = self.ensure_evening_tag();
+                if task.due_day.as_deref() == Some(&today) && task.tag_ids.contains(&evening) {
+                    return false;
+                }
+                let mut ids = task.tag_ids.clone();
+                if !ids.contains(&evening) {
+                    ids.push(evening);
+                }
+                let mut ch = Map::new();
+                ch.insert("tagIds".into(), json!(ids));
+                if task.due_day.as_deref() != Some(&today) {
+                    ch.insert("dueDay".into(), json!(today));
+                    ch.insert("dueWithTime".into(), Value::Null);
+                }
+                let mut undo = Map::new();
+                undo.insert("tagIds".into(), json!(task.tag_ids));
+                undo.insert("dueDay".into(), json!(task.due_day));
+                self.update_task(&task.id, ch);
+                self.toast_undo(
+                    &gettext("Planned for tonight"),
+                    vec![Action::UpdateTask {
+                        id: task.id.clone(),
+                        changes: undo,
+                    }],
+                );
+            }
             View::Today if task.due_day.as_deref() != Some(&today) => {
                 self.dispatch(Action::PlanForToday {
                     task_ids: vec![task.id.clone()],
@@ -2081,7 +2170,7 @@ impl MomentumWindow {
             return false;
         }
         let (context_type, context_id) = match &*imp.view.borrow() {
-            View::Today => ("TAG", TODAY_TAG_ID.to_string()),
+            View::Today | View::Tonight => ("TAG", TODAY_TAG_ID.to_string()),
             View::Project(id) => ("PROJECT", id.clone()),
             View::Tag(id) => ("TAG", id.clone()),
             _ => return false,
@@ -2431,7 +2520,7 @@ impl MomentumWindow {
             let s = imp.store.borrow();
             (
                 self.current_project(&s),
-                matches!(*imp.view.borrow(), View::Today).then(today_str),
+                matches!(*imp.view.borrow(), View::Today | View::Tonight).then(today_str),
             )
         };
         let form = Rc::new(crate::task_form::TaskForm::new(
@@ -2484,6 +2573,11 @@ impl MomentumWindow {
                 // Clone the view first: dispatch() refreshes the sidebar, which re-borrows it mutably.
                 let view = w.imp().view.borrow().clone();
                 if let View::Tag(id) = view {
+                    if !task.tag_ids.contains(&id) {
+                        task.tag_ids.push(id);
+                    }
+                } else if view == View::Tonight {
+                    let id = w.ensure_evening_tag();
                     if !task.tag_ids.contains(&id) {
                         task.tag_ids.push(id);
                     }
