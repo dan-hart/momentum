@@ -2180,7 +2180,7 @@ impl MomentumWindow {
             .css_classes(["boxed-list"])
             .build();
         let name = adw::EntryRow::builder().title(gettext("Name")).text(&title).build();
-        let color_row = adw::ActionRow::builder().title(gettext("Colour")).build();
+        let color_row = adw::ActionRow::builder().title(gettext("Color")).build();
         let button = gtk::ColorDialogButton::builder()
             .dialog(&gtk::ColorDialog::new())
             .valign(gtk::Align::Center)
