@@ -1101,7 +1101,7 @@ impl MomentumWindow {
             }
         }
         if let Some(d) = &t.due_day {
-            if *imp.view.borrow() != View::Today {
+            if !matches!(*imp.view.borrow(), View::Today | View::Upcoming) {
                 sub.push(glib::markup_escape_text(&fmt_day(d)).to_string());
             }
         }
