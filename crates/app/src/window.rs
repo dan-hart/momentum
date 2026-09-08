@@ -16,6 +16,16 @@ use std::rc::Rc;
 use crate::application::MomentumApplication;
 use crate::config::{APP_ID, PROFILE};
 
+/// Precomputed lowercase haystacks so typing never re-lowercases or re-parses the archive.
+#[derive(Default)]
+pub struct SearchIndex {
+    tasks: Vec<(String, String)>,    // (task id, haystack)
+    archived: Vec<(Task, String)>,   // parsed once
+    projects: Vec<(String, String)>, // (project id, lower title)
+    tags: Vec<(String, String)>,     // (tag id, lower title)
+}
+const SEARCH_LIMIT: usize = 60;
+
 #[derive(Clone, PartialEq)]
 pub enum View {
     Today,
@@ -72,6 +82,9 @@ mod imp {
         pub syncing: Cell<bool>,
         pub notified: RefCell<HashSet<String>>,
         pub last_day: RefCell<String>,
+        pub index: RefCell<Option<Rc<SearchIndex>>>,
+        pub archive_shown: Cell<usize>,
+        pub search_debounce: RefCell<Option<glib::SourceId>>,
     }
 
     impl Default for MomentumWindow {
@@ -121,6 +134,9 @@ mod imp {
                 syncing: Cell::new(false),
                 notified: Default::default(),
                 last_day: RefCell::new(today_str()),
+                index: Default::default(),
+                archive_shown: Cell::new(100),
+                search_debounce: Default::default(),
             }
         }
     }
@@ -361,6 +377,7 @@ impl MomentumWindow {
                 if let Some(Some(v)) = w.imp().views.borrow().get(row.index() as usize) {
                     *w.imp().view.borrow_mut() = v.clone();
                 }
+                w.imp().archive_shown.set(100);
                 w.imp().split_view.set_show_content(true);
                 w.refresh_tasks();
             }
@@ -442,7 +459,22 @@ impl MomentumWindow {
             self,
             move |e| {
                 *w.imp().filter.borrow_mut() = e.text().to_lowercase();
-                w.refresh_tasks();
+                // Coalesce keystrokes: rebuild the result list at most every 120 ms.
+                if let Some(id) = w.imp().search_debounce.borrow_mut().take() {
+                    id.remove();
+                }
+                let id = glib::timeout_add_local_once(
+                    std::time::Duration::from_millis(120),
+                    glib::clone!(
+                        #[weak]
+                        w,
+                        move || {
+                            w.imp().search_debounce.borrow_mut().take();
+                            w.refresh_tasks();
+                        }
+                    ),
+                );
+                *w.imp().search_debounce.borrow_mut() = Some(id);
             }
         ));
         let key = gtk::EventControllerKey::new();
@@ -877,6 +909,7 @@ impl MomentumWindow {
     }
 
     pub fn refresh(&self) {
+        *self.imp().index.borrow_mut() = None;
         let (done, _) = self.done_tasks();
         // Menu item stays visible but disabled when there is nothing to archive (HIG).
         if let Some(a) = self.lookup_action("archive-done").and_downcast::<gio::SimpleAction>() {
@@ -1055,6 +1088,7 @@ impl MomentumWindow {
     /// Switch view, leaving search, and select the matching sidebar row.
     pub fn go_to(&self, view: View) {
         let imp = self.imp();
+        imp.archive_shown.set(100);
         *imp.view.borrow_mut() = view;
         self.refresh();
     }
@@ -1080,48 +1114,133 @@ impl MomentumWindow {
         imp.rows.borrow_mut().push(String::new());
     }
 
+    fn section_note(&self, text: &str) {
+        let imp = self.imp();
+        let label = gtk::Label::builder()
+            .label(text)
+            .xalign(0.0)
+            .wrap(true)
+            .margin_start(12)
+            .margin_end(12)
+            .margin_top(6)
+            .margin_bottom(8)
+            .css_classes(["dim-label", "caption"])
+            .build();
+        imp.task_list.append(
+            &gtk::ListBoxRow::builder()
+                .child(&label)
+                .selectable(false)
+                .activatable(false)
+                .build(),
+        );
+        imp.rows.borrow_mut().push(String::new());
+    }
+
+    /// Global search across tasks (open, done, subtasks, archived), projects and tags.
+    fn search_index(&self, store: &Store) -> Rc<SearchIndex> {
+        if let Some(i) = self.imp().index.borrow().as_ref() {
+            return i.clone();
+        }
+        let tag_name = |id: &String| {
+            store
+                .state
+                .tag
+                .entities
+                .get(id)
+                .map(|g| g.title.to_lowercase())
+                .unwrap_or_default()
+        };
+        let hay = |t: &Task| {
+            let mut h = t.title.to_lowercase();
+            if let Some(n) = &t.notes {
+                h.push('\n');
+                h.push_str(&n.to_lowercase());
+            }
+            for tag in &t.tag_ids {
+                h.push('\n');
+                h.push_str(&tag_name(tag));
+            }
+            if let Some(p) = store.state.project.entities.get(&t.project_id) {
+                h.push('\n');
+                h.push_str(&p.title.to_lowercase());
+            }
+            h
+        };
+        let mut idx = SearchIndex {
+            tasks: store.state.task.iter().map(|t| (t.id.clone(), hay(t))).collect(),
+            archived: archived_tasks(store)
+                .into_iter()
+                .map(|t| {
+                    let h = hay(&t);
+                    (t, h)
+                })
+                .collect(),
+            projects: store
+                .state
+                .project
+                .iter()
+                .map(|p| (p.id.clone(), p.title.to_lowercase()))
+                .collect(),
+            tags: store
+                .state
+                .tag
+                .iter()
+                .filter(|t| t.id != TODAY_TAG_ID)
+                .map(|t| (t.id.clone(), t.title.to_lowercase()))
+                .collect(),
+        };
+        idx.archived
+            .sort_by_key(|(t, _)| std::cmp::Reverse(t.done_on.unwrap_or(t.created)));
+        let idx = Rc::new(idx);
+        *self.imp().index.borrow_mut() = Some(idx.clone());
+        idx
+    }
+
     /// Global search across tasks (open, done, subtasks, archived), projects and tags.
     fn render_search(&self, store: &Store, query: &str) {
         let imp = self.imp();
-        let q = query.to_lowercase();
-        let hit = |t: &Task| {
-            t.title.to_lowercase().contains(&q)
-                || t.notes.as_deref().is_some_and(|n| n.to_lowercase().contains(&q))
-                || t.tag_ids
-                    .iter()
-                    .filter_map(|i| store.state.tag.entities.get(i))
-                    .any(|g| g.title.to_lowercase().contains(&q))
-                || store
-                    .state
-                    .project
-                    .entities
-                    .get(&t.project_id)
-                    .is_some_and(|p| p.title.to_lowercase().contains(&q))
-        };
+        let idx = self.search_index(store);
+        // Every word must match somewhere in the haystack.
+        let words: Vec<String> = query.to_lowercase().split_whitespace().map(str::to_string).collect();
+        let matches = |h: &str| words.iter().all(|w| h.contains(w.as_str()));
         let mut first = true;
-        let mut tasks: Vec<&Task> = store.state.task.iter().filter(|t| hit(t)).collect();
+        let mut tasks: Vec<&Task> = idx
+            .tasks
+            .iter()
+            .filter(|(_, h)| matches(h))
+            .filter_map(|(id, _)| store.state.task.entities.get(id))
+            .collect();
         tasks.sort_by(|a, b| {
             a.is_done
                 .cmp(&b.is_done)
                 .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
         });
-        if !tasks.is_empty() {
-            self.section_header(&format!("{} ({})", gettext("Tasks"), tasks.len()), first);
+        let total = tasks.len();
+        if total > 0 {
+            self.section_header(&format!("{} ({total})", gettext("Tasks")), first);
             first = false;
-            for t in tasks {
+            for t in tasks.iter().take(SEARCH_LIMIT) {
                 self.task_row(t, store, t.parent_id.is_some(), false);
             }
+            if total > SEARCH_LIMIT {
+                self.section_note(&format!(
+                    "{} {SEARCH_LIMIT} {} {total}. {}",
+                    gettext("Showing"),
+                    gettext("of"),
+                    gettext("Add another word to narrow it down.")
+                ));
+            }
         }
-        let projects: Vec<&Project> = store
-            .state
-            .project
+        let colorful = imp.settings.boolean("colorful-labels");
+        let projects: Vec<&Project> = idx
+            .projects
             .iter()
-            .filter(|p| p.title.to_lowercase().contains(&q))
+            .filter(|(_, h)| matches(h))
+            .filter_map(|(id, _)| store.state.project.entities.get(id))
             .collect();
         if !projects.is_empty() {
             self.section_header(&gettext("Projects"), first);
             first = false;
-            let colorful = imp.settings.boolean("colorful-labels");
             for p in projects {
                 let row = adw::ActionRow::builder()
                     .title(glib::markup_escape_text(&p.title))
@@ -1137,16 +1256,15 @@ impl MomentumWindow {
                 imp.rows.borrow_mut().push(format!("project:{}", p.id));
             }
         }
-        let tags: Vec<&Tag> = store
-            .state
-            .tag
+        let tags: Vec<&Tag> = idx
+            .tags
             .iter()
-            .filter(|t| t.id != TODAY_TAG_ID && t.title.to_lowercase().contains(&q))
+            .filter(|(_, h)| matches(h))
+            .filter_map(|(id, _)| store.state.tag.entities.get(id))
             .collect();
         if !tags.is_empty() {
             self.section_header(&gettext("Tags"), first);
             first = false;
-            let colorful = imp.settings.boolean("colorful-labels");
             for g in tags {
                 let row = adw::ActionRow::builder()
                     .title(glib::markup_escape_text(&g.title))
@@ -1162,12 +1280,25 @@ impl MomentumWindow {
                 imp.rows.borrow_mut().push(format!("tag:{}", g.id));
             }
         }
-        let mut archived: Vec<Task> = archived_tasks(store).into_iter().filter(|t| hit(t)).collect();
+        let archived: Vec<&Task> = idx
+            .archived
+            .iter()
+            .filter(|(_, h)| matches(h))
+            .map(|(t, _)| t)
+            .collect();
         if !archived.is_empty() {
-            archived.sort_by_key(|t| std::cmp::Reverse(t.done_on.unwrap_or(t.created)));
             self.section_header(&format!("{} ({})", gettext("Archived"), archived.len()), first);
-            for t in &archived {
+            for t in archived.iter().take(SEARCH_LIMIT / 2) {
                 self.task_row(t, store, false, true);
+            }
+            if archived.len() > SEARCH_LIMIT / 2 {
+                self.section_note(&format!(
+                    "{} {} {} {}.",
+                    gettext("Showing"),
+                    SEARCH_LIMIT / 2,
+                    gettext("of"),
+                    archived.len()
+                ));
             }
         }
         let none = imp.rows.borrow().is_empty();
@@ -1418,11 +1549,47 @@ impl MomentumWindow {
         }
         if *imp.view.borrow() == View::Archive {
             // Read-only view over archiveYoung + archiveOld, newest completion first.
-            let mut archived = archived_tasks(&store);
-            archived.retain(|t| t.parent_id.is_none() && t.title.to_lowercase().contains(&*filter));
-            archived.sort_by_key(|t| std::cmp::Reverse(t.done_on.unwrap_or(t.created)));
-            for t in &archived {
+            // Uses the cached, pre-sorted index and renders in pages: the archive can hold
+            // thousands of tasks and every row is a real widget.
+            let idx = self.search_index(&store);
+            let limit = imp.archive_shown.get();
+            let parents: Vec<&Task> = idx
+                .archived
+                .iter()
+                .map(|(t, _)| t)
+                .filter(|t| t.parent_id.is_none())
+                .collect();
+            for t in parents.iter().take(limit) {
                 self.task_row(t, &store, false, true);
+            }
+            if parents.len() > limit {
+                let more = gtk::Button::builder()
+                    .label(format!(
+                        "{} ({} {})",
+                        gettext("Show More"),
+                        parents.len() - limit,
+                        gettext("remaining")
+                    ))
+                    .css_classes(["flat"])
+                    .margin_top(6)
+                    .margin_bottom(6)
+                    .build();
+                more.connect_clicked(glib::clone!(
+                    #[weak(rename_to = w)]
+                    self,
+                    move |_| {
+                        w.imp().archive_shown.set(w.imp().archive_shown.get() + 200);
+                        w.refresh_tasks();
+                    }
+                ));
+                imp.task_list.append(
+                    &gtk::ListBoxRow::builder()
+                        .child(&more)
+                        .selectable(false)
+                        .activatable(false)
+                        .build(),
+                );
+                imp.rows.borrow_mut().push(String::new());
             }
             imp.empty.set_visible(imp.rows.borrow().is_empty());
             imp.task_list.set_visible(!imp.rows.borrow().is_empty());
