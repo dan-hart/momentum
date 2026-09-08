@@ -37,6 +37,18 @@ menu primary_menu {
 
 menu view_menu {
   section {
+    item {
+      label: _("Select Tasks");
+      action: "win.select-mode";
+    }
+
+    item {
+      label: _("Sync Now");
+      action: "app.sync";
+    }
+  }
+
+  section {
     label: _("Sort By");
 
     item {
@@ -209,12 +221,6 @@ template $MomentumWindow: Adw.ApplicationWindow {
             }
 
             [end]
-            ToggleButton select_button {
-              icon-name: "selection-mode-symbolic";
-              tooltip-text: _("Select Tasks");
-            }
-
-            [end]
             MenuButton {
               icon-name: "view-more-symbolic";
               menu-model: view_menu;
@@ -222,10 +228,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             }
 
             [end]
-            Button sync_button {
-              icon-name: "view-refresh-symbolic";
-              tooltip-text: _("Sync Now");
-              action-name: "app.sync";
+            Adw.Spinner sync_spinner {
+              visible: false;
+              tooltip-text: _("Syncing…");
             }
           }
 

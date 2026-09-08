@@ -93,8 +93,8 @@ Done rows are dimmed.
 
 ### 2.4b Selection mode and bulk actions
 
-Enter with the header's select toggle, Ctrl+click on a task, or Ctrl+A (select all rows in
-the view). Rows swap their done checkbox for a selection checkbox, the title shows "N
+Enter with "Select Tasks" in the header's View Options menu, Ctrl+click on a task, or
+Ctrl+A (select all rows in the view). Rows swap their done checkbox for a selection checkbox, the title shows "N
 selected", Cancel appears at the start of the header, and a bottom action bar offers Select
 All, Mark as Done, Plan for Today, Move to Project…, Add Tag… (existing tag or a new one),
 and Delete. Each bulk action gets one Undo toast for the whole batch and leaves selection
@@ -138,9 +138,10 @@ monthly on the 5th", "Repeats yearly on 5 March".
 - Toasts for sync outcomes; a persistent **banner** with a Preferences button for sync
   problems the user can fix (wrong or missing encryption password, unsupported file
   version or newer schema, sync not configured, fresh device with no data set).
-- Sync progress: the caption under the list says "Syncing…" immediately and the sync
-  button is disabled; a spinner replaces the button icon only if the sync passes one
-  second. Afterwards "Last synced just now" for the first ten seconds, then "N seconds /
+- Sync progress: the caption under the list says "Syncing…" immediately; a small spinner
+  appears in the header bar only if the sync passes one second. Sync Now lives in the
+  primary menu, the View Options menu and Ctrl+R; the header bar itself carries only the
+  View Options button (plus Cancel while selecting), per the HIG's "few controls" rule. Afterwards "Last synced just now" for the first ten seconds, then "N seconds /
   minutes / hours / days ago", refreshed every 30 seconds. The caption is hidden on
   empty views and when sync is off.
 - Reminders (`remindAt`) fire desktop notifications, checked every 30 seconds.
