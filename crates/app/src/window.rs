@@ -599,8 +599,10 @@ impl MomentumWindow {
                 .nth(entry.position() as usize)
                 .map(|(i, _)| i)
                 .unwrap_or(entry.text().len());
-            let (lx, _) = entry.layout_offsets();
-            let x = lx + entry.layout().index_to_pos(byte_index as i32).x() / gtk::pango::SCALE;
+            // GTK 4 entries expose no cursor rect: measure the text before the cursor and add
+            // the primary icon plus padding.
+            let text = entry.text();
+            let x = entry.create_pango_layout(Some(&text[..byte_index])).pixel_size().0 + 36;
             imp.tag_popover
                 .set_pointing_to(Some(&gtk::gdk::Rectangle::new(x.max(0), 0, 1, entry.height())));
             imp.tag_popover.popup();
