@@ -21,6 +21,7 @@ pub enum View {
     Today,
     Upcoming,
     Archive,
+    Search,
     Project(String),
     Tag(String),
 }
@@ -48,7 +49,9 @@ mod imp {
         #[template_child]
         pub banner: TemplateChild<adw::Banner>,
         #[template_child]
-        pub search_bar: TemplateChild<gtk::SearchBar>,
+        pub add_clamp: TemplateChild<adw::Clamp>,
+        #[template_child]
+        pub search_clamp: TemplateChild<adw::Clamp>,
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
         #[template_child]
@@ -88,7 +91,8 @@ mod imp {
                 sync_button: Default::default(),
                 sync_label: Default::default(),
                 banner: Default::default(),
-                search_bar: Default::default(),
+                add_clamp: Default::default(),
+                search_clamp: Default::default(),
                 search_entry: Default::default(),
                 toast_overlay: Default::default(),
                 empty: Default::default(),
@@ -432,8 +436,6 @@ impl MomentumWindow {
                 move |_, _| w.refresh()
             ),
         );
-        imp.search_bar.set_key_capture_widget(Some(self));
-        imp.search_bar.connect_entry(&*imp.search_entry);
         self.setup_tag_completion();
         imp.search_entry.connect_search_changed(glib::clone!(
             #[weak(rename_to = w)]
@@ -483,11 +485,8 @@ impl MomentumWindow {
         };
         self.add_action_entries([
             act("search", |w| {
-                let b = &w.imp().search_bar;
-                b.set_search_mode(!b.is_search_mode());
-                if b.is_search_mode() {
-                    w.imp().search_entry.grab_focus();
-                }
+                w.go_to(View::Search);
+                w.imp().search_entry.grab_focus();
             }),
             act("toggle-done", |w| {
                 if let Some(id) = w.focused_task() {
@@ -572,8 +571,9 @@ impl MomentumWindow {
                 self.refresh();
             }
             if let Some(q) = std::env::var_os("MOMENTUM_SCREENSHOT_SEARCH") {
-                imp.search_bar.set_search_mode(true);
+                *imp.view.borrow_mut() = View::Search;
                 imp.search_entry.set_text(&q.to_string_lossy());
+                self.refresh();
             }
             if std::env::var_os("MOMENTUM_SCREENSHOT_TAG").is_some() {
                 imp.add_entry.grab_focus();
@@ -1010,6 +1010,7 @@ impl MomentumWindow {
             None,
         );
         self.sidebar_row(&gettext("Archive"), "archive-symbolic", Some(View::Archive), None, None);
+        self.sidebar_row(&gettext("Search"), "edit-find-symbolic", Some(View::Search), None, None);
         self.sidebar_row(&gettext("Projects"), "", None, None, Some("projects-collapsed"));
         let colorful = imp.settings.boolean("colorful-labels");
         if !imp.settings.boolean("projects-collapsed") {
@@ -1054,8 +1055,6 @@ impl MomentumWindow {
     /// Switch view, leaving search, and select the matching sidebar row.
     pub fn go_to(&self, view: View) {
         let imp = self.imp();
-        imp.search_bar.set_search_mode(false);
-        imp.search_entry.set_text("");
         *imp.view.borrow_mut() = view;
         self.refresh();
     }
@@ -1183,7 +1182,7 @@ impl MomentumWindow {
     fn view_task_ids(&self, store: &Store) -> Vec<String> {
         match &*self.imp().view.borrow() {
             View::Today => store.state.today_ids(),
-            View::Upcoming | View::Archive => vec![],
+            View::Upcoming | View::Archive | View::Search => vec![],
             View::Project(id) => store
                 .state
                 .project
@@ -1329,6 +1328,7 @@ impl MomentumWindow {
             View::Today => gettext("Today"),
             View::Upcoming => gettext("Coming Up"),
             View::Archive => gettext("Archive"),
+            View::Search => gettext("Search"),
             View::Project(id) => store
                 .state
                 .project
@@ -1344,10 +1344,23 @@ impl MomentumWindow {
                 .map(|t| t.title.clone())
                 .unwrap_or_default(),
         };
-        let query = imp.filter.borrow().clone();
-        if !query.trim().is_empty() {
+        let searching = *imp.view.borrow() == View::Search;
+        imp.add_clamp.set_visible(!searching);
+        imp.search_clamp.set_visible(searching);
+        if searching {
             imp.content_page.set_title(&gettext("Search"));
-            self.render_search(&store, query.trim());
+            let query = imp.filter.borrow().clone();
+            if query.trim().is_empty() {
+                imp.empty.set_icon_name(Some("edit-find-symbolic"));
+                imp.empty.set_title(&gettext("Search Everything"));
+                imp.empty
+                    .set_description(Some(&gettext("Tasks, notes, subtasks, projects, tags and the archive")));
+                imp.empty.set_visible(true);
+                imp.task_list.set_visible(false);
+                self.update_sync_button();
+            } else {
+                self.render_search(&store, query.trim());
+            }
             return;
         }
         imp.content_page.set_title(&title);
@@ -1356,7 +1369,7 @@ impl MomentumWindow {
         imp.empty.set_description(Some(&gettext(
             "Add a task above, or sync with Nextcloud from Preferences.",
         )));
-        let filter = imp.filter.borrow();
+        let filter = String::new();
         if *imp.view.borrow() == View::Upcoming {
             let today_n = day_number(&today_str()).unwrap_or(0);
             let range: i64 = imp.settings.string("upcoming-range").parse().unwrap_or(7);
