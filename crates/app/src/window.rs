@@ -26,6 +26,13 @@ pub struct SearchIndex {
 }
 const SEARCH_LIMIT: usize = 60;
 
+#[derive(Clone, Copy)]
+pub enum MenuKind {
+    Task,
+    Project,
+    Tag,
+}
+
 #[derive(Clone, PartialEq)]
 pub enum View {
     Today,
@@ -497,6 +504,16 @@ impl MomentumWindow {
             }
         ));
         self.add_controller(key);
+        let targeted = |name: &str, f: fn(&MomentumWindow, &str)| {
+            gio::ActionEntry::builder(name)
+                .parameter_type(Some(&String::static_variant_type()))
+                .activate(move |w: &MomentumWindow, _, p: Option<&glib::Variant>| {
+                    if let Some(id) = p.and_then(|v| v.get::<String>()) {
+                        f(w, &id);
+                    }
+                })
+                .build()
+        };
         let act = |name: &str, f: fn(&MomentumWindow)| {
             gio::ActionEntry::builder(name)
                 .activate(move |w: &MomentumWindow, _, _| f(w))
@@ -519,6 +536,65 @@ impl MomentumWindow {
                 }
             }),
             act("archive-done", |w| w.archive_done()),
+            // Context-menu actions carry the target id as a string parameter.
+            targeted("ctx-open", |w, id| w.open_task(id)),
+            targeted("ctx-done", |w, id| {
+                let done = w
+                    .imp()
+                    .store
+                    .borrow()
+                    .state
+                    .task
+                    .entities
+                    .get(id)
+                    .map(|t| t.is_done)
+                    .unwrap_or(false);
+                w.set_done(id, !done);
+            }),
+            targeted("ctx-today", |w, id| {
+                let planned = w
+                    .imp()
+                    .store
+                    .borrow()
+                    .state
+                    .task
+                    .entities
+                    .get(id)
+                    .and_then(|t| t.due_day.clone())
+                    == Some(today_str());
+                if planned {
+                    w.dispatch(Action::RemoveFromToday {
+                        task_ids: vec![id.to_string()],
+                    });
+                    w.toast_undo(
+                        &gettext("Removed from today"),
+                        vec![Action::PlanForToday {
+                            task_ids: vec![id.to_string()],
+                            today: today_str(),
+                        }],
+                    );
+                } else {
+                    w.drop_task(id, &View::Today);
+                }
+            }),
+            targeted("ctx-move", |w, id| w.move_to_dialog(id)),
+            targeted("ctx-delete", |w, id| w.delete_task(id)),
+            targeted("ctx-open-project", |w, id| w.go_to(View::Project(id.into()))),
+            targeted("ctx-new-task", |w, id| {
+                w.go_to(View::Project(id.into()));
+                w.new_task_dialog();
+            }),
+            targeted("ctx-edit-project", |w, id| {
+                w.edit_context_dialog_for(View::Project(id.into()))
+            }),
+            targeted("ctx-delete-project", |w, id| {
+                w.delete_context_dialog_for(View::Project(id.into()))
+            }),
+            targeted("ctx-open-tag", |w, id| w.go_to(View::Tag(id.into()))),
+            targeted("ctx-edit-tag", |w, id| w.edit_context_dialog_for(View::Tag(id.into()))),
+            targeted("ctx-delete-tag", |w, id| {
+                w.delete_context_dialog_for(View::Tag(id.into()))
+            }),
             act("plan-today", |w| {
                 if let Some(id) = w.focused_task() {
                     w.drop_task(&id, &View::Today);
@@ -650,6 +726,132 @@ impl MomentumWindow {
         } else if !id.is_empty() {
             self.open_task(id);
         }
+    }
+
+    /// Right-click, long-press, or Menu/Shift+F10 on a row opens a context menu built for it.
+    fn attach_context_menu(&self, widget: &impl IsA<gtk::Widget>, kind: MenuKind, id: String) {
+        let widget: gtk::Widget = widget.clone().upcast();
+        let show = glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            #[weak]
+            widget,
+            move |x: f64, y: f64| {
+                let menu = w.context_menu_model(&kind, &id);
+                let popover = gtk::PopoverMenu::from_model(Some(&menu));
+                popover.set_parent(&widget);
+                popover.set_has_arrow(false);
+                popover.set_halign(gtk::Align::Start);
+                popover.set_pointing_to(Some(&gtk::gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
+                popover.connect_closed(|p| {
+                    let p = p.clone();
+                    glib::idle_add_local_once(move || p.unparent());
+                });
+                popover.popup();
+            }
+        );
+        let right = gtk::GestureClick::builder().button(3).build();
+        right.connect_pressed(glib::clone!(
+            #[strong]
+            show,
+            move |g, _, x, y| {
+                g.set_state(gtk::EventSequenceState::Claimed);
+                show(x, y);
+            }
+        ));
+        widget.add_controller(right);
+        let long = gtk::GestureLongPress::builder().touch_only(true).build();
+        long.connect_pressed(glib::clone!(
+            #[strong]
+            show,
+            move |_, x, y| show(x, y)
+        ));
+        widget.add_controller(long);
+        let key = gtk::EventControllerKey::new();
+        key.connect_key_pressed(glib::clone!(
+            #[strong]
+            show,
+            #[weak]
+            widget,
+            #[upgrade_or]
+            glib::Propagation::Proceed,
+            move |_, k, _, m| {
+                use gtk::gdk::Key;
+                if k == Key::Menu || (k == Key::F10 && m.contains(gtk::gdk::ModifierType::SHIFT_MASK)) {
+                    show(widget.width() as f64 / 2.0, widget.height() as f64 / 2.0);
+                    glib::Propagation::Stop
+                } else {
+                    glib::Propagation::Proceed
+                }
+            }
+        ));
+        widget.add_controller(key);
+    }
+
+    fn context_menu_model(&self, kind: &MenuKind, id: &str) -> gio::Menu {
+        let store = self.imp().store.borrow();
+        let today = today_str();
+        let menu = gio::Menu::new();
+        let item = |label: String, action: &str| {
+            let it = gio::MenuItem::new(Some(&label), None);
+            it.set_action_and_target_value(Some(action), Some(&id.to_variant()));
+            it
+        };
+        match kind {
+            MenuKind::Task => {
+                let Some(t) = store.state.task.entities.get(id) else {
+                    return menu;
+                };
+                let a = gio::Menu::new();
+                a.append_item(&item(gettext("Open"), "win.ctx-open"));
+                a.append_item(&item(
+                    if t.is_done {
+                        gettext("Mark as Not Done")
+                    } else {
+                        gettext("Mark as Done")
+                    },
+                    "win.ctx-done",
+                ));
+                let planned = t.due_day.as_deref() == Some(&today);
+                a.append_item(&item(
+                    if planned {
+                        gettext("Remove from Today")
+                    } else {
+                        gettext("Plan for Today")
+                    },
+                    "win.ctx-today",
+                ));
+                if t.parent_id.is_none() {
+                    a.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
+                }
+                menu.append_section(None, &a);
+                let b = gio::Menu::new();
+                b.append_item(&item(gettext("Delete"), "win.ctx-delete"));
+                menu.append_section(None, &b);
+            }
+            MenuKind::Project => {
+                let a = gio::Menu::new();
+                a.append_item(&item(gettext("Open"), "win.ctx-open-project"));
+                a.append_item(&item(gettext("New Task Here…"), "win.ctx-new-task"));
+                a.append_item(&item(gettext("Edit…"), "win.ctx-edit-project"));
+                menu.append_section(None, &a);
+                if id != INBOX_PROJECT_ID {
+                    let b = gio::Menu::new();
+                    b.append_item(&item(gettext("Delete Project…"), "win.ctx-delete-project"));
+                    menu.append_section(None, &b);
+                }
+            }
+            MenuKind::Tag => {
+                let a = gio::Menu::new();
+                a.append_item(&item(gettext("Open"), "win.ctx-open-tag"));
+                a.append_item(&item(gettext("Edit…"), "win.ctx-edit-tag"));
+                menu.append_section(None, &a);
+                let b = gio::Menu::new();
+                b.append_item(&item(gettext("Delete Tag…"), "win.ctx-delete-tag"));
+                menu.append_section(None, &b);
+            }
+        }
+        menu
     }
 
     /// Start a new boxed-list section (optionally titled), like an AdwPreferencesGroup.
@@ -1013,6 +1215,11 @@ impl MomentumWindow {
                 None => {}
             }
             r.add_prefix(&img);
+            match view.clone().unwrap() {
+                View::Project(id) => self.attach_context_menu(&r, MenuKind::Project, id),
+                View::Tag(id) => self.attach_context_menu(&r, MenuKind::Tag, id),
+                _ => {}
+            }
             let target = gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::MOVE);
             let dest = view.clone().unwrap();
             target.connect_drop(glib::clone!(
@@ -1478,6 +1685,9 @@ impl MomentumWindow {
                 }
             ));
             row.add_controller(target);
+        }
+        if !archived {
+            self.attach_context_menu(&row, MenuKind::Task, t.id.clone());
         }
         self.append_row(&row, &t.id);
     }
@@ -1945,6 +2155,9 @@ impl MomentumWindow {
     /// Rename and recolour the current project or tag.
     fn edit_context_dialog(&self) {
         let view = self.imp().view.borrow().clone();
+        self.edit_context_dialog_for(view);
+    }
+    fn edit_context_dialog_for(&self, view: View) {
         let store = self.imp().store.borrow();
         let (heading, title, color) = match &view {
             View::Project(id) => {
@@ -2059,6 +2272,9 @@ impl MomentumWindow {
     /// Delete the current project (with its tasks) or tag, after confirmation.
     fn delete_context_dialog(&self) {
         let view = self.imp().view.borrow().clone();
+        self.delete_context_dialog_for(view);
+    }
+    fn delete_context_dialog_for(&self, view: View) {
         let store = self.imp().store.borrow();
         let (heading, body, action) = match &view {
             View::Project(id) if id != INBOX_PROJECT_ID => {
@@ -2113,7 +2329,9 @@ impl MomentumWindow {
                 self,
                 move |_, r| {
                     if r == "delete" {
-                        *w.imp().view.borrow_mut() = View::Today;
+                        if *w.imp().view.borrow() == view {
+                            *w.imp().view.borrow_mut() = View::Today;
+                        }
                         w.dispatch(action.clone());
                     }
                 }
