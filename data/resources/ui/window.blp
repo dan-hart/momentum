@@ -32,7 +32,7 @@ menu primary_menu {
   }
 }
 
-menu sort_menu {
+menu view_menu {
   section {
     label: _("Sort By");
 
@@ -64,6 +64,13 @@ menu sort_menu {
       label: _("Newest First");
       action: "win.task-sort";
       target: "created";
+    }
+  }
+
+  section {
+    item {
+      label: _("Archive Completed Tasks");
+      action: "win.archive-done";
     }
   }
 }
@@ -124,20 +131,6 @@ template $MomentumWindow: Adw.ApplicationWindow {
             margin-top: 6;
             margin-bottom: 12;
 
-            Button archive_button {
-              action-name: "win.archive-done";
-              sensitive: false;
-
-              styles [
-                "flat",
-              ]
-
-              child: Adw.ButtonContent {
-                icon-name: "archive-symbolic";
-                label: _("Archive Completed");
-              };
-            }
-
             Button {
               action-name: "app.add-task";
 
@@ -163,9 +156,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
           Adw.HeaderBar {
             [end]
             MenuButton {
-              icon-name: "view-sort-descending-symbolic";
-              menu-model: sort_menu;
-              tooltip-text: _("Sort Tasks");
+              icon-name: "view-more-symbolic";
+              menu-model: view_menu;
+              tooltip-text: _("View Options");
             }
 
             [end]

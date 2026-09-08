@@ -45,8 +45,6 @@ mod imp {
         #[template_child]
         pub sync_label: TemplateChild<gtk::Label>,
         #[template_child]
-        pub archive_button: TemplateChild<gtk::Button>,
-        #[template_child]
         pub search_bar: TemplateChild<gtk::SearchBar>,
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -85,7 +83,6 @@ mod imp {
                 add_entry: Default::default(),
                 sync_button: Default::default(),
                 sync_label: Default::default(),
-                archive_button: Default::default(),
                 search_bar: Default::default(),
                 search_entry: Default::default(),
                 toast_overlay: Default::default(),
@@ -691,12 +688,10 @@ impl MomentumWindow {
 
     pub fn refresh(&self) {
         let (done, _) = self.done_tasks();
-        self.imp().archive_button.set_sensitive(!done.is_empty());
-        self.imp().archive_button.set_tooltip_text(Some(&if done.is_empty() {
-            gettext("No completed tasks to archive")
-        } else {
-            format!("{} {}", done.len(), gettext("completed tasks"))
-        }));
+        // Menu item stays visible but disabled when there is nothing to archive (HIG).
+        if let Some(a) = self.lookup_action("archive-done").and_downcast::<gio::SimpleAction>() {
+            a.set_enabled(!done.is_empty());
+        }
         self.refresh_sidebar();
         self.refresh_tasks();
     }
