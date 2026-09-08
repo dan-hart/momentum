@@ -1,33 +1,42 @@
-<!-- FIXME Uncomment once published at Flathub -->
-<!-- <a href="https://flathub.org/apps/details/io.github.danhart.Momentum"> -->
-<!-- <img src="https://flathub.org/api/badge?svg&locale=en&light" width="190px" /> -->
-<!-- </a> -->
-
 # Momentum
 
-<img src="data/icons/io.github.danhart.Momentum.svg" width="128" height="128" />
-<!-- FIXME Set project description -->
-<p>Write a GTK + Rust summary</p>
+A native GNOME task planner and time tracker that reads, writes and syncs the
+same data as [Super Productivity](https://super-productivity.com).
 
-## Screenshots
+Status: project scaffold. See [PLAN.md](../PLAN.md) for the roadmap.
 
-<div align="center">
-![screenshot](data/resources/screenshots/screenshot1.png)
-</div>
+## Layout
 
-## Hack on Momentum
+| Path | What |
+|---|---|
+| `crates/app` | GTK 4 + libadwaita application (binary `momentum`) |
+| `crates/sp-model` | Super Productivity data model, schema v4 |
+| `crates/sp-oplog` | Operation log: envelope, vector clocks, codec, crypto, apply() |
+| `crates/sp-store` | SQLite persistence for the op log |
+| `crates/sp-sync` | LocalFile, WebDAV/Nextcloud and SuperSync providers |
+| `data/` | Desktop file, metainfo, GSettings schema, icons, Blueprint UI |
+| `build-aux/` | Flatpak manifest and helper scripts |
 
-To build the development version of Bustle and hack on the code
-see the [general guide](https://developer.gnome.org/documentation/tutorials/beginners/getting_started.html)
-for building GNOME apps with Flatpak and GNOME Builder.
+## Building
 
-<!-- FIXME Uncomment once available at Damned Lies -->
-<!-- ## Translations -->
+Requires the GNOME 50 SDK, the Rust SDK extension and flatpak-builder:
 
-<!-- Helping to translate Momentum or add support to a new language is very -->
-<!-- welcome. You can find everything you need at: -->
-<!-- [l10n.gnome.org/module/momentum/](https://l10n.gnome.org/module/momentum/) -->
+```sh
+flatpak install --user flathub org.gnome.Sdk//50 org.gnome.Platform//50 \
+  org.freedesktop.Sdk.Extension.rust-stable//25.08 \
+  org.freedesktop.Sdk.Extension.llvm22//25.08 org.flatpak.Builder
+flatpak run org.flatpak.Builder --user --install --force-clean flatpak_app \
+  build-aux/io.github.danhart.Momentum.Devel.json
+flatpak run io.github.danhart.Momentum.Devel
+```
 
-## Code Of Conduct
+Or open the folder in GNOME Builder and press Run.
 
-This project follows the [GNOME Code of Conduct](https://conduct.gnome.org/).
+## Renaming
+
+The name, app ID and author are placeholders. Run
+`python3 build-aux/rename.py` to change them across the tree.
+
+## License
+
+GPL-3.0-or-later. See `LICENSE` and `NOTICE.md`.

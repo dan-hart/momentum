@@ -1,0 +1,111 @@
+using Gtk 4.0;
+using Adw 1;
+
+menu primary_menu {
+  section {
+    item {
+      label: _("_Preferences");
+      action: "app.preferences";
+    }
+
+    item {
+      label: _("_Keyboard Shortcuts");
+      action: "win.show-help-overlay";
+    }
+
+    item {
+      label: _("_About Momentum");
+      action: "app.about";
+    }
+  }
+}
+
+template $MomentumWindow: Adw.ApplicationWindow {
+  title: _("Momentum");
+  default-width: 960;
+  default-height: 640;
+  width-request: 360;
+  height-request: 294;
+
+  Adw.Breakpoint {
+    condition ("max-width: 640sp")
+
+    setters {
+      split_view.collapsed: true;
+    }
+  }
+
+  content: Adw.NavigationSplitView split_view {
+    min-sidebar-width: 220;
+    max-sidebar-width: 300;
+
+    sidebar: Adw.NavigationPage {
+      title: _("Momentum");
+
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          [end]
+          MenuButton {
+            icon-name: "open-menu-symbolic";
+            menu-model: primary_menu;
+            primary: true;
+            tooltip-text: _("Main Menu");
+          }
+        }
+
+        content: ScrolledWindow {
+          hscrollbar-policy: never;
+
+          child: ListBox sidebar_list {
+            selection-mode: single;
+
+            styles [
+              "navigation-sidebar",
+            ]
+
+            Adw.ActionRow {
+              title: _("Today");
+              icon-name: "starred-symbolic";
+            }
+
+            Adw.ActionRow {
+              title: _("Planner");
+              icon-name: "x-office-calendar-symbolic";
+            }
+
+            Adw.ActionRow {
+              title: _("Projects");
+              icon-name: "folder-symbolic";
+            }
+
+            Adw.ActionRow {
+              title: _("Tags");
+              icon-name: "view-list-symbolic";
+            }
+
+            Adw.ActionRow {
+              title: _("Worklog");
+              icon-name: "document-open-recent-symbolic";
+            }
+          };
+        };
+      };
+    };
+
+    content: Adw.NavigationPage content_page {
+      title: _("Today");
+
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {}
+
+        content: Adw.StatusPage status_page {
+          icon-name: "io.github.danhart.Momentum-symbolic";
+          title: _("Today");
+          description: _("Tasks will appear here once the data layer is wired up.");
+        };
+      };
+    };
+  };
+}

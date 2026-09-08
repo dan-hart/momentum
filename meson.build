@@ -3,8 +3,7 @@ project(
   'rust',
   version: '0.1.0',
   meson_version: '>= 0.59',
-  # FIXME Set the project license
-  # license: 'MIT',
+  license: 'GPL-3.0-or-later',
 )
 
 i18n = import('i18n')
@@ -14,7 +13,8 @@ base_id = 'io.github.danhart.Momentum'
 
 dependency('glib-2.0', version: '>= 2.66')
 dependency('gio-2.0', version: '>= 2.66')
-dependency('gtk4', version: '>= 4.0.0')
+dependency('gtk4', version: '>= 4.18')
+dependency('libadwaita-1', version: '>= 1.6')
 
 find_program('glib-compile-resources')
 glib_compile_schemas = find_program('glib-compile-schemas')
@@ -95,7 +95,7 @@ endif
 
 subdir('data')
 subdir('po')
-subdir('src')
+subdir('crates/app')
 
 test(
   'cargo-test',

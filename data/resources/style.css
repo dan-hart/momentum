@@ -1,4 +1,2 @@
-.title-header{
-  font-size: 36px;
-  font-weight: bold;
-}
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Single stylesheet; use @media (prefers-color-scheme: dark) for dark tweaks. */

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Dan Hart
+
 mod application;
 mod config;
 mod window;
@@ -5,14 +8,12 @@ mod window;
 use gettextrs::{gettext, LocaleCategory};
 use gtk::{gio, glib};
 
-use self::application::ExampleApplication;
+use self::application::MomentumApplication;
 use self::config::{GETTEXT_PACKAGE, LOCALEDIR, RESOURCES_FILE};
 
 fn main() -> glib::ExitCode {
-    // Initialize logger
     tracing_subscriber::fmt::init();
 
-    // Prepare i18n
     gettextrs::setlocale(LocaleCategory::LcAll, "");
     gettextrs::bindtextdomain(*GETTEXT_PACKAGE, *LOCALEDIR)
         .expect("Unable to bind the text domain");
@@ -23,17 +24,6 @@ fn main() -> glib::ExitCode {
     let res = gio::Resource::load(*RESOURCES_FILE).expect("Could not load gresource file");
     gio::resources_register(&res);
 
-    let app = ExampleApplication::default();
+    let app = MomentumApplication::default();
     app.run()
-}
-#[cfg(test)]
-mod tests {
-    #[allow(unused)]
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
 }

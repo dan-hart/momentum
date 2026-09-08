@@ -1,12 +1,14 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Dan Hart
+
+use adw::prelude::*;
+use adw::subclass::prelude::*;
 use gettextrs::gettext;
+use gtk::{gdk, gio, glib};
 use tracing::{debug, info};
 
-use gtk::prelude::*;
-use gtk::subclass::prelude::*;
-use gtk::{gdk, gio, glib};
-
 use crate::config::{APP_ID, PKGDATADIR, PROFILE, VERSION};
-use crate::window::ExampleApplicationWindow;
+use crate::window::MomentumWindow;
 
 mod imp {
     use super::*;
@@ -14,22 +16,22 @@ mod imp {
     use std::cell::OnceCell;
 
     #[derive(Debug, Default)]
-    pub struct ExampleApplication {
-        pub window: OnceCell<WeakRef<ExampleApplicationWindow>>,
+    pub struct MomentumApplication {
+        pub window: OnceCell<WeakRef<MomentumWindow>>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ExampleApplication {
-        const NAME: &'static str = "ExampleApplication";
-        type Type = super::ExampleApplication;
-        type ParentType = gtk::Application;
+    impl ObjectSubclass for MomentumApplication {
+        const NAME: &'static str = "MomentumApplication";
+        type Type = super::MomentumApplication;
+        type ParentType = adw::Application;
     }
 
-    impl ObjectImpl for ExampleApplication {}
+    impl ObjectImpl for MomentumApplication {}
 
-    impl ApplicationImpl for ExampleApplication {
+    impl ApplicationImpl for MomentumApplication {
         fn activate(&self) {
-            debug!("GtkApplication<ExampleApplication>::activate");
+            debug!("AdwApplication<MomentumApplication>::activate");
             self.parent_activate();
             let app = self.obj();
 
@@ -39,7 +41,7 @@ mod imp {
                 return;
             }
 
-            let window = ExampleApplicationWindow::new(&app);
+            let window = MomentumWindow::new(&app);
             self.window
                 .set(window.downgrade())
                 .expect("Window already set.");
@@ -48,11 +50,10 @@ mod imp {
         }
 
         fn startup(&self) {
-            debug!("GtkApplication<ExampleApplication>::startup");
+            debug!("AdwApplication<MomentumApplication>::startup");
             self.parent_startup();
             let app = self.obj();
 
-            // Set icons for shell
             gtk::Window::set_default_icon_name(*APP_ID);
 
             app.setup_css();
@@ -61,31 +62,30 @@ mod imp {
         }
     }
 
-    impl GtkApplicationImpl for ExampleApplication {}
+    impl GtkApplicationImpl for MomentumApplication {}
+    impl AdwApplicationImpl for MomentumApplication {}
 }
 
 glib::wrapper! {
-    pub struct ExampleApplication(ObjectSubclass<imp::ExampleApplication>)
-        @extends gio::Application, gtk::Application,
+    pub struct MomentumApplication(ObjectSubclass<imp::MomentumApplication>)
+        @extends gio::Application, gtk::Application, adw::Application,
         @implements gio::ActionMap, gio::ActionGroup;
 }
 
-impl ExampleApplication {
-    fn main_window(&self) -> ExampleApplicationWindow {
+impl MomentumApplication {
+    fn main_window(&self) -> MomentumWindow {
         self.imp().window.get().unwrap().upgrade().unwrap()
     }
 
     fn setup_gactions(&self) {
-        // Quit
         let action_quit = gio::ActionEntry::builder("quit")
             .activate(move |app: &Self, _, _| {
-                // This is needed to trigger the delete event and saving the window state
+                // Triggers close_request so the window state is saved.
                 app.main_window().close();
                 app.quit();
             })
             .build();
 
-        // About
         let action_about = gio::ActionEntry::builder("about")
             .activate(|app: &Self, _, _| {
                 app.show_about_dialog();
@@ -94,7 +94,6 @@ impl ExampleApplication {
         self.add_action_entries([action_quit, action_about]);
     }
 
-    // Sets up keyboard shortcuts
     fn setup_accels(&self) {
         self.set_accels_for_action("app.quit", &["<Control>q"]);
         self.set_accels_for_action("window.close", &["<Control>w"]);
@@ -113,38 +112,36 @@ impl ExampleApplication {
     }
 
     fn authors() -> Vec<&'static str> {
-        // Authors are defined in Cargo.toml
-        env!("CARGO_PKG_AUTHORS").split(":").collect()
+        env!("CARGO_PKG_AUTHORS").split(':').collect()
     }
 
     fn show_about_dialog(&self) {
-        let dialog = gtk::AboutDialog::builder()
-            .logo_icon_name(*APP_ID)
-            // FIXME Insert your license of choice here
-            // .license_type(gtk::License::MitX11)
-            // FIXME Insert your website here
-            // .website("https://gitlab.gnome.org/bilelmoussaoui/momentum/")
+        let dialog = adw::AboutDialog::builder()
+            .application_name(gettext("Momentum"))
+            .application_icon(*APP_ID)
+            .developer_name("Dan Hart")
+            .license_type(gtk::License::Gpl30)
+            .website("https://github.com/danhart/momentum")
+            .issue_url("https://github.com/danhart/momentum/issues")
             .version(*VERSION)
-            .transient_for(&self.main_window())
             .translator_credits(gettext("translator-credits"))
-            .modal(true)
-            .authors(Self::authors())
-            .artists(vec!["Dan Hart"])
+            .developers(Self::authors())
             .build();
 
-        dialog.present();
+        dialog.present(Some(&self.main_window()));
     }
 
     pub fn run(&self) -> glib::ExitCode {
         info!("Momentum ({})", *APP_ID);
         info!("Version: {} ({})", *VERSION, *PROFILE);
         info!("Datadir: {}", *PKGDATADIR);
+        info!("Super Productivity schema version: {}", sp_model::SCHEMA_VERSION);
 
         ApplicationExtManual::run(self)
     }
 }
 
-impl Default for ExampleApplication {
+impl Default for MomentumApplication {
     fn default() -> Self {
         glib::Object::builder()
             .property("application-id", *APP_ID)

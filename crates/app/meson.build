@@ -1,6 +1,8 @@
 cargo_build_options = [
   '--manifest-path',
   meson.project_source_root() / 'Cargo.toml',
+  '--package',
+  meson.project_name(),
 ]
 cargo_build_options += cargo_release_option
 

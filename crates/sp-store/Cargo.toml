@@ -1,0 +1,14 @@
+[package]
+name = "sp-store"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+sp-model = { path = "../sp-model" }
+sp-oplog = { path = "../sp-oplog" }

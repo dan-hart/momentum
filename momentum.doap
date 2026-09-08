@@ -6,12 +6,11 @@
          xmlns="http://usefulinc.com/ns/doap#">
 
   <name xml:lang="en">Momentum</name>
-  <!-- FIXME Set the project summary -->
-  <shortdesc xml:lang="en">
-    Write a GTK + Rust application
-  </shortdesc>
-  <!-- FIXME Set the project git url -->
-  <bug-database rdf:resource="https://gitlab.gnome.org/bilelmoussaoui/momentum/" />
+  <shortdesc xml:lang="en">Plan your day and track your time</shortdesc>
+  <description xml:lang="en">A native GNOME task planner and time tracker compatible with Super Productivity data and sync.</description>
+  <homepage rdf:resource="https://github.com/danhart/momentum" />
+  <bug-database rdf:resource="https://github.com/danhart/momentum/issues" />
+  <license rdf:resource="http://usefulinc.com/doap/licenses/gpl" />
 
   <category rdf:resource="http://api.gnome.org/doap-extensions#apps" />
   <programming-language>Rust</programming-language>
@@ -20,13 +19,10 @@
     <foaf:Person>
       <foaf:name>Dan Hart</foaf:name>
       <foaf:mbox rdf:resource="mailto:race-unbent-water@duck.com" />
-      <!-- FIXME Set your gnome user id here -->
-      <!-- <gnome:userid>gnome_user_id</gnome:userid> -->
       <foaf:account>
         <foaf:OnlineAccount>
-          <!-- FIXME Set your gitlab handle here, rdf:resource also accepts github.com or gitlab.com -->
-          <!-- <foaf:accountServiceHomepage rdf:resource="https://gitlab.gnome.org" /> -->
-          <!-- <foaf:accountName>gitlab_user_handle</foaf:accountName> -->
+          <foaf:accountServiceHomepage rdf:resource="https://github.com" />
+          <foaf:accountName>danhart</foaf:accountName>
         </foaf:OnlineAccount>
       </foaf:account>
     </foaf:Person>

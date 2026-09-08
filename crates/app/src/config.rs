@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Dan Hart
+
 use std::sync::LazyLock;
 
 /// Declares a lazily-initialized static variable that reads its value from a

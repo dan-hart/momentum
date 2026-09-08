@@ -1,13 +1,12 @@
 [Desktop Entry]
 Name=Momentum
-# FIXME Set the project summary
-Comment=Write a GTK + Rust application
+Comment=Plan your day and track your time
 Type=Application
 Exec=momentum
 Terminal=false
-Categories=GNOME;GTK;Development;
+Categories=GNOME;GTK;Office;ProjectManagement;
 # Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
-Keywords=Gnome;GTK;
+Keywords=Tasks;Todo;Time;Tracking;Pomodoro;Super Productivity;
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
 Icon=@icon@
 StartupNotify=true

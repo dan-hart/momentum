@@ -9,3 +9,7 @@
 /.flatpak/
 /vendor
 /.vscode
+/flatpak_app/
+/.flatpak-builder/
+/repo/
+/build.log
