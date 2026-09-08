@@ -7,7 +7,7 @@ template $MomentumPrefs: Adw.PreferencesDialog {
   Adw.PreferencesPage {
     Adw.PreferencesGroup {
       title: _("Nextcloud Sync");
-      description: _("Shares the same sync-data.json as Super Productivity. Encrypted sync files are not supported yet.");
+      description: _("Shares the same sync-data.json as Super Productivity. Use the same folder and encryption password as your other devices.");
 
       Adw.EntryRow server_row {
         title: _("Server URL");
@@ -23,6 +23,10 @@ template $MomentumPrefs: Adw.PreferencesDialog {
 
       Adw.EntryRow folder_row {
         title: _("Sync folder");
+      }
+
+      Adw.PasswordEntryRow encrypt_row {
+        title: _("Encryption password");
       }
 
       Adw.SwitchRow auto_row {

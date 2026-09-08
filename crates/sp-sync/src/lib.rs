@@ -4,6 +4,7 @@
 //! Strategy: rebase pending local ops onto the newest remote snapshot, then upload
 //! snapshot + ops with an ETag compare-and-swap. Remote ops are never replayed
 //! here because the remote `state` already contains their effect.
+pub mod crypto;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -39,8 +40,10 @@ pub struct SyncFile {
 pub enum SyncError {
     #[error("HTTP error: {0}")]
     Http(#[from] ureq::Error),
-    #[error("remote file is encrypted; end-to-end encryption is not supported yet")]
+    #[error("remote file is encrypted; set the encryption password in Preferences")]
     Encrypted,
+    #[error("could not decrypt the sync file: {0}")]
+    Decrypt(String),
     #[error("remote file uses format v{0}, expected v2 (turn off \"Surgical sync\" upstream)")]
     Version(u64),
     #[error("schema version {0} is newer than this app supports ({SCHEMA_VERSION})")]
@@ -54,16 +57,21 @@ pub enum SyncError {
 }
 
 /// Parse `pf_[C][E]<ver>__<body>`; body is JSON, or base64 gzip when `C`.
-pub fn decode(body: &str) -> Result<SyncFile, SyncError> {
+pub fn decode(body: &str, password: Option<&str>) -> Result<SyncFile, SyncError> {
     let rest = body
         .strip_prefix("pf_")
         .ok_or_else(|| SyncError::Parse("missing pf_ prefix".into()))?;
     let (flags, json) = rest
         .split_once("__")
         .ok_or_else(|| SyncError::Parse("missing separator".into()))?;
-    if flags.contains('E') {
-        return Err(SyncError::Encrypted);
-    }
+    let decrypted;
+    let json = if flags.contains('E') {
+        let pw = password.filter(|p| !p.is_empty()).ok_or(SyncError::Encrypted)?;
+        decrypted = crypto::decrypt(json, pw).map_err(SyncError::Decrypt)?;
+        decrypted.as_str()
+    } else {
+        json
+    };
     let text = if flags.contains('C') {
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(json.trim())
@@ -86,17 +94,22 @@ pub fn decode(body: &str) -> Result<SyncFile, SyncError> {
     }
     Ok(f)
 }
-pub fn encode(f: &SyncFile, compress: bool) -> String {
-    let json = serde_json::to_string(f).unwrap();
-    if !compress {
-        return format!("pf_2__{json}");
+pub fn encode(f: &SyncFile, compress: bool, password: Option<&str>) -> Result<String, SyncError> {
+    let mut body = serde_json::to_string(f).unwrap();
+    if compress {
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        gz.write_all(body.as_bytes()).unwrap();
+        body = base64::engine::general_purpose::STANDARD.encode(gz.finish().unwrap());
     }
-    let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
-    gz.write_all(json.as_bytes()).unwrap();
-    format!(
-        "pf_C2__{}",
-        base64::engine::general_purpose::STANDARD.encode(gz.finish().unwrap())
-    )
+    let key = password.filter(|p| !p.is_empty());
+    if let Some(pw) = password {
+        body = crypto::encrypt(&body, pw).map_err(SyncError::Decrypt)?;
+    }
+    Ok(format!(
+        "pf_{}{}2__{body}",
+        if compress { "C" } else { "" },
+        if password.is_some() { "E" } else { "" }
+    ))
 }
 
 #[derive(Debug, Clone, Default)]
@@ -106,6 +119,7 @@ pub struct NextcloudCfg {
     pub password: String,
     pub folder: String,
     pub compress: bool,
+    pub encrypt_key: Option<String>,
 }
 impl NextcloudCfg {
     fn folder_url(&self) -> String {
@@ -156,7 +170,7 @@ fn download(cfg: &NextcloudCfg) -> Result<Option<(SyncFile, String)>, SyncError>
         Ok(mut r) => {
             let tag = etag(&r).unwrap_or_default();
             let body = r.body_mut().with_config().limit(512 << 20).read_to_string()?;
-            Ok(Some((decode(&body)?, tag)))
+            Ok(Some((decode(&body, cfg.encrypt_key.as_deref())?, tag)))
         }
         Err(ureq::Error::StatusCode(404)) => Ok(None),
         Err(e) => Err(e.into()),
@@ -251,7 +265,11 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
         file.last_modified = now_ms();
         file.client_id = store.meta.client_id.clone();
         file.state = store.state.clone();
-        match upload(cfg, &encode(&file, cfg.compress), tag.as_deref()) {
+        match upload(
+            cfg,
+            &encode(&file, cfg.compress, cfg.encrypt_key.as_deref())?,
+            tag.as_deref(),
+        ) {
             Ok(new_tag) => {
                 report.uploaded = true;
                 report.ops_uploaded = store.pending.len();
@@ -287,11 +305,15 @@ mod tests {
             oldest_op_sync_version: None,
         };
         for c in [false, true] {
-            let s = encode(&f, c);
+            let s = encode(&f, c, None).unwrap();
             assert!(s.starts_with(if c { "pf_C2__" } else { "pf_2__" }));
-            assert_eq!(decode(&s).unwrap().sync_version, 3);
+            assert_eq!(decode(&s, None).unwrap().sync_version, 3);
         }
-        assert!(matches!(decode("pf_E2__x"), Err(SyncError::Encrypted)));
+        assert!(matches!(decode("pf_E2__x", None), Err(SyncError::Encrypted)));
+        let enc = encode(&f, true, Some("secret")).unwrap();
+        assert!(enc.starts_with("pf_CE2__"));
+        assert_eq!(decode(&enc, Some("secret")).unwrap().sync_version, 3);
+        assert!(matches!(decode(&enc, Some("wrong")), Err(SyncError::Decrypt(_))));
     }
 }
 
@@ -311,6 +333,7 @@ mod dav_tests {
             password: "p".into(),
             folder: "sp".into(),
             compress: true,
+            encrypt_key: Some("k".into()),
         };
         let tmp = std::env::temp_dir().join(format!("momentum-dav-{}", now_ms()));
         let (mut a, mut b) = (Store::load(tmp.join("a")), Store::load(tmp.join("b")));

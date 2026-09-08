@@ -871,6 +871,7 @@ impl MomentumWindow {
             user_name: s.string("nextcloud-user").into(),
             folder: s.string("nextcloud-folder").into(),
             compress: s.boolean("compress"),
+            encrypt_key: None,
             password: String::new(),
         }
     }
@@ -888,7 +889,8 @@ impl MomentumWindow {
             self,
             async move {
                 let result = gio::spawn_blocking(move || {
-                    cfg.password = crate::keyring::get().unwrap_or_default();
+                    cfg.password = crate::keyring::get("nextcloud").unwrap_or_default();
+                    cfg.encrypt_key = crate::keyring::get("encryption");
                     if !cfg.is_complete() {
                         return Err("Nextcloud sync is not configured".to_string());
                     }
@@ -910,11 +912,21 @@ impl MomentumWindow {
                         synced.save().ok();
                         *imp.store.borrow_mut() = synced;
                         w.refresh();
+                        tracing::info!(
+                            "sync ok: downloaded={} uploaded={} ops_uploaded={} sync_version={}",
+                            r.downloaded,
+                            r.uploaded,
+                            r.ops_uploaded,
+                            w.imp().store.borrow().meta.last_sync_version
+                        );
                         if r.downloaded || r.uploaded {
                             w.toast(&format!("{} ({}↑)", gettext("Synced"), r.ops_uploaded));
                         }
                     }
-                    Err(e) => w.toast(&format!("{}: {e}", gettext("Sync failed"))),
+                    Err(e) => {
+                        tracing::warn!("sync failed: {e}");
+                        w.toast(&format!("{}: {e}", gettext("Sync failed")));
+                    }
                 }
             }
         ));

@@ -16,6 +16,8 @@ mod imp {
         #[template_child]
         pub password_row: TemplateChild<adw::PasswordEntryRow>,
         #[template_child]
+        pub encrypt_row: TemplateChild<adw::PasswordEntryRow>,
+        #[template_child]
         pub folder_row: TemplateChild<adw::EntryRow>,
         #[template_child]
         pub auto_row: TemplateChild<adw::SwitchRow>,
@@ -47,16 +49,22 @@ mod imp {
             }
             s.bind("auto-sync", &*self.auto_row, "active").build();
             s.bind("compress", &*self.compress_row, "active").build();
-            let pw = self.password_row.clone();
-            glib::spawn_future_local(async move {
-                if let Ok(Some(p)) = gio::spawn_blocking(crate::keyring::get).await {
-                    pw.set_text(&p);
-                }
-                pw.connect_changed(|row| {
-                    let t = row.text().to_string();
-                    gio::spawn_blocking(move || crate::keyring::set(&t).map_err(|e| tracing::warn!("keyring: {e}")));
+            for (purpose, row) in [
+                ("nextcloud", self.password_row.clone()),
+                ("encryption", self.encrypt_row.clone()),
+            ] {
+                glib::spawn_future_local(async move {
+                    if let Ok(Some(p)) = gio::spawn_blocking(move || crate::keyring::get(purpose)).await {
+                        row.set_text(&p);
+                    }
+                    row.connect_changed(move |row| {
+                        let t = row.text().to_string();
+                        gio::spawn_blocking(move || {
+                            crate::keyring::set(purpose, &t).map_err(|e| tracing::warn!("keyring: {e}"))
+                        });
+                    });
                 });
-            });
+            }
         }
     }
     impl WidgetImpl for MomentumPrefs {}
