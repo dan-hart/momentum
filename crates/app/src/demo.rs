@@ -42,6 +42,42 @@ pub fn store(dir: std::path::PathBuf) -> Store {
     ] {
         s.dispatch(a);
     }
+    // Upcoming tasks and a weekly repeat, so Coming Up and the repeat badge have something to show.
+    let plus = |n: i64| day_str(day_number(&today).unwrap() + n);
+    for (title, days) in [
+        ("Renew passport", 1),
+        ("Team retrospective", 1),
+        ("Water the plants", 3),
+        ("Pay rent", 6),
+    ] {
+        let mut t = Task::new(title, &hid);
+        t.due_day = Some(plus(days));
+        s.dispatch(Action::AddTask { task: t, bottom: true });
+    }
+    let cfg = RepeatCfg {
+        id: "demo-weekly".into(),
+        project_id: Some(wid.clone()),
+        title: Some("Weekly planning".into()),
+        repeat_cycle: "WEEKLY".into(),
+        repeat_every: 1,
+        start_date: Some("2026-01-05".into()),
+        default_estimate: Some(1_800_000.0),
+        ..Default::default()
+    };
+    let mut cfg = cfg;
+    let wd = weekday(day_number(&today).unwrap()) as usize;
+    let flags = [
+        &mut cfg.sunday,
+        &mut cfg.monday,
+        &mut cfg.tuesday,
+        &mut cfg.wednesday,
+        &mut cfg.thursday,
+        &mut cfg.friday,
+        &mut cfg.saturday,
+    ];
+    *flags[wd] = true;
+    s.state.task_repeat_cfg.insert("demo-weekly", cfg);
+    s.save().ok();
     s
 }
 

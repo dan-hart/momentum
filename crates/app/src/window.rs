@@ -561,6 +561,10 @@ impl MomentumWindow {
             if std::env::var_os("MOMENTUM_SCREENSHOT_DIALOG").is_some() {
                 self.new_task_dialog();
             }
+            if std::env::var_os("MOMENTUM_SCREENSHOT_UPCOMING").is_some() {
+                *imp.view.borrow_mut() = View::Upcoming;
+                self.refresh();
+            }
             if std::env::var_os("MOMENTUM_SCREENSHOT_TAG").is_some() {
                 imp.add_entry.grab_focus();
                 imp.add_entry.set_text("Write the docs #");
