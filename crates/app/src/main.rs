@@ -6,6 +6,7 @@ mod config;
 mod keyring;
 mod prefs;
 mod shortcuts;
+mod task_form;
 mod window;
 
 use gettextrs::{gettext, LocaleCategory};
@@ -18,8 +19,7 @@ fn main() -> glib::ExitCode {
     tracing_subscriber::fmt::init();
 
     gettextrs::setlocale(LocaleCategory::LcAll, "");
-    gettextrs::bindtextdomain(*GETTEXT_PACKAGE, *LOCALEDIR)
-        .expect("Unable to bind the text domain");
+    gettextrs::bindtextdomain(*GETTEXT_PACKAGE, *LOCALEDIR).expect("Unable to bind the text domain");
     gettextrs::textdomain(*GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
 
     glib::set_application_name(&gettext("Momentum"));

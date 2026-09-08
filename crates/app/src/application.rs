@@ -42,9 +42,7 @@ mod imp {
             }
 
             let window = MomentumWindow::new(&app);
-            self.window
-                .set(window.downgrade())
-                .expect("Window already set.");
+            self.window.set(window.downgrade()).expect("Window already set.");
 
             app.main_window().present();
         }
@@ -92,21 +90,51 @@ impl MomentumApplication {
                 app.show_about_dialog();
             })
             .build();
-        let win = |f: fn(&MomentumWindow)| move |app: &Self, _: &gio::SimpleAction, _: Option<&glib::Variant>| f(&app.main_window());
+        let win = |f: fn(&MomentumWindow)| {
+            move |app: &Self, _: &gio::SimpleAction, _: Option<&glib::Variant>| f(&app.main_window())
+        };
         let simple = [
-            gio::ActionEntry::builder("preferences").activate(win(|w| crate::prefs::MomentumPrefs::default().present(Some(w)))).build(),
+            gio::ActionEntry::builder("preferences")
+                .activate(win(|w| crate::prefs::MomentumPrefs::default().present(Some(w))))
+                .build(),
             gio::ActionEntry::builder("sync").activate(win(|w| w.sync())).build(),
-            gio::ActionEntry::builder("import").activate(win(|w| w.import_backup())).build(),
-            gio::ActionEntry::builder("export").activate(win(|w| w.export_backup())).build(),
-            gio::ActionEntry::builder("add-task").activate(win(|w| w.focus_add())).build(),
-            gio::ActionEntry::builder("new-project").activate(win(|w| {
-                let entry = gtk::Entry::builder().placeholder_text(gettext("Project name")).activates_default(true).build();
-                let d = adw::AlertDialog::builder().heading(gettext("New Project")).extra_child(&entry).default_response("add").build();
-                d.add_responses(&[("cancel", &gettext("Cancel")), ("add", &gettext("Add"))]);
-                d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
-                d.connect_response(None, glib::clone!(#[weak] w, #[weak] entry, move |_, r| if r == "add" { w.add_project(&entry.text()); }));
-                d.present(Some(w));
-            })).build(),
+            gio::ActionEntry::builder("import")
+                .activate(win(|w| w.import_backup()))
+                .build(),
+            gio::ActionEntry::builder("export")
+                .activate(win(|w| w.export_backup()))
+                .build(),
+            gio::ActionEntry::builder("add-task")
+                .activate(win(|w| w.focus_add()))
+                .build(),
+            gio::ActionEntry::builder("new-project")
+                .activate(win(|w| {
+                    let entry = gtk::Entry::builder()
+                        .placeholder_text(gettext("Project name"))
+                        .activates_default(true)
+                        .build();
+                    let d = adw::AlertDialog::builder()
+                        .heading(gettext("New Project"))
+                        .extra_child(&entry)
+                        .default_response("add")
+                        .build();
+                    d.add_responses(&[("cancel", &gettext("Cancel")), ("add", &gettext("Add"))]);
+                    d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+                    d.connect_response(
+                        None,
+                        glib::clone!(
+                            #[weak]
+                            w,
+                            #[weak]
+                            entry,
+                            move |_, r| if r == "add" {
+                                w.add_project(&entry.text());
+                            }
+                        ),
+                    );
+                    d.present(Some(w));
+                }))
+                .build(),
         ];
         self.add_action_entries(simple);
         self.add_action_entries([action_quit, action_about]);
@@ -128,11 +156,7 @@ impl MomentumApplication {
         let provider = gtk::CssProvider::new();
         provider.load_from_resource("/io/github/danhart/Momentum/style.css");
         if let Some(display) = gdk::Display::default() {
-            gtk::style_context_add_provider_for_display(
-                &display,
-                &provider,
-                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-            );
+            gtk::style_context_add_provider_for_display(&display, &provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
     }
 

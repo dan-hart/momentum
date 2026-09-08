@@ -11,5 +11,10 @@ pub fn get() -> Option<String> {
     })
 }
 pub fn set(password: &str) -> Result<(), oo7::Error> {
-    async_io::block_on(async { oo7::Keyring::new().await?.create_item("Momentum Nextcloud password", &ATTRS, password, true).await })
+    async_io::block_on(async {
+        oo7::Keyring::new()
+            .await?
+            .create_item("Momentum Nextcloud password", &ATTRS, password, true)
+            .await
+    })
 }
