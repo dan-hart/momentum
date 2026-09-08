@@ -10,6 +10,8 @@ mod imp {
     #[template(resource = "/io/github/dan_hart/Momentum/ui/prefs.ui")]
     pub struct MomentumPrefs {
         #[template_child]
+        pub enabled_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub server_row: TemplateChild<adw::EntryRow>,
         #[template_child]
         pub user_row: TemplateChild<adw::EntryRow>,
@@ -48,6 +50,22 @@ mod imp {
                 ("nextcloud-folder", &*self.folder_row),
             ] {
                 s.bind(key, row, "text").build();
+            }
+            s.bind("sync-enabled", &*self.enabled_row, "active").build();
+            // The connection rows only matter while sync is on.
+            for row in [
+                self.server_row.upcast_ref::<gtk::Widget>(),
+                self.user_row.upcast_ref(),
+                self.password_row.upcast_ref(),
+                self.folder_row.upcast_ref(),
+                self.encrypt_row.upcast_ref(),
+                self.auto_row.upcast_ref(),
+                self.compress_row.upcast_ref(),
+            ] {
+                self.enabled_row
+                    .bind_property("active", row, "sensitive")
+                    .sync_create()
+                    .build();
             }
             s.bind("auto-sync", &*self.auto_row, "active").build();
             s.bind("compress", &*self.compress_row, "active").build();

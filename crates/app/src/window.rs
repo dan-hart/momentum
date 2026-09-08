@@ -421,9 +421,10 @@ impl MomentumWindow {
 
     fn sync_configured(&self) -> bool {
         let s = &self.imp().settings;
-        ["nextcloud-server", "nextcloud-user", "nextcloud-folder"]
-            .iter()
-            .all(|k| !s.string(k).trim().is_empty())
+        s.boolean("sync-enabled")
+            && ["nextcloud-server", "nextcloud-user", "nextcloud-folder"]
+                .iter()
+                .all(|k| !s.string(k).trim().is_empty())
     }
     fn update_sync_button(&self) {
         let imp = self.imp();
@@ -1286,6 +1287,10 @@ impl MomentumWindow {
 
     pub fn sync(&self) {
         let imp = self.imp();
+        if !imp.settings.boolean("sync-enabled") {
+            self.toast(&gettext("Sync is turned off. Enable it in Preferences."));
+            return;
+        }
         if imp.syncing.replace(true) {
             return;
         }

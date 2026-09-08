@@ -27,5 +27,6 @@
     </key>
     <key name="colorful-labels" type="b"><default>true</default><summary>Colour-code projects and tags</summary></key>
     <key name="last-sync-ms" type="x"><default>0</default><summary>Time of the last successful sync (ms since epoch)</summary></key>
+    <key name="sync-enabled" type="b"><default>false</default><summary>Nextcloud sync switched on</summary></key>
   </schema>
 </schemalist>

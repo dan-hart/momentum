@@ -9,6 +9,11 @@ template $MomentumPrefs: Adw.PreferencesDialog {
       title: _("Nextcloud Sync");
       description: _("Shares the same sync-data.json as Super Productivity. Use the same folder and encryption password as your other devices.");
 
+      Adw.SwitchRow enabled_row {
+        title: _("Sync with Nextcloud");
+        subtitle: _("Off by default. Nothing leaves this device until you turn it on.");
+      }
+
       Adw.EntryRow server_row {
         title: _("Server URL");
       }
