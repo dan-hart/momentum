@@ -107,7 +107,8 @@ impl TaskForm {
             set_due,
             move |c| set_due(Some(c.date().format("%Y-%m-%d").unwrap().to_string()))
         ));
-        set_due(due.borrow().clone());
+        let initial = due.borrow().clone();
+        set_due(initial);
         due_row.add_suffix(&pick);
         group.add(&due_row);
 

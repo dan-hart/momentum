@@ -193,7 +193,8 @@ impl MomentumWindow {
             #[weak(rename_to = w)]
             self,
             move |_, row| {
-                if let Some(id) = w.imp().rows.borrow().get(row.index() as usize).cloned() {
+                let id = w.imp().rows.borrow().get(row.index() as usize).cloned();
+                if let Some(id) = id {
                     w.open_task(&id);
                 }
             }
@@ -699,16 +700,15 @@ impl MomentumWindow {
             #[strong]
             form,
             move |_| {
-                let task = form.into_task(&mut w.imp().store.borrow_mut());
-                if let View::Tag(id) = &*w.imp().view.borrow() {
-                    let mut t = task.clone();
-                    if !t.tag_ids.contains(id) {
-                        t.tag_ids.push(id.clone());
+                let mut task = form.into_task(&mut w.imp().store.borrow_mut());
+                // Clone the view first: dispatch() refreshes the sidebar, which re-borrows it mutably.
+                let view = w.imp().view.borrow().clone();
+                if let View::Tag(id) = view {
+                    if !task.tag_ids.contains(&id) {
+                        task.tag_ids.push(id);
                     }
-                    w.dispatch(Action::AddTask { task: t, bottom: true });
-                } else {
-                    w.dispatch(Action::AddTask { task, bottom: true });
                 }
+                w.dispatch(Action::AddTask { task, bottom: true });
                 dialog.close();
             }
         ));
