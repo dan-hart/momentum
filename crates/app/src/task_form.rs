@@ -80,7 +80,11 @@ impl TaskForm {
             let due = due.clone();
             let row = due_row.clone();
             move |v: Option<String>| {
-                row.set_subtitle(v.as_deref().unwrap_or(&gettext("Not scheduled")));
+                row.set_subtitle(
+                    &v.as_deref()
+                        .map(crate::window::fmt_day)
+                        .unwrap_or_else(|| gettext("Not scheduled")),
+                );
                 *due.borrow_mut() = v;
             }
         };

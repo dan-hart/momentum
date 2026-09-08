@@ -163,6 +163,32 @@ pub fn fmt_ms(ms: f64) -> String {
         format!("{m}m")
     }
 }
+/// Relative day label: Today, Tomorrow, Yesterday, a weekday within the week, else a locale date.
+pub fn fmt_day(day: &str) -> String {
+    let parse = |d: &str| -> Option<glib::DateTime> {
+        let mut it = d.split('-').map(|x| x.parse::<i32>().ok());
+        glib::DateTime::from_local(it.next()??, it.next()??, it.next()??, 0, 0, 0.0).ok()
+    };
+    let (Some(target), Some(today)) = (parse(day), parse(&today_str())) else {
+        return day.to_string();
+    };
+    let diff = (target.to_unix() - today.to_unix()) / 86_400;
+    let fmt = |f: &str| {
+        target
+            .format(f)
+            .map(|g| g.to_string())
+            .unwrap_or_else(|_| day.to_string())
+    };
+    match diff {
+        0 => gettext("Today"),
+        1 => gettext("Tomorrow"),
+        -1 => gettext("Yesterday"),
+        2..=6 => fmt("%A"),
+        _ if target.year() == today.year() => fmt("%-d %B"),
+        _ => fmt("%-d %B %Y"),
+    }
+}
+
 /// "1h 30m", "45m", "2h" → ms
 pub fn parse_ms(s: &str) -> Option<f64> {
     let mut total = 0.0;
@@ -570,7 +596,7 @@ impl MomentumWindow {
         }
         if let Some(d) = &t.due_day {
             if *imp.view.borrow() != View::Today {
-                sub.push(d.clone());
+                sub.push(fmt_day(d));
             }
         }
         for tag in &t.tag_ids {
