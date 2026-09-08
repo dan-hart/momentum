@@ -455,6 +455,7 @@ impl MomentumWindow {
         let imp = self.imp();
         imp.tag_popover.set_parent(&*imp.add_entry);
         imp.tag_popover.set_position(gtk::PositionType::Bottom);
+        imp.tag_popover.set_width_request(260);
         imp.tag_popover.set_child(Some(
             &gtk::ScrolledWindow::builder()
                 .propagate_natural_height(true)
@@ -535,26 +536,47 @@ impl MomentumWindow {
         };
         let store = imp.store.borrow();
         let lower = prefix.to_lowercase();
-        let matches: Vec<String> = store
+        let colorful = imp.settings.boolean("colorful-labels");
+        let matches: Vec<(String, Option<String>, usize)> = store
             .state
             .tag
             .iter()
             .filter(|t| t.id != TODAY_TAG_ID && t.title.to_lowercase().starts_with(&lower))
-            .map(|t| t.title.clone())
+            .map(|t| {
+                (
+                    t.title.clone(),
+                    tag_color(t).filter(|_| colorful).map(str::to_string),
+                    t.task_ids.len(),
+                )
+            })
             .take(8)
             .collect();
         drop(store);
         imp.tag_list.remove_all();
-        for m in &matches {
-            imp.tag_list.append(
+        for (title, color, count) in &matches {
+            // Same look as the sidebar: coloured tag icon, name, and a dim task count.
+            let icon = gtk::Image::from_icon_name("tag-symbolic");
+            if let Some(class) = color.as_deref().and_then(|c| self.color_class(c)) {
+                icon.add_css_class(&class);
+            }
+            let row = gtk::Box::builder()
+                .spacing(8)
+                .margin_start(6)
+                .margin_end(6)
+                .margin_top(4)
+                .margin_bottom(4)
+                .build();
+            row.append(&icon);
+            row.append(&gtk::Label::builder().label(title).xalign(0.0).hexpand(true).build());
+            row.append(
                 &gtk::Label::builder()
-                    .label(format!("#{m}"))
-                    .xalign(0.0)
-                    .margin_start(6)
-                    .margin_end(6)
+                    .label(count.to_string())
+                    .css_classes(["dim-label", "caption"])
                     .build(),
             );
+            imp.tag_list.append(&row);
         }
+        let matches: Vec<String> = matches.into_iter().map(|(t, _, _)| t).collect();
         *imp.tag_matches.borrow_mut() = matches;
         if imp.tag_matches.borrow().is_empty() {
             imp.tag_popover.popdown();
