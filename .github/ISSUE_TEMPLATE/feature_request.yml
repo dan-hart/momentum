@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the goal, not the solution, so we can find the GNOME-native way to do it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How might it work?
+  - type: input
+    id: upstream
+    attributes:
+      label: Does Super Productivity have this?
+      description: Link the upstream feature or issue if so; sync compatibility matters.

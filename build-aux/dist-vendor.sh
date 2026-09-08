@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT
+# Copyright (C) Bilal Elmoussaoui, from gtk-rust-template
 # Since Meson invokes this script as
 # "/bin/sh .../dist-vendor.sh ARG" we can't rely on bash features
 set -eu

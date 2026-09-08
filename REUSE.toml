@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# REUSE (https://reuse.software) metadata for files that cannot carry a header.
+version = 1
+SPDX-PackageName = "Momentum"
+SPDX-PackageSupplier = "Dan Hart <race-unbent-water@duck.com>"
+SPDX-PackageDownloadLocation = "https://github.com/dan-hart/momentum"
+
+[[annotations]]
+path = ["data/icons/**", "data/resources/screenshots/**", "data/*.in", "data/*.in.in", "data/resources/resources.gresource.xml", "po/**", "docs/**", "*.md", "momentum.doap", "Cargo.toml", "Cargo.lock", "crates/*/Cargo.toml", "rustfmt.toml", ".editorconfig", ".gitignore", ".gitallowed", ".github/**", "build-aux/*.json", "build-aux/flathub/**", "REUSE.toml", "meson_options.txt", "crates/app/meson.build", "po/meson.build"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Dan Hart"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = ["meson.build", "data/meson.build", "data/icons/meson.build", "data/resources/meson.build", ".gitlab-ci.yml", "hooks/pre-commit.hook", "build-aux/dist-vendor.sh"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Bilal Elmoussaoui and the gtk-rust-template contributors"
+SPDX-License-Identifier = "MIT"
