@@ -19,6 +19,7 @@ use crate::config::{APP_ID, PROFILE};
 #[derive(Clone, PartialEq)]
 pub enum View {
     Today,
+    Archive,
     Project(String),
     Tag(String),
 }
@@ -43,6 +44,8 @@ mod imp {
         pub sync_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub sync_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub archive_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub search_bar: TemplateChild<gtk::SearchBar>,
         #[template_child]
@@ -82,6 +85,7 @@ mod imp {
                 add_entry: Default::default(),
                 sync_button: Default::default(),
                 sync_label: Default::default(),
+                archive_button: Default::default(),
                 search_bar: Default::default(),
                 search_entry: Default::default(),
                 toast_overlay: Default::default(),
@@ -224,6 +228,18 @@ fn tag_color(g: &Tag) -> Option<&str> {
     g.color
         .as_deref()
         .or_else(|| g.theme.get("primary").and_then(Value::as_str))
+}
+
+/// Tasks in `archiveYoung` and `archiveOld` (kept in `state.rest` by sp-sync).
+fn archived_tasks(store: &Store) -> Vec<Task> {
+    ["archiveYoung", "archiveOld"]
+        .iter()
+        .filter_map(|k| store.state.rest.get(*k)?.get("task")?.get("entities")?.as_object())
+        .flat_map(|e| {
+            e.values()
+                .filter_map(|v| serde_json::from_value::<Task>(v.clone()).ok())
+        })
+        .collect()
 }
 
 /// "1h 30m", "45m", "2h" → ms
@@ -372,6 +388,7 @@ impl MomentumWindow {
                     w.delete_task(&id);
                 }
             }),
+            act("archive-done", |w| w.archive_done()),
         ]);
         imp.settings.connect_changed(
             None,
@@ -641,7 +658,45 @@ impl MomentumWindow {
 
     // ---- rendering -------------------------------------------------------
 
+    /// Done top-level tasks with their subtasks, ready to archive.
+    fn done_tasks(&self) -> (Vec<Task>, Vec<Task>) {
+        let store = self.imp().store.borrow();
+        let tasks: Vec<Task> = store
+            .state
+            .task
+            .iter()
+            .filter(|t| t.is_done && t.parent_id.is_none())
+            .cloned()
+            .collect();
+        let sub_tasks = tasks
+            .iter()
+            .flat_map(|t| {
+                t.sub_task_ids
+                    .iter()
+                    .filter_map(|i| store.state.task.entities.get(i).cloned())
+            })
+            .collect();
+        (tasks, sub_tasks)
+    }
+
+    fn archive_done(&self) {
+        let (tasks, sub_tasks) = self.done_tasks();
+        if tasks.is_empty() {
+            return;
+        }
+        let n = tasks.len();
+        self.dispatch(Action::MoveToArchive { tasks, sub_tasks });
+        self.toast(&format!("{n} {}", gettext("completed tasks archived")));
+    }
+
     pub fn refresh(&self) {
+        let (done, _) = self.done_tasks();
+        self.imp().archive_button.set_sensitive(!done.is_empty());
+        self.imp().archive_button.set_tooltip_text(Some(&if done.is_empty() {
+            gettext("No completed tasks to archive")
+        } else {
+            format!("{} {}", done.len(), gettext("completed tasks"))
+        }));
         self.refresh_sidebar();
         self.refresh_tasks();
     }
@@ -762,6 +817,7 @@ impl MomentumWindow {
         imp.views.borrow_mut().clear();
         let store = imp.store.borrow();
         self.sidebar_row(&gettext("Today"), "starred-symbolic", Some(View::Today), None, None);
+        self.sidebar_row(&gettext("Archive"), "archive-symbolic", Some(View::Archive), None, None);
         self.sidebar_row(&gettext("Projects"), "", None, None, Some("projects-collapsed"));
         let colorful = imp.settings.boolean("colorful-labels");
         if !imp.settings.boolean("projects-collapsed") {
@@ -806,6 +862,7 @@ impl MomentumWindow {
     fn view_task_ids(&self, store: &Store) -> Vec<String> {
         match &*self.imp().view.borrow() {
             View::Today => store.state.today_ids(),
+            View::Archive => vec![],
             View::Project(id) => store
                 .state
                 .project
@@ -823,7 +880,7 @@ impl MomentumWindow {
         }
     }
 
-    fn task_row(&self, t: &Task, store: &Store, indent: bool) {
+    fn task_row(&self, t: &Task, store: &Store, indent: bool, archived: bool) {
         let imp = self.imp();
         let colorful = imp.settings.boolean("colorful-labels");
         let mut sub = vec![];
@@ -840,6 +897,21 @@ impl MomentumWindow {
         }
         if t.time_estimate > 0.0 {
             sub.push(format!("~{}", fmt_ms(t.time_estimate)));
+        }
+        if archived {
+            if let Some(done) = t.done_on {
+                let day = glib::DateTime::from_unix_local(done as i64 / 1000)
+                    .and_then(|d| d.format("%Y-%m-%d"))
+                    .map(|g| g.to_string());
+                sub.push(
+                    glib::markup_escape_text(&format!(
+                        "{} {}",
+                        gettext("Done"),
+                        day.as_deref().map(fmt_day).unwrap_or_default()
+                    ))
+                    .to_string(),
+                );
+            }
         }
         if let Some(d) = &t.due_day {
             if *imp.view.borrow() != View::Today {
@@ -858,7 +930,7 @@ impl MomentumWindow {
         let row = adw::ActionRow::builder()
             .title(glib::markup_escape_text(&t.title))
             .subtitle(sub.join("  ·  "))
-            .activatable(true)
+            .activatable(!archived)
             .build();
         if indent {
             row.set_margin_start(32);
@@ -869,6 +941,7 @@ impl MomentumWindow {
         let check = gtk::CheckButton::builder()
             .active(t.is_done)
             .valign(gtk::Align::Center)
+            .sensitive(!archived)
             .build();
         let id = t.id.clone();
         check.connect_toggled(glib::clone!(
@@ -877,15 +950,17 @@ impl MomentumWindow {
             move |c| w.set_done(&id, c.is_active())
         ));
         row.add_prefix(&check);
-        let drag = gtk::DragSource::builder().actions(gtk::gdk::DragAction::MOVE).build();
-        let tid = t.id.clone();
-        drag.connect_prepare(move |_, _, _| Some(gtk::gdk::ContentProvider::for_value(&tid.to_value())));
-        drag.connect_drag_begin(glib::clone!(
-            #[weak]
-            row,
-            move |src, _| src.set_icon(Some(&gtk::WidgetPaintable::new(Some(&row))), 0, 0)
-        ));
-        row.add_controller(drag);
+        if !archived {
+            let drag = gtk::DragSource::builder().actions(gtk::gdk::DragAction::MOVE).build();
+            let tid = t.id.clone();
+            drag.connect_prepare(move |_, _, _| Some(gtk::gdk::ContentProvider::for_value(&tid.to_value())));
+            drag.connect_drag_begin(glib::clone!(
+                #[weak]
+                row,
+                move |src, _| src.set_icon(Some(&gtk::WidgetPaintable::new(Some(&row))), 0, 0)
+            ));
+            row.add_controller(drag);
+        }
         imp.task_list.append(&row);
         imp.rows.borrow_mut().push(t.id.clone());
     }
@@ -897,6 +972,7 @@ impl MomentumWindow {
         let store = imp.store.borrow();
         let title = match &*imp.view.borrow() {
             View::Today => gettext("Today"),
+            View::Archive => gettext("Archive"),
             View::Project(id) => store
                 .state
                 .project
@@ -913,9 +989,21 @@ impl MomentumWindow {
                 .unwrap_or_default(),
         };
         imp.content_page.set_title(&title);
+        let filter = imp.filter.borrow();
+        if *imp.view.borrow() == View::Archive {
+            // Read-only view over archiveYoung + archiveOld, newest completion first.
+            let mut archived = archived_tasks(&store);
+            archived.retain(|t| t.parent_id.is_none() && t.title.to_lowercase().contains(&*filter));
+            archived.sort_by_key(|t| std::cmp::Reverse(t.done_on.unwrap_or(t.created)));
+            for t in &archived {
+                self.task_row(t, &store, false, true);
+            }
+            imp.empty.set_visible(imp.rows.borrow().is_empty());
+            imp.task_list.set_visible(!imp.rows.borrow().is_empty());
+            return;
+        }
         let ids = self.view_task_ids(&store);
         let (mut open, mut done) = (vec![], vec![]);
-        let filter = imp.filter.borrow();
         for id in ids {
             if let Some(t) = store.state.task.entities.get(&id) {
                 if !t.title.to_lowercase().contains(&*filter) {
@@ -944,9 +1032,9 @@ impl MomentumWindow {
             }
         }
         for t in open.into_iter().chain(done) {
-            self.task_row(t, &store, false);
+            self.task_row(t, &store, false, false);
             for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
-                self.task_row(s, &store, true);
+                self.task_row(s, &store, true, false);
             }
         }
         imp.empty.set_visible(imp.rows.borrow().is_empty());

@@ -7,5 +7,6 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/prefs.ui</file>
     <file compressed="true">style.css</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/tag-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/archive-symbolic.svg</file>
   </gresource>
 </gresources>

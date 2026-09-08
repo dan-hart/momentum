@@ -71,6 +71,11 @@ pub enum Action {
         sub_tasks: Vec<Task>,
         target_project_id: String,
     },
+    /// Done tasks (with their subtasks) moved to the young archive, upstream "finish day".
+    MoveToArchive {
+        tasks: Vec<Task>,
+        sub_tasks: Vec<Task>,
+    },
     RemoveFromToday {
         task_ids: Vec<String>,
     },
@@ -146,6 +151,13 @@ impl Action {
                 "TASK",
                 vec![task.id.clone()],
                 json!({"task": with_subs(task, sub_tasks), "targetProjectId": target_project_id}),
+            ),
+            MoveToArchive { tasks, sub_tasks } => (
+                "[Task Shared] moveToArchive",
+                "UPD",
+                "TASK",
+                tasks.iter().map(|t| t.id.clone()).collect(),
+                json!({"tasks": tasks.iter().map(|t| with_subs(t, &sub_tasks.iter().filter(|s| s.parent_id.as_deref() == Some(&t.id)).cloned().collect::<Vec<_>>())).collect::<Vec<_>>()}),
             ),
             RemoveFromToday { task_ids } => (
                 "[Task Shared] removeTasksFromTodayTag",
@@ -348,6 +360,29 @@ pub fn apply(d: &mut AppData, action: &Action) {
                     t.project_id = target_project_id.clone();
                     t.modified = Some(now_ms());
                 }
+            }
+        }
+        MoveToArchive { tasks, sub_tasks } => {
+            let archive = d.rest.entry("archiveYoung".to_string()).or_insert_with(|| json!({}));
+            if !archive.is_object() {
+                *archive = json!({});
+            }
+            let a = archive.as_object_mut().unwrap();
+            a.entry("timeTracking")
+                .or_insert_with(|| json!({"project": {}, "tag": {}}));
+            a.entry("lastTimeTrackingFlush").or_insert_with(|| json!(0));
+            let store = a.entry("task").or_insert_with(|| json!({"ids": [], "entities": {}}));
+            for t in tasks.iter().chain(sub_tasks.iter()) {
+                if let Some(ids) = store["ids"].as_array_mut() {
+                    if !ids.iter().any(|i| i == &t.id) {
+                        ids.push(json!(t.id));
+                    }
+                }
+                store["entities"][&t.id] = json!(t);
+            }
+            for t in sub_tasks.iter().chain(tasks.iter()) {
+                detach(d, t);
+                d.task.remove(&t.id);
             }
         }
         RemoveFromToday { task_ids } => {

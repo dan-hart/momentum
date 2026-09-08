@@ -219,6 +219,13 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
             Some((f, tag)) => {
                 if f.sync_version != store.meta.last_sync_version {
                     let mut state = f.state.clone();
+                    // Archives live beside `state` in the file; keep them in `rest` locally so
+                    // archiving ops can update them and they round-trip on upload.
+                    for (k, v) in [("archiveYoung", &f.archive_young), ("archiveOld", &f.archive_old)] {
+                        if let Some(v) = v {
+                            state.rest.insert(k.into(), v.clone());
+                        }
+                    }
                     for p in &store.pending {
                         apply(&mut state, &p.action);
                     }
@@ -265,6 +272,8 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
         file.last_modified = now_ms();
         file.client_id = store.meta.client_id.clone();
         file.state = store.state.clone();
+        file.archive_young = file.state.rest.remove("archiveYoung").or(file.archive_young);
+        file.archive_old = file.state.rest.remove("archiveOld").or(file.archive_old);
         match upload(
             cfg,
             &encode(&file, cfg.compress, cfg.encrypt_key.as_deref())?,

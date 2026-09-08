@@ -116,22 +116,41 @@ template $MomentumWindow: Adw.ApplicationWindow {
           };
 
           [bottom]
-          Button {
-            action-name: "app.add-task";
+          Box {
+            orientation: vertical;
+            spacing: 6;
             margin-start: 12;
             margin-end: 12;
             margin-top: 6;
             margin-bottom: 12;
 
-            styles [
-              "suggested-action",
-              "pill",
-            ]
+            Button archive_button {
+              action-name: "win.archive-done";
+              sensitive: false;
 
-            child: Adw.ButtonContent {
-              icon-name: "list-add-symbolic";
-              label: _("Create Task");
-            };
+              styles [
+                "flat",
+              ]
+
+              child: Adw.ButtonContent {
+                icon-name: "archive-symbolic";
+                label: _("Archive Completed");
+              };
+            }
+
+            Button {
+              action-name: "app.add-task";
+
+              styles [
+                "suggested-action",
+                "pill",
+              ]
+
+              child: Adw.ButtonContent {
+                icon-name: "list-add-symbolic";
+                label: _("Create Task");
+              };
+            }
           }
         };
       };
