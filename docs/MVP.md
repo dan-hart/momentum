@@ -86,6 +86,17 @@ Done rows are dimmed.
   done top-level task and its subtasks into the young archive with upstream's
   `moveToArchive` op, then syncs.
 
+### 2.4b Selection mode and bulk actions
+
+Enter with the header's select toggle, Ctrl+click on a task, or Ctrl+A (select all rows in
+the view). Rows swap their done checkbox for a selection checkbox, the title shows "N
+selected", Cancel appears at the start of the header, and a bottom action bar offers Select
+All, Mark as Done, Plan for Today, Move to Project…, Add Tag… (existing tag or a new one),
+and Delete. Each bulk action gets one Undo toast for the whole batch and leaves selection
+mode. Dragging a selected row drags the whole selection (ids newline-separated) onto a
+project, tag, Today, Tonight, or another task for reordering. Escape or switching views
+leaves selection mode.
+
 ### 2.5 Repeating tasks
 
 Repeat configurations come from the sync data. At startup, after each sync, and when the
@@ -137,6 +148,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Alt+1…9 | Jump to the n-th sidebar entry |
 | Ctrl+R, F5 | Sync now |
 | Ctrl+, | Preferences |
+| Ctrl+A | Select all (enters selection mode) |
 | Ctrl+? | Shortcuts dialog |
 | Ctrl+W, Ctrl+Q | Close, quit |
 | Menu, Shift+F10, right-click, long-press | Context menu on a task, project or tag row |

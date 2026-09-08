@@ -93,6 +93,16 @@ mod imp {
         pub last_day: RefCell<String>,
         pub index: RefCell<Option<Rc<SearchIndex>>>,
         pub archive_shown: Cell<usize>,
+        pub selecting: Cell<bool>,
+        pub selected: RefCell<HashSet<String>>,
+        #[template_child]
+        pub select_button: TemplateChild<gtk::ToggleButton>,
+        #[template_child]
+        pub select_cancel: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub select_bar: TemplateChild<gtk::ActionBar>,
+        #[template_child]
+        pub select_count: TemplateChild<gtk::Label>,
         pub search_debounce: RefCell<Option<glib::SourceId>>,
     }
 
@@ -146,6 +156,12 @@ mod imp {
                 last_day: RefCell::new(today_str()),
                 index: Default::default(),
                 archive_shown: Cell::new(100),
+                selecting: Cell::new(false),
+                selected: Default::default(),
+                select_button: Default::default(),
+                select_cancel: Default::default(),
+                select_bar: Default::default(),
+                select_count: Default::default(),
                 search_debounce: Default::default(),
             }
         }
@@ -419,6 +435,12 @@ impl MomentumWindow {
                 move |_, _| w.refresh_tasks()
             ),
         );
+        imp.select_button.connect_toggled(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |b| w.set_selecting(b.is_active())
+        ));
+        self.update_selection_ui();
         imp.banner.connect_button_clicked(glib::clone!(
             #[weak(rename_to = w)]
             self,
@@ -479,6 +501,10 @@ impl MomentumWindow {
             #[upgrade_or]
             glib::Propagation::Proceed,
             move |_, k, _, m| {
+                if k == gtk::gdk::Key::Escape && w.imp().selecting.get() {
+                    w.set_selecting(false);
+                    return glib::Propagation::Stop;
+                }
                 // Alt+1…9 jumps to the n-th sidebar entry, like tabs in Files and Terminal.
                 let n = k
                     .to_unicode()
@@ -606,6 +632,22 @@ impl MomentumWindow {
                     w.move_to_dialog(&id);
                 }
             }),
+            act("select-mode", |w| w.set_selecting(!w.imp().selecting.get())),
+            act("select-cancel", |w| w.set_selecting(false)),
+            act("select-all", |w| w.select_all()),
+            act("sel-done", |w| w.bulk_done()),
+            act("sel-today", |w| w.bulk_today()),
+            act("sel-move", |w| {
+                let ids: Vec<String> = w
+                    .selected_tasks()
+                    .iter()
+                    .filter(|t| t.parent_id.is_none())
+                    .map(|t| t.id.clone())
+                    .collect();
+                w.move_many_dialog(ids);
+            }),
+            act("sel-tag", |w| w.bulk_tag_dialog()),
+            act("sel-delete", |w| w.bulk_delete()),
             act("edit-context", |w| w.edit_context_dialog()),
             act("delete-context", |w| w.delete_context_dialog()),
         ]);
@@ -671,6 +713,18 @@ impl MomentumWindow {
                 imp.search_entry.set_text(&q.to_string_lossy());
                 self.refresh();
             }
+            if std::env::var_os("MOMENTUM_SCREENSHOT_SELECT").is_some() {
+                let ids: Vec<String> = imp
+                    .rows
+                    .borrow()
+                    .iter()
+                    .filter(|r| !r.is_empty())
+                    .take(2)
+                    .cloned()
+                    .collect();
+                imp.selected.borrow_mut().extend(ids);
+                self.set_selecting(true);
+            }
             if std::env::var_os("MOMENTUM_SCREENSHOT_TAG").is_some() {
                 imp.add_entry.grab_focus();
                 imp.add_entry.set_text("Write the docs #");
@@ -719,7 +773,294 @@ impl MomentumWindow {
         (!id.is_empty() && !id.contains(':')).then_some(id)
     }
 
+    // ---- selection mode (HIG: header toggle, per-row checks, action bar) ----
+
+    pub fn set_selecting(&self, on: bool) {
+        let imp = self.imp();
+        if imp.selecting.get() == on {
+            return;
+        }
+        imp.selecting.set(on);
+        if !on {
+            imp.selected.borrow_mut().clear();
+        }
+        imp.select_button.set_active(on);
+        imp.select_cancel.set_visible(on);
+        imp.select_bar.set_revealed(on);
+        imp.add_clamp.set_visible(!on && *imp.view.borrow() != View::Search);
+        self.refresh_tasks();
+    }
+
+    fn toggle_selected(&self, id: &str) {
+        let imp = self.imp();
+        {
+            let mut sel = imp.selected.borrow_mut();
+            if !sel.remove(id) {
+                sel.insert(id.to_string());
+            }
+        }
+        self.update_selection_ui();
+    }
+
+    fn update_selection_ui(&self) {
+        let imp = self.imp();
+        let n = imp.selected.borrow().len();
+        imp.select_count.set_text(&format!(
+            "{n} {}",
+            if n == 1 {
+                gettext("selected")
+            } else {
+                gettext("selected")
+            }
+        ));
+        for name in ["sel-done", "sel-today", "sel-move", "sel-tag", "sel-delete"] {
+            if let Some(a) = self.lookup_action(name).and_downcast::<gio::SimpleAction>() {
+                a.set_enabled(n > 0);
+            }
+        }
+        if imp.selecting.get() {
+            imp.content_page.set_title(&format!("{n} {}", gettext("selected")));
+        }
+    }
+
+    /// Ids to act on: the selection when in selection mode, else the given id.
+    fn selection_or(&self, id: &str) -> Vec<String> {
+        let imp = self.imp();
+        let sel = imp.selected.borrow();
+        if imp.selecting.get() && sel.contains(id) {
+            // Keep the visual order of the current list.
+            imp.rows.borrow().iter().filter(|r| sel.contains(*r)).cloned().collect()
+        } else {
+            vec![id.to_string()]
+        }
+    }
+
+    fn selected_tasks(&self) -> Vec<Task> {
+        let imp = self.imp();
+        let store = imp.store.borrow();
+        let sel = imp.selected.borrow();
+        imp.rows
+            .borrow()
+            .iter()
+            .filter(|r| sel.contains(*r))
+            .filter_map(|id| store.state.task.entities.get(id).cloned())
+            .collect()
+    }
+
+    fn select_all(&self) {
+        let imp = self.imp();
+        let ids: Vec<String> = imp
+            .rows
+            .borrow()
+            .iter()
+            .filter(|r| !r.is_empty() && !r.contains(':'))
+            .cloned()
+            .collect();
+        let all = ids.iter().all(|id| imp.selected.borrow().contains(id));
+        let mut sel = imp.selected.borrow_mut();
+        if all {
+            sel.clear();
+        } else {
+            sel.extend(ids);
+        }
+        drop(sel);
+        self.refresh_tasks();
+    }
+
+    fn bulk_done(&self) {
+        let tasks = self.selected_tasks();
+        let n = tasks.len();
+        let undo: Vec<Action> = tasks
+            .iter()
+            .map(|t| Action::UpdateTask {
+                id: t.id.clone(),
+                changes: [("isDone".to_string(), json!(t.is_done))].into_iter().collect(),
+            })
+            .collect();
+        for t in &tasks {
+            self.imp().store.borrow_mut().dispatch(Action::UpdateTask {
+                id: t.id.clone(),
+                changes: [("isDone".to_string(), json!(true))].into_iter().collect(),
+            });
+        }
+        self.set_selecting(false);
+        self.refresh();
+        self.toast_undo(&format!("{n} {}", gettext("tasks completed")), undo);
+    }
+
+    fn bulk_today(&self) {
+        let tasks = self.selected_tasks();
+        let today = today_str();
+        let ids: Vec<String> = tasks
+            .iter()
+            .filter(|t| t.due_day.as_deref() != Some(&today))
+            .map(|t| t.id.clone())
+            .collect();
+        if ids.is_empty() {
+            return;
+        }
+        let undo: Vec<Action> = tasks
+            .iter()
+            .filter(|t| ids.contains(&t.id))
+            .map(|t| match &t.due_day {
+                Some(d) => Action::PlanForToday {
+                    task_ids: vec![t.id.clone()],
+                    today: d.clone(),
+                },
+                None => Action::RemoveFromToday {
+                    task_ids: vec![t.id.clone()],
+                },
+            })
+            .collect();
+        let n = ids.len();
+        self.imp()
+            .store
+            .borrow_mut()
+            .dispatch(Action::PlanForToday { task_ids: ids, today });
+        self.set_selecting(false);
+        self.refresh();
+        self.toast_undo(&format!("{n} {}", gettext("tasks planned for today")), undo);
+    }
+
+    fn bulk_delete(&self) {
+        let tasks = self.selected_tasks();
+        let n = tasks.len();
+        let mut undo = vec![];
+        for t in &tasks {
+            let subs: Vec<Task> = {
+                let store = self.imp().store.borrow();
+                t.sub_task_ids
+                    .iter()
+                    .filter_map(|i| store.state.task.entities.get(i).cloned())
+                    .collect()
+            };
+            undo.push(Action::AddTask {
+                task: t.clone(),
+                bottom: true,
+            });
+            for st in &subs {
+                undo.push(Action::AddSubTask {
+                    task: st.clone(),
+                    parent_id: t.id.clone(),
+                });
+            }
+            self.imp().store.borrow_mut().dispatch(Action::DeleteTask {
+                task: t.clone(),
+                sub_tasks: subs,
+            });
+        }
+        self.set_selecting(false);
+        self.refresh();
+        self.toast_undo(&format!("{n} {}", gettext("tasks deleted")), undo);
+    }
+
+    /// Bulk add a tag: dropdown of tags, or type a new one.
+    fn bulk_tag_dialog(&self) {
+        let tasks = self.selected_tasks();
+        if tasks.is_empty() {
+            return;
+        }
+        let tags: Vec<(String, String)> = self
+            .imp()
+            .store
+            .borrow()
+            .state
+            .tag
+            .iter()
+            .filter(|t| t.id != TODAY_TAG_ID)
+            .map(|t| (t.id.clone(), t.title.clone()))
+            .collect();
+        let names: Vec<&str> = tags.iter().map(|(_, t)| t.as_str()).collect();
+        let content = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(12)
+            .build();
+        let drop_down = gtk::DropDown::from_strings(&names);
+        let entry = gtk::Entry::builder()
+            .placeholder_text(gettext("Or a new tag name"))
+            .build();
+        content.append(&drop_down);
+        content.append(&entry);
+        let d = adw::AlertDialog::builder()
+            .heading(format!(
+                "{} {} {}",
+                gettext("Add Tag to"),
+                tasks.len(),
+                gettext("Tasks")
+            ))
+            .extra_child(&content)
+            .default_response("add")
+            .build();
+        d.add_responses(&[("cancel", &gettext("Cancel")), ("add", &gettext("Add"))]);
+        d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+        d.connect_response(
+            None,
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                #[weak]
+                drop_down,
+                #[weak]
+                entry,
+                move |_, r| {
+                    if r != "add" {
+                        return;
+                    }
+                    let typed = entry.text().trim().to_string();
+                    let tag_id = if !typed.is_empty() {
+                        let existing = w
+                            .imp()
+                            .store
+                            .borrow()
+                            .state
+                            .tag
+                            .iter()
+                            .find(|g| g.title.eq_ignore_ascii_case(&typed))
+                            .map(|g| g.id.clone());
+                        existing.unwrap_or_else(|| {
+                            let tag = Tag::new(&typed);
+                            let id = tag.id.clone();
+                            w.imp().store.borrow_mut().dispatch(Action::AddTag { tag });
+                            id
+                        })
+                    } else {
+                        match tags.get(drop_down.selected() as usize) {
+                            Some((id, _)) => id.clone(),
+                            None => return,
+                        }
+                    };
+                    let mut undo = vec![];
+                    for t in &tasks {
+                        if t.tag_ids.contains(&tag_id) {
+                            continue;
+                        }
+                        let mut ids = t.tag_ids.clone();
+                        ids.push(tag_id.clone());
+                        undo.push(Action::UpdateTask {
+                            id: t.id.clone(),
+                            changes: [("tagIds".to_string(), json!(t.tag_ids))].into_iter().collect(),
+                        });
+                        w.imp().store.borrow_mut().dispatch(Action::UpdateTask {
+                            id: t.id.clone(),
+                            changes: [("tagIds".to_string(), json!(ids))].into_iter().collect(),
+                        });
+                    }
+                    let n = undo.len();
+                    w.set_selecting(false);
+                    w.refresh();
+                    w.toast_undo(&format!("{n} {}", gettext("tasks tagged")), undo);
+                }
+            ),
+        );
+        d.present(Some(self));
+    }
+
     fn activate_row(&self, id: &str) {
+        if self.imp().selecting.get() && !id.is_empty() && !id.contains(':') {
+            self.toggle_selected(id);
+            self.refresh_tasks();
+            return;
+        }
         if let Some(pid) = id.strip_prefix("project:") {
             self.go_to(View::Project(pid.into()));
         } else if let Some(tid) = id.strip_prefix("tag:") {
@@ -1232,7 +1573,11 @@ impl MomentumWindow {
                     let Ok(task_id) = value.get::<String>() else {
                         return false;
                     };
-                    w.drop_task(&task_id, &dest)
+                    let mut any = false;
+                    for id in task_id.split('\n') {
+                        any |= w.drop_task(id, &dest);
+                    }
+                    any
                 }
             ));
             r.add_controller(target);
@@ -1357,6 +1702,13 @@ impl MomentumWindow {
     /// Switch view, leaving search, and select the matching sidebar row.
     pub fn go_to(&self, view: View) {
         let imp = self.imp();
+        if imp.selecting.get() {
+            imp.selecting.set(false);
+            imp.selected.borrow_mut().clear();
+            imp.select_button.set_active(false);
+            imp.select_cancel.set_visible(false);
+            imp.select_bar.set_revealed(false);
+        }
         imp.archive_shown.set(100);
         *imp.view.borrow_mut() = view;
         self.refresh();
@@ -1681,18 +2033,53 @@ impl MomentumWindow {
         if t.is_done {
             row.add_css_class("dim-label");
         }
+        let selecting = imp.selecting.get() && !archived;
         let check = gtk::CheckButton::builder()
-            .active(t.is_done)
+            .active(if selecting {
+                imp.selected.borrow().contains(&t.id)
+            } else {
+                t.is_done
+            })
             .valign(gtk::Align::Center)
             .sensitive(!archived)
             .build();
         let id = t.id.clone();
-        check.connect_toggled(glib::clone!(
-            #[weak(rename_to = w)]
-            self,
-            move |c| w.set_done(&id, c.is_active())
-        ));
+        if selecting {
+            check.add_css_class("selection-mode");
+            check.connect_toggled(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_| w.toggle_selected(&id)
+            ));
+        } else {
+            check.connect_toggled(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |c| w.set_done(&id, c.is_active())
+            ));
+        }
         row.add_prefix(&check);
+        if !archived {
+            // Ctrl+click enters selection mode with this task, like Files.
+            let click = gtk::GestureClick::builder().button(1).build();
+            let cid = t.id.clone();
+            click.connect_pressed(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |g, _, _, _| {
+                    if g.current_event_state().contains(gtk::gdk::ModifierType::CONTROL_MASK) {
+                        g.set_state(gtk::EventSequenceState::Claimed);
+                        w.imp().selected.borrow_mut().insert(cid.clone());
+                        if w.imp().selecting.get() {
+                            w.refresh_tasks();
+                        } else {
+                            w.set_selecting(true);
+                        }
+                    }
+                }
+            ));
+            row.add_controller(click);
+        }
         if let Some(text) = &repeat {
             let icon = gtk::Image::builder()
                 .icon_name("media-playlist-repeat-symbolic")
@@ -1705,7 +2092,17 @@ impl MomentumWindow {
         if !archived {
             let drag = gtk::DragSource::builder().actions(gtk::gdk::DragAction::MOVE).build();
             let tid = t.id.clone();
-            drag.connect_prepare(move |_, _, _| Some(gtk::gdk::ContentProvider::for_value(&tid.to_value())));
+            drag.connect_prepare(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                #[upgrade_or]
+                None,
+                move |_, _, _| {
+                    // A selected row drags the whole selection, newline separated.
+                    let ids = w.selection_or(&tid).join("\n");
+                    Some(gtk::gdk::ContentProvider::for_value(&ids.to_value()))
+                }
+            ));
             drag.connect_drag_begin(glib::clone!(
                 #[weak]
                 row,
@@ -1724,7 +2121,11 @@ impl MomentumWindow {
                 false,
                 move |_, value, _, _| {
                     let Ok(moved) = value.get::<String>() else { return false };
-                    w.reorder(&moved, &before)
+                    let mut any = false;
+                    for id in moved.split('\n') {
+                        any |= w.reorder(id, &before);
+                    }
+                    any
                 }
             ));
             row.add_controller(target);
@@ -1781,6 +2182,9 @@ impl MomentumWindow {
             return;
         }
         imp.content_page.set_title(&title);
+        if imp.selecting.get() {
+            self.update_selection_ui();
+        }
         imp.empty.set_icon_name(Some("io.github.dan_hart.Momentum-symbolic"));
         imp.empty.set_title(&gettext("Nothing here yet"));
         imp.empty.set_description(Some(&gettext(
@@ -2195,8 +2599,16 @@ impl MomentumWindow {
 
     /// Ctrl+M: pick a project for the focused task.
     fn move_to_dialog(&self, task_id: &str) {
+        self.move_many_dialog(vec![task_id.to_string()]);
+    }
+
+    fn move_many_dialog(&self, ids: Vec<String>) {
         let store = self.imp().store.borrow();
-        let Some(task) = store.state.task.entities.get(task_id).cloned() else {
+        let tasks: Vec<Task> = ids
+            .iter()
+            .filter_map(|i| store.state.task.entities.get(i).cloned())
+            .collect();
+        let Some(task) = tasks.first().cloned() else {
             return;
         };
         let projects: Vec<(String, String)> = store
@@ -2216,7 +2628,11 @@ impl MomentumWindow {
         drop_down.set_selected(projects.iter().position(|(id, _)| *id == task.project_id).unwrap_or(0) as u32);
         let d = adw::AlertDialog::builder()
             .heading(gettext("Move to Project"))
-            .body(task.title.clone())
+            .body(if tasks.len() == 1 {
+                task.title.clone()
+            } else {
+                format!("{} {}", tasks.len(), gettext("tasks"))
+            })
             .extra_child(&drop_down)
             .default_response("move")
             .build();
@@ -2232,7 +2648,10 @@ impl MomentumWindow {
                 move |_, r| {
                     if r == "move" {
                         if let Some((pid, _)) = projects.get(drop_down.selected() as usize) {
-                            w.drop_task(&task.id, &View::Project(pid.clone()));
+                            for t in &tasks {
+                                w.drop_task(&t.id, &View::Project(pid.clone()));
+                            }
+                            w.set_selecting(false);
                         }
                     }
                 }

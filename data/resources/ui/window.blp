@@ -201,6 +201,19 @@ template $MomentumWindow: Adw.ApplicationWindow {
         child: Adw.ToolbarView {
           [top]
           Adw.HeaderBar {
+            [start]
+            Button select_cancel {
+              visible: false;
+              label: _("Cancel");
+              action-name: "win.select-cancel";
+            }
+
+            [end]
+            ToggleButton select_button {
+              icon-name: "selection-mode-symbolic";
+              tooltip-text: _("Select Tasks");
+            }
+
             [end]
             MenuButton {
               icon-name: "view-more-symbolic";
@@ -247,6 +260,63 @@ template $MomentumWindow: Adw.ApplicationWindow {
               placeholder-text: _("Add a task…  #tag  1h 30m");
               primary-icon-name: "list-add-symbolic";
             };
+          }
+
+          [bottom]
+          ActionBar select_bar {
+            revealed: false;
+
+            [start]
+            Button {
+              label: _("Select All");
+              action-name: "win.select-all";
+            }
+
+            [center]
+            Label select_count {
+              styles [
+                "dim-label",
+              ]
+            }
+
+            [end]
+            Button {
+              icon-name: "user-trash-symbolic";
+              tooltip-text: _("Delete");
+              action-name: "win.sel-delete";
+
+              styles [
+                "destructive-action",
+              ]
+            }
+
+            [end]
+            Button {
+              icon-name: "tag-symbolic";
+              tooltip-text: _("Add Tag…");
+              action-name: "win.sel-tag";
+            }
+
+            [end]
+            Button {
+              icon-name: "folder-symbolic";
+              tooltip-text: _("Move to Project…");
+              action-name: "win.sel-move";
+            }
+
+            [end]
+            Button {
+              icon-name: "starred-symbolic";
+              tooltip-text: _("Plan for Today");
+              action-name: "win.sel-today";
+            }
+
+            [end]
+            Button {
+              icon-name: "object-select-symbolic";
+              tooltip-text: _("Mark as Done");
+              action-name: "win.sel-done";
+            }
           }
 
           content: ScrolledWindow {

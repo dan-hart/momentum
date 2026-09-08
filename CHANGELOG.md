@@ -18,6 +18,7 @@ First preview.
 - Nextcloud sync compatible with Super Productivity's `sync-data.json`, including
   end-to-end encrypted files; backup import and export
 - Drag tasks onto projects, tags or Today; drag to reorder in Manual Order
+- Selection mode with bulk done, plan, move, tag and delete, and multi-task drag
 - Context menus, undo toasts, keyboard shortcuts, and system-wide shortcuts through
   the GlobalShortcuts portal
 - Follows the system accent color; color-coded projects and tags

@@ -41,8 +41,9 @@ Momentum whenever you are on your Linux machine.
   overwriting. Secrets live in the system keyring.
 - **Fast search over everything.** Tasks, notes, subtasks, the archive, projects and tags,
   grouped and instant.
-- **Drag and drop.** Drop a task on a project, a tag or Today. Reorder by dragging in
-  Manual Order.
+- **Drag and drop, multi-select, bulk edit.** Drop a task on a project, a tag, Today or
+  Tonight. Ctrl+click or the select toggle to pick several, then drag them together or
+  mark done, plan, move, tag or delete them in one go, with a single Undo.
 - **Keyboard first.** Standard GNOME shortcuts, a shortcuts dialog, context menus on
   everything, and system-wide shortcuts through the GlobalShortcuts portal.
 - **Undo, not confirmation.** Delete, done, archive, moves and tag drops all get an Undo
@@ -90,6 +91,7 @@ minutes while the switch is on.
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> | Plan focused task for today |
 | <kbd>Ctrl</kbd>+<kbd>M</kbd> | Move focused task to a project |
 | <kbd>Delete</kbd> | Delete focused task |
+| <kbd>Ctrl</kbd>+<kbd>A</kbd> | Select all tasks in the view |
 | <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Jump to a sidebar entry |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>F5</kbd> | Sync now |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Preferences |
