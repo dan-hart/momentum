@@ -29,7 +29,6 @@ mod imp {
         #[template_child] pub content_page: TemplateChild<adw::NavigationPage>,
         #[template_child] pub task_list: TemplateChild<gtk::ListBox>,
         #[template_child] pub add_entry: TemplateChild<gtk::Entry>,
-        #[template_child] pub create_button: TemplateChild<gtk::Button>,
         #[template_child] pub sync_button: TemplateChild<gtk::Button>,
         #[template_child] pub search_bar: TemplateChild<gtk::SearchBar>,
         #[template_child] pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -50,7 +49,7 @@ mod imp {
             let dir = glib::user_data_dir().join("momentum");
             Self {
                 split_view: Default::default(), sidebar_list: Default::default(), content_page: Default::default(),
-                task_list: Default::default(), add_entry: Default::default(), create_button: Default::default(), sync_button: Default::default(),
+                task_list: Default::default(), add_entry: Default::default(), sync_button: Default::default(),
                 search_bar: Default::default(), search_entry: Default::default(), toast_overlay: Default::default(), empty: Default::default(),
                 settings: gio::Settings::new(*APP_ID), store: RefCell::new(Store::load(dir)), view: RefCell::new(View::Today),
                 views: Default::default(), rows: Default::default(), filter: Default::default(), syncing: Cell::new(false), notified: Default::default(),
@@ -125,7 +124,6 @@ impl MomentumWindow {
             w.refresh_tasks();
         }));
         imp.add_entry.connect_activate(glib::clone!(#[weak(rename_to = w)] self, move |e| { w.add_task(&e.text()); e.set_text(""); }));
-        imp.create_button.connect_clicked(glib::clone!(#[weak(rename_to = w)] self, move |_| { let e = &w.imp().add_entry; w.add_task(&e.text()); e.set_text(""); e.grab_focus(); }));
         imp.task_list.connect_row_activated(glib::clone!(#[weak(rename_to = w)] self, move |_, row| {
             if let Some(id) = w.imp().rows.borrow().get(row.index() as usize).cloned() { w.open_task(&id); }
         }));
