@@ -2163,7 +2163,7 @@ impl MomentumWindow {
                 .unwrap_or_default(),
         };
         let searching = *imp.view.borrow() == View::Search;
-        imp.add_clamp.set_visible(!searching);
+        imp.add_clamp.set_visible(!searching && !imp.selecting.get());
         imp.search_clamp.set_visible(searching);
         if searching {
             imp.content_page.set_title(&gettext("Search"));
