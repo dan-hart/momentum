@@ -49,7 +49,8 @@ mod imp {
         #[template_child]
         pub content_page: TemplateChild<adw::NavigationPage>,
         #[template_child]
-        pub task_list: TemplateChild<gtk::ListBox>,
+        pub task_box: TemplateChild<gtk::Box>,
+        pub current_list: RefCell<Option<gtk::ListBox>>,
         #[template_child]
         pub add_entry: TemplateChild<gtk::Entry>,
         #[template_child]
@@ -99,7 +100,8 @@ mod imp {
                 split_view: Default::default(),
                 sidebar_list: Default::default(),
                 content_page: Default::default(),
-                task_list: Default::default(),
+                task_box: Default::default(),
+                current_list: Default::default(),
                 add_entry: Default::default(),
                 sync_button: Default::default(),
                 sync_label: Default::default(),
@@ -390,21 +392,6 @@ impl MomentumWindow {
                 e.set_text("");
             }
         ));
-        imp.task_list.connect_row_activated(glib::clone!(
-            #[weak(rename_to = w)]
-            self,
-            move |_, row| {
-                let id = w.imp().rows.borrow().get(row.index() as usize).cloned();
-                let Some(id) = id else { return };
-                if let Some(pid) = id.strip_prefix("project:") {
-                    w.go_to(View::Project(pid.into()));
-                } else if let Some(tid) = id.strip_prefix("tag:") {
-                    w.go_to(View::Tag(tid.into()));
-                } else if !id.is_empty() {
-                    w.open_task(&id);
-                }
-            }
-        ));
         if let Some(d) = gtk::gdk::Display::default() {
             gtk::style_context_add_provider_for_display(
                 &d,
@@ -648,8 +635,75 @@ impl MomentumWindow {
         });
     }
     fn focused_task(&self) -> Option<String> {
-        let row = self.imp().task_list.focus_child()?.downcast::<gtk::ListBoxRow>().ok()?;
-        self.imp().rows.borrow().get(row.index() as usize).cloned()
+        let group = self.imp().task_box.focus_child()?;
+        let list = group.focus_child()?.downcast::<gtk::ListBox>().ok()?;
+        let row = list.focus_child()?.downcast::<gtk::ListBoxRow>().ok()?;
+        let id = row.widget_name().to_string();
+        (!id.is_empty() && !id.contains(':')).then_some(id)
+    }
+
+    fn activate_row(&self, id: &str) {
+        if let Some(pid) = id.strip_prefix("project:") {
+            self.go_to(View::Project(pid.into()));
+        } else if let Some(tid) = id.strip_prefix("tag:") {
+            self.go_to(View::Tag(tid.into()));
+        } else if !id.is_empty() {
+            self.open_task(id);
+        }
+    }
+
+    /// Start a new boxed-list section (optionally titled), like an AdwPreferencesGroup.
+    fn new_section(&self, title: Option<&str>) -> gtk::ListBox {
+        let imp = self.imp();
+        let group = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(6)
+            .build();
+        if let Some(t) = title {
+            group.append(
+                &gtk::Label::builder()
+                    .label(t)
+                    .xalign(0.0)
+                    .margin_start(6)
+                    .css_classes(["heading"])
+                    .build(),
+            );
+        }
+        let list = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(["boxed-list"])
+            .build();
+        list.connect_row_activated(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_, row| w.activate_row(&row.widget_name())
+        ));
+        group.append(&list);
+        imp.task_box.append(&group);
+        *imp.current_list.borrow_mut() = Some(list.clone());
+        list
+    }
+
+    /// Append a row to the current section, creating an untitled one if needed.
+    fn append_row(&self, row: &impl IsA<gtk::Widget>, id: &str) {
+        // Take the clone out before the borrow guard is dropped: new_section() borrows mutably.
+        let existing = self.imp().current_list.borrow().clone();
+        let list = match existing {
+            Some(l) => l,
+            None => self.new_section(None),
+        };
+        row.set_widget_name(id);
+        list.append(row);
+        self.imp().rows.borrow_mut().push(id.to_string());
+    }
+
+    fn clear_sections(&self) {
+        let imp = self.imp();
+        while let Some(c) = imp.task_box.first_child() {
+            imp.task_box.remove(&c);
+        }
+        *imp.current_list.borrow_mut() = None;
+        imp.rows.borrow_mut().clear();
     }
 
     /// `#` autocomplete in the add-task entry: a popover of matching tags, driven by the keyboard.
@@ -1093,29 +1147,11 @@ impl MomentumWindow {
         self.refresh();
     }
 
-    fn section_header(&self, title: &str, first: bool) {
-        let imp = self.imp();
-        let label = gtk::Label::builder()
-            .label(title)
-            .xalign(0.0)
-            .margin_start(12)
-            .margin_end(12)
-            .margin_top(if first { 10 } else { 28 })
-            .margin_bottom(6)
-            .css_classes(["heading"])
-            .build();
-        imp.task_list.append(
-            &gtk::ListBoxRow::builder()
-                .child(&label)
-                .selectable(false)
-                .activatable(false)
-                .build(),
-        );
-        imp.rows.borrow_mut().push(String::new());
+    fn section_header(&self, title: &str, _first: bool) {
+        self.new_section(Some(title));
     }
 
     fn section_note(&self, text: &str) {
-        let imp = self.imp();
         let label = gtk::Label::builder()
             .label(text)
             .xalign(0.0)
@@ -1126,14 +1162,14 @@ impl MomentumWindow {
             .margin_bottom(8)
             .css_classes(["dim-label", "caption"])
             .build();
-        imp.task_list.append(
+        self.append_row(
             &gtk::ListBoxRow::builder()
                 .child(&label)
                 .selectable(false)
                 .activatable(false)
                 .build(),
+            "",
         );
-        imp.rows.borrow_mut().push(String::new());
     }
 
     /// Global search across tasks (open, done, subtasks, archived), projects and tags.
@@ -1252,8 +1288,7 @@ impl MomentumWindow {
                 }
                 row.add_prefix(&icon);
                 row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
-                imp.task_list.append(&row);
-                imp.rows.borrow_mut().push(format!("project:{}", p.id));
+                self.append_row(&row, &format!("project:{}", p.id));
             }
         }
         let tags: Vec<&Tag> = idx
@@ -1276,8 +1311,7 @@ impl MomentumWindow {
                 }
                 row.add_prefix(&icon);
                 row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
-                imp.task_list.append(&row);
-                imp.rows.borrow_mut().push(format!("tag:{}", g.id));
+                self.append_row(&row, &format!("tag:{}", g.id));
             }
         }
         let archived: Vec<&Task> = idx
@@ -1306,7 +1340,7 @@ impl MomentumWindow {
         imp.empty.set_title(&gettext("No Results Found"));
         imp.empty.set_description(Some(&gettext("Try a different search")));
         imp.empty.set_visible(none);
-        imp.task_list.set_visible(!none);
+        imp.task_box.set_visible(!none);
         self.update_sync_button();
     }
 
@@ -1445,15 +1479,13 @@ impl MomentumWindow {
             ));
             row.add_controller(target);
         }
-        imp.task_list.append(&row);
-        imp.rows.borrow_mut().push(t.id.clone());
+        self.append_row(&row, &t.id);
     }
 
     fn refresh_tasks(&self) {
         let imp = self.imp();
         self.update_context_actions();
-        imp.task_list.remove_all();
-        imp.rows.borrow_mut().clear();
+        self.clear_sections();
         let store = imp.store.borrow();
         let title = match &*imp.view.borrow() {
             View::Today => gettext("Today"),
@@ -1487,7 +1519,7 @@ impl MomentumWindow {
                 imp.empty
                     .set_description(Some(&gettext("Tasks, notes, subtasks, projects, tags and the archive")));
                 imp.empty.set_visible(true);
-                imp.task_list.set_visible(false);
+                imp.task_box.set_visible(false);
                 self.update_sync_button();
             } else {
                 self.render_search(&store, query.trim());
@@ -1521,30 +1553,13 @@ impl MomentumWindow {
             for t in tasks {
                 let day = t.due_day.clone().unwrap_or_default();
                 if day != current_day {
-                    let first = current_day.is_empty();
                     current_day = day.clone();
-                    let label = gtk::Label::builder()
-                        .label(fmt_day(&day))
-                        .xalign(0.0)
-                        .margin_start(12)
-                        .margin_end(12)
-                        .margin_top(if first { 10 } else { 28 })
-                        .margin_bottom(6)
-                        .css_classes(["heading"])
-                        .build();
-                    imp.task_list.append(
-                        &gtk::ListBoxRow::builder()
-                            .child(&label)
-                            .selectable(false)
-                            .activatable(false)
-                            .build(),
-                    );
-                    imp.rows.borrow_mut().push(String::new());
+                    self.new_section(Some(&fmt_day(&day)));
                 }
                 self.task_row(t, &store, false, false);
             }
             imp.empty.set_visible(imp.rows.borrow().is_empty());
-            imp.task_list.set_visible(!imp.rows.borrow().is_empty());
+            imp.task_box.set_visible(!imp.rows.borrow().is_empty());
             return;
         }
         if *imp.view.borrow() == View::Archive {
@@ -1582,17 +1597,17 @@ impl MomentumWindow {
                         w.refresh_tasks();
                     }
                 ));
-                imp.task_list.append(
+                self.append_row(
                     &gtk::ListBoxRow::builder()
                         .child(&more)
                         .selectable(false)
                         .activatable(false)
                         .build(),
+                    "",
                 );
-                imp.rows.borrow_mut().push(String::new());
             }
             imp.empty.set_visible(imp.rows.borrow().is_empty());
-            imp.task_list.set_visible(!imp.rows.borrow().is_empty());
+            imp.task_box.set_visible(!imp.rows.borrow().is_empty());
             return;
         }
         let ids = self.view_task_ids(&store);
@@ -1635,7 +1650,7 @@ impl MomentumWindow {
             }
         }
         imp.empty.set_visible(imp.rows.borrow().is_empty());
-        imp.task_list.set_visible(!imp.rows.borrow().is_empty());
+        imp.task_box.set_visible(!imp.rows.borrow().is_empty());
         self.update_sync_button();
     }
 

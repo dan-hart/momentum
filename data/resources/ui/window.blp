@@ -258,12 +258,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
               child: Box {
                 orientation: vertical;
 
-                ListBox task_list {
-                  selection-mode: none;
-
-                  styles [
-                    "boxed-list",
-                  ]
+                Box task_box {
+                  orientation: vertical;
+                  spacing: 24;
                 }
 
                 Label sync_label {
