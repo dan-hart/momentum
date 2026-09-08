@@ -32,6 +32,42 @@ menu primary_menu {
   }
 }
 
+menu sort_menu {
+  section {
+    label: _("Sort By");
+
+    item {
+      label: _("Manual Order");
+      action: "win.task-sort";
+      target: "manual";
+    }
+
+    item {
+      label: _("Title");
+      action: "win.task-sort";
+      target: "title";
+    }
+
+    item {
+      label: _("Due Day");
+      action: "win.task-sort";
+      target: "due";
+    }
+
+    item {
+      label: _("Estimate");
+      action: "win.task-sort";
+      target: "estimate";
+    }
+
+    item {
+      label: _("Newest First");
+      action: "win.task-sort";
+      target: "created";
+    }
+  }
+}
+
 template $MomentumWindow: Adw.ApplicationWindow {
   title: _("Momentum");
   default-width: 960;
@@ -106,6 +142,13 @@ template $MomentumWindow: Adw.ApplicationWindow {
         child: Adw.ToolbarView {
           [top]
           Adw.HeaderBar {
+            [end]
+            MenuButton {
+              icon-name: "view-sort-descending-symbolic";
+              menu-model: sort_menu;
+              tooltip-text: _("Sort Tasks");
+            }
+
             [end]
             Button sync_button {
               icon-name: "emblem-synchronizing-symbolic";

@@ -55,6 +55,8 @@ mod imp {
         pub views: RefCell<Vec<Option<View>>>,
         pub rows: RefCell<Vec<String>>,
         pub filter: RefCell<String>,
+        pub color_css: RefCell<String>,
+        pub color_provider: gtk::CssProvider,
         pub syncing: Cell<bool>,
         pub notified: RefCell<HashSet<String>>,
     }
@@ -88,6 +90,8 @@ mod imp {
                 views: Default::default(),
                 rows: Default::default(),
                 filter: Default::default(),
+                color_css: Default::default(),
+                color_provider: gtk::CssProvider::new(),
                 syncing: Cell::new(false),
                 notified: Default::default(),
             }
@@ -213,6 +217,23 @@ impl MomentumWindow {
                 }
             }
         ));
+        if let Some(d) = gtk::gdk::Display::default() {
+            gtk::style_context_add_provider_for_display(
+                &d,
+                &imp.color_provider,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+        }
+        // Stateful sort action backed by GSettings; the header menu's radio items target it.
+        self.add_action(&imp.settings.create_action("task-sort"));
+        imp.settings.connect_changed(
+            Some("task-sort"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.refresh_tasks()
+            ),
+        );
         imp.search_bar.set_key_capture_widget(Some(self));
         imp.search_entry.connect_search_changed(glib::clone!(
             #[weak(rename_to = w)]
@@ -362,29 +383,95 @@ impl MomentumWindow {
         self.refresh_tasks();
     }
 
-    fn sidebar_row(&self, title: &str, icon: &str, view: Option<View>, color: Option<&str>) {
+    /// CSS class that colours symbolic icons with a project/tag colour from the sync data.
+    fn color_class(&self, color: &str) -> Option<String> {
+        let safe: String = color
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || "#(),. %".contains(*c))
+            .collect();
+        if safe.is_empty() {
+            return None;
+        }
+        let class = format!(
+            "c{:x}",
+            safe.bytes()
+                .fold(0xcbf29ce484222325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100000001b3))
+        );
+        let mut css = self.imp().color_css.borrow_mut();
+        if !css.contains(&class) {
+            css.push_str(&format!(".{class} {{ color: {safe}; }}\n"));
+            self.imp().color_provider.load_from_string(&css);
+        }
+        Some(class)
+    }
+
+    fn sidebar_row(
+        &self,
+        title: &str,
+        icon: &str,
+        view: Option<View>,
+        color: Option<&str>,
+        section: Option<&'static str>,
+    ) {
         let imp = self.imp();
         let row: gtk::ListBoxRow = if view.is_some() {
             let r = adw::ActionRow::builder().title(title).build();
             let img = gtk::Image::from_icon_name(icon);
-            if color.is_none() && icon == "starred-symbolic" {
-                img.add_css_class("accent");
-            } // follows the system accent colour
+            match color.and_then(|c| self.color_class(c)) {
+                Some(class) => img.add_css_class(&class),
+                None if icon == "starred-symbolic" => img.add_css_class("accent"),
+                None => {}
+            }
             r.add_prefix(&img);
             r.upcast()
         } else {
-            let l = gtk::Label::builder()
-                .label(title)
-                .xalign(0.0)
-                .margin_top(12)
-                .margin_start(6)
-                .css_classes(["heading", "dim-label"])
-                .build();
-            gtk::ListBoxRow::builder()
-                .child(&l)
+            // Section header: click (or activate) to collapse/expand; state persists in GSettings.
+            let key = section.unwrap_or_default();
+            let collapsed = imp.settings.boolean(key);
+            let b = gtk::Box::builder().spacing(6).margin_top(12).margin_start(6).build();
+            b.append(
+                &gtk::Label::builder()
+                    .label(title)
+                    .xalign(0.0)
+                    .hexpand(true)
+                    .css_classes(["heading", "dim-label"])
+                    .build(),
+            );
+            b.append(
+                &gtk::Image::builder()
+                    .icon_name(if collapsed {
+                        "pan-end-symbolic"
+                    } else {
+                        "pan-down-symbolic"
+                    })
+                    .css_classes(["dim-label"])
+                    .build(),
+            );
+            let r = gtk::ListBoxRow::builder()
+                .child(&b)
                 .selectable(false)
-                .activatable(false)
-                .build()
+                .activatable(true)
+                .build();
+            r.update_property(&[gtk::accessible::Property::Label(&format!(
+                "{title}, {}",
+                if collapsed {
+                    gettext("collapsed")
+                } else {
+                    gettext("expanded")
+                }
+            ))]);
+            let toggle = gtk::GestureClick::new();
+            toggle.connect_released(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _, _, _| {
+                    let s = &w.imp().settings;
+                    s.set_boolean(key, !s.boolean(key)).ok();
+                    w.refresh_sidebar();
+                }
+            ));
+            r.add_controller(toggle);
+            r
         };
         imp.sidebar_list.append(&row);
         imp.views.borrow_mut().push(view);
@@ -396,24 +483,33 @@ impl MomentumWindow {
         imp.sidebar_list.remove_all();
         imp.views.borrow_mut().clear();
         let store = imp.store.borrow();
-        self.sidebar_row(&gettext("Today"), "starred-symbolic", Some(View::Today), None);
-        self.sidebar_row(&gettext("Projects"), "", None, None);
-        for p in store
-            .state
-            .project
-            .iter()
-            .filter(|p| !p.is_archived && !p.is_hidden_from_menu)
-        {
-            self.sidebar_row(
-                &p.title,
-                "folder-symbolic",
-                Some(View::Project(p.id.clone())),
-                p.color(),
-            );
+        self.sidebar_row(&gettext("Today"), "starred-symbolic", Some(View::Today), None, None);
+        self.sidebar_row(&gettext("Projects"), "", None, None, Some("projects-collapsed"));
+        if !imp.settings.boolean("projects-collapsed") {
+            for p in store
+                .state
+                .project
+                .iter()
+                .filter(|p| !p.is_archived && !p.is_hidden_from_menu)
+            {
+                self.sidebar_row(
+                    &p.title,
+                    "folder-symbolic",
+                    Some(View::Project(p.id.clone())),
+                    p.color(),
+                    None,
+                );
+            }
         }
-        self.sidebar_row(&gettext("Tags"), "", None, None);
-        for t in store.state.tag.iter().filter(|t| t.id != TODAY_TAG_ID) {
-            self.sidebar_row(&t.title, "tag-symbolic", Some(View::Tag(t.id.clone())), None);
+        self.sidebar_row(&gettext("Tags"), "", None, None, Some("tags-collapsed"));
+        if !imp.settings.boolean("tags-collapsed") {
+            for t in store.state.tag.iter().filter(|t| t.id != TODAY_TAG_ID) {
+                let color = t
+                    .color
+                    .as_deref()
+                    .or_else(|| t.theme.get("primary").and_then(Value::as_str));
+                self.sidebar_row(&t.title, "tag-symbolic", Some(View::Tag(t.id.clone())), color, None);
+            }
         }
         drop(store);
         let idx = imp
@@ -421,6 +517,11 @@ impl MomentumWindow {
             .borrow()
             .iter()
             .position(|v| v.as_ref() == Some(&current))
+            .or_else(|| {
+                // Current view is inside a collapsed section: keep it, select nothing.
+                imp.sidebar_list.unselect_all();
+                None
+            })
             .unwrap_or(0);
         imp.sidebar_list
             .select_row(imp.sidebar_list.row_at_index(idx as i32).as_ref());
@@ -524,6 +625,21 @@ impl MomentumWindow {
                 } else {
                     open.push(t)
                 }
+            }
+        }
+        let sort = imp.settings.string("task-sort");
+        for list in [&mut open, &mut done] {
+            match sort.as_str() {
+                "title" => list.sort_by_key(|t| t.title.to_lowercase()),
+                "due" => list.sort_by(|a, b| {
+                    a.due_day
+                        .is_none()
+                        .cmp(&b.due_day.is_none())
+                        .then_with(|| a.due_day.cmp(&b.due_day))
+                }),
+                "estimate" => list.sort_by(|a, b| b.time_estimate.total_cmp(&a.time_estimate)),
+                "created" => list.sort_by_key(|t| std::cmp::Reverse(t.created)),
+                _ => {}
             }
         }
         for t in open.into_iter().chain(done) {

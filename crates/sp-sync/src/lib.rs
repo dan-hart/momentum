@@ -102,13 +102,13 @@ pub fn encode(f: &SyncFile, compress: bool, password: Option<&str>) -> Result<St
         body = base64::engine::general_purpose::STANDARD.encode(gz.finish().unwrap());
     }
     let key = password.filter(|p| !p.is_empty());
-    if let Some(pw) = password {
+    if let Some(pw) = key {
         body = crypto::encrypt(&body, pw).map_err(SyncError::Decrypt)?;
     }
     Ok(format!(
         "pf_{}{}2__{body}",
         if compress { "C" } else { "" },
-        if password.is_some() { "E" } else { "" }
+        if key.is_some() { "E" } else { "" }
     ))
 }
 
