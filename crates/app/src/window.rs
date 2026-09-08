@@ -608,6 +608,10 @@ impl MomentumWindow {
                 let ids = w.selection_or(id);
                 w.toggle_tonight(&ids);
             }),
+            targeted("ctx-tomorrow", |w, id| {
+                let ids = w.selection_or(id);
+                w.move_to_tomorrow(&ids);
+            }),
             targeted("ctx-move", |w, id| w.move_to_dialog(id)),
             targeted("ctx-delete", |w, id| w.delete_task(id)),
             targeted("ctx-open-project", |w, id| w.go_to(View::Project(id.into()))),
@@ -630,6 +634,14 @@ impl MomentumWindow {
                 if let Some(id) = w.focused_task() {
                     w.drop_task(&id, &View::Today);
                 }
+            }),
+            act("move-tomorrow", |w| {
+                let ids: Vec<String> = if w.imp().selecting.get() {
+                    w.selected_tasks().iter().map(|t| t.id.clone()).collect()
+                } else {
+                    w.focused_task().into_iter().collect()
+                };
+                w.move_to_tomorrow(&ids);
             }),
             act("toggle-tonight", |w| {
                 let ids: Vec<String> = if w.imp().selecting.get() {
@@ -932,6 +944,48 @@ impl MomentumWindow {
             (false, 1) => gettext("Moved to today"),
             (true, n) => format!("{n} {}", gettext("tasks moved to tonight")),
             (false, n) => format!("{n} {}", gettext("tasks moved to today")),
+        };
+        self.toast_undo(&msg, undo);
+    }
+
+    /// Push tasks to tomorrow (keeps tags; clears any time of day).
+    fn move_to_tomorrow(&self, ids: &[String]) {
+        let tomorrow = day_str(day_number(&today_str()).unwrap_or(0) + 1);
+        let tasks: Vec<Task> = {
+            let store = self.imp().store.borrow();
+            ids.iter()
+                .filter_map(|i| store.state.task.entities.get(i).cloned())
+                .collect()
+        };
+        let mut undo = vec![];
+        for t in tasks.iter().filter(|t| t.due_day.as_deref() != Some(&tomorrow)) {
+            let mut back = Map::new();
+            back.insert("dueDay".into(), json!(t.due_day));
+            back.insert("dueWithTime".into(), json!(t.due_with_time));
+            undo.push(Action::UpdateTask {
+                id: t.id.clone(),
+                changes: back,
+            });
+            let mut ch = Map::new();
+            ch.insert("dueDay".into(), json!(tomorrow));
+            ch.insert("dueWithTime".into(), Value::Null);
+            self.imp().store.borrow_mut().dispatch(Action::UpdateTask {
+                id: t.id.clone(),
+                changes: ch,
+            });
+        }
+        if undo.is_empty() {
+            return;
+        }
+        if self.imp().selecting.get() {
+            self.set_selecting(false);
+        }
+        self.refresh();
+        let n = undo.len();
+        let msg = if n == 1 {
+            gettext("Moved to tomorrow")
+        } else {
+            format!("{n} {}", gettext("tasks moved to tomorrow"))
         };
         self.toast_undo(&msg, undo);
     }
@@ -1242,6 +1296,7 @@ impl MomentumWindow {
                     },
                     "win.ctx-tonight",
                 ));
+                a.append_item(&item(gettext("Move to Tomorrow"), "win.ctx-tomorrow"));
                 if t.parent_id.is_none() {
                     a.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
                 }

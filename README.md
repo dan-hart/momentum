@@ -90,6 +90,7 @@ minutes while the switch is on.
 | <kbd>Ctrl</kbd>+<kbd>D</kbd> | Mark focused task done / not done |
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> | Plan focused task for today |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | Move between Today and Tonight |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd> | Move to tomorrow |
 | <kbd>Ctrl</kbd>+<kbd>M</kbd> | Move focused task to a project |
 | <kbd>Delete</kbd> | Delete focused task |
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> | Select all tasks in the view |

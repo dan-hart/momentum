@@ -143,6 +143,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+D | Toggle done on focused task |
 | Ctrl+T | Plan focused task for today |
 | Ctrl+Shift+T | Move focused task (or selection) between Today and Tonight |
+| Ctrl+Shift+Right | Move focused task (or selection) to tomorrow |
 | Ctrl+M | Move focused task to a project (dialog) |
 | Delete | Delete focused task |
 | Enter | Open focused task |
@@ -156,7 +157,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+Alt+T, Ctrl+Alt+M (system-wide) | Add a task from anywhere; show the window |
 
 Context menu contents. Task: Open, Mark as Done/Not Done, Plan for Today/Remove from
-Today, Move to Tonight/Move to Today, Move to Project…, Delete. Project: Open, New Task Here…, Edit…, Delete Project…
+Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Project…, Delete. Project: Open, New Task Here…, Edit…, Delete Project…
 (not Inbox). Tag: Open, Edit…, Delete Tag….
 
 ### 2.9 Preferences
