@@ -114,9 +114,26 @@ template $MomentumWindow: Adw.ApplicationWindow {
             margin-top: 6;
             margin-bottom: 6;
 
-            child: Entry add_entry {
-              placeholder-text: _("Add a task…  #tag  1h 30m");
-              primary-icon-name: "list-add-symbolic";
+            child: Box {
+              spacing: 6;
+
+              Entry add_entry {
+                hexpand: true;
+                placeholder-text: _("Add a task…  #tag  1h 30m");
+              }
+
+              Button create_button {
+                tooltip-text: _("Create Task");
+
+                styles [
+                  "suggested-action",
+                ]
+
+                child: Adw.ButtonContent {
+                  icon-name: "list-add-symbolic";
+                  label: _("Create Task");
+                };
+              }
             };
           }
 

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SPDX-License-Identifier: GPL-3.0-or-later. GNOME app icon: 128px grid, GNOME palette (Blue 2/4, Light 1). -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later. GNOME app icon: 128px grid, GNOME palette (Orange 2/4, Light 1). -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#62a0ea"/>
-      <stop offset="1" stop-color="#1c71d8"/>
+      <stop offset="0" stop-color="#ffa348"/>
+      <stop offset="1" stop-color="#e66100"/>
     </linearGradient>
   </defs>
   <!-- soft drop shadow -->
@@ -19,7 +19,7 @@
     <line x1="32" y1="82" x2="48" y2="82"/>
   </g>
   <!-- check mark -->
-  <path d="M 54 66 L 70 82 L 100 48" fill="none" stroke="#1a5fb4" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" transform="translate(0,3)"/>
+  <path d="M 54 66 L 70 82 L 100 48" fill="none" stroke="#c64600" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" transform="translate(0,3)"/>
   <path d="M 54 66 L 70 82 L 100 48" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
   <defs>
     <clipPath id="tileclip"><rect x="12" y="12" width="104" height="104" rx="20"/></clipPath>
