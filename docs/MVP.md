@@ -34,7 +34,12 @@ Everything below is implemented and working in the Linux app.
 | **Project** | The project's task list in its stored order | One per non-archived, non-hidden project. Subtasks appear indented under their parent. |
 | **Tag** | Tasks carrying the tag, in the tag's stored order | One per tag except the virtual TODAY tag. |
 
-Sidebar order: Today, Coming Up, Archive, Search, then a collapsible **Projects** section
+Lists are rendered as **sections**: each group (a day in Coming Up, a result type in
+Search, Today and Tonight in the Today view) is its own inset boxed list with its heading
+above the card and empty space between sections, the same structure libadwaita's preference
+groups use. Views without groups are a single card.
+
+Sidebar order: Today, Tonight, Coming Up, Archive, Search, then a collapsible **Projects** section
 and a collapsible **Tags** section. Collapsed state persists. Section headers show a
 chevron and toggle on click, tap or Enter. If the current view is inside a collapsed
 section, the view stays and nothing is selected.
@@ -97,6 +102,21 @@ mode. Dragging a selected row drags the whole selection (ids newline-separated) 
 project, tag, Today, Tonight, or another task for reordering. Escape or switching views
 leaves selection mode.
 
+### 2.4c Day moves: Today, Tonight, Tomorrow
+
+Three one-keystroke moves, each available on the focused task, on the whole selection in
+selection mode, and in the context menu, and each undoable as one batch:
+
+- **Plan for Today / Remove from Today** (Ctrl+T, drop on Today): sets or clears `dueDay`.
+- **Move to Tonight / Move to Today** (Ctrl+Shift+T, drop on Tonight): adds or removes the
+  "Evening" tag, creating the tag on first use; moving to tonight also plans the task for
+  today if it was not. A batch goes the direction of its first task.
+- **Move to Tomorrow** (Ctrl+Shift+Right): sets `dueDay` to tomorrow, keeps tags, clears
+  `dueWithTime`. Tasks already due tomorrow are skipped.
+
+All three are plain `updateTask` ops (or `planTasksForToday` / `removeTasksFromTodayTag`),
+so other clients see exactly the same change.
+
 ### 2.5 Repeating tasks
 
 Repeat configurations come from the sync data. At startup, after each sync, and when the
@@ -120,7 +140,8 @@ monthly on the 5th", "Repeats yearly on 5 March".
   version or newer schema, sync not configured, fresh device with no data set).
 - Sync progress: the caption under the list says "Syncing…" immediately and the sync
   button is disabled; a spinner replaces the button icon only if the sync passes one
-  second. Afterwards "Last synced just now / N minutes ago". The caption is hidden on
+  second. Afterwards "Last synced just now" for the first ten seconds, then "N seconds /
+  minutes / hours / days ago", refreshed every 30 seconds. The caption is hidden on
   empty views and when sync is off.
 - Reminders (`remindAt`) fire desktop notifications, checked every 30 seconds.
 
@@ -294,8 +315,10 @@ publication. All of their data is preserved untouched.
   toolbar. Collapsible sidebar sections → `DisclosureGroup` or `Section` with a header
   toggle.
 - **Behaviours that must survive the port.** Enter-to-create with Create disabled on an
-  empty title; `#` autocomplete; relative dates; the Today order rule; undo for every
-  destructive action; the fresh-device guard; deterministic repeat instance ids; secrets
+  empty title; `#` autocomplete; relative dates; the Today order rule and the Tonight
+  split on the "Evening" tag; the three day moves with batch undo; selection mode with
+  bulk actions and multi-item drag; undo for every destructive action; the fresh-device
+  guard; deterministic repeat instance ids; the search index and result caps; secrets
   never in plain storage; sync off by default.
 - **Getting started checklist.** 1) Read sections 3 to 6. 2) Build the model with
   unknown-field preservation. 3) Port `apply()` for the ops in section 4 with tests. 4) Port
