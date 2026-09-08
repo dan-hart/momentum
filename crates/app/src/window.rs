@@ -684,6 +684,9 @@ impl MomentumWindow {
         let n = tasks.len();
         self.dispatch(Action::MoveToArchive { tasks, sub_tasks });
         self.toast(&format!("{n} {}", gettext("completed tasks archived")));
+        if self.sync_configured() {
+            self.sync();
+        }
     }
 
     pub fn refresh(&self) {
