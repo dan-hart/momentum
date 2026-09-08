@@ -97,7 +97,11 @@ mod imp {
                 rows: Default::default(),
                 filter: Default::default(),
                 color_css: Default::default(),
-                tag_popover: gtk::Popover::builder().autohide(false).has_arrow(false).build(),
+                tag_popover: gtk::Popover::builder()
+                    .autohide(false)
+                    .has_arrow(false)
+                    .css_classes(["menu"])
+                    .build(),
                 tag_list: gtk::ListBox::builder()
                     .selection_mode(gtk::SelectionMode::Single)
                     .css_classes(["navigation-sidebar"])
@@ -415,6 +419,11 @@ impl MomentumWindow {
             if std::env::var_os("MOMENTUM_SCREENSHOT_DIALOG").is_some() {
                 self.new_task_dialog();
             }
+            if std::env::var_os("MOMENTUM_SCREENSHOT_TAG").is_some() {
+                imp.add_entry.grab_focus();
+                imp.add_entry.set_text("Write the docs #");
+                imp.add_entry.set_position(-1);
+            }
             crate::demo::screenshot(self.upcast_ref(), path.into());
         }
     }
@@ -455,14 +464,7 @@ impl MomentumWindow {
         let imp = self.imp();
         imp.tag_popover.set_parent(&*imp.add_entry);
         imp.tag_popover.set_position(gtk::PositionType::Bottom);
-        imp.tag_popover.set_width_request(260);
-        imp.tag_popover.set_child(Some(
-            &gtk::ScrolledWindow::builder()
-                .propagate_natural_height(true)
-                .max_content_height(240)
-                .child(&imp.tag_list)
-                .build(),
-        ));
+        imp.tag_popover.set_child(Some(&imp.tag_list));
         imp.add_entry.connect_changed(glib::clone!(
             #[weak(rename_to = w)]
             self,
@@ -512,6 +514,13 @@ impl MomentumWindow {
             }
         ));
         imp.add_entry.add_controller(keys);
+        let focus = gtk::EventControllerFocus::new();
+        focus.connect_leave(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_| w.imp().tag_popover.popdown()
+        ));
+        imp.add_entry.add_controller(focus);
     }
 
     /// The `#word` under the cursor, as (start byte offset, text without `#`).
@@ -582,6 +591,18 @@ impl MomentumWindow {
             imp.tag_popover.popdown();
         } else {
             imp.tag_list.select_row(imp.tag_list.row_at_index(0).as_ref());
+            // Anchor under the text cursor rather than centred below the whole entry.
+            let entry: &gtk::Entry = &imp.add_entry;
+            let byte_index = entry
+                .text()
+                .char_indices()
+                .nth(entry.position() as usize)
+                .map(|(i, _)| i)
+                .unwrap_or(entry.text().len());
+            let (lx, _) = entry.layout_offsets();
+            let x = lx + entry.layout().index_to_pos(byte_index as i32).x() / gtk::pango::SCALE;
+            imp.tag_popover
+                .set_pointing_to(Some(&gtk::gdk::Rectangle::new(x.max(0), 0, 1, entry.height())));
             imp.tag_popover.popup();
         }
     }
