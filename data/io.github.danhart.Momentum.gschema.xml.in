@@ -13,5 +13,10 @@
       <default>false</default>
       <summary>Window maximized state</summary>
     </key>
+    <key name="nextcloud-server" type="s"><default>''</default><summary>Nextcloud server URL</summary></key>
+    <key name="nextcloud-user" type="s"><default>''</default><summary>Nextcloud username</summary></key>
+    <key name="nextcloud-folder" type="s"><default>'super-productivity'</default><summary>Sync folder on Nextcloud</summary></key>
+    <key name="auto-sync" type="b"><default>true</default><summary>Sync automatically</summary></key>
+    <key name="compress" type="b"><default>false</default><summary>Gzip the sync file</summary></key>
   </schema>
 </schemalist>

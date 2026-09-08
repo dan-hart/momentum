@@ -3,6 +3,8 @@
 
 mod application;
 mod config;
+mod keyring;
+mod prefs;
 mod window;
 
 use gettextrs::{gettext, LocaleCategory};

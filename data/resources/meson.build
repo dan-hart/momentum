@@ -3,6 +3,7 @@ blueprint_compiler = find_program('blueprint-compiler')
 blueprints = custom_target(
   'blueprints',
   input: files(
+    'ui/prefs.blp',
     'ui/shortcuts.blp',
     'ui/window.blp',
   ),

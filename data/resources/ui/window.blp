@@ -4,6 +4,18 @@ using Adw 1;
 menu primary_menu {
   section {
     item {
+      label: _("_New Project…");
+      action: "app.new-project";
+    }
+
+    item {
+      label: _("_Sync Now");
+      action: "app.sync";
+    }
+  }
+
+  section {
+    item {
       label: _("_Preferences");
       action: "app.preferences";
     }
@@ -35,75 +47,121 @@ template $MomentumWindow: Adw.ApplicationWindow {
     }
   }
 
-  content: Adw.NavigationSplitView split_view {
-    min-sidebar-width: 220;
-    max-sidebar-width: 300;
+  content: Adw.ToastOverlay toast_overlay {
+    child: Adw.NavigationSplitView split_view {
+      min-sidebar-width: 220;
+      max-sidebar-width: 300;
 
-    sidebar: Adw.NavigationPage {
-      title: _("Momentum");
+      sidebar: Adw.NavigationPage {
+        title: _("Momentum");
 
-      child: Adw.ToolbarView {
-        [top]
-        Adw.HeaderBar {
-          [end]
-          MenuButton {
-            icon-name: "open-menu-symbolic";
-            menu-model: primary_menu;
-            primary: true;
-            tooltip-text: _("Main Menu");
+        child: Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {
+            [end]
+            MenuButton {
+              icon-name: "open-menu-symbolic";
+              menu-model: primary_menu;
+              primary: true;
+              tooltip-text: _("Main Menu");
+            }
           }
-        }
 
-        content: ScrolledWindow {
-          hscrollbar-policy: never;
+          content: ScrolledWindow {
+            hscrollbar-policy: never;
 
-          child: ListBox sidebar_list {
-            selection-mode: single;
+            child: ListBox sidebar_list {
+              selection-mode: single;
 
-            styles [
-              "navigation-sidebar",
-            ]
-
-            Adw.ActionRow {
-              title: _("Today");
-              icon-name: "starred-symbolic";
-            }
-
-            Adw.ActionRow {
-              title: _("Planner");
-              icon-name: "x-office-calendar-symbolic";
-            }
-
-            Adw.ActionRow {
-              title: _("Projects");
-              icon-name: "folder-symbolic";
-            }
-
-            Adw.ActionRow {
-              title: _("Tags");
-              icon-name: "view-list-symbolic";
-            }
-
-            Adw.ActionRow {
-              title: _("Worklog");
-              icon-name: "document-open-recent-symbolic";
-            }
+              styles [
+                "navigation-sidebar",
+              ]
+            };
           };
         };
       };
-    };
 
-    content: Adw.NavigationPage content_page {
-      title: _("Today");
+      content: Adw.NavigationPage content_page {
+        title: _("Today");
 
-      child: Adw.ToolbarView {
-        [top]
-        Adw.HeaderBar {}
+        child: Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {
+            [start]
+            Button timer_button {
+              visible: false;
+              tooltip-text: _("Stop tracking");
 
-        content: Adw.StatusPage status_page {
-          icon-name: "io.github.danhart.Momentum-symbolic";
-          title: _("Today");
-          description: _("Tasks will appear here once the data layer is wired up.");
+              styles [
+                "suggested-action",
+                "pill",
+              ]
+
+              child: Box {
+                spacing: 6;
+
+                Image {
+                  icon-name: "media-playback-stop-symbolic";
+                }
+
+                Label timer_label {
+                  ellipsize: end;
+                  max-width-chars: 32;
+                }
+              };
+            }
+
+            [end]
+            Button {
+              icon-name: "emblem-synchronizing-symbolic";
+              tooltip-text: _("Sync Now");
+              action-name: "app.sync";
+            }
+          }
+
+          [top]
+          Adw.Clamp {
+            maximum-size: 720;
+            margin-start: 12;
+            margin-end: 12;
+            margin-top: 6;
+            margin-bottom: 6;
+
+            child: Entry add_entry {
+              placeholder-text: _("Add a task…  #tag  1h 30m");
+              primary-icon-name: "list-add-symbolic";
+            };
+          }
+
+          content: ScrolledWindow {
+            hscrollbar-policy: never;
+
+            child: Adw.Clamp {
+              maximum-size: 720;
+              margin-start: 12;
+              margin-end: 12;
+              margin-bottom: 12;
+
+              child: Box {
+                orientation: vertical;
+
+                ListBox task_list {
+                  selection-mode: none;
+
+                  styles [
+                    "boxed-list",
+                  ]
+                }
+
+                Adw.StatusPage empty {
+                  icon-name: "io.github.danhart.Momentum-symbolic";
+                  title: _("Nothing here yet");
+                  description: _("Add a task above, or sync with Nextcloud from Preferences.");
+                  vexpand: true;
+                }
+              };
+            };
+          };
         };
       };
     };

@@ -1,0 +1,58 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MomentumPrefs: Adw.PreferencesDialog {
+  title: _("Preferences");
+
+  Adw.PreferencesPage {
+    Adw.PreferencesGroup {
+      title: _("Nextcloud Sync");
+      description: _("Shares the same sync-data.json as Super Productivity. Encrypted sync files are not supported yet.");
+
+      Adw.EntryRow server_row {
+        title: _("Server URL");
+      }
+
+      Adw.EntryRow user_row {
+        title: _("Username");
+      }
+
+      Adw.PasswordEntryRow password_row {
+        title: _("App password");
+      }
+
+      Adw.EntryRow folder_row {
+        title: _("Sync folder");
+      }
+
+      Adw.SwitchRow auto_row {
+        title: _("Sync automatically");
+        subtitle: _("At startup and every five minutes");
+      }
+
+      Adw.SwitchRow compress_row {
+        title: _("Compress sync file");
+      }
+
+      Adw.ButtonRow {
+        title: _("Sync Now");
+        start-icon-name: "emblem-synchronizing-symbolic";
+        action-name: "app.sync";
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Backup");
+
+      Adw.ButtonRow {
+        title: _("Import Backup JSON…");
+        action-name: "app.import";
+      }
+
+      Adw.ButtonRow {
+        title: _("Export Backup JSON…");
+        action-name: "app.export";
+      }
+    }
+  }
+}

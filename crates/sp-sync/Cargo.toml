@@ -13,3 +13,6 @@ thiserror.workspace = true
 sp-model = { path = "../sp-model" }
 sp-oplog = { path = "../sp-oplog" }
 sp-store = { path = "../sp-store" }
+ureq = "3.4.1"
+flate2 = "1.1.10"
+base64 = "0.23.1"
