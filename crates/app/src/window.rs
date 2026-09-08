@@ -212,7 +212,7 @@ pub fn fmt_day(day: &str) -> String {
 }
 
 /// CSS colour string from the sync data → `#rrggbb` for Pango markup.
-fn hex_color(color: &str) -> Option<String> {
+pub fn hex_color(color: &str) -> Option<String> {
     let c = gtk::gdk::RGBA::parse(color).ok()?;
     Some(format!(
         "#{:02x}{:02x}{:02x}",
@@ -221,7 +221,7 @@ fn hex_color(color: &str) -> Option<String> {
         (c.blue() * 255.0) as u8
     ))
 }
-fn tag_color(g: &Tag) -> Option<&str> {
+pub fn tag_color(g: &Tag) -> Option<&str> {
     g.color
         .as_deref()
         .or_else(|| g.theme.get("primary").and_then(Value::as_str))
@@ -302,8 +302,17 @@ impl MomentumWindow {
         }
         // Stateful sort action backed by GSettings; the header menu's radio items target it.
         self.add_action(&imp.settings.create_action("task-sort"));
+        self.add_action(&imp.settings.create_action("sort-direction"));
         imp.settings.connect_changed(
             Some("task-sort"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.refresh_tasks()
+            ),
+        );
+        imp.settings.connect_changed(
+            Some("sort-direction"),
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
@@ -443,6 +452,10 @@ impl MomentumWindow {
     }
 
     fn sync_configured(&self) -> bool {
+        // Demo/screenshot runs must never touch a real server.
+        if std::env::var_os("MOMENTUM_DEMO").is_some() {
+            return false;
+        }
         let s = &self.imp().settings;
         s.boolean("sync-enabled")
             && ["nextcloud-server", "nextcloud-user", "nextcloud-folder"]
@@ -700,7 +713,7 @@ impl MomentumWindow {
     }
 
     /// CSS class that colours symbolic icons with a project/tag colour from the sync data.
-    fn color_class(&self, color: &str) -> Option<String> {
+    pub fn color_class(&self, color: &str) -> Option<String> {
         let safe: String = color
             .chars()
             .filter(|c| c.is_ascii_alphanumeric() || "#(),. %".contains(*c))
@@ -1015,6 +1028,7 @@ impl MomentumWindow {
             }
         }
         let sort = imp.settings.string("task-sort");
+        let descending = imp.settings.string("sort-direction") == "descending";
         for list in [&mut open, &mut done] {
             match sort.as_str() {
                 "title" => list.sort_by_key(|t| t.title.to_lowercase()),
@@ -1024,9 +1038,12 @@ impl MomentumWindow {
                         .cmp(&b.due_day.is_none())
                         .then_with(|| a.due_day.cmp(&b.due_day))
                 }),
-                "estimate" => list.sort_by(|a, b| b.time_estimate.total_cmp(&a.time_estimate)),
-                "created" => list.sort_by_key(|t| std::cmp::Reverse(t.created)),
+                "estimate" => list.sort_by(|a, b| a.time_estimate.total_cmp(&b.time_estimate)),
+                "created" => list.sort_by_key(|t| t.created),
                 _ => {}
+            }
+            if descending {
+                list.reverse();
             }
         }
         for t in open.into_iter().chain(done) {
@@ -1240,6 +1257,7 @@ impl MomentumWindow {
             )
         };
         let form = Rc::new(crate::task_form::TaskForm::new(
+            self,
             &imp.store.borrow(),
             None,
             &project,
@@ -1307,6 +1325,7 @@ impl MomentumWindow {
             return;
         };
         let form = Rc::new(crate::task_form::TaskForm::new(
+            self,
             &imp.store.borrow(),
             Some(&t),
             &t.project_id,
@@ -1418,6 +1437,9 @@ impl MomentumWindow {
 
     pub fn sync(&self) {
         let imp = self.imp();
+        if std::env::var_os("MOMENTUM_DEMO").is_some() {
+            return;
+        }
         if !imp.settings.boolean("sync-enabled") {
             self.toast(&gettext("Sync is turned off. Enable it in Preferences."));
             return;

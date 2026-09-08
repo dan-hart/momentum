@@ -3,11 +3,13 @@
 //! Shared form for creating and editing a task: title, project, due day, estimate, tags, notes.
 use adw::prelude::*;
 use gettextrs::gettext;
-use gtk::glib;
+use gtk::{gio, glib};
 use sp_model::*;
 use sp_store::Store;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use crate::window::{tag_color, MomentumWindow};
 
 pub struct TaskForm {
     pub page: adw::PreferencesPage,
@@ -34,7 +36,14 @@ fn tomorrow() -> String {
 }
 
 impl TaskForm {
-    pub fn new(store: &Store, task: Option<&Task>, default_project: &str, default_due: Option<String>) -> Self {
+    pub fn new(
+        win: &MomentumWindow,
+        store: &Store,
+        task: Option<&Task>,
+        default_project: &str,
+        default_due: Option<String>,
+    ) -> Self {
+        let colorful = gio::Settings::new(*crate::config::APP_ID).boolean("colorful-labels");
         let page = adw::PreferencesPage::new();
         let group = adw::PreferencesGroup::new();
         let title = adw::EntryRow::builder()
@@ -48,6 +57,47 @@ impl TaskForm {
         let project_ids: Vec<String> = projects.iter().map(|p| p.id.clone()).collect();
         let names = gtk::StringList::new(&projects.iter().map(|p| p.title.as_str()).collect::<Vec<_>>());
         let project = adw::ComboRow::builder().title(gettext("Project")).model(&names).build();
+        // Colour-coded rows: folder icon in the project's colour, both in the button and the list.
+        let classes: Rc<Vec<Option<String>>> = Rc::new(
+            projects
+                .iter()
+                .map(|p| p.color().filter(|_| colorful).and_then(|c| win.color_class(c)))
+                .collect(),
+        );
+        let titles: Rc<Vec<String>> = Rc::new(projects.iter().map(|p| p.title.clone()).collect());
+        let make_factory = || {
+            let f = gtk::SignalListItemFactory::new();
+            f.connect_setup(|_, item| {
+                let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+                let b = gtk::Box::builder().spacing(8).build();
+                b.append(&gtk::Image::from_icon_name("folder-symbolic"));
+                b.append(&gtk::Label::builder().xalign(0.0).build());
+                item.set_child(Some(&b));
+            });
+            f.connect_bind(glib::clone!(
+                #[strong]
+                classes,
+                #[strong]
+                titles,
+                move |_, item| {
+                    let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+                    let b = item.child().and_downcast::<gtk::Box>().unwrap();
+                    let (icon, label) = (
+                        b.first_child().and_downcast::<gtk::Image>().unwrap(),
+                        b.last_child().and_downcast::<gtk::Label>().unwrap(),
+                    );
+                    let i = item.position() as usize;
+                    label.set_label(titles.get(i).map(String::as_str).unwrap_or(""));
+                    icon.set_css_classes(&[]);
+                    if let Some(Some(c)) = classes.get(i) {
+                        icon.add_css_class(c);
+                    }
+                }
+            ));
+            f
+        };
+        project.set_factory(Some(&make_factory()));
+        project.set_list_factory(Some(&make_factory()));
         let want = task.map(|t| t.project_id.as_str()).unwrap_or(default_project);
         project.set_selected(project_ids.iter().position(|i| i == want).unwrap_or(0) as u32);
         if task.is_some_and(|t| t.parent_id.is_some()) {
@@ -136,11 +186,20 @@ impl TaskForm {
             .build();
         let mut tag_buttons = vec![];
         for g in store.state.tag.iter().filter(|g| g.id != TODAY_TAG_ID) {
+            let content = gtk::Box::builder().spacing(6).build();
+            let icon = gtk::Image::from_icon_name("tag-symbolic");
+            if let Some(c) = tag_color(g).filter(|_| colorful).and_then(|c| win.color_class(c)) {
+                icon.add_css_class(&c);
+            }
+            content.append(&icon);
+            content.append(&gtk::Label::new(Some(&g.title)));
             let b = gtk::ToggleButton::builder()
-                .label(&g.title)
+                .child(&content)
                 .active(task.is_some_and(|t| t.tag_ids.contains(&g.id)))
                 .css_classes(["pill"])
+                .tooltip_text(&g.title)
                 .build();
+            b.update_property(&[gtk::accessible::Property::Label(&g.title)]);
             flow.insert(&b, -1);
             tag_buttons.push((g.id.clone(), b));
         }

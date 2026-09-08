@@ -61,9 +61,25 @@ menu view_menu {
     }
 
     item {
-      label: _("Newest First");
+      label: _("Created");
       action: "win.task-sort";
       target: "created";
+    }
+  }
+
+  section {
+    label: _("Order");
+
+    item {
+      label: _("Ascending");
+      action: "win.sort-direction";
+      target: "ascending";
+    }
+
+    item {
+      label: _("Descending");
+      action: "win.sort-direction";
+      target: "descending";
     }
   }
 
