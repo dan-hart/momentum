@@ -50,6 +50,8 @@ pub enum SyncError {
     Schema(u32),
     #[error("bad sync file: {0}")]
     Parse(String),
+    #[error("no sync file on the server yet and this device has no full data set; import a backup or sync another device first")]
+    FreshState,
     #[error("remote changed during upload; retry")]
     Conflict,
     #[error("{0}")]
@@ -235,6 +237,7 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
                 }
                 (f, Some(tag))
             }
+            None if store.state.rest.get("globalConfig").is_none() => return Err(SyncError::FreshState),
             None => (
                 SyncFile {
                     version: 2,
@@ -346,6 +349,7 @@ mod dav_tests {
         };
         let tmp = std::env::temp_dir().join(format!("momentum-dav-{}", now_ms()));
         let (mut a, mut b) = (Store::load(tmp.join("a")), Store::load(tmp.join("b")));
+        a.state.rest.insert("globalConfig".into(), serde_json::json!({}));
         a.dispatch(Action::AddTask {
             task: Task::new("from A", INBOX_PROJECT_ID),
             bottom: true,

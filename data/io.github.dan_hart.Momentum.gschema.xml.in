@@ -33,5 +33,10 @@
       <default>'ascending'</default>
       <summary>Task sort direction</summary>
     </key>
+    <key name="upcoming-range" type="s">
+      <choices><choice value="7"/><choice value="30"/></choices>
+      <default>'7'</default>
+      <summary>Days shown in Coming Up</summary>
+    </key>
   </schema>
 </schemalist>

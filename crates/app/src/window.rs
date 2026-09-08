@@ -19,6 +19,7 @@ use crate::config::{APP_ID, PROFILE};
 #[derive(Clone, PartialEq)]
 pub enum View {
     Today,
+    Upcoming,
     Archive,
     Project(String),
     Tag(String),
@@ -45,6 +46,8 @@ mod imp {
         #[template_child]
         pub sync_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub banner: TemplateChild<adw::Banner>,
+        #[template_child]
         pub search_bar: TemplateChild<gtk::SearchBar>,
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -65,6 +68,7 @@ mod imp {
         pub color_provider: gtk::CssProvider,
         pub syncing: Cell<bool>,
         pub notified: RefCell<HashSet<String>>,
+        pub last_day: RefCell<String>,
     }
 
     impl Default for MomentumWindow {
@@ -83,6 +87,7 @@ mod imp {
                 add_entry: Default::default(),
                 sync_button: Default::default(),
                 sync_label: Default::default(),
+                banner: Default::default(),
                 search_bar: Default::default(),
                 search_entry: Default::default(),
                 toast_overlay: Default::default(),
@@ -111,6 +116,7 @@ mod imp {
                 color_provider: gtk::CssProvider::new(),
                 syncing: Cell::new(false),
                 notified: Default::default(),
+                last_day: RefCell::new(today_str()),
             }
         }
     }
@@ -239,6 +245,86 @@ fn archived_tasks(store: &Store) -> Vec<Task> {
         .collect()
 }
 
+/// Short, human description of a repeat config: "Repeats every Monday", "Repeats daily", …
+pub fn repeat_text(c: &RepeatCfg) -> String {
+    let every = c.repeat_every.max(1);
+    let names = [
+        gettext("Sunday"),
+        gettext("Monday"),
+        gettext("Tuesday"),
+        gettext("Wednesday"),
+        gettext("Thursday"),
+        gettext("Friday"),
+        gettext("Saturday"),
+    ];
+    let days: Vec<&String> = c
+        .weekdays()
+        .iter()
+        .zip(names.iter())
+        .filter(|(on, _)| **on)
+        .map(|(_, n)| n)
+        .collect();
+    match c.repeat_cycle.as_str() {
+        "DAILY" if every == 1 => gettext("Repeats daily"),
+        "DAILY" => format!("{} {every} {}", gettext("Repeats every"), gettext("days")),
+        "WEEKLY" if days.len() == 7 && every == 1 => gettext("Repeats daily"),
+        "WEEKLY" if days.len() == 1 && every == 1 => format!("{} {}", gettext("Repeats every"), days[0]),
+        "WEEKLY" => {
+            let list = days
+                .iter()
+                .map(|d| d.chars().take(3).collect::<String>())
+                .collect::<Vec<_>>()
+                .join(", ");
+            if every == 1 {
+                format!("{} {list}", gettext("Repeats weekly on"))
+            } else {
+                format!("{} {every} {} {list}", gettext("Repeats every"), gettext("weeks on"))
+            }
+        }
+        "MONTHLY" => {
+            let day = if c.monthly_last_day {
+                gettext("the last day")
+            } else {
+                match c.start_date.as_deref().and_then(parse_day) {
+                    Some((_, _, d)) => format!("{} {}", gettext("the"), ordinal(d)),
+                    None => gettext("the same day"),
+                }
+            };
+            if every == 1 {
+                format!("{} {day}", gettext("Repeats monthly on"))
+            } else {
+                format!("{} {every} {} {day}", gettext("Repeats every"), gettext("months on"))
+            }
+        }
+        "YEARLY" => {
+            let date = c
+                .start_date
+                .as_deref()
+                .and_then(parse_day)
+                .and_then(|(y, m, d)| glib::DateTime::from_local(y as i32, m as i32, d as i32, 0, 0, 0.0).ok())
+                .and_then(|d| d.format("%-d %B").ok())
+                .map(|g| g.to_string())
+                .unwrap_or_default();
+            if every == 1 {
+                format!("{} {date}", gettext("Repeats yearly on"))
+            } else {
+                format!("{} {every} {} {date}", gettext("Repeats every"), gettext("years on"))
+            }
+        }
+        _ => gettext("Repeats"),
+    }
+}
+fn ordinal(d: u32) -> String {
+    let suffix = match (d % 10, d % 100) {
+        (1, 11) | (2, 12) | (3, 13) => "th",
+        (1, _) => "st",
+        (2, _) => "nd",
+        (3, _) => "rd",
+        _ => "th",
+    };
+    format!("{d}{suffix}")
+}
+
 /// "1h 30m", "45m", "2h" → ms
 pub fn parse_ms(s: &str) -> Option<f64> {
     let mut total = 0.0;
@@ -303,6 +389,20 @@ impl MomentumWindow {
         // Stateful sort action backed by GSettings; the header menu's radio items target it.
         self.add_action(&imp.settings.create_action("task-sort"));
         self.add_action(&imp.settings.create_action("sort-direction"));
+        self.add_action(&imp.settings.create_action("upcoming-range"));
+        imp.settings.connect_changed(
+            Some("upcoming-range"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.refresh_tasks()
+            ),
+        );
+        imp.banner.connect_button_clicked(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_| crate::prefs::MomentumPrefs::default().present(Some(&w))
+        ));
         imp.settings.connect_changed(
             Some("task-sort"),
             glib::clone!(
@@ -395,6 +495,18 @@ impl MomentumWindow {
                 }
             }),
             act("archive-done", |w| w.archive_done()),
+            act("plan-today", |w| {
+                if let Some(id) = w.focused_task() {
+                    w.drop_task(&id, &View::Today);
+                }
+            }),
+            act("move-to", |w| {
+                if let Some(id) = w.focused_task() {
+                    w.move_to_dialog(&id);
+                }
+            }),
+            act("edit-context", |w| w.edit_context_dialog()),
+            act("delete-context", |w| w.delete_context_dialog()),
         ]);
         imp.settings.connect_changed(
             None,
@@ -415,6 +527,12 @@ impl MomentumWindow {
                 move || {
                     w.check_reminders();
                     w.update_sync_button();
+                    let today = today_str();
+                    if *w.imp().last_day.borrow() != today {
+                        *w.imp().last_day.borrow_mut() = today;
+                        w.spawn_repeats();
+                        w.refresh();
+                    }
                     glib::ControlFlow::Continue
                 }
             ),
@@ -434,6 +552,7 @@ impl MomentumWindow {
                 }
             ),
         );
+        self.spawn_repeats();
         self.refresh();
         if imp.settings.boolean("auto-sync") && self.sync_configured() {
             self.sync();
@@ -473,7 +592,8 @@ impl MomentumWindow {
         } else {
             let secs = now_ms().saturating_sub(last) / 1000;
             let ago = match secs {
-                0..=59 => format!("{secs} {}", gettext("seconds ago")),
+                0..=9 => gettext("just now"),
+                10..=59 => format!("{secs} {}", gettext("seconds ago")),
                 60..=3599 => format!("{} {}", secs / 60, gettext("minutes ago")),
                 3600..=86399 => format!("{} {}", secs / 3600, gettext("hours ago")),
                 _ => format!("{} {}", secs / 86400, gettext("days ago")),
@@ -654,6 +774,21 @@ impl MomentumWindow {
         entry.set_position(cursor as i32);
     }
 
+    /// Toast with an Undo button that dispatches the given actions.
+    pub fn toast_undo(&self, msg: &str, undo: Vec<Action>) {
+        let toast = adw::Toast::builder().title(msg).button_label(gettext("Undo")).build();
+        toast.connect_button_clicked(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_| {
+                for a in undo.clone() {
+                    w.dispatch(a);
+                }
+            }
+        ));
+        self.imp().toast_overlay.add_toast(toast);
+    }
+
     pub fn toast(&self, msg: &str) {
         self.imp().toast_overlay.add_toast(adw::Toast::new(msg));
     }
@@ -695,14 +830,36 @@ impl MomentumWindow {
             return;
         }
         let n = tasks.len();
+        let undo: Vec<Action> = tasks
+            .iter()
+            .map(|t| Action::RestoreTask {
+                task: t.clone(),
+                sub_tasks: sub_tasks
+                    .iter()
+                    .filter(|s| s.parent_id.as_deref() == Some(&t.id))
+                    .cloned()
+                    .collect(),
+            })
+            .collect();
         self.dispatch(Action::MoveToArchive { tasks, sub_tasks });
-        self.toast(&format!("{n} {}", gettext("completed tasks archived")));
+        self.toast_undo(&format!("{n} {}", gettext("completed tasks archived")), undo);
         if self.sync_configured() {
             self.sync();
         }
     }
 
     pub fn refresh(&self) {
+        let view = self.imp().view.borrow().clone();
+        let (editable, deletable) = match &view {
+            View::Project(id) => (true, id != INBOX_PROJECT_ID),
+            View::Tag(_) => (true, true),
+            _ => (false, false),
+        };
+        for (name, on) in [("edit-context", editable), ("delete-context", deletable)] {
+            if let Some(a) = self.lookup_action(name).and_downcast::<gio::SimpleAction>() {
+                a.set_enabled(on);
+            }
+        }
         let (done, _) = self.done_tasks();
         // Menu item stays visible but disabled when there is nothing to archive (HIG).
         if let Some(a) = self.lookup_action("archive-done").and_downcast::<gio::SimpleAction>() {
@@ -828,6 +985,13 @@ impl MomentumWindow {
         imp.views.borrow_mut().clear();
         let store = imp.store.borrow();
         self.sidebar_row(&gettext("Today"), "starred-symbolic", Some(View::Today), None, None);
+        self.sidebar_row(
+            &gettext("Coming Up"),
+            "x-office-calendar-symbolic",
+            Some(View::Upcoming),
+            None,
+            None,
+        );
         self.sidebar_row(&gettext("Archive"), "archive-symbolic", Some(View::Archive), None, None);
         self.sidebar_row(&gettext("Projects"), "", None, None, Some("projects-collapsed"));
         let colorful = imp.settings.boolean("colorful-labels");
@@ -873,7 +1037,7 @@ impl MomentumWindow {
     fn view_task_ids(&self, store: &Store) -> Vec<String> {
         match &*self.imp().view.borrow() {
             View::Today => store.state.today_ids(),
-            View::Archive => vec![],
+            View::Upcoming | View::Archive => vec![],
             View::Project(id) => store
                 .state
                 .project
@@ -908,6 +1072,14 @@ impl MomentumWindow {
         }
         if t.time_estimate > 0.0 {
             sub.push(format!("~{}", fmt_ms(t.time_estimate)));
+        }
+        let repeat = t
+            .repeat_cfg_id
+            .as_ref()
+            .and_then(|id| store.state.task_repeat_cfg.entities.get(id))
+            .map(repeat_text);
+        if let Some(text) = &repeat {
+            sub.push(glib::markup_escape_text(text).to_string());
         }
         if archived {
             if let Some(done) = t.done_on {
@@ -961,6 +1133,15 @@ impl MomentumWindow {
             move |c| w.set_done(&id, c.is_active())
         ));
         row.add_prefix(&check);
+        if let Some(text) = &repeat {
+            let icon = gtk::Image::builder()
+                .icon_name("media-playlist-repeat-symbolic")
+                .tooltip_text(text)
+                .css_classes(["dim-label"])
+                .build();
+            icon.update_property(&[gtk::accessible::Property::Label(text)]);
+            row.add_suffix(&icon);
+        }
         if !archived {
             let drag = gtk::DragSource::builder().actions(gtk::gdk::DragAction::MOVE).build();
             let tid = t.id.clone();
@@ -971,6 +1152,22 @@ impl MomentumWindow {
                 move |src, _| src.set_icon(Some(&gtk::WidgetPaintable::new(Some(&row))), 0, 0)
             ));
             row.add_controller(drag);
+        }
+        if !archived && !indent {
+            // Drop another task here to place it before this one (manual order only).
+            let target = gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::MOVE);
+            let before = t.id.clone();
+            target.connect_drop(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                #[upgrade_or]
+                false,
+                move |_, value, _, _| {
+                    let Ok(moved) = value.get::<String>() else { return false };
+                    w.reorder(&moved, &before)
+                }
+            ));
+            row.add_controller(target);
         }
         imp.task_list.append(&row);
         imp.rows.borrow_mut().push(t.id.clone());
@@ -983,6 +1180,7 @@ impl MomentumWindow {
         let store = imp.store.borrow();
         let title = match &*imp.view.borrow() {
             View::Today => gettext("Today"),
+            View::Upcoming => gettext("Coming Up"),
             View::Archive => gettext("Archive"),
             View::Project(id) => store
                 .state
@@ -1001,6 +1199,49 @@ impl MomentumWindow {
         };
         imp.content_page.set_title(&title);
         let filter = imp.filter.borrow();
+        if *imp.view.borrow() == View::Upcoming {
+            let today_n = day_number(&today_str()).unwrap_or(0);
+            let range: i64 = imp.settings.string("upcoming-range").parse().unwrap_or(7);
+            let mut tasks: Vec<&Task> = store
+                .state
+                .task
+                .iter()
+                .filter(|t| !t.is_done && t.parent_id.is_none() && t.title.to_lowercase().contains(&*filter))
+                .filter(|t| {
+                    t.due_day
+                        .as_deref()
+                        .and_then(day_number)
+                        .is_some_and(|d| d > today_n && d <= today_n + range)
+                })
+                .collect();
+            tasks.sort_by(|a, b| a.due_day.cmp(&b.due_day).then_with(|| a.title.cmp(&b.title)));
+            let mut current_day = String::new();
+            for t in tasks {
+                let day = t.due_day.clone().unwrap_or_default();
+                if day != current_day {
+                    current_day = day.clone();
+                    let label = gtk::Label::builder()
+                        .label(fmt_day(&day))
+                        .xalign(0.0)
+                        .margin_top(12)
+                        .margin_bottom(4)
+                        .css_classes(["heading"])
+                        .build();
+                    imp.task_list.append(
+                        &gtk::ListBoxRow::builder()
+                            .child(&label)
+                            .selectable(false)
+                            .activatable(false)
+                            .build(),
+                    );
+                    imp.rows.borrow_mut().push(String::new());
+                }
+                self.task_row(t, &store, false, false);
+            }
+            imp.empty.set_visible(imp.rows.borrow().is_empty());
+            imp.task_list.set_visible(!imp.rows.borrow().is_empty());
+            return;
+        }
         if *imp.view.borrow() == View::Archive {
             // Read-only view over archiveYoung + archiveOld, newest completion first.
             let mut archived = archived_tasks(&store);
@@ -1146,18 +1387,63 @@ impl MomentumWindow {
                     task_ids: vec![task.id.clone()],
                     today,
                 });
+                let undo = match task.due_day.clone() {
+                    Some(day) => Action::PlanForToday {
+                        task_ids: vec![task.id.clone()],
+                        today: day,
+                    },
+                    None => Action::RemoveFromToday {
+                        task_ids: vec![task.id.clone()],
+                    },
+                };
+                self.toast_undo(&gettext("Planned for today"), vec![undo]);
             }
             View::Project(pid) if task.parent_id.is_none() && *pid != task.project_id => {
+                let moved = Task {
+                    project_id: pid.clone(),
+                    ..task.clone()
+                };
+                let undo = Action::MoveToProject {
+                    task: moved,
+                    sub_tasks: sub_tasks.clone(),
+                    target_project_id: task.project_id.clone(),
+                };
                 self.dispatch(Action::MoveToProject {
                     task: task.clone(),
                     sub_tasks,
                     target_project_id: pid.clone(),
                 });
+                let name = self
+                    .imp()
+                    .store
+                    .borrow()
+                    .state
+                    .project
+                    .entities
+                    .get(pid)
+                    .map(|p| p.title.clone())
+                    .unwrap_or_default();
+                self.toast_undo(&format!("{} {name}", gettext("Moved to")), vec![undo]);
             }
             View::Tag(tid) if !task.tag_ids.contains(tid) => {
                 let mut ids = task.tag_ids.clone();
                 ids.push(tid.clone());
+                let undo = Action::UpdateTask {
+                    id: task.id.clone(),
+                    changes: [("tagIds".to_string(), json!(task.tag_ids))].into_iter().collect(),
+                };
                 self.update_task(&task.id, [("tagIds".to_string(), json!(ids))].into_iter().collect());
+                let name = self
+                    .imp()
+                    .store
+                    .borrow()
+                    .state
+                    .tag
+                    .entities
+                    .get(tid)
+                    .map(|t| t.title.clone())
+                    .unwrap_or_default();
+                self.toast_undo(&format!("{} #{name}", gettext("Tagged")), vec![undo]);
             }
             _ => return false,
         }
@@ -1166,6 +1452,13 @@ impl MomentumWindow {
 
     fn set_done(&self, id: &str, done: bool) {
         self.update_task(id, [("isDone".to_string(), json!(done))].into_iter().collect());
+        if done {
+            let undo = Action::UpdateTask {
+                id: id.into(),
+                changes: [("isDone".to_string(), json!(false))].into_iter().collect(),
+            };
+            self.toast_undo(&gettext("Task completed"), vec![undo]);
+        }
     }
     fn update_task(&self, id: &str, changes: Map<String, Value>) {
         self.dispatch(Action::UpdateTask { id: id.into(), changes });
@@ -1208,6 +1501,316 @@ impl MomentumWindow {
             }
         ));
         self.imp().toast_overlay.add_toast(toast);
+    }
+
+    /// Drag reorder: put `moved` before `before` in the current context list.
+    fn reorder(&self, moved: &str, before: &str) -> bool {
+        let imp = self.imp();
+        if moved == before {
+            return false;
+        }
+        if imp.settings.string("task-sort") != "manual" {
+            self.toast(&gettext("Switch to Manual Order to rearrange tasks"));
+            return false;
+        }
+        let (context_type, context_id) = match &*imp.view.borrow() {
+            View::Today => ("TAG", TODAY_TAG_ID.to_string()),
+            View::Project(id) => ("PROJECT", id.clone()),
+            View::Tag(id) => ("TAG", id.clone()),
+            _ => return false,
+        };
+        let list: Vec<String> = self
+            .view_task_ids(&imp.store.borrow())
+            .into_iter()
+            .filter(|i| i != moved)
+            .collect();
+        let Some(pos) = list.iter().position(|i| i == before) else {
+            return false;
+        };
+        let after_task_id = if pos == 0 { None } else { list.get(pos - 1).cloned() };
+        self.dispatch(Action::MoveInList {
+            task_id: moved.into(),
+            after_task_id,
+            context_type: context_type.into(),
+            context_id,
+        });
+        true
+    }
+
+    /// Ctrl+M: pick a project for the focused task.
+    fn move_to_dialog(&self, task_id: &str) {
+        let store = self.imp().store.borrow();
+        let Some(task) = store.state.task.entities.get(task_id).cloned() else {
+            return;
+        };
+        let projects: Vec<(String, String)> = store
+            .state
+            .project
+            .iter()
+            .filter(|p| !p.is_archived)
+            .map(|p| (p.id.clone(), p.title.clone()))
+            .collect();
+        drop(store);
+        if task.parent_id.is_some() {
+            self.toast(&gettext("Subtasks move with their parent task"));
+            return;
+        }
+        let names: Vec<&str> = projects.iter().map(|(_, t)| t.as_str()).collect();
+        let drop_down = gtk::DropDown::from_strings(&names);
+        drop_down.set_selected(projects.iter().position(|(id, _)| *id == task.project_id).unwrap_or(0) as u32);
+        let d = adw::AlertDialog::builder()
+            .heading(gettext("Move to Project"))
+            .body(task.title.clone())
+            .extra_child(&drop_down)
+            .default_response("move")
+            .build();
+        d.add_responses(&[("cancel", &gettext("Cancel")), ("move", &gettext("Move"))]);
+        d.set_response_appearance("move", adw::ResponseAppearance::Suggested);
+        d.connect_response(
+            None,
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                #[weak]
+                drop_down,
+                move |_, r| {
+                    if r == "move" {
+                        if let Some((pid, _)) = projects.get(drop_down.selected() as usize) {
+                            w.drop_task(&task.id, &View::Project(pid.clone()));
+                        }
+                    }
+                }
+            ),
+        );
+        d.present(Some(self));
+    }
+
+    /// Rename and recolour the current project or tag.
+    fn edit_context_dialog(&self) {
+        let view = self.imp().view.borrow().clone();
+        let store = self.imp().store.borrow();
+        let (heading, title, color) = match &view {
+            View::Project(id) => {
+                let Some(p) = store.state.project.entities.get(id) else {
+                    return;
+                };
+                (gettext("Edit Project"), p.title.clone(), p.color().map(str::to_string))
+            }
+            View::Tag(id) => {
+                let Some(t) = store.state.tag.entities.get(id) else {
+                    return;
+                };
+                (gettext("Edit Tag"), t.title.clone(), tag_color(t).map(str::to_string))
+            }
+            _ => return,
+        };
+        drop(store);
+        let content = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(["boxed-list"])
+            .build();
+        let name = adw::EntryRow::builder().title(gettext("Name")).text(&title).build();
+        let color_row = adw::ActionRow::builder().title(gettext("Colour")).build();
+        let button = gtk::ColorDialogButton::builder()
+            .dialog(&gtk::ColorDialog::new())
+            .valign(gtk::Align::Center)
+            .build();
+        if let Some(c) = color.as_deref().and_then(|c| gtk::gdk::RGBA::parse(c).ok()) {
+            button.set_rgba(&c);
+        }
+        color_row.add_suffix(&button);
+        content.append(&name);
+        content.append(&color_row);
+        let d = adw::AlertDialog::builder()
+            .heading(heading)
+            .extra_child(&content)
+            .default_response("save")
+            .build();
+        d.add_responses(&[("cancel", &gettext("Cancel")), ("save", &gettext("Save"))]);
+        d.set_response_appearance("save", adw::ResponseAppearance::Suggested);
+        d.connect_response(
+            None,
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                #[weak]
+                name,
+                #[weak]
+                button,
+                move |_, r| {
+                    if r != "save" {
+                        return;
+                    }
+                    let c = button.rgba();
+                    let hex = format!(
+                        "#{:02x}{:02x}{:02x}",
+                        (c.red() * 255.0) as u8,
+                        (c.green() * 255.0) as u8,
+                        (c.blue() * 255.0) as u8
+                    );
+                    let new_title = name.text().trim().to_string();
+                    let mut ch = Map::new();
+                    if !new_title.is_empty() {
+                        ch.insert("title".into(), json!(new_title));
+                    }
+                    match &view {
+                        View::Project(id) => {
+                            let mut theme = w
+                                .imp()
+                                .store
+                                .borrow()
+                                .state
+                                .project
+                                .entities
+                                .get(id)
+                                .map(|p| p.theme.clone())
+                                .unwrap_or(json!({}));
+                            theme["primary"] = json!(hex);
+                            ch.insert("theme".into(), theme);
+                            w.dispatch(Action::UpdateProject {
+                                id: id.clone(),
+                                changes: ch,
+                            });
+                        }
+                        View::Tag(id) => {
+                            let mut theme = w
+                                .imp()
+                                .store
+                                .borrow()
+                                .state
+                                .tag
+                                .entities
+                                .get(id)
+                                .map(|t| t.theme.clone())
+                                .unwrap_or(json!({}));
+                            theme["primary"] = json!(hex);
+                            ch.insert("theme".into(), theme);
+                            ch.insert("color".into(), json!(hex));
+                            w.dispatch(Action::UpdateTag {
+                                id: id.clone(),
+                                changes: ch,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            ),
+        );
+        d.present(Some(self));
+    }
+
+    /// Delete the current project (with its tasks) or tag, after confirmation.
+    fn delete_context_dialog(&self) {
+        let view = self.imp().view.borrow().clone();
+        let store = self.imp().store.borrow();
+        let (heading, body, action) = match &view {
+            View::Project(id) if id != INBOX_PROJECT_ID => {
+                let Some(p) = store.state.project.entities.get(id) else {
+                    return;
+                };
+                let all: Vec<String> = store
+                    .state
+                    .task
+                    .iter()
+                    .filter(|t| t.project_id == *id)
+                    .map(|t| t.id.clone())
+                    .collect();
+                (
+                    format!("{} “{}”?", gettext("Delete"), p.title),
+                    format!(
+                        "{} {}",
+                        all.len(),
+                        gettext("tasks in this project will be deleted. This cannot be undone.")
+                    ),
+                    Action::DeleteProject {
+                        project_id: id.clone(),
+                        note_ids: p.note_ids.clone(),
+                        all_task_ids: all,
+                    },
+                )
+            }
+            View::Tag(id) => {
+                let Some(t) = store.state.tag.entities.get(id) else {
+                    return;
+                };
+                (
+                    format!("{} “{}”?", gettext("Delete"), t.title),
+                    gettext("Tasks keep their other tags."),
+                    Action::DeleteTag { id: id.clone() },
+                )
+            }
+            _ => return,
+        };
+        drop(store);
+        let d = adw::AlertDialog::builder()
+            .heading(heading)
+            .body(body)
+            .default_response("cancel")
+            .build();
+        d.add_responses(&[("cancel", &gettext("Cancel")), ("delete", &gettext("Delete"))]);
+        d.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        d.connect_response(
+            None,
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, r| {
+                    if r == "delete" {
+                        *w.imp().view.borrow_mut() = View::Today;
+                        w.dispatch(action.clone());
+                    }
+                }
+            ),
+        );
+        d.present(Some(self));
+    }
+
+    /// Create today's instances of repeating tasks, like upstream's TaskRepeatCfgService.
+    pub fn spawn_repeats(&self) {
+        let today = today_str();
+        let due: Vec<RepeatCfg> = {
+            let store = self.imp().store.borrow();
+            let archived: Vec<Task> = archived_tasks(&store);
+            store
+                .state
+                .task_repeat_cfg
+                .iter()
+                .filter(|c| c.is_due(&today))
+                .filter(|c| {
+                    let id = format!("rpt_{}_{}", c.id, today);
+                    !store.state.task.entities.contains_key(&id) && !archived.iter().any(|t| t.id == id)
+                })
+                .cloned()
+                .collect()
+        };
+        for cfg in due {
+            let project = cfg
+                .project_id
+                .clone()
+                .filter(|p| !p.is_empty())
+                .unwrap_or_else(|| self.current_project(&self.imp().store.borrow()));
+            let mut task = Task::new(cfg.title.as_deref().unwrap_or(""), &project);
+            task.id = format!("rpt_{}_{}", cfg.id, today);
+            task.repeat_cfg_id = Some(cfg.id.clone());
+            task.time_estimate = cfg.default_estimate.unwrap_or(0.0);
+            task.notes = cfg.notes.clone().filter(|n| !n.is_empty());
+            task.due_day = Some(today.clone());
+            task.tag_ids = cfg.tag_ids.iter().filter(|t| *t != TODAY_TAG_ID).cloned().collect();
+            self.imp()
+                .store
+                .borrow_mut()
+                .dispatch(Action::AddTask { task, bottom: true });
+            let changes = [
+                ("lastTaskCreationDay".to_string(), json!(today)),
+                ("lastTaskCreation".to_string(), json!(now_ms())),
+            ]
+            .into_iter()
+            .collect();
+            self.imp().store.borrow_mut().dispatch(Action::UpdateRepeatCfg {
+                id: cfg.id.clone(),
+                changes,
+            });
+        }
     }
 
     fn check_reminders(&self) {
@@ -1475,10 +2078,16 @@ impl MomentumWindow {
                     cfg.password = crate::keyring::get("nextcloud").unwrap_or_default();
                     cfg.encrypt_key = crate::keyring::get("encryption");
                     if !cfg.is_complete() {
-                        return Err("Nextcloud sync is not configured".to_string());
+                        return Err(("Nextcloud sync is not configured".to_string(), true));
                     }
                     let mut s = snapshot;
-                    sp_sync::sync(&cfg, &mut s).map(|r| (s, r)).map_err(|e| e.to_string())
+                    sp_sync::sync(&cfg, &mut s).map(|r| (s, r)).map_err(|e| {
+                        use sp_sync::SyncError::*;
+                        (
+                            e.to_string(),
+                            matches!(e, Encrypted | Decrypt(_) | Schema(_) | Version(_) | FreshState),
+                        )
+                    })
                 })
                 .await
                 .unwrap();
@@ -1499,6 +2108,8 @@ impl MomentumWindow {
                         synced.save().ok();
                         *imp.store.borrow_mut() = synced;
                         imp.settings.set_int64("last-sync-ms", now_ms() as i64).ok();
+                        imp.banner.set_revealed(false);
+                        w.spawn_repeats();
                         w.refresh();
                         w.update_sync_button();
                         tracing::info!(
@@ -1512,9 +2123,16 @@ impl MomentumWindow {
                             w.toast(&format!("{} ({}↑)", gettext("Synced"), r.ops_uploaded));
                         }
                     }
-                    Err(e) => {
+                    Err((e, actionable)) => {
                         tracing::warn!("sync failed: {e}");
-                        w.toast(&format!("{}: {e}", gettext("Sync failed")));
+                        if actionable {
+                            // HIG: persistent, fixable problems get a banner with the fix, not a toast.
+                            imp.banner
+                                .set_title(&format!("{}: {e}", gettext("Sync needs attention")));
+                            imp.banner.set_revealed(true);
+                        } else {
+                            w.toast(&format!("{}: {e}", gettext("Sync failed")));
+                        }
                     }
                 }
             }

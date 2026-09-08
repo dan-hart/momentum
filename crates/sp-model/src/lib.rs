@@ -60,6 +60,143 @@ pub fn today_str() -> String {
     format!("{:04}-{:02}-{:02}", tm.year + 1900, tm.mon + 1, tm.mday)
 }
 
+/// Civil-date helpers on `YYYY-MM-DD` strings (no timezone maths needed).
+pub fn parse_day(d: &str) -> Option<(i64, u32, u32)> {
+    let mut it = d.split('-');
+    Some((
+        it.next()?.parse().ok()?,
+        it.next()?.parse().ok()?,
+        it.next()?.parse().ok()?,
+    ))
+}
+/// Days since 1970-01-01 (Howard Hinnant's algorithm).
+pub fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) as i64 + 2) / 5 + d as i64 - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146097 + doe - 719468
+}
+pub fn day_from_days(z: i64) -> (i64, u32, u32) {
+    let z = z + 719468;
+    let era = z.div_euclid(146097);
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (yoe + era * 400 + (m <= 2) as i64, m, d)
+}
+pub fn day_str(days: i64) -> String {
+    let (y, m, d) = day_from_days(days);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+/// Days since epoch for a `YYYY-MM-DD` string.
+pub fn day_number(day: &str) -> Option<i64> {
+    parse_day(day).map(|(y, m, d)| days_from_civil(y, m, d))
+}
+/// 0 = Sunday … 6 = Saturday, matching JavaScript's `getDay()`.
+pub fn weekday(days: i64) -> u32 {
+    (days + 4).rem_euclid(7) as u32
+}
+pub fn days_in_month(y: i64, m: u32) -> u32 {
+    let (ny, nm) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
+    (days_from_civil(ny, nm, 1) - days_from_civil(y, m, 1)) as u32
+}
+
+/// `TaskRepeatCfg` (task-repeat-cfg.model.ts), typed subset with the rest preserved.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RepeatCfg {
+    pub id: String,
+    #[serde(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub tag_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_estimate: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(default)]
+    pub is_paused: bool,
+    #[serde(default)]
+    pub repeat_cycle: String,
+    #[serde(default)]
+    pub repeat_every: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_date: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_task_creation_day: Option<String>,
+    #[serde(default)]
+    pub monthly_last_day: bool,
+    #[serde(default)]
+    pub monday: bool,
+    #[serde(default)]
+    pub tuesday: bool,
+    #[serde(default)]
+    pub wednesday: bool,
+    #[serde(default)]
+    pub thursday: bool,
+    #[serde(default)]
+    pub friday: bool,
+    #[serde(default)]
+    pub saturday: bool,
+    #[serde(default)]
+    pub sunday: bool,
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+impl RepeatCfg {
+    pub fn weekdays(&self) -> [bool; 7] {
+        [
+            self.sunday,
+            self.monday,
+            self.tuesday,
+            self.wednesday,
+            self.thursday,
+            self.friday,
+            self.saturday,
+        ]
+    }
+    /// Whether an instance is due on `today` (`YYYY-MM-DD`), following upstream's cycle rules
+    /// for the current day only.
+    pub fn is_due(&self, today: &str) -> bool {
+        if self.is_paused || self.repeat_every == 0 {
+            return false;
+        }
+        let Some((ty, tm, td)) = parse_day(today) else {
+            return false;
+        };
+        let Some((sy, sm, sd)) = self.start_date.as_deref().and_then(parse_day) else {
+            return false;
+        };
+        let (t, st) = (days_from_civil(ty, tm, td), days_from_civil(sy, sm, sd));
+        if st > t || self.last_task_creation_day.as_deref().is_some_and(|l| l >= today) {
+            return false;
+        }
+        let every = self.repeat_every as i64;
+        match self.repeat_cycle.as_str() {
+            "DAILY" => (t - st) % every == 0,
+            "WEEKLY" => ((t - st) / 7) % every == 0 && self.weekdays()[weekday(t) as usize],
+            "MONTHLY" => {
+                let months = (ty - sy) * 12 + tm as i64 - sm as i64;
+                let want = if self.monthly_last_day {
+                    days_in_month(ty, tm)
+                } else {
+                    sd.min(days_in_month(ty, tm))
+                };
+                months >= 0 && months % every == 0 && td == want
+            }
+            "YEARLY" => (ty - sy) % every == 0 && tm == sm && td == sd.min(days_in_month(ty, tm)),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EntityState<T> {
     #[serde(default)]
@@ -258,6 +395,8 @@ pub struct AppData {
     pub project: EntityState<Project>,
     #[serde(default)]
     pub tag: EntityState<Tag>,
+    #[serde(default, rename = "taskRepeatCfg")]
+    pub task_repeat_cfg: EntityState<RepeatCfg>,
     #[serde(flatten)]
     pub rest: Map<String, Value>,
 }
@@ -306,6 +445,35 @@ mod tests {
         let v = json!({"id":"a","title":"t","timeSpentOnDay":{"2026-01-01":1000},"issueId":"X","tagIds":[]});
         let t: Task = serde_json::from_value(v.clone()).unwrap();
         assert_eq!(serde_json::to_value(&t).unwrap()["issueId"], "X");
+    }
+    #[test]
+    fn repeat_rules() {
+        let mut c = RepeatCfg {
+            repeat_cycle: "WEEKLY".into(),
+            repeat_every: 1,
+            start_date: Some("2026-09-01".into()),
+            monday: true,
+            ..Default::default()
+        };
+        assert!(c.is_due("2026-09-07")); // a Monday
+        assert!(!c.is_due("2026-09-08"));
+        c.last_task_creation_day = Some("2026-09-07".into());
+        assert!(!c.is_due("2026-09-07"));
+        let d = RepeatCfg {
+            repeat_cycle: "DAILY".into(),
+            repeat_every: 3,
+            start_date: Some("2026-09-01".into()),
+            ..Default::default()
+        };
+        assert!(d.is_due("2026-09-04") && !d.is_due("2026-09-05"));
+        let m = RepeatCfg {
+            repeat_cycle: "MONTHLY".into(),
+            repeat_every: 1,
+            start_date: Some("2026-01-31".into()),
+            ..Default::default()
+        };
+        assert!(m.is_due("2026-02-28") && m.is_due("2026-03-31"));
+        assert_eq!(weekday(days_from_civil(2026, 9, 7)), 1);
     }
     #[test]
     fn today_is_iso() {

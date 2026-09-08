@@ -150,6 +150,8 @@ impl MomentumApplication {
         self.set_accels_for_action("win.search", &["<Control>f"]);
         self.set_accels_for_action("win.toggle-done", &["<Control>d"]);
         self.set_accels_for_action("win.delete-task", &["Delete"]);
+        self.set_accels_for_action("win.plan-today", &["<Control>t"]);
+        self.set_accels_for_action("win.move-to", &["<Control>m"]);
     }
 
     fn setup_css(&self) {

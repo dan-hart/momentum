@@ -84,6 +84,34 @@ menu view_menu {
   }
 
   section {
+    label: _("Coming Up");
+
+    item {
+      label: _("Next 7 Days");
+      action: "win.upcoming-range";
+      target: "7";
+    }
+
+    item {
+      label: _("Next 30 Days");
+      action: "win.upcoming-range";
+      target: "30";
+    }
+  }
+
+  section {
+    item {
+      label: _("Edit Project or Tag…");
+      action: "win.edit-context";
+    }
+
+    item {
+      label: _("Delete Project or Tag…");
+      action: "win.delete-context";
+    }
+  }
+
+  section {
     item {
       label: _("Archive Completed Tasks");
       action: "win.archive-done";
@@ -183,6 +211,11 @@ template $MomentumWindow: Adw.ApplicationWindow {
               tooltip-text: _("Sync Now");
               action-name: "app.sync";
             }
+          }
+
+          [top]
+          Adw.Banner banner {
+            button-label: _("Preferences");
           }
 
           [top]

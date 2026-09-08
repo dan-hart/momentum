@@ -76,6 +76,30 @@ pub enum Action {
         tasks: Vec<Task>,
         sub_tasks: Vec<Task>,
     },
+    DeleteProject {
+        project_id: String,
+        note_ids: Vec<String>,
+        all_task_ids: Vec<String>,
+    },
+    DeleteTag {
+        id: String,
+    },
+    /// Reorder within a project or tag list (Today = the TODAY tag).
+    MoveInList {
+        task_id: String,
+        after_task_id: Option<String>,
+        context_type: String,
+        context_id: String,
+    },
+    /// Bring a task (and subtasks) back from the archive.
+    RestoreTask {
+        task: Task,
+        sub_tasks: Vec<Task>,
+    },
+    UpdateRepeatCfg {
+        id: String,
+        changes: Map<String, Value>,
+    },
     RemoveFromToday {
         task_ids: Vec<String>,
     },
@@ -158,6 +182,44 @@ impl Action {
                 "TASK",
                 tasks.iter().map(|t| t.id.clone()).collect(),
                 json!({"tasks": tasks.iter().map(|t| with_subs(t, &sub_tasks.iter().filter(|s| s.parent_id.as_deref() == Some(&t.id)).cloned().collect::<Vec<_>>())).collect::<Vec<_>>()}),
+            ),
+            DeleteProject {
+                project_id,
+                note_ids,
+                all_task_ids,
+            } => (
+                "[Task Shared] deleteProject",
+                "DEL",
+                "PROJECT",
+                vec![project_id.clone()],
+                json!({"projectId": project_id, "noteIds": note_ids, "allTaskIds": all_task_ids, "projectDeleteWins": true}),
+            ),
+            DeleteTag { id } => ("[Tag] Delete Tag", "DEL", "TAG", vec![id.clone()], json!({"id": id})),
+            MoveInList {
+                task_id,
+                after_task_id,
+                context_type,
+                context_id,
+            } => (
+                "[WorkContextMeta] Move Task in Today",
+                "MOV",
+                "TASK",
+                vec![task_id.clone()],
+                json!({"taskId": task_id, "afterTaskId": after_task_id, "workContextType": context_type, "workContextId": context_id}),
+            ),
+            RestoreTask { task, sub_tasks } => (
+                "[Task Shared] restoreTask",
+                "UPD",
+                "TASK",
+                vec![task.id.clone()],
+                json!({"task": with_subs(task, sub_tasks), "subTasks": sub_tasks}),
+            ),
+            UpdateRepeatCfg { id, changes } => (
+                "[TaskRepeatCfg] Update TaskRepeatCfg",
+                "UPD",
+                "TASK_REPEAT_CFG",
+                vec![id.clone()],
+                json!({"taskRepeatCfg": {"id": id, "changes": changes}}),
             ),
             RemoveFromToday { task_ids } => (
                 "[Task Shared] removeTasksFromTodayTag",
@@ -383,6 +445,104 @@ pub fn apply(d: &mut AppData, action: &Action) {
             for t in sub_tasks.iter().chain(tasks.iter()) {
                 detach(d, t);
                 d.task.remove(&t.id);
+            }
+        }
+        DeleteProject {
+            project_id,
+            all_task_ids,
+            ..
+        } => {
+            for id in all_task_ids {
+                if let Some(t) = d.task.entities.get(id).cloned() {
+                    detach(d, &t);
+                    d.task.remove(id);
+                }
+            }
+            for k in ["archiveYoung", "archiveOld"] {
+                if let Some(store) = d.rest.get_mut(k).and_then(|a| a.get_mut("task")) {
+                    let gone: Vec<String> = store["entities"]
+                        .as_object()
+                        .map(|e| {
+                            e.iter()
+                                .filter(|(_, v)| v["projectId"] == *project_id)
+                                .map(|(k, _)| k.clone())
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    if let Some(e) = store["entities"].as_object_mut() {
+                        for id in &gone {
+                            e.remove(id);
+                        }
+                    }
+                    if let Some(ids) = store["ids"].as_array_mut() {
+                        ids.retain(|i| !gone.iter().any(|g| i == g));
+                    }
+                }
+            }
+            d.project.remove(project_id);
+        }
+        DeleteTag { id } => {
+            for t in d.task.entities.values_mut() {
+                t.tag_ids.retain(|i| i != id);
+            }
+            d.tag.remove(id);
+        }
+        MoveInList {
+            task_id,
+            after_task_id,
+            context_type,
+            context_id,
+        } => {
+            let list = match context_type.as_str() {
+                "PROJECT" => d.project.entities.get_mut(context_id).map(|p| &mut p.task_ids),
+                _ => d.tag.entities.get_mut(context_id).map(|t| &mut t.task_ids),
+            };
+            if let Some(list) = list {
+                list.retain(|i| i != task_id);
+                let at = after_task_id
+                    .as_ref()
+                    .and_then(|a| list.iter().position(|i| i == a))
+                    .map(|i| i + 1)
+                    .unwrap_or(0);
+                list.insert(at.min(list.len()), task_id.clone());
+            }
+        }
+        RestoreTask { task, sub_tasks } => {
+            for k in ["archiveYoung", "archiveOld"] {
+                if let Some(store) = d.rest.get_mut(k).and_then(|a| a.get_mut("task")) {
+                    for t in std::iter::once(task).chain(sub_tasks.iter()) {
+                        if let Some(e) = store["entities"].as_object_mut() {
+                            e.remove(&t.id);
+                        }
+                        if let Some(ids) = store["ids"].as_array_mut() {
+                            ids.retain(|i| i != &t.id);
+                        }
+                    }
+                }
+            }
+            let mut parent = task.clone();
+            parent.is_done = false;
+            parent.done_on = None;
+            apply(
+                d,
+                &AddTask {
+                    task: parent,
+                    bottom: true,
+                },
+            );
+            for s in sub_tasks {
+                apply(
+                    d,
+                    &AddSubTask {
+                        task: s.clone(),
+                        parent_id: task.id.clone(),
+                    },
+                );
+            }
+        }
+        UpdateRepeatCfg { id, changes } => {
+            if let Some(c) = d.task_repeat_cfg.entities.get(id).cloned() {
+                d.task_repeat_cfg.entities.insert(id.clone(), merge_into(&c, changes));
             }
         }
         RemoveFromToday { task_ids } => {
