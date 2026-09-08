@@ -46,16 +46,48 @@ pub struct Op {
 /// Actions this client can emit. Serialized form is our own; `payload()` produces upstream's.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Action {
-    AddTask { task: Task, bottom: bool },
-    AddSubTask { task: Task, parent_id: String },
-    UpdateTask { id: String, changes: Map<String, Value> },
-    DeleteTask { task: Task, sub_tasks: Vec<Task> },
-    PlanForToday { task_ids: Vec<String>, today: String },
-    RemoveFromToday { task_ids: Vec<String> },
-    AddProject { project: Project },
-    UpdateProject { id: String, changes: Map<String, Value> },
-    AddTag { tag: Tag },
-    UpdateTag { id: String, changes: Map<String, Value> },
+    AddTask {
+        task: Task,
+        bottom: bool,
+    },
+    AddSubTask {
+        task: Task,
+        parent_id: String,
+    },
+    UpdateTask {
+        id: String,
+        changes: Map<String, Value>,
+    },
+    DeleteTask {
+        task: Task,
+        sub_tasks: Vec<Task>,
+    },
+    PlanForToday {
+        task_ids: Vec<String>,
+        today: String,
+    },
+    MoveToProject {
+        task: Task,
+        sub_tasks: Vec<Task>,
+        target_project_id: String,
+    },
+    RemoveFromToday {
+        task_ids: Vec<String>,
+    },
+    AddProject {
+        project: Project,
+    },
+    UpdateProject {
+        id: String,
+        changes: Map<String, Value>,
+    },
+    AddTag {
+        tag: Tag,
+    },
+    UpdateTag {
+        id: String,
+        changes: Map<String, Value>,
+    },
 }
 
 fn with_subs(t: &Task, subs: &[Task]) -> Value {
@@ -103,6 +135,17 @@ impl Action {
                 "TASK",
                 task_ids.clone(),
                 json!({"taskIds": task_ids, "today": today}),
+            ),
+            MoveToProject {
+                task,
+                sub_tasks,
+                target_project_id,
+            } => (
+                "[Task Shared] moveToOtherProject",
+                "UPD",
+                "TASK",
+                vec![task.id.clone()],
+                json!({"task": with_subs(task, sub_tasks), "targetProjectId": target_project_id}),
             ),
             RemoveFromToday { task_ids } => (
                 "[Task Shared] removeTasksFromTodayTag",
@@ -286,6 +329,25 @@ pub fn apply(d: &mut AppData, action: &Action) {
                     t.modified = Some(now_ms());
                 }
                 set_today(d, id, true);
+            }
+        }
+        MoveToProject {
+            task,
+            sub_tasks,
+            target_project_id,
+        } => {
+            if let Some(p) = d.project.entities.get_mut(&task.project_id) {
+                list_set(&mut p.task_ids, &task.id, false);
+                list_set(&mut p.backlog_task_ids, &task.id, false);
+            }
+            if let Some(p) = d.project.entities.get_mut(target_project_id) {
+                list_set(&mut p.task_ids, &task.id, true);
+            }
+            for id in std::iter::once(&task.id).chain(sub_tasks.iter().map(|t| &t.id)) {
+                if let Some(t) = d.task.entities.get_mut(id) {
+                    t.project_id = target_project_id.clone();
+                    t.modified = Some(now_ms());
+                }
             }
         }
         RemoveFromToday { task_ids } => {

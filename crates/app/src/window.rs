@@ -423,6 +423,21 @@ impl MomentumWindow {
                 None => {}
             }
             r.add_prefix(&img);
+            let target = gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::MOVE);
+            let dest = view.clone().unwrap();
+            target.connect_drop(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                #[upgrade_or]
+                false,
+                move |_, value, _, _| {
+                    let Ok(task_id) = value.get::<String>() else {
+                        return false;
+                    };
+                    w.drop_task(&task_id, &dest)
+                }
+            ));
+            r.add_controller(target);
             r.upcast()
         } else {
             // Section header: click (or activate) to collapse/expand; state persists in GSettings.
@@ -585,6 +600,15 @@ impl MomentumWindow {
             move |c| w.set_done(&id, c.is_active())
         ));
         row.add_prefix(&check);
+        let drag = gtk::DragSource::builder().actions(gtk::gdk::DragAction::MOVE).build();
+        let tid = t.id.clone();
+        drag.connect_prepare(move |_, _, _| Some(gtk::gdk::ContentProvider::for_value(&tid.to_value())));
+        drag.connect_drag_begin(glib::clone!(
+            #[weak]
+            row,
+            move |src, _| src.set_icon(Some(&gtk::WidgetPaintable::new(Some(&row))), 0, 0)
+        ));
+        row.add_controller(drag);
         imp.task_list.append(&row);
         imp.rows.borrow_mut().push(t.id.clone());
     }
@@ -721,6 +745,43 @@ impl MomentumWindow {
                 project: Project::new(title),
             });
         }
+    }
+
+    /// A task dropped on a sidebar row: move to project, add tag, or plan for today.
+    fn drop_task(&self, task_id: &str, dest: &View) -> bool {
+        let store = self.imp().store.borrow();
+        let Some(task) = store.state.task.entities.get(task_id).cloned() else {
+            return false;
+        };
+        let sub_tasks: Vec<Task> = task
+            .sub_task_ids
+            .iter()
+            .filter_map(|i| store.state.task.entities.get(i).cloned())
+            .collect();
+        let today = today_str();
+        drop(store);
+        match dest {
+            View::Today if task.due_day.as_deref() != Some(&today) => {
+                self.dispatch(Action::PlanForToday {
+                    task_ids: vec![task.id.clone()],
+                    today,
+                });
+            }
+            View::Project(pid) if task.parent_id.is_none() && *pid != task.project_id => {
+                self.dispatch(Action::MoveToProject {
+                    task: task.clone(),
+                    sub_tasks,
+                    target_project_id: pid.clone(),
+                });
+            }
+            View::Tag(tid) if !task.tag_ids.contains(tid) => {
+                let mut ids = task.tag_ids.clone();
+                ids.push(tid.clone());
+                self.update_task(&task.id, [("tagIds".to_string(), json!(ids))].into_iter().collect());
+            }
+            _ => return false,
+        }
+        true
     }
 
     fn set_done(&self, id: &str, done: bool) {

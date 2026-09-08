@@ -1,2 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Single stylesheet; use @media (prefers-color-scheme: dark) for dark tweaks. */
+
+/* Sidebar rows highlight while a task is dragged over them. */
+row:drop(active) {
+  background-color: alpha(var(--accent-bg-color), 0.25);
+  box-shadow: inset 0 0 0 1px var(--accent-bg-color);
+}
