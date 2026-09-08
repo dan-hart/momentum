@@ -374,7 +374,12 @@ impl MomentumWindow {
             self,
             move |_, row| {
                 let id = w.imp().rows.borrow().get(row.index() as usize).cloned();
-                if let Some(id) = id {
+                let Some(id) = id else { return };
+                if let Some(pid) = id.strip_prefix("project:") {
+                    w.go_to(View::Project(pid.into()));
+                } else if let Some(tid) = id.strip_prefix("tag:") {
+                    w.go_to(View::Tag(tid.into()));
+                } else if !id.is_empty() {
                     w.open_task(&id);
                 }
             }
@@ -428,6 +433,7 @@ impl MomentumWindow {
             ),
         );
         imp.search_bar.set_key_capture_widget(Some(self));
+        imp.search_bar.connect_entry(&*imp.search_entry);
         self.setup_tag_completion();
         imp.search_entry.connect_search_changed(glib::clone!(
             #[weak(rename_to = w)]
@@ -564,6 +570,10 @@ impl MomentumWindow {
             if std::env::var_os("MOMENTUM_SCREENSHOT_UPCOMING").is_some() {
                 *imp.view.borrow_mut() = View::Upcoming;
                 self.refresh();
+            }
+            if let Some(q) = std::env::var_os("MOMENTUM_SCREENSHOT_SEARCH") {
+                imp.search_bar.set_search_mode(true);
+                imp.search_entry.set_text(&q.to_string_lossy());
             }
             if std::env::var_os("MOMENTUM_SCREENSHOT_TAG").is_some() {
                 imp.add_entry.grab_focus();
@@ -1041,6 +1051,135 @@ impl MomentumWindow {
             .select_row(imp.sidebar_list.row_at_index(idx as i32).as_ref());
     }
 
+    /// Switch view, leaving search, and select the matching sidebar row.
+    pub fn go_to(&self, view: View) {
+        let imp = self.imp();
+        imp.search_bar.set_search_mode(false);
+        imp.search_entry.set_text("");
+        *imp.view.borrow_mut() = view;
+        self.refresh();
+    }
+
+    fn section_header(&self, title: &str, first: bool) {
+        let imp = self.imp();
+        let label = gtk::Label::builder()
+            .label(title)
+            .xalign(0.0)
+            .margin_start(12)
+            .margin_end(12)
+            .margin_top(if first { 10 } else { 28 })
+            .margin_bottom(6)
+            .css_classes(["heading"])
+            .build();
+        imp.task_list.append(
+            &gtk::ListBoxRow::builder()
+                .child(&label)
+                .selectable(false)
+                .activatable(false)
+                .build(),
+        );
+        imp.rows.borrow_mut().push(String::new());
+    }
+
+    /// Global search across tasks (open, done, subtasks, archived), projects and tags.
+    fn render_search(&self, store: &Store, query: &str) {
+        let imp = self.imp();
+        let q = query.to_lowercase();
+        let hit = |t: &Task| {
+            t.title.to_lowercase().contains(&q)
+                || t.notes.as_deref().is_some_and(|n| n.to_lowercase().contains(&q))
+                || t.tag_ids
+                    .iter()
+                    .filter_map(|i| store.state.tag.entities.get(i))
+                    .any(|g| g.title.to_lowercase().contains(&q))
+                || store
+                    .state
+                    .project
+                    .entities
+                    .get(&t.project_id)
+                    .is_some_and(|p| p.title.to_lowercase().contains(&q))
+        };
+        let mut first = true;
+        let mut tasks: Vec<&Task> = store.state.task.iter().filter(|t| hit(t)).collect();
+        tasks.sort_by(|a, b| {
+            a.is_done
+                .cmp(&b.is_done)
+                .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
+        });
+        if !tasks.is_empty() {
+            self.section_header(&format!("{} ({})", gettext("Tasks"), tasks.len()), first);
+            first = false;
+            for t in tasks {
+                self.task_row(t, store, t.parent_id.is_some(), false);
+            }
+        }
+        let projects: Vec<&Project> = store
+            .state
+            .project
+            .iter()
+            .filter(|p| p.title.to_lowercase().contains(&q))
+            .collect();
+        if !projects.is_empty() {
+            self.section_header(&gettext("Projects"), first);
+            first = false;
+            let colorful = imp.settings.boolean("colorful-labels");
+            for p in projects {
+                let row = adw::ActionRow::builder()
+                    .title(glib::markup_escape_text(&p.title))
+                    .activatable(true)
+                    .build();
+                let icon = gtk::Image::from_icon_name("folder-symbolic");
+                if let Some(c) = p.color().filter(|_| colorful).and_then(|c| self.color_class(c)) {
+                    icon.add_css_class(&c);
+                }
+                row.add_prefix(&icon);
+                row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+                imp.task_list.append(&row);
+                imp.rows.borrow_mut().push(format!("project:{}", p.id));
+            }
+        }
+        let tags: Vec<&Tag> = store
+            .state
+            .tag
+            .iter()
+            .filter(|t| t.id != TODAY_TAG_ID && t.title.to_lowercase().contains(&q))
+            .collect();
+        if !tags.is_empty() {
+            self.section_header(&gettext("Tags"), first);
+            first = false;
+            let colorful = imp.settings.boolean("colorful-labels");
+            for g in tags {
+                let row = adw::ActionRow::builder()
+                    .title(glib::markup_escape_text(&g.title))
+                    .activatable(true)
+                    .build();
+                let icon = gtk::Image::from_icon_name("tag-symbolic");
+                if let Some(c) = tag_color(g).filter(|_| colorful).and_then(|c| self.color_class(c)) {
+                    icon.add_css_class(&c);
+                }
+                row.add_prefix(&icon);
+                row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+                imp.task_list.append(&row);
+                imp.rows.borrow_mut().push(format!("tag:{}", g.id));
+            }
+        }
+        let mut archived: Vec<Task> = archived_tasks(store).into_iter().filter(|t| hit(t)).collect();
+        if !archived.is_empty() {
+            archived.sort_by_key(|t| std::cmp::Reverse(t.done_on.unwrap_or(t.created)));
+            self.section_header(&format!("{} ({})", gettext("Archived"), archived.len()), first);
+            for t in &archived {
+                self.task_row(t, store, false, true);
+            }
+        }
+        let none = imp.rows.borrow().is_empty();
+        imp.empty.set_icon_name(Some("edit-find-symbolic"));
+        imp.empty.set_title(&gettext("No Results Found"));
+        imp.empty.set_description(Some(&gettext("Try a different search")));
+        imp.empty.set_visible(none);
+        imp.task_list.set_visible(!none);
+        self.update_sync_button();
+    }
+
     fn view_task_ids(&self, store: &Store) -> Vec<String> {
         match &*self.imp().view.borrow() {
             View::Today => store.state.today_ids(),
@@ -1205,7 +1344,18 @@ impl MomentumWindow {
                 .map(|t| t.title.clone())
                 .unwrap_or_default(),
         };
+        let query = imp.filter.borrow().clone();
+        if !query.trim().is_empty() {
+            imp.content_page.set_title(&gettext("Search"));
+            self.render_search(&store, query.trim());
+            return;
+        }
         imp.content_page.set_title(&title);
+        imp.empty.set_icon_name(Some("io.github.dan_hart.Momentum-symbolic"));
+        imp.empty.set_title(&gettext("Nothing here yet"));
+        imp.empty.set_description(Some(&gettext(
+            "Add a task above, or sync with Nextcloud from Preferences.",
+        )));
         let filter = imp.filter.borrow();
         if *imp.view.borrow() == View::Upcoming {
             let today_n = day_number(&today_str()).unwrap_or(0);

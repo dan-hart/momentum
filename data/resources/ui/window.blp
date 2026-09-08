@@ -199,6 +199,13 @@ template $MomentumWindow: Adw.ApplicationWindow {
           [top]
           Adw.HeaderBar {
             [end]
+            ToggleButton {
+              icon-name: "edit-find-symbolic";
+              tooltip-text: _("Search");
+              active: bind search_bar.search-mode-enabled bidirectional;
+            }
+
+            [end]
             MenuButton {
               icon-name: "view-more-symbolic";
               menu-model: view_menu;
@@ -224,7 +231,7 @@ template $MomentumWindow: Adw.ApplicationWindow {
               maximum-size: 720;
 
               child: SearchEntry search_entry {
-                placeholder-text: _("Filter tasks");
+                placeholder-text: _("Search tasks, notes, projects and tags");
               };
             };
           }
