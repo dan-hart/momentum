@@ -1326,7 +1326,7 @@ impl MomentumWindow {
                 .unwrap();
                 let imp = w.imp();
                 imp.syncing.set(false);
-                imp.sync_button.set_icon_name("emblem-synchronizing-symbolic");
+                imp.sync_button.set_icon_name("view-refresh-symbolic");
                 imp.sync_button.set_tooltip_text(Some(&gettext("Sync Now")));
                 imp.sync_button.set_sensitive(true);
                 w.update_sync_button();
