@@ -3,7 +3,7 @@
 A native GNOME task planner and time tracker that reads, writes and syncs the
 same data as [Super Productivity](https://super-productivity.com).
 
-Status: project scaffold. See [PLAN.md](../PLAN.md) for the roadmap.
+Status: project scaffold. See [PLAN.md](PLAN.md) for the roadmap.
 
 ## Layout
 
