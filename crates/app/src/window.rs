@@ -591,17 +591,35 @@ impl MomentumWindow {
     fn task_row(&self, t: &Task, store: &Store, indent: bool) {
         let imp = self.imp();
         let mut sub = vec![];
+        // Outside a project view, lead with the project name in the project's own colour.
+        if !matches!(*imp.view.borrow(), View::Project(_)) {
+            if let Some(p) = store.state.project.entities.get(&t.project_id) {
+                let hex = p.color().and_then(|c| gtk::gdk::RGBA::parse(c).ok()).map(|c| {
+                    format!(
+                        "#{:02x}{:02x}{:02x}",
+                        (c.red() * 255.0) as u8,
+                        (c.green() * 255.0) as u8,
+                        (c.blue() * 255.0) as u8
+                    )
+                });
+                let title = glib::markup_escape_text(&p.title);
+                sub.push(match hex {
+                    Some(h) => format!("<span foreground=\"{h}\">●</span> {title}"),
+                    None => format!("● {title}"),
+                });
+            }
+        }
         if t.time_estimate > 0.0 {
             sub.push(format!("~{}", fmt_ms(t.time_estimate)));
         }
         if let Some(d) = &t.due_day {
             if *imp.view.borrow() != View::Today {
-                sub.push(fmt_day(d));
+                sub.push(glib::markup_escape_text(&fmt_day(d)).to_string());
             }
         }
         for tag in &t.tag_ids {
             if let Some(g) = store.state.tag.entities.get(tag) {
-                sub.push(format!("#{}", g.title));
+                sub.push(format!("#{}", glib::markup_escape_text(&g.title)));
             }
         }
         let row = adw::ActionRow::builder()
