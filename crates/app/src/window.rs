@@ -72,6 +72,10 @@ mod imp {
             let obj = self.obj();
             if *PROFILE == "Devel" { obj.add_css_class("devel"); }
             obj.load_window_size();
+            // libadwaita ≥ 1.6 follows the system accent colour through the settings portal;
+            // nothing here hard-codes colours, so the whole UI inherits it.
+            let sm = adw::StyleManager::default();
+            tracing::info!("System accent colour: supported={} {:?}", sm.is_system_supports_accent_colors(), sm.accent_color());
             obj.setup();
         }
     }
@@ -171,7 +175,7 @@ impl MomentumWindow {
         let row: gtk::ListBoxRow = if view.is_some() {
             let r = adw::ActionRow::builder().title(title).build();
             let img = gtk::Image::from_icon_name(icon);
-            if let Some(c) = color { img.set_css_classes(&[]); img.add_css_class("accent"); img.set_tooltip_text(Some(c)); }
+            if color.is_none() && icon == "starred-symbolic" { img.add_css_class("accent"); } // follows the system accent colour
             r.add_prefix(&img); r.upcast()
         } else {
             let l = gtk::Label::builder().label(title).xalign(0.0).margin_top(12).margin_start(6).css_classes(["heading", "dim-label"]).build();
