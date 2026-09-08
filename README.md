@@ -30,6 +30,14 @@ flatpak run org.flatpak.Builder --user --install --force-clean flatpak_app \
 flatpak run io.github.dan_hart.Momentum.Devel
 ```
 
+For a release build (no Devel suffix, no stripes, optimised):
+
+```sh
+flatpak run org.flatpak.Builder --user --install --force-clean flatpak_app_release \
+  build-aux/io.github.dan_hart.Momentum.json
+flatpak run io.github.dan_hart.Momentum
+```
+
 Or open the folder in GNOME Builder and press Run.
 
 ## Renaming
