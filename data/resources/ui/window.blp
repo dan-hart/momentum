@@ -87,36 +87,23 @@ template $MomentumWindow: Adw.ApplicationWindow {
         child: Adw.ToolbarView {
           [top]
           Adw.HeaderBar {
-            [start]
-            Button timer_button {
-              visible: false;
-              tooltip-text: _("Stop tracking");
-
-              styles [
-                "suggested-action",
-                "pill",
-              ]
-
-              child: Box {
-                spacing: 6;
-
-                Image {
-                  icon-name: "media-playback-stop-symbolic";
-                }
-
-                Label timer_label {
-                  ellipsize: end;
-                  max-width-chars: 32;
-                }
-              };
-            }
-
             [end]
-            Button {
+            Button sync_button {
               icon-name: "emblem-synchronizing-symbolic";
               tooltip-text: _("Sync Now");
               action-name: "app.sync";
             }
+          }
+
+          [top]
+          SearchBar search_bar {
+            child: Adw.Clamp {
+              maximum-size: 720;
+
+              child: SearchEntry search_entry {
+                placeholder-text: _("Filter tasks");
+              };
+            };
           }
 
           [top]

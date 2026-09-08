@@ -16,6 +16,26 @@ ShortcutsWindow help_overlay {
       }
 
       ShortcutsShortcut {
+        title: C_("shortcut window", "Search");
+        action-name: "win.search";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Mark Task Done / Undone");
+        action-name: "win.toggle-done";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Delete Task");
+        action-name: "win.delete-task";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Go to Sidebar Entry 1–9");
+        accelerator: "<Alt>1...9";
+      }
+
+      ShortcutsShortcut {
         title: C_("shortcut window", "New Project");
         action-name: "app.new-project";
       }
@@ -43,6 +63,20 @@ ShortcutsWindow help_overlay {
       ShortcutsShortcut {
         title: C_("shortcut window", "Quit");
         action-name: "app.quit";
+      }
+    }
+
+    ShortcutsGroup {
+      title: C_("shortcut window", "System-wide (set in Settings → Keyboard)");
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Add a Task from Anywhere");
+        accelerator: "<Control><Alt>t";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Show Momentum");
+        accelerator: "<Control><Alt>m";
       }
     }
   }

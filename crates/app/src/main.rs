@@ -5,6 +5,7 @@ mod application;
 mod config;
 mod keyring;
 mod prefs;
+mod shortcuts;
 mod window;
 
 use gettextrs::{gettext, LocaleCategory};

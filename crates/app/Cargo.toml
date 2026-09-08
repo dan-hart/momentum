@@ -20,3 +20,5 @@ serde_json.workspace = true
 sp-oplog = { version = "0.1.0", path = "../sp-oplog" }
 sp-store = { version = "0.1.0", path = "../sp-store" }
 sp-sync = { version = "0.1.0", path = "../sp-sync" }
+ashpd = { version = "0.13.13", default-features = false, features = ["async-io", "global_shortcuts"] }
+futures-util = "0.3.34"

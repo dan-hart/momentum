@@ -59,6 +59,7 @@ mod imp {
             app.setup_css();
             app.setup_gactions();
             app.setup_accels();
+            crate::shortcuts::register_global(&app);
         }
     }
 
@@ -73,7 +74,7 @@ glib::wrapper! {
 }
 
 impl MomentumApplication {
-    fn main_window(&self) -> MomentumWindow {
+    pub fn main_window(&self) -> MomentumWindow {
         self.imp().window.get().unwrap().upgrade().unwrap()
     }
 
@@ -118,6 +119,9 @@ impl MomentumApplication {
         self.set_accels_for_action("app.add-task", &["<Control>n"]);
         self.set_accels_for_action("app.sync", &["<Control>r", "F5"]);
         self.set_accels_for_action("app.new-project", &["<Control><Shift>n"]);
+        self.set_accels_for_action("win.search", &["<Control>f"]);
+        self.set_accels_for_action("win.toggle-done", &["<Control>d"]);
+        self.set_accels_for_action("win.delete-task", &["Delete"]);
     }
 
     fn setup_css(&self) {

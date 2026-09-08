@@ -18,10 +18,6 @@ use crate::config::{APP_ID, PROFILE};
 #[derive(Clone, PartialEq)]
 pub enum View { Today, Project(String), Tag(String) }
 
-/// Running timer: task id, unflushed ms, last tick ms.
-#[derive(Clone)]
-pub struct Timer { task_id: String, unflushed: f64, last_tick: u64 }
-
 mod imp {
     use super::*;
 
@@ -33,8 +29,9 @@ mod imp {
         #[template_child] pub content_page: TemplateChild<adw::NavigationPage>,
         #[template_child] pub task_list: TemplateChild<gtk::ListBox>,
         #[template_child] pub add_entry: TemplateChild<gtk::Entry>,
-        #[template_child] pub timer_button: TemplateChild<gtk::Button>,
-        #[template_child] pub timer_label: TemplateChild<gtk::Label>,
+        #[template_child] pub sync_button: TemplateChild<gtk::Button>,
+        #[template_child] pub search_bar: TemplateChild<gtk::SearchBar>,
+        #[template_child] pub search_entry: TemplateChild<gtk::SearchEntry>,
         #[template_child] pub toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child] pub empty: TemplateChild<adw::StatusPage>,
         pub settings: gio::Settings,
@@ -42,7 +39,7 @@ mod imp {
         pub view: RefCell<View>,
         pub views: RefCell<Vec<Option<View>>>,
         pub rows: RefCell<Vec<String>>,
-        pub timer: RefCell<Option<Timer>>,
+        pub filter: RefCell<String>,
         pub syncing: Cell<bool>,
         pub notified: RefCell<HashSet<String>>,
     }
@@ -52,10 +49,10 @@ mod imp {
             let dir = glib::user_data_dir().join("momentum");
             Self {
                 split_view: Default::default(), sidebar_list: Default::default(), content_page: Default::default(),
-                task_list: Default::default(), add_entry: Default::default(), timer_button: Default::default(),
-                timer_label: Default::default(), toast_overlay: Default::default(), empty: Default::default(),
+                task_list: Default::default(), add_entry: Default::default(), sync_button: Default::default(),
+                search_bar: Default::default(), search_entry: Default::default(), toast_overlay: Default::default(), empty: Default::default(),
                 settings: gio::Settings::new(*APP_ID), store: RefCell::new(Store::load(dir)), view: RefCell::new(View::Today),
-                views: Default::default(), rows: Default::default(), timer: Default::default(), syncing: Cell::new(false), notified: Default::default(),
+                views: Default::default(), rows: Default::default(), filter: Default::default(), syncing: Cell::new(false), notified: Default::default(),
             }
         }
     }
@@ -81,7 +78,6 @@ mod imp {
     impl WidgetImpl for MomentumWindow {}
     impl WindowImpl for MomentumWindow {
         fn close_request(&self) -> glib::Propagation {
-            self.obj().stop_timer();
             if let Err(err) = self.obj().save_window_size() { tracing::warn!("Failed to save window state, {}", &err); }
             self.parent_close_request()
         }
@@ -127,14 +123,39 @@ impl MomentumWindow {
         imp.task_list.connect_row_activated(glib::clone!(#[weak(rename_to = w)] self, move |_, row| {
             if let Some(id) = w.imp().rows.borrow().get(row.index() as usize).cloned() { w.open_task(&id); }
         }));
-        imp.timer_button.connect_clicked(glib::clone!(#[weak(rename_to = w)] self, move |_| w.stop_timer()));
-        glib::timeout_add_seconds_local(1, glib::clone!(#[weak(rename_to = w)] self, #[upgrade_or] glib::ControlFlow::Break, move || { w.tick(); glib::ControlFlow::Continue }));
+        imp.search_bar.set_key_capture_widget(Some(self));
+        imp.search_entry.connect_search_changed(glib::clone!(#[weak(rename_to = w)] self, move |e| { *w.imp().filter.borrow_mut() = e.text().to_lowercase(); w.refresh_tasks(); }));
+        let key = gtk::EventControllerKey::new();
+        key.connect_key_pressed(glib::clone!(#[weak(rename_to = w)] self, #[upgrade_or] glib::Propagation::Proceed, move |_, k, _, m| {
+            // Alt+1…9 jumps to the n-th sidebar entry, like tabs in Files and Terminal.
+            let n = k.to_unicode().and_then(|c| c.to_digit(10)).filter(|&d| d > 0 && m.contains(gtk::gdk::ModifierType::ALT_MASK));
+            match n.and_then(|d| w.imp().views.borrow().iter().enumerate().filter(|(_, v)| v.is_some()).nth(d as usize - 1).map(|(i, _)| i)) {
+                Some(i) => { w.imp().sidebar_list.select_row(w.imp().sidebar_list.row_at_index(i as i32).as_ref()); glib::Propagation::Stop }
+                None => glib::Propagation::Proceed,
+            }
+        }));
+        self.add_controller(key);
+        let act = |name: &str, f: fn(&MomentumWindow)| gio::ActionEntry::builder(name).activate(move |w: &MomentumWindow, _, _| f(w)).build();
+        self.add_action_entries([
+            act("search", |w| { let b = &w.imp().search_bar; b.set_search_mode(!b.is_search_mode()); if b.is_search_mode() { w.imp().search_entry.grab_focus(); } }),
+            act("toggle-done", |w| if let Some(id) = w.focused_task() { let done = w.imp().store.borrow().state.task.entities[&id].is_done; w.set_done(&id, !done); }),
+            act("delete-task", |w| if let Some(id) = w.focused_task() { w.delete_task(&id); }),
+        ]);
+        imp.settings.connect_changed(None, glib::clone!(#[weak(rename_to = w)] self, move |_, _| w.update_sync_button()));
+        self.update_sync_button();
         glib::timeout_add_seconds_local(30, glib::clone!(#[weak(rename_to = w)] self, #[upgrade_or] glib::ControlFlow::Break, move || { w.check_reminders(); glib::ControlFlow::Continue }));
         glib::timeout_add_seconds_local(300, glib::clone!(#[weak(rename_to = w)] self, #[upgrade_or] glib::ControlFlow::Break, move || {
-            if w.imp().settings.boolean("auto-sync") { w.sync(); } glib::ControlFlow::Continue
+            if w.imp().settings.boolean("auto-sync") && w.sync_configured() { w.sync(); } glib::ControlFlow::Continue
         }));
         self.refresh();
-        if imp.settings.boolean("auto-sync") { self.sync(); }
+        if imp.settings.boolean("auto-sync") && self.sync_configured() { self.sync(); }
+    }
+
+    fn sync_configured(&self) -> bool { let s = &self.imp().settings; ["nextcloud-server", "nextcloud-user", "nextcloud-folder"].iter().all(|k| !s.string(k).trim().is_empty()) }
+    fn update_sync_button(&self) { self.imp().sync_button.set_visible(self.sync_configured()); }
+    fn focused_task(&self) -> Option<String> {
+        let row = self.imp().task_list.focus_child()?.downcast::<gtk::ListBoxRow>().ok()?;
+        self.imp().rows.borrow().get(row.index() as usize).cloned()
     }
 
     pub fn toast(&self, msg: &str) { self.imp().toast_overlay.add_toast(adw::Toast::new(msg)); }
@@ -189,7 +210,7 @@ impl MomentumWindow {
     fn task_row(&self, t: &Task, store: &Store, indent: bool) {
         let imp = self.imp();
         let mut sub = vec![];
-        if t.time_spent > 0.0 || t.time_estimate > 0.0 { sub.push(format!("{} / {}", fmt_ms(t.time_spent), fmt_ms(t.time_estimate))); }
+        if t.time_estimate > 0.0 { sub.push(format!("~{}", fmt_ms(t.time_estimate))); }
         if let Some(d) = &t.due_day { if *imp.view.borrow() != View::Today { sub.push(d.clone()); } }
         for tag in &t.tag_ids { if let Some(g) = store.state.tag.entities.get(tag) { sub.push(format!("#{}", g.title)); } }
         let row = adw::ActionRow::builder().title(glib::markup_escape_text(&t.title)).subtitle(sub.join("  ·  ")).activatable(true).build();
@@ -199,12 +220,6 @@ impl MomentumWindow {
         let id = t.id.clone();
         check.connect_toggled(glib::clone!(#[weak(rename_to = w)] self, move |c| w.set_done(&id, c.is_active())));
         row.add_prefix(&check);
-        let running = imp.timer.borrow().as_ref().is_some_and(|x| x.task_id == t.id);
-        let play = gtk::Button::builder().icon_name(if running { "media-playback-stop-symbolic" } else { "media-playback-start-symbolic" })
-            .valign(gtk::Align::Center).css_classes(["flat"]).tooltip_text(gettext("Track time")).build();
-        let id = t.id.clone();
-        play.connect_clicked(glib::clone!(#[weak(rename_to = w)] self, move |_| if running { w.stop_timer() } else { w.start_timer(&id) }));
-        row.add_suffix(&play);
         imp.task_list.append(&row); imp.rows.borrow_mut().push(t.id.clone());
     }
 
@@ -220,7 +235,8 @@ impl MomentumWindow {
         imp.content_page.set_title(&title);
         let ids = self.view_task_ids(&store);
         let (mut open, mut done) = (vec![], vec![]);
-        for id in ids { if let Some(t) = store.state.task.entities.get(&id) { if t.is_done { done.push(t) } else { open.push(t) } } }
+        let filter = imp.filter.borrow();
+        for id in ids { if let Some(t) = store.state.task.entities.get(&id) { if !t.title.to_lowercase().contains(&*filter) { continue; } if t.is_done { done.push(t) } else { open.push(t) } } }
         for t in open.into_iter().chain(done) {
             self.task_row(t, &store, false);
             for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) { self.task_row(s, &store, true); }
@@ -260,7 +276,6 @@ impl MomentumWindow {
     pub fn add_project(&self, title: &str) { if !title.trim().is_empty() { self.dispatch(Action::AddProject { project: Project::new(title) }); } }
 
     fn set_done(&self, id: &str, done: bool) {
-        if done && self.imp().timer.borrow().as_ref().is_some_and(|t| t.task_id == id) { self.stop_timer(); }
         self.update_task(id, [("isDone".to_string(), json!(done))].into_iter().collect());
     }
     fn update_task(&self, id: &str, changes: Map<String, Value>) { self.dispatch(Action::UpdateTask { id: id.into(), changes }); }
@@ -270,36 +285,8 @@ impl MomentumWindow {
         let Some(task) = store.state.task.entities.get(id).cloned() else { return };
         let sub_tasks = task.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i).cloned()).collect();
         drop(store);
-        if self.imp().timer.borrow().as_ref().is_some_and(|t| t.task_id == id) { self.stop_timer(); }
         self.dispatch(Action::DeleteTask { task, sub_tasks });
         self.toast(&gettext("Task deleted"));
-    }
-
-    // ---- time tracking ---------------------------------------------------
-
-    pub fn start_timer(&self, id: &str) {
-        self.stop_timer();
-        *self.imp().timer.borrow_mut() = Some(Timer { task_id: id.into(), unflushed: 0.0, last_tick: now_ms() });
-        self.imp().timer_button.set_visible(true);
-        self.refresh_tasks();
-    }
-    pub fn stop_timer(&self) {
-        let Some(t) = self.imp().timer.borrow_mut().take() else { return };
-        self.imp().timer_button.set_visible(false);
-        if t.unflushed >= 1000.0 { self.dispatch(Action::SyncTimeSpent { task_id: t.task_id, date: today_str(), duration: t.unflushed.round() }); } else { self.refresh_tasks(); }
-    }
-    fn tick(&self) {
-        let imp = self.imp();
-        let Some(mut t) = imp.timer.borrow().clone() else { return };
-        let now = now_ms(); t.unflushed += (now - t.last_tick) as f64; t.last_tick = now;
-        let spent = imp.store.borrow().state.task.entities.get(&t.task_id).map(|x| x.time_spent).unwrap_or(0.0) + t.unflushed;
-        let title = imp.store.borrow().state.task.entities.get(&t.task_id).map(|x| x.title.clone()).unwrap_or_default();
-        imp.timer_label.set_text(&format!("{}  {}", fmt_ms(spent), title));
-        // Flush every five minutes like upstream, so other clients see progress without op spam.
-        if t.unflushed >= 300_000.0 {
-            let d = t.unflushed; t.unflushed = 0.0; *imp.timer.borrow_mut() = Some(t.clone());
-            self.dispatch(Action::SyncTimeSpent { task_id: t.task_id.clone(), date: today_str(), duration: d.round() });
-        } else { *imp.timer.borrow_mut() = Some(t); }
     }
 
     fn check_reminders(&self) {

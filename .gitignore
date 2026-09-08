@@ -13,3 +13,5 @@
 /.flatpak-builder/
 /repo/
 /build.log
+/icon-preview.html
+/preview/

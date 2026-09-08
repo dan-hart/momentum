@@ -43,7 +43,6 @@ pub enum Action {
     AddSubTask { task: Task, parent_id: String },
     UpdateTask { id: String, changes: Map<String, Value> },
     DeleteTask { task: Task, sub_tasks: Vec<Task> },
-    SyncTimeSpent { task_id: String, date: String, duration: f64 },
     PlanForToday { task_ids: Vec<String>, today: String },
     RemoveFromToday { task_ids: Vec<String> },
     AddProject { project: Project },
@@ -64,8 +63,6 @@ impl Action {
             AddSubTask { task, parent_id } => ("[Task] Add SubTask", "CRT", "TASK", vec![task.id.clone()], json!({"task": task, "parentId": parent_id})),
             UpdateTask { id, changes } => ("[Task Shared] updateTask", "UPD", "TASK", vec![id.clone()], json!({"task": {"id": id, "changes": changes}})),
             DeleteTask { task, sub_tasks } => ("[Task Shared] deleteTask", "DEL", "TASK", vec![task.id.clone()], json!({"task": with_subs(task, sub_tasks)})),
-            SyncTimeSpent { task_id, date, duration } => ("[TimeTracking] Sync time spent", "UPD", "TASK", vec![task_id.clone()],
-                json!({"taskId": task_id, "date": date, "duration": duration})),
             PlanForToday { task_ids, today } => ("[Task Shared] planTasksForToday", "UPD", "TASK", task_ids.clone(), json!({"taskIds": task_ids, "today": today})),
             RemoveFromToday { task_ids } => ("[Task Shared] removeTasksFromTodayTag", "UPD", "TASK", task_ids.clone(), json!({"taskIds": task_ids})),
             AddProject { project } => ("[Project] Add Project", "CRT", "PROJECT", vec![project.id.clone()], json!({"project": project})),
@@ -136,9 +133,6 @@ pub fn apply(d: &mut AppData, action: &Action) {
         DeleteTask { task, sub_tasks } => {
             for s in sub_tasks { detach(d, s); d.task.remove(&s.id); }
             detach(d, task); d.task.remove(&task.id);
-        }
-        SyncTimeSpent { task_id, date, duration } => {
-            if let Some(t) = d.task.entities.get_mut(task_id) { *t.time_spent_on_day.entry(date.clone()).or_default() += duration; t.recalc_time_spent(); }
         }
         PlanForToday { task_ids, today: day } => {
             for id in task_ids {
