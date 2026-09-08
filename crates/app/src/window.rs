@@ -604,6 +604,10 @@ impl MomentumWindow {
                     w.drop_task(id, &View::Today);
                 }
             }),
+            targeted("ctx-tonight", |w, id| {
+                let ids = w.selection_or(id);
+                w.toggle_tonight(&ids);
+            }),
             targeted("ctx-move", |w, id| w.move_to_dialog(id)),
             targeted("ctx-delete", |w, id| w.delete_task(id)),
             targeted("ctx-open-project", |w, id| w.go_to(View::Project(id.into()))),
@@ -626,6 +630,14 @@ impl MomentumWindow {
                 if let Some(id) = w.focused_task() {
                     w.drop_task(&id, &View::Today);
                 }
+            }),
+            act("toggle-tonight", |w| {
+                let ids: Vec<String> = if w.imp().selecting.get() {
+                    w.selected_tasks().iter().map(|t| t.id.clone()).collect()
+                } else {
+                    w.focused_task().into_iter().collect()
+                };
+                w.toggle_tonight(&ids);
             }),
             act("move-to", |w| {
                 if let Some(id) = w.focused_task() {
@@ -865,6 +877,63 @@ impl MomentumWindow {
         }
         drop(sel);
         self.refresh_tasks();
+    }
+
+    /// Move a task between the day and the evening: add or remove the Evening tag,
+    /// planning it for today if it was not.
+    fn toggle_tonight(&self, ids: &[String]) {
+        let evening = self.ensure_evening_tag();
+        let today = today_str();
+        let tasks: Vec<Task> = {
+            let store = self.imp().store.borrow();
+            ids.iter()
+                .filter_map(|i| store.state.task.entities.get(i).cloned())
+                .collect()
+        };
+        if tasks.is_empty() {
+            return;
+        }
+        // Whole batch goes the same direction as the first task.
+        let to_tonight = !tasks[0].tag_ids.contains(&evening);
+        let mut undo = vec![];
+        for t in &tasks {
+            let mut ids = t.tag_ids.clone();
+            if to_tonight {
+                if !ids.contains(&evening) {
+                    ids.push(evening.clone());
+                }
+            } else {
+                ids.retain(|i| *i != evening);
+            }
+            let mut ch = Map::new();
+            ch.insert("tagIds".into(), json!(ids));
+            let mut back = Map::new();
+            back.insert("tagIds".into(), json!(t.tag_ids));
+            if t.due_day.as_deref() != Some(&today) {
+                ch.insert("dueDay".into(), json!(today));
+                ch.insert("dueWithTime".into(), Value::Null);
+                back.insert("dueDay".into(), json!(t.due_day));
+            }
+            undo.push(Action::UpdateTask {
+                id: t.id.clone(),
+                changes: back,
+            });
+            self.imp().store.borrow_mut().dispatch(Action::UpdateTask {
+                id: t.id.clone(),
+                changes: ch,
+            });
+        }
+        if self.imp().selecting.get() {
+            self.set_selecting(false);
+        }
+        self.refresh();
+        let msg = match (to_tonight, tasks.len()) {
+            (true, 1) => gettext("Moved to tonight"),
+            (false, 1) => gettext("Moved to today"),
+            (true, n) => format!("{n} {}", gettext("tasks moved to tonight")),
+            (false, n) => format!("{n} {}", gettext("tasks moved to today")),
+        };
+        self.toast_undo(&msg, undo);
     }
 
     fn bulk_done(&self) {
@@ -1162,6 +1231,16 @@ impl MomentumWindow {
                         gettext("Plan for Today")
                     },
                     "win.ctx-today",
+                ));
+                let evening = Self::evening_tag_id(&store);
+                let tonight = evening.as_ref().is_some_and(|e| t.tag_ids.contains(e));
+                a.append_item(&item(
+                    if tonight {
+                        gettext("Move to Today")
+                    } else {
+                        gettext("Move to Tonight")
+                    },
+                    "win.ctx-tonight",
                 ));
                 if t.parent_id.is_none() {
                     a.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));

@@ -152,6 +152,7 @@ impl MomentumApplication {
         self.set_accels_for_action("win.delete-task", &["Delete"]);
         self.set_accels_for_action("win.plan-today", &["<Control>t"]);
         self.set_accels_for_action("win.move-to", &["<Control>m"]);
+        self.set_accels_for_action("win.toggle-tonight", &["<Control><Shift>t"]);
         self.set_accels_for_action("win.select-all", &["<Control>a"]);
     }
 
