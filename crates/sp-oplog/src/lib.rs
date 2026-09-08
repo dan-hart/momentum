@@ -60,7 +60,7 @@ impl Action {
         use Action::*;
         match self {
             AddTask { task, bottom } => ("[Task Shared] addTask", "CRT", "TASK", vec![task.id.clone()],
-                json!({"task": task, "workContextId": task.project_id, "workContextType": "PROJECT", "isAddToBacklog": false, "isAddToBottom": bottom})),
+                json!({"task": task, "workContextId": task.project_id, "workContextType": "PROJECT", "isAddToBacklog": false, "isAddToBottom": bottom, "isIgnoreShortSyntax": true})),
             AddSubTask { task, parent_id } => ("[Task] Add SubTask", "CRT", "TASK", vec![task.id.clone()], json!({"task": task, "parentId": parent_id})),
             UpdateTask { id, changes } => ("[Task Shared] updateTask", "UPD", "TASK", vec![id.clone()], json!({"task": {"id": id, "changes": changes}})),
             DeleteTask { task, sub_tasks } => ("[Task Shared] deleteTask", "DEL", "TASK", vec![task.id.clone()], json!({"task": with_subs(task, sub_tasks)})),
