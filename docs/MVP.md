@@ -255,7 +255,9 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
 
 - Nextcloud Sync: master switch (off by default; nothing leaves the device until on),
   server URL, username, app password, sync folder, encryption password, sync
-  automatically (startup and every five minutes), compress sync file, Sync Now. Rows are
+  automatically (at startup, every five minutes, and 20 seconds after the last local
+  change so a burst of edits becomes one upload; archiving syncs at once), compress sync
+  file, Sync Now. Rows are
   disabled while the switch is off. Secrets go to the system keyring.
 - Appearance: color-code projects and tags (on by default).
 - Backup: import and export Super Productivity backup JSON. Import replaces local state and

@@ -102,6 +102,7 @@ mod imp {
         #[template_child]
         pub select_count: TemplateChild<gtk::Label>,
         pub search_debounce: RefCell<Option<glib::SourceId>>,
+        pub sync_debounce: RefCell<Option<glib::SourceId>>,
     }
 
     impl Default for MomentumWindow {
@@ -160,6 +161,7 @@ mod imp {
                 select_bar: Default::default(),
                 select_count: Default::default(),
                 search_debounce: Default::default(),
+                sync_debounce: Default::default(),
             }
         }
     }
@@ -1743,8 +1745,39 @@ impl MomentumWindow {
         }
     }
 
+    /// Sync shortly after local changes settle: 20 s after the last change, so a burst of
+    /// check-offs becomes one upload, while other devices still see it within half a minute.
+    fn schedule_sync(&self) {
+        let imp = self.imp();
+        if !imp.settings.boolean("auto-sync") || !self.sync_configured() {
+            return;
+        }
+        if let Some(id) = imp.sync_debounce.borrow_mut().take() {
+            id.remove();
+        }
+        let id = glib::timeout_add_seconds_local_once(
+            20,
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move || {
+                    w.imp().sync_debounce.borrow_mut().take();
+                    if w.imp().syncing.get() {
+                        w.schedule_sync(); // a sync is running; try again after it
+                    } else if !w.imp().store.borrow().pending.is_empty() {
+                        w.sync();
+                    }
+                }
+            ),
+        );
+        *imp.sync_debounce.borrow_mut() = Some(id);
+    }
+
     pub fn refresh(&self) {
         *self.imp().index.borrow_mut() = None;
+        if !self.imp().store.borrow().pending.is_empty() {
+            self.schedule_sync();
+        }
         let (done, _) = self.done_tasks();
         // Menu item stays visible but disabled when there is nothing to archive (HIG).
         if let Some(a) = self.lookup_action("archive-done").and_downcast::<gio::SimpleAction>() {
