@@ -341,6 +341,12 @@ short-code table (155 action types) is generated from upstream into `action_code
 - Encryption: Argon2id (64 MiB, 3 iterations, 1 lane, 32-byte key, 16-byte random salt)
   then AES-256-GCM with a 12-byte nonce; wire = base64(salt ‖ nonce ‖ ciphertext+tag).
   Legacy files: PBKDF2-HMAC-SHA256, 1000 rounds, salt = password, base64(nonce ‖ ct).
+- When sync runs (with "Sync automatically" on): at startup; every five minutes (to pull
+  remote changes); 20 seconds after the last local change, debounced, so a burst of edits
+  becomes one upload; immediately after Archive Completed; and on demand (Ctrl+R, header
+  button, menus). The debounced sync is skipped when nothing is pending and deferred while
+  another sync is running. A port should keep the same three triggers and the same order:
+  pull first, then rebase and push.
 - Cycle: download (ETag from `OC-ETag` or `ETag`); if the remote `syncVersion` differs
   from the last seen one, take the remote `state` and replay pending local ops onto it,
   merging vector clocks; if there are pending ops, append them to `recentOps` tagged with
