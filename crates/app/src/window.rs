@@ -2600,7 +2600,7 @@ impl MomentumWindow {
                 .build();
             page.append(
                 &gtk::Image::builder()
-                    .icon_name("emblem-ok-symbolic")
+                    .icon_name("object-select-symbolic")
                     .pixel_size(64)
                     .css_classes(["dim-label"])
                     .margin_bottom(6)
