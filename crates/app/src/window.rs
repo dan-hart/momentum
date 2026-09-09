@@ -1318,8 +1318,11 @@ impl MomentumWindow {
                     },
                     "win.ctx-done",
                 ));
+                menu.append_section(None, &a);
+                // Scheduling moves in their own section, labelled so the group reads as one idea.
+                let m = gio::Menu::new();
                 let planned = t.due_day.as_deref() == Some(&today);
-                a.append_item(&item(
+                m.append_item(&item(
                     if planned {
                         gettext("Remove from Today")
                     } else {
@@ -1329,7 +1332,7 @@ impl MomentumWindow {
                 ));
                 let evening = Self::evening_tag_id(&store);
                 let tonight = evening.as_ref().is_some_and(|e| t.tag_ids.contains(e));
-                a.append_item(&item(
+                m.append_item(&item(
                     if tonight {
                         gettext("Move to Today")
                     } else {
@@ -1337,11 +1340,11 @@ impl MomentumWindow {
                     },
                     "win.ctx-tonight",
                 ));
-                a.append_item(&item(gettext("Move to Tomorrow"), "win.ctx-tomorrow"));
+                m.append_item(&item(gettext("Move to Tomorrow"), "win.ctx-tomorrow"));
                 if t.parent_id.is_none() {
-                    a.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
+                    m.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
                 }
-                menu.append_section(None, &a);
+                menu.append_section(Some(&gettext("Move")), &m);
                 let b = gio::Menu::new();
                 b.append_item(&item(gettext("Delete"), "win.ctx-delete"));
                 menu.append_section(None, &b);

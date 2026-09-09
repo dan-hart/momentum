@@ -222,8 +222,8 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Menu, Shift+F10, right-click, long-press | Context menu on a task, project or tag row |
 | Ctrl+Alt+T, Ctrl+Alt+M (system-wide) | Add a task from anywhere; show the window |
 
-Context menu contents. Task: Open, Mark as Done/Not Done, Plan for Today/Remove from
-Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Project…, Delete. Project: Open, New Task Here…, Edit…, Delete Project…
+Context menu contents. Task: Open, Mark as Done/Not Done; a "Move" section with Plan for Today/Remove from
+Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Project…; then Delete. Project: Open, New Task Here…, Edit…, Delete Project…
 (not Inbox). Tag: Open, Edit…, Delete Tag….
 
 ### 2.9 Preferences
