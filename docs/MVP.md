@@ -152,6 +152,18 @@ monthly on the 5th", "Repeats yearly on 5 March".
   empty views and when sync is off.
 - Reminders (`remindAt`) fire desktop notifications, checked every 30 seconds.
 
+### 2.6b Empty states and "all done"
+
+Every view has its own empty state saying what to do next: Today ("Nothing planned for
+today", add / Ctrl+N / drag from Coming Up / Ctrl+T), Tonight (tag "Evening" or
+Ctrl+Shift+T), Coming Up (mentions the current 7- or 30-day range), Archive (Ctrl+E),
+project and tag views (named, with drag hints), Search ("Search Everything"). When sync is
+not configured the hint also points to Preferences.
+
+When a view has completed tasks but nothing open, a panel appears above the Completed
+section: "All done for today. You completed N tasks. Time to switch off." (Tonight: "All
+done for tonight"; other views: "All caught up") with a suggested Archive Completed button.
+
 ### 2.7 Search
 
 Own screen with a search field replacing the quick-add box. Live results with a 120 ms

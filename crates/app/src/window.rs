@@ -769,6 +769,16 @@ impl MomentumWindow {
                 imp.search_entry.set_text(&q.to_string_lossy());
                 self.refresh();
             }
+            if std::env::var_os("MOMENTUM_SCREENSHOT_DONE").is_some() {
+                let ids: Vec<String> = imp.store.borrow().state.today_ids();
+                for id in ids {
+                    imp.store.borrow_mut().dispatch(Action::UpdateTask {
+                        id,
+                        changes: [("isDone".to_string(), json!(true))].into_iter().collect(),
+                    });
+                }
+                self.refresh();
+            }
             if std::env::var_os("MOMENTUM_SCREENSHOT_SELECT").is_some() {
                 let ids: Vec<String> = imp
                     .rows
@@ -2099,6 +2109,81 @@ impl MomentumWindow {
         Self::evening_tag_id(store).is_some_and(|e| t.tag_ids.contains(&e))
     }
 
+    /// Icon, title and description for an empty view, so the empty state says what to do next.
+    fn empty_state(&self, store: &Store) -> (String, String, String) {
+        let synced = self.sync_configured();
+        let add = if synced {
+            gettext("Add a task above, or press Ctrl+N.")
+        } else {
+            gettext("Add a task above, press Ctrl+N, or turn on sync in Preferences to bring in your tasks.")
+        };
+        match &*self.imp().view.borrow() {
+            View::Today => (
+                "starred-symbolic".into(),
+                gettext("Nothing planned for today"),
+                format!(
+                    "{add} {}",
+                    gettext("Drag tasks here from Coming Up, or press Ctrl+T on any task.")
+                ),
+            ),
+            View::Tonight => (
+                "weather-clear-night-symbolic".into(),
+                gettext("Nothing planned for tonight"),
+                gettext("Tag a task “Evening”, or press Ctrl+Shift+T on a task to move it here."),
+            ),
+            View::Upcoming => {
+                let range = self.imp().settings.string("upcoming-range");
+                (
+                    "x-office-calendar-symbolic".into(),
+                    gettext("Nothing coming up"),
+                    format!(
+                        "{} {range} {}",
+                        gettext("Tasks due in the next"),
+                        gettext("days appear here. Set a due day in a task's details.")
+                    ),
+                )
+            }
+            View::Archive => (
+                "archive-symbolic".into(),
+                gettext("No archived tasks"),
+                gettext("Completed tasks land here when you archive them with Ctrl+E."),
+            ),
+            View::Search => (
+                "edit-find-symbolic".into(),
+                gettext("Search Everything"),
+                gettext("Tasks, notes, subtasks, projects, tags and the archive"),
+            ),
+            View::Project(id) => {
+                let name = store
+                    .state
+                    .project
+                    .entities
+                    .get(id)
+                    .map(|p| p.title.clone())
+                    .unwrap_or_default();
+                (
+                    "folder-symbolic".into(),
+                    format!("{} {name}", gettext("No tasks in")),
+                    format!("{add} {}", gettext("Drag tasks here from any other view.")),
+                )
+            }
+            View::Tag(id) => {
+                let name = store
+                    .state
+                    .tag
+                    .entities
+                    .get(id)
+                    .map(|t| t.title.clone())
+                    .unwrap_or_default();
+                (
+                    "tag-symbolic".into(),
+                    format!("{} #{name}", gettext("No tasks tagged")),
+                    format!("{add} {}", gettext("Drag tasks here to tag them.")),
+                )
+            }
+        }
+    }
+
     fn view_task_ids(&self, store: &Store) -> Vec<String> {
         match &*self.imp().view.borrow() {
             View::Today => store.state.today_ids(),
@@ -2351,11 +2436,10 @@ impl MomentumWindow {
         if imp.selecting.get() {
             self.update_selection_ui();
         }
-        imp.empty.set_icon_name(Some("io.github.dan_hart.Momentum-symbolic"));
-        imp.empty.set_title(&gettext("Nothing here yet"));
-        imp.empty.set_description(Some(&gettext(
-            "Add a task above, or sync with Nextcloud from Preferences.",
-        )));
+        let (icon, title, desc) = self.empty_state(&store);
+        imp.empty.set_icon_name(Some(&icon));
+        imp.empty.set_title(&title);
+        imp.empty.set_description(Some(&desc));
         let filter = String::new();
         if *imp.view.borrow() == View::Upcoming {
             let today_n = day_number(&today_str()).unwrap_or(0);
@@ -2472,6 +2556,7 @@ impl MomentumWindow {
                 list.sort_by_key(|t| Self::is_tonight(&store, t)); // stable: keeps order within each group
             }
         }
+        let open_count = open.len();
         let split_tonight = *imp.view.borrow() == View::Today && open.iter().any(|t| Self::is_tonight(&store, t));
         let mut rendered_section: Option<bool> = None; // Some(is_tonight) of the current section
         for t in open {
@@ -2486,6 +2571,60 @@ impl MomentumWindow {
             for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
                 self.task_row(s, &store, true, false);
             }
+        }
+        // Everything is done: celebrate above the Completed section and offer to archive.
+        if open_count == 0 && !done.is_empty() {
+            let view = imp.view.borrow().clone();
+            let (title, desc) = match view {
+                View::Tonight => (
+                    gettext("All done for tonight"),
+                    gettext("Enjoy the rest of your evening."),
+                ),
+                View::Today => (
+                    gettext("All done for today"),
+                    format!(
+                        "{} {} {}",
+                        gettext("You completed"),
+                        done.len(),
+                        gettext("tasks. Time to switch off.")
+                    ),
+                ),
+                _ => (gettext("All caught up"), gettext("Every task here is complete.")),
+            };
+            // A hand-built panel: AdwStatusPage collapses inside a vertical box.
+            let page = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .spacing(6)
+                .margin_top(24)
+                .margin_bottom(12)
+                .build();
+            page.append(
+                &gtk::Image::builder()
+                    .icon_name("emblem-ok-symbolic")
+                    .pixel_size(64)
+                    .css_classes(["dim-label"])
+                    .margin_bottom(6)
+                    .build(),
+            );
+            page.append(&gtk::Label::builder().label(title).css_classes(["title-2"]).build());
+            page.append(
+                &gtk::Label::builder()
+                    .label(desc)
+                    .wrap(true)
+                    .justify(gtk::Justification::Center)
+                    .css_classes(["dim-label"])
+                    .build(),
+            );
+            let archive = gtk::Button::builder()
+                .label(gettext("Archive Completed"))
+                .action_name("win.archive-done")
+                .halign(gtk::Align::Center)
+                .margin_top(12)
+                .css_classes(["suggested-action", "pill"])
+                .build();
+            page.append(&archive);
+            imp.task_box.append(&page);
+            imp.rows.borrow_mut().push(String::new());
         }
         // Completed tasks always sit in their own section at the bottom, so the plan above
         // only ever shows what is still to do.
