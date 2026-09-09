@@ -39,6 +39,10 @@ Search, Today and Tonight in the Today view) is its own inset boxed list with it
 above the card and empty space between sections, the same structure libadwaita's preference
 groups use. Views without groups are a single card.
 
+The sidebar can be hidden with a toggle at the start of its header bar (F9 does the same);
+while hidden, the same toggle appears at the start of the content header to bring it back.
+On narrow windows the sidebar overlays the content and closes when you pick a view.
+
 Sidebar order: Today, Tonight, Coming Up, Archive, Search, then a collapsible **Projects** section
 and a collapsible **Tags** section. Collapsed state persists. Section headers show a
 chevron and toggle on click, tap or Enter. If the current view is inside a collapsed

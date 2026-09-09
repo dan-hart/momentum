@@ -51,7 +51,7 @@ mod imp {
     #[template(resource = "/io/github/dan_hart/Momentum/ui/window.ui")]
     pub struct MomentumWindow {
         #[template_child]
-        pub split_view: TemplateChild<adw::NavigationSplitView>,
+        pub split_view: TemplateChild<adw::OverlaySplitView>,
         #[template_child]
         pub sidebar_list: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -401,7 +401,9 @@ impl MomentumWindow {
                     *w.imp().view.borrow_mut() = v.clone();
                 }
                 w.imp().archive_shown.set(100);
-                w.imp().split_view.set_show_content(true);
+                if w.imp().split_view.is_collapsed() {
+                    w.imp().split_view.set_show_sidebar(false);
+                }
                 w.refresh_tasks();
             }
         ));
@@ -631,15 +633,8 @@ impl MomentumWindow {
                 w.imp().add_entry.grab_focus();
             }),
             act("toggle-sidebar", |w| {
-                // NavigationSplitView has no show-sidebar: collapsing it hides the sidebar
-                // behind the content; un-collapsing brings it back beside the content.
                 let sv = &w.imp().split_view;
-                if sv.is_collapsed() {
-                    sv.set_collapsed(false);
-                } else {
-                    sv.set_collapsed(true);
-                    sv.set_show_content(true);
-                }
+                sv.set_show_sidebar(!sv.shows_sidebar());
             }),
             act("select-none", |w| w.set_selecting(false)),
             act("next-view", |w| w.step_view(1)),
@@ -1611,7 +1606,9 @@ impl MomentumWindow {
         self.refresh();
     }
     pub fn focus_add(&self) {
-        self.imp().split_view.set_show_content(true);
+        if self.imp().split_view.is_collapsed() {
+            self.imp().split_view.set_show_sidebar(false);
+        }
         self.new_task_dialog();
     }
 
