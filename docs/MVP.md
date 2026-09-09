@@ -154,15 +154,32 @@ monthly on the 5th", "Repeats yearly on 5 March".
 
 ### 2.6b Empty states and "all done"
 
-Every view has its own empty state saying what to do next: Today ("Nothing planned for
-today", add / Ctrl+N / drag from Coming Up / Ctrl+T), Tonight (tag "Evening" or
-Ctrl+Shift+T), Coming Up (mentions the current 7- or 30-day range), Archive (Ctrl+E),
-project and tag views (named, with drag hints), Search ("Search Everything"). When sync is
-not configured the hint also points to Preferences.
+Every view has its own empty state (icon, title, description) that says what to do next.
+The description ends with the sync hint "turn on sync in Preferences to bring in your
+tasks" when sync is not configured, or "press Ctrl+N" when it is.
 
-When a view has completed tasks but nothing open, a panel appears above the Completed
-section: "All done for today. You completed N tasks. Time to switch off." (Tonight: "All
-done for tonight"; other views: "All caught up") with a suggested Archive Completed button.
+| View | Icon | Title | Hint |
+|---|---|---|---|
+| Today | star | Nothing planned for today | Add a task above; drag tasks here from Coming Up; Ctrl+T on any task |
+| Tonight | moon | Nothing planned for tonight | Tag a task "Evening", or Ctrl+Shift+T on a task |
+| Coming Up | calendar | Nothing coming up | Tasks due in the next 7 (or 30) days appear here; set a due day in a task's details |
+| Archive | archive box | No archived tasks | Completed tasks land here when archived with Ctrl+E |
+| Search | magnifier | Search Everything | Tasks, notes, subtasks, projects, tags and the archive |
+| Project | folder | No tasks in <project> | Add a task above; drag tasks here from any other view |
+| Tag | tag | No tasks tagged #<tag> | Add a task above; drag tasks here to tag them |
+
+**All done.** When a view has completed tasks but nothing open, the list shows a panel
+above the Completed section instead of an empty state: a large checkmark, a title, a line
+of copy, and a suggested-action Archive Completed button (same action as Ctrl+E, which
+archives and then syncs). Copy by view:
+
+- Today: "All done for today" / "You completed N tasks. Time to switch off."
+- Tonight: "All done for tonight" / "Enjoy the rest of your evening."
+- Project or tag: "All caught up" / "Every task here is complete."
+
+The panel is a plain vertical box, not a status page, because a status page collapses
+when placed inside the scrolling list column. After archiving, the view falls back to its
+normal empty state.
 
 ### 2.7 Search
 
