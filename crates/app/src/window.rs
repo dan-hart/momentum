@@ -606,6 +606,10 @@ impl MomentumWindow {
                 let ids = w.selection_or(id);
                 w.move_to_tomorrow(&ids);
             }),
+            targeted("ctx-next-week", |w, id| {
+                let ids = w.selection_or(id);
+                w.move_to_next_week(&ids);
+            }),
             targeted("ctx-move", |w, id| w.move_to_dialog(id)),
             targeted("ctx-delete", |w, id| w.delete_task(id)),
             targeted("ctx-open-project", |w, id| w.go_to(View::Project(id.into()))),
@@ -666,6 +670,14 @@ impl MomentumWindow {
                 if let Some(id) = w.focused_task() {
                     w.open_task(&id);
                 }
+            }),
+            act("move-next-week", |w| {
+                let ids: Vec<String> = if w.imp().selecting.get() {
+                    w.selected_tasks().iter().map(|t| t.id.clone()).collect()
+                } else {
+                    w.focused_task().into_iter().collect()
+                };
+                w.move_to_next_week(&ids);
             }),
             act("move-tomorrow", |w| {
                 let ids: Vec<String> = if w.imp().selecting.get() {
@@ -992,6 +1004,23 @@ impl MomentumWindow {
     /// Push tasks to tomorrow (keeps tags; clears any time of day).
     fn move_to_tomorrow(&self, ids: &[String]) {
         let tomorrow = day_str(day_number(&today_str()).unwrap_or(0) + 1);
+        self.move_to_day(ids, &tomorrow, &gettext("tomorrow"));
+    }
+
+    /// The next Monday strictly after today (a Monday moves to the following Monday).
+    fn next_monday() -> String {
+        let today = day_number(&today_str()).unwrap_or(0);
+        let ahead = (8 - weekday(today) as i64) % 7; // weekday: 0 = Sunday … 1 = Monday
+        day_str(today + if ahead == 0 { 7 } else { ahead })
+    }
+
+    fn move_to_next_week(&self, ids: &[String]) {
+        self.move_to_day(ids, &Self::next_monday(), &gettext("next week"));
+    }
+
+    /// Push tasks to a given day (keeps tags; clears any time of day), with one undo.
+    fn move_to_day(&self, ids: &[String], tomorrow: &str, label: &str) {
+        let tomorrow = tomorrow.to_string();
         let tasks: Vec<Task> = {
             let store = self.imp().store.borrow();
             ids.iter()
@@ -1024,9 +1053,9 @@ impl MomentumWindow {
         self.refresh();
         let n = undo.len();
         let msg = if n == 1 {
-            gettext("Moved to tomorrow")
+            format!("{} {label}", gettext("Moved to"))
         } else {
-            format!("{n} {}", gettext("tasks moved to tomorrow"))
+            format!("{n} {} {label}", gettext("tasks moved to"))
         };
         self.toast_undo(&msg, undo);
     }
@@ -1341,6 +1370,7 @@ impl MomentumWindow {
                     "win.ctx-tonight",
                 ));
                 m.append_item(&item(gettext("Move to Tomorrow"), "win.ctx-tomorrow"));
+                m.append_item(&item(gettext("Move to Next Week"), "win.ctx-next-week"));
                 if t.parent_id.is_none() {
                     m.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
                 }

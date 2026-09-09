@@ -119,6 +119,8 @@ selection mode, and in the context menu, and each undoable as one batch:
   today if it was not. A batch goes the direction of its first task.
 - **Move to Tomorrow** (Ctrl+Shift+Right): sets `dueDay` to tomorrow, keeps tags, clears
   `dueWithTime`. Tasks already due tomorrow are skipped.
+- **Move to Next Week** (Ctrl+Shift+Down): same, to the next Monday strictly after today
+  (on a Monday that is the following Monday).
 
 All three are plain `updateTask` ops (or `planTasksForToday` / `removeTasksFromTodayTag`),
 so other clients see exactly the same change.
@@ -203,6 +205,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+T | Plan focused task for today |
 | Ctrl+Shift+T | Move focused task (or selection) between Today and Tonight |
 | Ctrl+Shift+Right | Move focused task (or selection) to tomorrow |
+| Ctrl+Shift+Down | Move focused task (or selection) to next week (the next Monday) |
 | Ctrl+M | Move focused task to a project (dialog) |
 | Delete | Delete focused task |
 | Enter | Open focused task |
@@ -225,7 +228,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+Alt+T, Ctrl+Alt+M (system-wide) | Add a task from anywhere; show the window |
 
 Context menu contents. Task: Open, Mark as Done/Not Done; a separated group with Plan for Today/Remove from
-Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Project…; then Delete. Project: Open, New Task Here…, Edit…, Delete Project…
+Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move to Project…; then Delete. Project: Open, New Task Here…, Edit…, Delete Project…
 (not Inbox). Tag: Open, Edit…, Delete Tag….
 
 ### 2.9 Preferences
