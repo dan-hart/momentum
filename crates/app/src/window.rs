@@ -1344,7 +1344,7 @@ impl MomentumWindow {
                 if t.parent_id.is_none() {
                     m.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
                 }
-                menu.append_section(Some(&gettext("Move")), &m);
+                menu.append_section(None, &m);
                 let b = gio::Menu::new();
                 b.append_item(&item(gettext("Delete"), "win.ctx-delete"));
                 menu.append_section(None, &b);
