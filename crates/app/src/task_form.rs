@@ -212,14 +212,34 @@ impl TaskForm {
         tags_group.add(&new_tags);
 
         let notes_group = adw::PreferencesGroup::builder().title(gettext("Notes")).build();
+        // Header-suffix copy button, the AdwPreferencesGroup pattern for group-level actions.
+        let copy = gtk::Button::builder()
+            .icon_name("edit-copy-symbolic")
+            .tooltip_text(gettext("Copy Notes"))
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+        notes_group.set_header_suffix(Some(&copy));
         let notes = gtk::TextView::builder()
             .wrap_mode(gtk::WrapMode::WordChar)
-            .top_margin(8)
-            .bottom_margin(8)
-            .left_margin(8)
-            .right_margin(8)
-            .height_request(120)
+            .top_margin(12)
+            .bottom_margin(12)
+            .left_margin(12)
+            .right_margin(12)
+            .height_request(240)
             .build();
+        copy.connect_clicked(glib::clone!(
+            #[weak]
+            notes,
+            move |b| {
+                let buf = notes.buffer();
+                let text = buf.text(&buf.start_iter(), &buf.end_iter(), false);
+                b.clipboard().set_text(&text);
+                if let Some(root) = b.root().and_downcast::<crate::window::MomentumWindow>() {
+                    root.toast(&gettext("Notes copied"));
+                }
+            }
+        ));
         notes
             .buffer()
             .set_text(task.and_then(|t| t.notes.as_deref()).unwrap_or(""));

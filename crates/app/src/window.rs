@@ -2334,6 +2334,29 @@ impl MomentumWindow {
             ));
             row.add_controller(click);
         }
+        if t.notes.as_deref().is_some_and(|n| !n.trim().is_empty()) {
+            // Notes badge: the first line as tooltip so a hover shows what is there.
+            let first = t
+                .notes
+                .as_deref()
+                .unwrap_or("")
+                .lines()
+                .find(|l| !l.trim().is_empty())
+                .unwrap_or("")
+                .trim();
+            let preview: String = first.chars().take(80).collect();
+            let icon = gtk::Image::builder()
+                .icon_name("text-x-generic-symbolic")
+                .tooltip_text(if first.len() > 80 {
+                    format!("{preview}…")
+                } else {
+                    preview
+                })
+                .css_classes(["dim-label"])
+                .build();
+            icon.update_property(&[gtk::accessible::Property::Label(&gettext("Has notes"))]);
+            row.add_suffix(&icon);
+        }
         if let Some(text) = &repeat {
             let icon = gtk::Image::builder()
                 .icon_name("media-playlist-repeat-symbolic")

@@ -73,7 +73,9 @@ Done rows are dimmed.
 ### 2.3 Editing tasks
 
 - Tapping a row (or Enter on it) opens the same form as an edit dialog; changes are applied
-  when it closes. It adds an "Add subtask" field (top-level tasks only) and a Delete button.
+  when it closes. The Notes group has a copy button in its header that puts the whole
+  note text on the clipboard; the editor is sized for paragraphs. Rows with notes show a
+  document badge on the right whose tooltip is the first line of the note. It adds an "Add subtask" field (top-level tasks only) and a Delete button.
 - Done/undone via the checkbox, Ctrl+D on the focused row, or the context menu. Marking
   done sets `doneOn`; undone clears it.
 - Subtasks live under their parent, inherit its project, and move with it.
