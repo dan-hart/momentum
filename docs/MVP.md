@@ -1,6 +1,7 @@
 # Momentum MVP
 
-This document records everything Momentum does as of its first preview (0.1.0), written
+This document records everything Momentum does as of version 0.1.1 (see the version
+notes at the end), written
 so that the same product can be rebuilt on another platform. It is the spec, not the
 history. If you start an iOS or macOS Momentum, this is the file to read first.
 
@@ -375,6 +376,21 @@ server, Dropbox/OneDrive/WebDAV-generic/LocalFile providers, the v3 split sync f
 repeat catch-up for missed days, translations, and Flathub
 publication. All of their data is preserved untouched.
 
+## 7b. Distribution
+
+- **Own Flatpak repository** served from GitHub Pages (`gh-pages` branch, OSTree archive
+  mode). A workflow on every `v*` tag builds x86_64 then aarch64 in sequence into the same
+  repo, signs commits with a dedicated GPG key held in repository secrets, generates static
+  deltas, prunes to three builds, and pushes. Users install with a `.flatpakref` (one click
+  in GNOME Software or Discover) or `flatpak remote-add` with the `.flatpakrepo`; updates
+  arrive automatically.
+- **GitHub Releases** get standalone `.flatpak` bundles for both architectures from a
+  second workflow on the same tag.
+- **Flathub** files are kept ready (offline manifest pinned to the tag, vendored
+  `cargo-sources.json`) but not submitted; Flathub's generative-AI policy applies.
+- Release procedure: bump `meson.build`, `Cargo.toml` and the metainfo `<release>`, add a
+  changelog entry, point the metainfo screenshot URLs at the new tag, commit, tag, push.
+
 ## 8. Porting notes for iOS and macOS
 
 - **Reuse the core.** `sp-model`, `sp-oplog`, `sp-store` and `sp-sync` have no GTK
@@ -404,3 +420,13 @@ publication. All of their data is preserved untouched.
   New Task form and the quick-add box. 6) Add Coming Up, projects, tags, Search, Archive.
   7) Undo, context menus, drag and drop, repeats, keyboard. 8) Preferences and the sync
   switch. 9) Screenshots, metadata, store listing.
+
+## 9. Version notes
+
+- **0.1.0** (2026-09-08): first preview; everything in sections 2 to 6 except the items
+  below.
+- **0.1.1** (2026-09-09): repeat schedule editor (2.5b) including monthly on the nth
+  weekday; per-view empty states and the all-done panel (2.6b); Move to Next Week (2.4c);
+  notes copy button, larger editor and notes badge (2.3); sync 20 s after the last local
+  change (5); sidebar show/hide toggle (2.1); context-menu Move grouping (2.8); own Flatpak
+  repository (7b).
