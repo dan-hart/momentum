@@ -627,6 +627,51 @@ impl MomentumWindow {
                     w.drop_task(&id, &View::Today);
                 }
             }),
+            act("focus-add", |w| {
+                w.imp().add_entry.grab_focus();
+            }),
+            act("toggle-sidebar", |w| {
+                // NavigationSplitView has no show-sidebar: collapsing it hides the sidebar
+                // behind the content; un-collapsing brings it back beside the content.
+                let sv = &w.imp().split_view;
+                if sv.is_collapsed() {
+                    sv.set_collapsed(false);
+                } else {
+                    sv.set_collapsed(true);
+                    sv.set_show_content(true);
+                }
+            }),
+            act("select-none", |w| w.set_selecting(false)),
+            act("next-view", |w| w.step_view(1)),
+            act("prev-view", |w| w.step_view(-1)),
+            act("move-up", |w| w.nudge(-1)),
+            act("move-down", |w| w.nudge(1)),
+            act("duplicate", |w| {
+                if let Some(id) = w.focused_task() {
+                    w.duplicate_task(&id);
+                }
+            }),
+            act("copy-title", |w| {
+                if let Some(id) = w.focused_task() {
+                    let title = w
+                        .imp()
+                        .store
+                        .borrow()
+                        .state
+                        .task
+                        .entities
+                        .get(&id)
+                        .map(|t| t.title.clone())
+                        .unwrap_or_default();
+                    w.clipboard().set_text(&title);
+                    w.toast(&gettext("Title copied"));
+                }
+            }),
+            act("open-focused", |w| {
+                if let Some(id) = w.focused_task() {
+                    w.open_task(&id);
+                }
+            }),
             act("move-tomorrow", |w| {
                 let ids: Vec<String> = if w.imp().selecting.get() {
                     w.selected_tasks().iter().map(|t| t.id.clone()).collect()
@@ -2698,6 +2743,129 @@ impl MomentumWindow {
     }
 
     /// Drag reorder: put `moved` before `before` in the current context list.
+    /// Ctrl+PageDown / Ctrl+PageUp: step through the sidebar entries.
+    fn step_view(&self, delta: i32) {
+        let imp = self.imp();
+        let views: Vec<usize> = imp
+            .views
+            .borrow()
+            .iter()
+            .enumerate()
+            .filter(|(_, v)| v.is_some())
+            .map(|(i, _)| i)
+            .collect();
+        if views.is_empty() {
+            return;
+        }
+        let current = imp
+            .views
+            .borrow()
+            .iter()
+            .position(|v| v.as_ref() == Some(&*imp.view.borrow()));
+        let pos = current.and_then(|c| views.iter().position(|&i| i == c)).unwrap_or(0) as i32;
+        let next = (pos + delta).rem_euclid(views.len() as i32) as usize;
+        imp.sidebar_list
+            .select_row(imp.sidebar_list.row_at_index(views[next] as i32).as_ref());
+    }
+
+    /// Ctrl+Up / Ctrl+Down: move the focused task one place in Manual Order.
+    fn nudge(&self, delta: i32) {
+        let Some(id) = self.focused_task() else { return };
+        let imp = self.imp();
+        if imp.settings.string("task-sort") != "manual" {
+            self.toast(&gettext("Switch to Manual Order to rearrange tasks"));
+            return;
+        }
+        let (context_type, context_id) = match &*imp.view.borrow() {
+            View::Today | View::Tonight => ("TAG", TODAY_TAG_ID.to_string()),
+            View::Project(p) => ("PROJECT", p.clone()),
+            View::Tag(t) => ("TAG", t.clone()),
+            _ => return,
+        };
+        let list: Vec<String> = self
+            .view_task_ids(&imp.store.borrow())
+            .into_iter()
+            .filter(|i| {
+                imp.store
+                    .borrow()
+                    .state
+                    .task
+                    .entities
+                    .get(i)
+                    .is_some_and(|t| !t.is_done)
+            })
+            .collect();
+        let Some(pos) = list.iter().position(|i| *i == id) else {
+            return;
+        };
+        let target = pos as i32 + delta;
+        if target < 0 || target >= list.len() as i32 {
+            return;
+        }
+        // Moving down past X means "after X"; moving up before X means "after X's predecessor".
+        let after_task_id = if delta > 0 {
+            Some(list[target as usize].clone())
+        } else if target == 0 {
+            None
+        } else {
+            Some(list[target as usize - 1].clone())
+        };
+        self.dispatch(Action::MoveInList {
+            task_id: id.clone(),
+            after_task_id,
+            context_type: context_type.into(),
+            context_id,
+        });
+        self.focus_task(&id);
+    }
+
+    /// Put keyboard focus back on a task row after the list was rebuilt.
+    fn focus_task(&self, id: &str) {
+        let mut group = self.imp().task_box.first_child();
+        while let Some(g) = group {
+            let mut list_child = g.first_child();
+            while let Some(c) = list_child {
+                if let Some(list) = c.downcast_ref::<gtk::ListBox>() {
+                    let mut row = list.first_child();
+                    while let Some(r) = row {
+                        if r.widget_name() == id {
+                            r.grab_focus();
+                            return;
+                        }
+                        row = r.next_sibling();
+                    }
+                }
+                list_child = c.next_sibling();
+            }
+            group = g.next_sibling();
+        }
+    }
+
+    /// Ctrl+Shift+D: a fresh copy of the task (same project, tags, estimate, notes, due day).
+    fn duplicate_task(&self, id: &str) {
+        let Some(t) = self.imp().store.borrow().state.task.entities.get(id).cloned() else {
+            return;
+        };
+        let mut copy = Task::new(&t.title, &t.project_id);
+        copy.tag_ids = t.tag_ids.clone();
+        copy.time_estimate = t.time_estimate;
+        copy.notes = t.notes.clone();
+        copy.due_day = t.due_day.clone();
+        let new_id = copy.id.clone();
+        self.dispatch(Action::AddTask {
+            task: copy.clone(),
+            bottom: true,
+        });
+        self.toast_undo(
+            &gettext("Task duplicated"),
+            vec![Action::DeleteTask {
+                task: copy,
+                sub_tasks: vec![],
+            }],
+        );
+        self.focus_task(&new_id);
+    }
+
     fn reorder(&self, moved: &str, before: &str) -> bool {
         let imp = self.imp();
         if moved == before {

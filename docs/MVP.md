@@ -175,6 +175,15 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+R, F5 | Sync now |
 | Ctrl+, | Preferences |
 | Ctrl+A | Select all (enters selection mode) |
+| Ctrl+E | Archive completed tasks |
+| Ctrl+Up / Ctrl+Down | Move focused task up / down (Manual Order) |
+| Ctrl+Shift+D | Duplicate focused task |
+| Ctrl+Shift+C | Copy focused task title |
+| Ctrl+O | Open focused task details |
+| Ctrl+Shift+A | Clear selection |
+| Ctrl+L | Focus the quick-add box |
+| F9 | Show or hide the sidebar |
+| Ctrl+PageDown / Ctrl+PageUp | Next / previous view |
 | Ctrl+? | Shortcuts dialog |
 | Ctrl+W, Ctrl+Q | Close, quit |
 | Menu, Shift+F10, right-click, long-press | Context menu on a task, project or tag row |

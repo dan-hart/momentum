@@ -94,6 +94,15 @@ minutes while the switch is on.
 | <kbd>Ctrl</kbd>+<kbd>M</kbd> | Move focused task to a project |
 | <kbd>Delete</kbd> | Delete focused task |
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> | Select all tasks in the view |
+| <kbd>Ctrl</kbd>+<kbd>E</kbd> | Archive completed tasks |
+| <kbd>Ctrl</kbd>+<kbd>Up</kbd> / <kbd>Ctrl</kbd>+<kbd>Down</kbd> | Move focused task up / down (Manual Order) |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> | Duplicate focused task |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copy focused task title |
+| <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open focused task details |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | Clear selection |
+| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Focus the quick-add box |
+| <kbd>F9</kbd> | Show or hide the sidebar |
+| <kbd>Ctrl</kbd>+<kbd>PageDown</kbd> / <kbd>Ctrl</kbd>+<kbd>PageUp</kbd> | Next / previous view |
 | <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Jump to a sidebar entry |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>F5</kbd> | Sync now |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Preferences |

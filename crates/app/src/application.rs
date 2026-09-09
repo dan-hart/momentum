@@ -155,6 +155,17 @@ impl MomentumApplication {
         self.set_accels_for_action("win.toggle-tonight", &["<Control><Shift>t"]);
         self.set_accels_for_action("win.move-tomorrow", &["<Control><Shift>Right"]);
         self.set_accels_for_action("win.select-all", &["<Control>a"]);
+        self.set_accels_for_action("win.select-none", &["<Control><Shift>a"]);
+        self.set_accels_for_action("win.archive-done", &["<Control>e"]);
+        self.set_accels_for_action("win.focus-add", &["<Control>l"]);
+        self.set_accels_for_action("win.toggle-sidebar", &["F9"]);
+        self.set_accels_for_action("win.next-view", &["<Control>Page_Down"]);
+        self.set_accels_for_action("win.prev-view", &["<Control>Page_Up"]);
+        self.set_accels_for_action("win.move-up", &["<Control>Up"]);
+        self.set_accels_for_action("win.move-down", &["<Control>Down"]);
+        self.set_accels_for_action("win.duplicate", &["<Control><Shift>d"]);
+        self.set_accels_for_action("win.copy-title", &["<Control><Shift>c"]);
+        self.set_accels_for_action("win.open-focused", &["<Control>o"]);
     }
 
     fn setup_css(&self) {

@@ -54,6 +54,36 @@ ShortcutsWindow help_overlay {
       }
 
       ShortcutsShortcut {
+        title: C_("shortcut window", "Archive Completed Tasks");
+        action-name: "win.archive-done";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Move Task Up / Down");
+        accelerator: "<Control>Up <Control>Down";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Duplicate Task");
+        action-name: "win.duplicate";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Copy Task Title");
+        action-name: "win.copy-title";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Open Task Details");
+        action-name: "win.open-focused";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Clear Selection");
+        action-name: "win.select-none";
+      }
+
+      ShortcutsShortcut {
         title: C_("shortcut window", "Move Task to Project");
         action-name: "win.move-to";
       }
@@ -91,6 +121,25 @@ ShortcutsWindow help_overlay {
       ShortcutsShortcut {
         title: C_("shortcut window", "Quit");
         action-name: "app.quit";
+      }
+    }
+
+    ShortcutsGroup {
+      title: C_("shortcut window", "Navigation");
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Focus the Quick-Add Box");
+        action-name: "win.focus-add";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Show or Hide the Sidebar");
+        action-name: "win.toggle-sidebar";
+      }
+
+      ShortcutsShortcut {
+        title: C_("shortcut window", "Next / Previous View");
+        accelerator: "<Control>Page_Down <Control>Page_Up";
       }
     }
 
