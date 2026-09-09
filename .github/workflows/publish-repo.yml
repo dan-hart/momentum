@@ -1,0 +1,66 @@
+# Publishes signed Flatpak builds to the repository served from the gh-pages branch
+# (https://dan-hart.github.io/momentum/). Runs on release tags, or by hand for a given tag.
+name: Publish Flatpak repository
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag to publish (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  APP_ID: io.github.dan_hart.Momentum
+  MANIFEST: build-aux/io.github.dan_hart.Momentum.json
+
+jobs:
+  publish:
+    # Architectures run one after the other so both export into the same OSTree repo.
+    strategy:
+      max-parallel: 1
+      matrix:
+        arch: [x86_64, aarch64]
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      options: --privileged
+    steps:
+      - name: Check out the tag to build
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version || github.ref }}
+          path: src
+      - name: Check out the repository branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Import signing key
+        run: |
+          echo "${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "KEY_ID=${{ secrets.FLATPAK_GPG_KEY_ID }}" >> "$GITHUB_ENV"
+      - name: Build and export
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          [ -f repo/config ] || ostree init --repo=repo --mode=archive
+          flatpak-builder --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub \
+            --arch=${{ matrix.arch }} --default-branch=stable \
+            --repo=repo --gpg-sign="$KEY_ID" build-dir src/$MANIFEST
+          flatpak build-update-repo --generate-static-deltas --prune --prune-depth=3 \
+            --gpg-sign="$KEY_ID" repo
+          # Site files must survive the OSTree metadata regeneration.
+          rm -rf repo/tmp
+      - name: Publish
+        working-directory: repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish ${{ inputs.version || github.ref_name }} (${{ matrix.arch }})" || echo "nothing to publish"
+          git push

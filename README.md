@@ -58,16 +58,19 @@ Momentum whenever you are on your Linux machine.
 
 ## Install
 
-Momentum is not on Flathub yet. Until then, grab a bundle from the
-[latest release](https://github.com/dan-hart/momentum/releases/latest) and install it:
+**One click:** open [dan-hart.github.io/momentum](https://dan-hart.github.io/momentum/) and press
+Install. GNOME Software or KDE Discover adds Momentum's repository and keeps it updated.
+
+**Terminal:**
 
 ```sh
-flatpak install --user momentum-*-x86_64.flatpak
-flatpak run io.github.dan_hart.Momentum
+flatpak install --user https://dan-hart.github.io/momentum/momentum.flatpakref
 ```
 
-Bundles are built for x86_64 and aarch64. Momentum runs on any desktop that ships the
-XDG portals: GNOME, KDE Plasma, Sway and others.
+Momentum publishes to its own signed Flatpak repository for x86_64 and aarch64, so it
+works on any distribution with Flatpak: GNOME, KDE Plasma, Sway and the rest. Standalone
+`.flatpak` bundles are also attached to each
+[release](https://github.com/dan-hart/momentum/releases/latest) for offline installs.
 
 ### Set up sync
 

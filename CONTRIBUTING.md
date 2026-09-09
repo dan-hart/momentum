@@ -6,4 +6,4 @@
 - Every user-visible string goes through `gettext` (Rust) or `_("…")` (Blueprint), and every file with strings is listed in `po/POTFILES.in`.
 - Sync-format changes must stay byte-compatible with Super Productivity; add a test in `crates/sp-sync` and run it against `build-aux/mock-webdav.py`.
 - License is GPL-3.0-or-later with SPDX headers (see `REUSE.toml` for files that cannot carry one); there is no contributor license agreement.
-- Releases: bump the version in `meson.build`, `Cargo.toml` and the metainfo `<release>`, update `CHANGELOG.md`, then push a `vX.Y.Z` tag. CI attaches Flatpak bundles to the GitHub Release. Flathub files live in `build-aux/flathub/`.
+- Releases: bump the version in `meson.build`, `Cargo.toml` and the metainfo `<release>`, update `CHANGELOG.md`, then push a `vX.Y.Z` tag. CI attaches Flatpak bundles to the GitHub Release and publishes signed builds to the Flatpak repository on the `gh-pages` branch (signing key in the `FLATPAK_GPG_*` secrets; keep an offline backup). Flathub files live in `build-aux/flathub/`.
