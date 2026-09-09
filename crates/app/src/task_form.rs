@@ -226,7 +226,7 @@ impl TaskForm {
             .bottom_margin(12)
             .left_margin(12)
             .right_margin(12)
-            .height_request(240)
+            .height_request(420)
             .build();
         copy.connect_clicked(glib::clone!(
             #[weak]

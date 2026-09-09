@@ -3391,7 +3391,7 @@ impl MomentumWindow {
         adw::Dialog::builder()
             .title(title)
             .content_width(520)
-            .content_height(640)
+            .content_height(860)
             .child(&tv)
             .build()
     }
