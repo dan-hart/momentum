@@ -11,3 +11,17 @@ Keywords=Tasks;Todo;Time;Tracking;Pomodoro;Super Productivity;
 Icon=@icon@
 StartupNotify=true
 DBusActivatable=true
+MimeType=x-scheme-handler/momentum;x-scheme-handler/superproductivity;
+Actions=add-task;today;search;
+
+[Desktop Action add-task]
+Name=New Task
+Exec=momentum --quick-add
+
+[Desktop Action today]
+Name=Today
+Exec=momentum --today
+
+[Desktop Action search]
+Name=Search
+Exec=momentum --search ""

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Momentum
+Comment=Find and create Momentum tasks
+Type=Service
+Icon=@app-id@
+X-KDE-ServiceTypes=Plasma/Runner
+X-Plasma-API=DBus
+X-Plasma-DBusRunner-Service=@app-id@
+X-Plasma-DBusRunner-Path=/@app-path@/KRunner
+X-Plasma-Request-Actions-Once=true

@@ -38,5 +38,7 @@
       <default>'7'</default>
       <summary>Days shown in Coming Up</summary>
     </key>
+    <key name="run-in-background" type="b"><default>false</default><summary>Keep running after the window closes</summary></key>
+    <key name="last-summary-day" type="s"><default>''</default><summary>Day the morning summary was last shown</summary></key>
   </schema>
 </schemalist>

@@ -1,1 +1,2 @@
 crate::keyring::get\("nextcloud"\)
+secret\("nextcloud"\)

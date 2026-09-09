@@ -36,9 +36,10 @@ pub fn register_global(app: &MomentumApplication) {
                 return;
             };
             while let Some(a) = activated.next().await {
-                app.activate();
                 if a.shortcut_id() == "add-task" {
-                    app.main_window().focus_add();
+                    crate::quick_add::open(&app);
+                } else {
+                    app.activate();
                 }
             }
             drop(session);

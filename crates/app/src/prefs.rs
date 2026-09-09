@@ -27,6 +27,8 @@ mod imp {
         pub compress_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub colorful_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub background_row: TemplateChild<adw::SwitchRow>,
     }
     #[glib::object_subclass]
     impl ObjectSubclass for MomentumPrefs {
@@ -70,6 +72,26 @@ mod imp {
             s.bind("auto-sync", &*self.auto_row, "active").build();
             s.bind("compress", &*self.compress_row, "active").build();
             s.bind("colorful-labels", &*self.colorful_row, "active").build();
+            s.bind("run-in-background", &*self.background_row, "active").build();
+            // Ask the Background portal for permission (and autostart) when switched on.
+            self.background_row.connect_active_notify(|row| {
+                let on = row.is_active();
+                glib::spawn_future_local(async move {
+                    use ashpd::desktop::background::Background;
+                    let req = Background::request()
+                        .reason("Momentum keeps reminders and sync running")
+                        .auto_start(on)
+                        .command(["momentum", "--background"])
+                        .send()
+                        .await;
+                    match req.and_then(|r| r.response()) {
+                        Ok(r) => {
+                            tracing::info!("background: run={} autostart={}", r.run_in_background(), r.auto_start())
+                        }
+                        Err(e) => tracing::warn!("background portal: {e}"),
+                    }
+                });
+            });
             for (purpose, row) in [
                 ("nextcloud", self.password_row.clone()),
                 ("encryption", self.encrypt_row.clone()),

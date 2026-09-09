@@ -84,6 +84,43 @@ works on any distribution with Flatpak: GNOME, KDE Plasma, Sway and the rest. St
 The last sync time shows under the task list. Sync also runs at startup and every five
 minutes while the switch is on.
 
+## Part of the desktop
+
+- **Search from the shell.** Type a task name in GNOME's Activities overview or KDE's KRunner
+  to find it or create it. Momentum registers a GNOME search provider and a KRunner plugin.
+- **Notifications you can act on.** Reminders have Done and Snooze buttons, and a morning
+  summary tells you what the day holds.
+- **Runs in the background.** Turn it on in Preferences: reminders and sync keep going when
+  the window closes, Momentum starts at login, and GNOME's Background Apps menu shows what is
+  due today. All through the Background portal, so you stay in control.
+- **Launcher actions.** Right-click the app icon for New Task, Today and Search.
+- **Quick-add window.** Ctrl+Alt+T from anywhere opens a one-line window; type, Enter, done.
+- **Drop and paste.** Drag a link or some text from another app onto the list to make a task;
+  paste several lines into the add box to create several tasks.
+- **Links and scripts.** `momentum --add "Call the bank"` from a script, or open
+  `momentum://add?title=Call%20the%20bank` and Super Productivity's
+  `superproductivity://create-task` links.
+- **Global undo.** Ctrl+Z reverses the last change, even after its toast is gone.
+
+## The `mo` command line
+
+`mo` works on Linux and macOS and reads the same data as the app. On Linux, while the app
+is running, changes are handed to it over D-Bus so nothing is written behind its back.
+
+```sh
+cargo install --path crates/mo        # or: flatpak run --command=mo io.github.dan_hart.Momentum …
+
+mo add "Call the bank #admin 15m" --today
+mo add "Prep slides" --project Work --tomorrow
+mo today            mo tonight            mo upcoming --days 14
+mo list Work        mo list "#admin"       mo search bank
+mo done bank        mo plan slides         mo rm 01a0835a
+mo projects         mo tags               mo sync
+mo config --server https://cloud.example.com --user dan --folder super-productivity --password
+```
+
+Add `--json` for machine-readable output. Set `MO_DATA_DIR` to point at another store.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
@@ -97,6 +134,7 @@ minutes while the switch is on.
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd> | Move to tomorrow |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>↓</kbd> | Move to next week (Monday) |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | Repeat schedule |
+| <kbd>Ctrl</kbd>+<kbd>Z</kbd> | Undo the last change |
 | <kbd>Ctrl</kbd>+<kbd>M</kbd> | Move focused task to a project |
 | <kbd>Delete</kbd> | Delete focused task |
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> | Select all tasks in the view |

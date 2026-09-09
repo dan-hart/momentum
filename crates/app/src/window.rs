@@ -103,6 +103,9 @@ mod imp {
         pub select_count: TemplateChild<gtk::Label>,
         pub search_debounce: RefCell<Option<glib::SourceId>>,
         pub sync_debounce: RefCell<Option<glib::SourceId>>,
+        pub store_monitor: RefCell<Option<gio::FileMonitor>>,
+        pub undo_stack: RefCell<Vec<Vec<Action>>>,
+        pub last_status: RefCell<String>,
     }
 
     impl Default for MomentumWindow {
@@ -162,6 +165,9 @@ mod imp {
                 select_count: Default::default(),
                 search_debounce: Default::default(),
                 sync_debounce: Default::default(),
+                store_monitor: Default::default(),
+                undo_stack: Default::default(),
+                last_status: Default::default(),
             }
         }
     }
@@ -211,6 +217,15 @@ mod imp {
     }
     impl WindowImpl for MomentumWindow {
         fn close_request(&self) -> glib::Propagation {
+            if self.settings.boolean("run-in-background") {
+                // Keep reminders and sync alive; the window comes back from the launcher,
+                // the search provider, the shortcut or `momentum`.
+                if let Err(err) = self.obj().save_window_size() {
+                    tracing::warn!("Failed to save window state, {}", &err);
+                }
+                self.obj().set_visible(false);
+                return glib::Propagation::Stop;
+            }
             if let Err(err) = self.obj().save_window_size() {
                 tracing::warn!("Failed to save window state, {}", &err);
             }
@@ -476,6 +491,67 @@ impl MomentumWindow {
             ),
         );
         self.setup_tag_completion();
+        // Drop text or a link from another app onto the list to make a task of it.
+        let text_drop = gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::COPY);
+        text_drop.connect_drop(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            #[upgrade_or]
+            false,
+            move |_, value, _, _| {
+                let Ok(text) = value.get::<String>() else { return false };
+                let is_task_ids = text
+                    .lines()
+                    .all(|l| w.imp().store.borrow().state.task.entities.contains_key(l.trim()));
+                if is_task_ids {
+                    return false; // our own row drags are handled by the row targets
+                }
+                w.add_from_text(&text);
+                true
+            }
+        ));
+        imp.task_box.add_controller(text_drop);
+        imp.add_entry.connect_insert_text(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |e, text, _| {
+                if text.contains('\n') {
+                    e.stop_signal_emission_by_name("insert-text");
+                    let pasted = text.to_string();
+                    glib::idle_add_local_once(glib::clone!(
+                        #[weak]
+                        w,
+                        move || w.add_from_text(&pasted)
+                    ));
+                }
+            }
+        ));
+        // If another process (mo without D-Bus, or a second instance) writes the store, reload it.
+        let dir = glib::user_data_dir().join("momentum");
+        let monitor = gio::File::for_path(dir.join("pending.json"))
+            .monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)
+            .ok();
+        if let Some(m) = monitor {
+            m.connect_changed(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _, _, event| {
+                    if event != gio::FileMonitorEvent::ChangesDoneHint || w.imp().syncing.get() {
+                        return;
+                    }
+                    let on_disk = Store::load(glib::user_data_dir().join("momentum"));
+                    let mine = w.imp().store.borrow();
+                    if on_disk.pending.len() != mine.pending.len()
+                        || on_disk.meta.vector_clock != mine.meta.vector_clock
+                    {
+                        drop(mine);
+                        *w.imp().store.borrow_mut() = on_disk;
+                        w.refresh();
+                    }
+                }
+            ));
+            *imp.store_monitor.borrow_mut() = Some(m);
+        }
         imp.search_entry.connect_search_changed(glib::clone!(
             #[weak(rename_to = w)]
             self,
@@ -733,6 +809,7 @@ impl MomentumWindow {
             }),
             act("sel-tag", |w| w.bulk_tag_dialog()),
             act("sel-delete", |w| w.bulk_delete()),
+            act("undo", |w| w.undo_last()),
             act("edit-context", |w| w.edit_context_dialog()),
             act("delete-context", |w| w.delete_context_dialog()),
         ]);
@@ -807,6 +884,9 @@ impl MomentumWindow {
                     });
                 }
                 self.refresh();
+            }
+            if std::env::var_os("MOMENTUM_SCREENSHOT_NARROW").is_some() {
+                self.set_default_size(360, 720);
             }
             if std::env::var_os("MOMENTUM_SCREENSHOT_SELECT").is_some() {
                 let ids: Vec<String> = imp
@@ -1657,6 +1737,13 @@ impl MomentumWindow {
 
     /// Toast with an Undo button that dispatches the given actions.
     pub fn toast_undo(&self, msg: &str, undo: Vec<Action>) {
+        {
+            let mut stack = self.imp().undo_stack.borrow_mut();
+            stack.push(undo.clone());
+            if stack.len() > 50 {
+                stack.remove(0);
+            }
+        }
         let toast = adw::Toast::builder().title(msg).button_label(gettext("Undo")).build();
         toast.connect_button_clicked(glib::clone!(
             #[weak(rename_to = w)]
@@ -1668,6 +1755,124 @@ impl MomentumWindow {
             }
         ));
         self.imp().toast_overlay.add_toast(toast);
+    }
+
+    /// Add via short syntax and plan for today (quick-add, `--add`, search provider).
+    pub fn add_task_for_today(&self, text: &str) {
+        let view = self.imp().view.borrow().clone();
+        *self.imp().view.borrow_mut() = View::Today;
+        self.add_task(text);
+        *self.imp().view.borrow_mut() = view;
+        self.refresh_tasks();
+    }
+
+    /// URL scheme: title with short syntax, optional notes and due day.
+    pub fn add_task_with_notes(&self, text: &str, notes: Option<&str>, due: Option<&str>) {
+        self.add_task(text);
+        let Some(last) = self.imp().store.borrow().pending.last().and_then(|p| match &p.action {
+            Action::AddTask { task, .. } => Some(task.id.clone()),
+            _ => None,
+        }) else {
+            return;
+        };
+        let mut ch = Map::new();
+        if let Some(n) = notes.filter(|n| !n.trim().is_empty()) {
+            ch.insert("notes".into(), json!(n));
+        }
+        if let Some(d) = due.filter(|d| d.len() == 10) {
+            ch.insert("dueDay".into(), json!(d));
+        }
+        if !ch.is_empty() {
+            self.update_task(&last, ch);
+        }
+    }
+
+    pub fn complete_by_title(&self, title: &str) {
+        let id = self
+            .imp()
+            .store
+            .borrow()
+            .state
+            .task
+            .iter()
+            .find(|t| !t.is_done && t.title.eq_ignore_ascii_case(title.trim()))
+            .map(|t| t.id.clone());
+        if let Some(id) = id {
+            self.complete_task(&id);
+        }
+    }
+
+    pub fn complete_task(&self, id: &str) {
+        if let Some(app) = self.application() {
+            app.withdraw_notification(id);
+        }
+        self.set_done(id, true);
+    }
+
+    /// Push a reminder forward by `minutes` and let it fire again.
+    pub fn snooze_task(&self, id: &str, minutes: u64) {
+        if let Some(app) = self.application() {
+            app.withdraw_notification(id);
+        }
+        self.imp().notified.borrow_mut().remove(id);
+        self.update_task(
+            id,
+            [("remindAt".to_string(), json!(now_ms() + minutes * 60_000))]
+                .into_iter()
+                .collect(),
+        );
+        self.toast(&format!("{} {minutes} {}", gettext("Snoozed for"), gettext("minutes")));
+    }
+
+    pub fn set_search_query(&self, q: &str) {
+        self.imp().search_entry.set_text(q);
+        self.imp().search_entry.grab_focus();
+    }
+
+    /// Ctrl+Z: undo the most recent undoable change, even after its toast is gone.
+    fn undo_last(&self) {
+        let Some(actions) = self.imp().undo_stack.borrow_mut().pop() else {
+            self.toast(&gettext("Nothing to undo"));
+            return;
+        };
+        for a in actions {
+            self.dispatch(a);
+        }
+        self.toast(&gettext("Undone"));
+    }
+
+    /// Text from a drop or a multi-line paste: a URL or a paragraph becomes one task with the
+    /// text in its notes; several short lines become several tasks.
+    pub fn add_from_text(&self, text: &str) {
+        let lines: Vec<&str> = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+        if lines.is_empty() {
+            return;
+        }
+        let is_url = lines.len() == 1 && (lines[0].starts_with("http://") || lines[0].starts_with("https://"));
+        let all_short = lines.iter().all(|l| l.len() <= 120 && !l.starts_with("http"));
+        let n = if is_url {
+            let title = lines[0]
+                .trim_start_matches("https://")
+                .trim_start_matches("http://")
+                .trim_end_matches('/')
+                .to_string();
+            self.add_task_with_notes(&title, Some(lines[0]), None);
+            1
+        } else if all_short && lines.len() > 1 {
+            for l in &lines {
+                self.add_task(l);
+            }
+            lines.len()
+        } else {
+            let title: String = lines[0].chars().take(120).collect();
+            self.add_task_with_notes(&title, Some(text.trim()), None);
+            1
+        };
+        self.toast(&if n == 1 {
+            gettext("Task added")
+        } else {
+            format!("{n} {}", gettext("tasks added"))
+        });
     }
 
     pub fn toast(&self, msg: &str) {
@@ -1775,6 +1980,7 @@ impl MomentumWindow {
 
     pub fn refresh(&self) {
         *self.imp().index.borrow_mut() = None;
+        self.update_background_status();
         if !self.imp().store.borrow().pending.is_empty() {
             self.schedule_sync();
         }
@@ -3466,10 +3672,87 @@ impl MomentumWindow {
             imp.notified.borrow_mut().insert(t.id.clone());
             let n = gio::Notification::new(&t.title);
             n.set_body(Some(&gettext("Reminder")));
+            n.set_default_action_and_target_value("app.search", Some(&t.title.to_variant()));
+            n.add_button_with_target_value(&gettext("Done"), "app.notify-done", Some(&t.id.to_variant()));
+            n.add_button_with_target_value(&gettext("Snooze 1 hour"), "app.notify-snooze", Some(&t.id.to_variant()));
             if let Some(app) = self.application() {
                 app.send_notification(Some(&t.id), &n);
             }
         }
+        self.morning_summary();
+    }
+
+    /// Once per day after 05:00: "Today: 5 tasks, 2 tonight". Only when there is something to do.
+    fn morning_summary(&self) {
+        let imp = self.imp();
+        let today = today_str();
+        if imp.settings.string("last-summary-day") == today
+            || glib::DateTime::now_local().map(|d| d.hour() < 5).unwrap_or(true)
+        {
+            return;
+        }
+        let (n, tonight) = {
+            let store = imp.store.borrow();
+            let ids = store.state.today_ids();
+            let open: Vec<&Task> = ids
+                .iter()
+                .filter_map(|i| store.state.task.entities.get(i))
+                .filter(|t| !t.is_done)
+                .collect();
+            (open.len(), open.iter().filter(|t| Self::is_tonight(&store, t)).count())
+        };
+        imp.settings.set_string("last-summary-day", &today).ok();
+        if n == 0 {
+            return;
+        }
+        let body = if tonight > 0 {
+            format!("{n} {}, {tonight} {}", gettext("tasks today"), gettext("tonight"))
+        } else {
+            format!("{n} {}", gettext("tasks today"))
+        };
+        let note = gio::Notification::new(&gettext("Good morning"));
+        note.set_body(Some(&body));
+        note.set_default_action("app.today");
+        if let Some(app) = self.application() {
+            app.send_notification(Some("morning"), &note);
+        }
+    }
+
+    /// Background Apps status line ("3 tasks due today") when running in the background.
+    fn update_background_status(&self) {
+        let imp = self.imp();
+        if !imp.settings.boolean("run-in-background") {
+            return;
+        }
+        let n = {
+            let store = imp.store.borrow();
+            store
+                .state
+                .today_ids()
+                .iter()
+                .filter_map(|i| store.state.task.entities.get(i))
+                .filter(|t| !t.is_done)
+                .count()
+        };
+        let status = match n {
+            0 => gettext("All done for today"),
+            1 => gettext("1 task due today"),
+            n => format!("{n} {}", gettext("tasks due today")),
+        };
+        if *imp.last_status.borrow() == status {
+            return;
+        }
+        *imp.last_status.borrow_mut() = status.clone();
+        glib::spawn_future_local(async move {
+            let opts = ashpd::desktop::background::SetStatusOptions::default().set_message(&status);
+            let result = match ashpd::desktop::background::BackgroundProxy::new().await {
+                Ok(proxy) => proxy.set_status(opts).await,
+                Err(e) => Err(e),
+            };
+            if let Err(e) = result {
+                tracing::debug!("background status: {e}");
+            }
+        });
     }
 
     // ---- task dialogs ----------------------------------------------------

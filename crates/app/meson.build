@@ -26,3 +26,27 @@ custom_target(
     '@OUTPUT@',
   ],
 )
+
+custom_target(
+  'cargo-build-mo',
+  build_by_default: true,
+  build_always_stale: true,
+  output: 'mo',
+  console: true,
+  install: true,
+  install_dir: bindir,
+  env: cargo_env,
+  command: [
+    cargo,
+    'build',
+    '--manifest-path',
+    meson.project_source_root() / 'Cargo.toml',
+    '--package',
+    'mo',
+    cargo_release_option,
+    '&&',
+    'cp',
+    cargo_target / rust_target / 'mo',
+    '@OUTPUT@',
+  ],
+)

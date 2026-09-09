@@ -80,3 +80,22 @@ configure_file(
   install: true,
   install_dir: datadir / 'dbus-1' / 'services',
 )
+
+# GNOME Shell search provider and KRunner D-Bus runner
+provider_conf = configuration_data()
+provider_conf.set('app-id', application_id)
+provider_conf.set('app-path', application_id.replace('.', '/'))
+configure_file(
+  input: '@0@.search-provider.ini.in'.format(base_id),
+  output: '@0@.search-provider.ini'.format(application_id),
+  configuration: provider_conf,
+  install: true,
+  install_dir: datadir / 'gnome-shell' / 'search-providers',
+)
+configure_file(
+  input: '@0@.krunner.desktop.in'.format(base_id),
+  output: '@0@.krunner.desktop'.format(application_id),
+  configuration: provider_conf,
+  install: true,
+  install_dir: datadir / 'krunner' / 'dbusplugins',
+)

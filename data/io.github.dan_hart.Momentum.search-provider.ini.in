@@ -1,0 +1,5 @@
+[Shell Search Provider]
+DesktopId=@app-id@.desktop
+BusName=@app-id@
+ObjectPath=/@app-path@/SearchProvider
+Version=2

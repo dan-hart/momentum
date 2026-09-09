@@ -54,6 +54,15 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     }
 
     Adw.PreferencesGroup {
+      title: _("Desktop");
+
+      Adw.SwitchRow background_row {
+        title: _("Run in the background");
+        subtitle: _("Keep reminders and sync running after the window closes, and start at login");
+      }
+    }
+
+    Adw.PreferencesGroup {
       title: _("Appearance");
 
       Adw.SwitchRow colorful_row {

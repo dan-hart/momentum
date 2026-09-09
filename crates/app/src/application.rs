@@ -13,11 +13,10 @@ use crate::window::MomentumWindow;
 mod imp {
     use super::*;
     use glib::WeakRef;
-    use std::cell::OnceCell;
 
     #[derive(Debug, Default)]
     pub struct MomentumApplication {
-        pub window: OnceCell<WeakRef<MomentumWindow>>,
+        pub window: std::cell::RefCell<Option<WeakRef<MomentumWindow>>>,
     }
 
     #[glib::object_subclass]
@@ -35,16 +34,94 @@ mod imp {
             self.parent_activate();
             let app = self.obj();
 
-            if let Some(window) = self.window.get() {
-                let window = window.upgrade().unwrap();
-                window.present();
-                return;
+            app.ensure_window().present();
+        }
+
+        fn dbus_register(&self, connection: &gio::DBusConnection, object_path: &str) -> Result<(), glib::Error> {
+            self.parent_dbus_register(connection, object_path)?;
+            crate::search_provider::register(&self.obj(), connection, object_path)
+        }
+
+        /// `momentum --add "title"`, `--quick-add`, `--today`, `--search q`, `--background`.
+        fn command_line(&self, cmd: &gio::ApplicationCommandLine) -> glib::ExitCode {
+            let app = self.obj();
+            let opts = cmd.options_dict();
+            let win = app.ensure_window();
+            let mut show = true;
+            if let Some(title) = opts.lookup::<String>("add").ok().flatten() {
+                win.add_task_for_today(&title);
+                tracing::info!("added from command line: {title}");
+                show = false;
             }
+            if let Some(q) = opts.lookup::<String>("search").ok().flatten() {
+                win.go_to(crate::window::View::Search);
+                win.set_search_query(&q);
+            }
+            if opts.contains("today") {
+                win.go_to(crate::window::View::Today);
+            }
+            if opts.contains("quick-add") {
+                crate::quick_add::open(&app);
+                return glib::ExitCode::SUCCESS;
+            }
+            if opts.contains("background") {
+                show = false;
+            }
+            if show {
+                app.activate();
+            } else if !cmd.is_remote() && !win.imp().settings.boolean("run-in-background") {
+                // Launched only to run a command: do not linger with a hidden window.
+                glib::idle_add_local_once(glib::clone!(
+                    #[weak]
+                    app,
+                    move || app.quit()
+                ));
+            }
+            glib::ExitCode::SUCCESS
+        }
 
-            let window = MomentumWindow::new(&app);
-            self.window.set(window.downgrade()).expect("Window already set.");
-
-            app.main_window().present();
+        /// `momentum://add?title=…` and Super Productivity's `superproductivity://create-task?title=…`.
+        fn open(&self, files: &[gio::File], _hint: &str) {
+            let app = self.obj();
+            let win = app.ensure_window();
+            for f in files {
+                let uri = f.uri().to_string();
+                let Ok(parsed) = glib::Uri::parse(&uri, glib::UriFlags::NONE) else {
+                    continue;
+                };
+                let host = parsed.host().map(|h| h.to_string()).unwrap_or_default();
+                let query = parsed.query().map(|q| q.to_string()).unwrap_or_default();
+                let param = |k: &str| -> Option<String> {
+                    query.split('&').find_map(|kv| {
+                        let (key, v) = kv.split_once('=')?;
+                        (key == k).then(|| {
+                            glib::Uri::unescape_string(&v.replace('+', " "), None)
+                                .map(|g| g.to_string())
+                                .unwrap_or_default()
+                        })
+                    })
+                };
+                match host.as_str() {
+                    "add" | "create-task" => {
+                        if let Some(title) = param("title").filter(|t| !t.trim().is_empty()) {
+                            let mut text = title;
+                            if let Some(tags) = param("tags") {
+                                for t in tags.split(',').map(str::trim).filter(|t| !t.is_empty()) {
+                                    text.push_str(&format!(" #{t}"));
+                                }
+                            }
+                            win.add_task_with_notes(&text, param("notes").as_deref(), param("due").as_deref());
+                        }
+                    }
+                    "complete-task" => {
+                        if let Some(title) = param("title") {
+                            win.complete_by_title(&title);
+                        }
+                    }
+                    _ => tracing::warn!("unknown URL: {uri}"),
+                }
+            }
+            win.present();
         }
 
         fn startup(&self) {
@@ -58,6 +135,9 @@ mod imp {
             app.setup_gactions();
             app.setup_accels();
             crate::shortcuts::register_global(&app);
+            // The window exists from startup (hidden) so reminders, sync, the search provider
+            // and the CLI have a store to talk to, even when launched as a service.
+            app.ensure_window();
         }
     }
 
@@ -73,7 +153,17 @@ glib::wrapper! {
 
 impl MomentumApplication {
     pub fn main_window(&self) -> MomentumWindow {
-        self.imp().window.get().unwrap().upgrade().unwrap()
+        self.ensure_window()
+    }
+
+    /// The single main window, created hidden on first use.
+    pub fn ensure_window(&self) -> MomentumWindow {
+        if let Some(w) = self.imp().window.borrow().as_ref().and_then(|w| w.upgrade()) {
+            return w;
+        }
+        let window = MomentumWindow::new(self);
+        *self.imp().window.borrow_mut() = Some(window.downgrade());
+        window
     }
 
     fn setup_gactions(&self) {
@@ -93,6 +183,41 @@ impl MomentumApplication {
         let win = |f: fn(&MomentumWindow)| {
             move |app: &Self, _: &gio::SimpleAction, _: Option<&glib::Variant>| f(&app.main_window())
         };
+        // `mo` (the CLI) hands actions to a running app over D-Bus: org.gtk.Actions.Activate("cli", [json]).
+        let cli = gio::ActionEntry::builder("cli")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(|app: &Self, _, p: Option<&glib::Variant>| {
+                let Some(payload) = p.and_then(|v| v.get::<String>()) else {
+                    return;
+                };
+                let w = app.main_window();
+                if payload == "\"sync\"" {
+                    w.sync();
+                } else if let Ok(action) = serde_json::from_str::<sp_oplog::Action>(&payload) {
+                    w.dispatch(action);
+                } else {
+                    tracing::warn!("cli: unrecognised payload");
+                }
+            })
+            .build();
+        // Notification buttons (Done / Snooze) carry the task id.
+        let notify_done = gio::ActionEntry::builder("notify-done")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(|app: &Self, _, p: Option<&glib::Variant>| {
+                if let Some(id) = p.and_then(|v| v.get::<String>()) {
+                    app.main_window().complete_task(&id);
+                }
+            })
+            .build();
+        let notify_snooze = gio::ActionEntry::builder("notify-snooze")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(|app: &Self, _, p: Option<&glib::Variant>| {
+                if let Some(id) = p.and_then(|v| v.get::<String>()) {
+                    app.main_window().snooze_task(&id, 60);
+                }
+            })
+            .build();
+        self.add_action_entries([cli, notify_done, notify_snooze]);
         let simple = [
             gio::ActionEntry::builder("preferences")
                 .activate(win(|w| crate::prefs::MomentumPrefs::default().present(Some(w))))
@@ -106,6 +231,21 @@ impl MomentumApplication {
                 .build(),
             gio::ActionEntry::builder("add-task")
                 .activate(win(|w| w.focus_add()))
+                .build(),
+            gio::ActionEntry::builder("quick-add")
+                .activate(|app: &Self, _, _| crate::quick_add::open(app))
+                .build(),
+            gio::ActionEntry::builder("today")
+                .activate(win(|w| {
+                    w.go_to(crate::window::View::Today);
+                    w.present();
+                }))
+                .build(),
+            gio::ActionEntry::builder("search")
+                .activate(win(|w| {
+                    w.go_to(crate::window::View::Search);
+                    w.present();
+                }))
                 .build(),
             gio::ActionEntry::builder("new-project")
                 .activate(win(|w| {
@@ -156,6 +296,7 @@ impl MomentumApplication {
         self.set_accels_for_action("win.move-tomorrow", &["<Control><Shift>Right"]);
         self.set_accels_for_action("win.move-next-week", &["<Control><Shift>Down"]);
         self.set_accels_for_action("win.repeat", &["<Control><Shift>r"]);
+        self.set_accels_for_action("win.undo", &["<Control>z"]);
         self.set_accels_for_action("win.select-all", &["<Control>a"]);
         self.set_accels_for_action("win.select-none", &["<Control><Shift>a"]);
         self.set_accels_for_action("win.archive-done", &["<Control>e"]);
@@ -210,9 +351,54 @@ impl MomentumApplication {
 
 impl Default for MomentumApplication {
     fn default() -> Self {
-        glib::Object::builder()
+        let app: Self = glib::Object::builder()
             .property("application-id", *APP_ID)
             .property("resource-base-path", "/io/github/dan_hart/Momentum/")
-            .build()
+            .property(
+                "flags",
+                gio::ApplicationFlags::HANDLES_COMMAND_LINE | gio::ApplicationFlags::HANDLES_OPEN,
+            )
+            .build();
+        app.add_main_option(
+            "add",
+            b'a'.into(),
+            glib::OptionFlags::NONE,
+            glib::OptionArg::String,
+            &gettext("Add a task and exit"),
+            Some("TITLE"),
+        );
+        app.add_main_option(
+            "quick-add",
+            b'q'.into(),
+            glib::OptionFlags::NONE,
+            glib::OptionArg::None,
+            &gettext("Open the quick-add window"),
+            None,
+        );
+        app.add_main_option(
+            "today",
+            b't'.into(),
+            glib::OptionFlags::NONE,
+            glib::OptionArg::None,
+            &gettext("Open the Today view"),
+            None,
+        );
+        app.add_main_option(
+            "search",
+            b's'.into(),
+            glib::OptionFlags::NONE,
+            glib::OptionArg::String,
+            &gettext("Open Search with a query"),
+            Some("QUERY"),
+        );
+        app.add_main_option(
+            "background",
+            b'b'.into(),
+            glib::OptionFlags::NONE,
+            glib::OptionArg::None,
+            &gettext("Start without showing a window"),
+            None,
+        );
+        app
     }
 }

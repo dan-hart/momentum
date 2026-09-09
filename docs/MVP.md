@@ -227,6 +227,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+Shift+Right | Move focused task (or selection) to tomorrow |
 | Ctrl+Shift+Down | Move focused task (or selection) to next week (the next Monday) |
 | Ctrl+Shift+R | Repeat schedule for the focused task |
+| Ctrl+Z | Undo the last change |
 | Ctrl+M | Move focused task to a project (dialog) |
 | Delete | Delete focused task |
 | Enter | Open focused task |
@@ -274,6 +275,39 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   "14 October" or "3 January 2027".
 - App icon: orange tile (GNOME palette Orange 2 to 4), white check with three motion lines,
   plus a symbolic variant and a striped development variant.
+
+### 2.11 Desktop integration
+
+- **Search provider.** GNOME Shell `org.gnome.Shell.SearchProvider2` at
+  `<app path>/SearchProvider` and a KRunner `org.kde.krunner1` runner at `<app path>/KRunner`,
+  both served by the app process (D-Bus activated, window stays hidden). Results: up to eight
+  open tasks matching every query word in the title, plus "Create task “…”". Activating a task
+  opens it in Search; the create result adds it to Today.
+- **Notifications with actions.** Reminders carry Done and Snooze 1 hour buttons; the default
+  action opens Search on the title. A morning summary ("Good morning: 5 tasks today, 2
+  tonight") fires once per day after 05:00 when something is due.
+- **Background mode** (Preferences → Desktop → Run in the background): requests the Background
+  portal with autostart (`momentum --background`); closing the window hides it instead of
+  quitting; the Background Apps status line reads "N tasks due today".
+- **Launcher actions** (desktop file `Actions=`): New Task (quick-add), Today, Search; they map
+  to app actions through D-Bus activation.
+- **Quick-add window**: a one-line window from the system-wide shortcut, `--quick-add`, or the
+  launcher action; Enter adds to Today, Escape closes.
+- **Drop and paste**: text or a URL dropped on the list, or a multi-line paste into the add
+  box, becomes one task (URL or paragraph, text in notes) or one task per short line.
+- **Command line**: `momentum --add TITLE`, `--quick-add`, `--today`, `--search QUERY`,
+  `--background`. **URL schemes**: `momentum://add?title=&notes=&due=&tags=`,
+  `superproductivity://create-task?title=&notes=`, `superproductivity://complete-task?title=`.
+- **Global undo**: Ctrl+Z pops the last batch off an undo stack (50 deep) fed by every undo
+  toast.
+- **`mo` CLI** (Linux and macOS, `crates/mo`): add / today / tonight / upcoming / list /
+  search / done / undone / plan / rm / projects / tags / sync / config, `--json`. Uses the
+  app's data directory (Flatpak release, then Devel, then the platform data dir; `MO_DATA_DIR`
+  overrides). On Linux, when the app is running, actions are forwarded as JSON over
+  `org.gtk.Actions.Activate("cli")` on the app's bus name; otherwise `mo` writes the store
+  directly and the app reloads on file change. Sync from `mo` reads the Flatpak app's
+  GSettings keyfile for server/user/folder and the system keychain for passwords.
+- **Localisation**: gettext pipeline live, German as the first translation (`po/de.po`).
 
 ## 3. Data model (what to reimplement)
 

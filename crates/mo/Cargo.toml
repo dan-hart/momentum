@@ -1,0 +1,27 @@
+[package]
+name = "mo"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Command-line companion for Momentum: add, list, complete and sync tasks"
+
+[[bin]]
+name = "mo"
+path = "src/main.rs"
+
+[dependencies]
+sp-model = { path = "../sp-model" }
+sp-oplog = { path = "../sp-oplog" }
+sp-store = { path = "../sp-store" }
+sp-sync = { path = "../sp-sync" }
+serde.workspace = true
+serde_json.workspace = true
+clap = { version = "4", features = ["derive", "env"] }
+dirs = "6"
+rpassword = "7"
+keyring = { version = "3", features = ["apple-native", "sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "5", default-features = false, features = ["blocking-api", "async-io"] }
