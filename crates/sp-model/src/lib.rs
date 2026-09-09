@@ -101,6 +101,16 @@ pub fn day_number(day: &str) -> Option<i64> {
 pub fn weekday(days: i64) -> u32 {
     (days + 4).rem_euclid(7) as u32
 }
+/// Day of month of the nth `weekday` (0 = Sunday) in `y`-`m`; `n` = 1–4 or -1 for the last.
+pub fn nth_weekday_of_month(y: i64, m: u32, weekday_wanted: u32, n: i32) -> u32 {
+    if n == -1 {
+        let last = days_in_month(y, m);
+        let last_wd = weekday(days_from_civil(y, m, last));
+        return last - (last_wd + 7 - weekday_wanted) % 7;
+    }
+    let first_wd = weekday(days_from_civil(y, m, 1));
+    1 + (weekday_wanted + 7 - first_wd) % 7 + (n as u32 - 1) * 7
+}
 pub fn days_in_month(y: i64, m: u32) -> u32 {
     let (ny, nm) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
     (days_from_civil(ny, nm, 1) - days_from_civil(y, m, 1)) as u32
@@ -133,6 +143,11 @@ pub struct RepeatCfg {
     pub last_task_creation_day: Option<String>,
     #[serde(default)]
     pub monthly_last_day: bool,
+    /// 1–4 = nth weekday of the month, -1 = last; with `monthly_weekday` (0 = Sunday).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monthly_week_of_month: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monthly_weekday: Option<u32>,
     #[serde(default)]
     pub monday: bool,
     #[serde(default)]
@@ -177,6 +192,8 @@ impl RepeatCfg {
             start_date: Some(task.due_day.clone().unwrap_or(today.clone())),
             last_task_creation_day: Some(today),
             monthly_last_day: false,
+            monthly_week_of_month: None,
+            monthly_weekday: None,
             monday: true,
             tuesday: true,
             wednesday: true,
@@ -185,6 +202,13 @@ impl RepeatCfg {
             saturday: false,
             sunday: false,
             extra,
+        }
+    }
+    /// `(week_of_month, weekday)` when the config repeats on the nth weekday (upstream `hasNthWeekdayAnchor`).
+    pub fn nth_weekday_anchor(&self) -> Option<(i32, u32)> {
+        match (self.monthly_week_of_month, self.monthly_weekday) {
+            (Some(w), Some(d)) if (w == -1 || (1..=4).contains(&w)) && d <= 6 => Some((w, d)),
+            _ => None,
         }
     }
     pub fn weekdays(&self) -> [bool; 7] {
@@ -220,12 +244,18 @@ impl RepeatCfg {
             "WEEKLY" => ((t - st) / 7) % every == 0 && self.weekdays()[weekday(t) as usize],
             "MONTHLY" => {
                 let months = (ty - sy) * 12 + tm as i64 - sm as i64;
+                if months < 0 || months % every != 0 {
+                    return false;
+                }
+                if let Some((n, wd)) = self.nth_weekday_anchor() {
+                    return nth_weekday_of_month(ty, tm, wd, n) == td;
+                }
                 let want = if self.monthly_last_day {
                     days_in_month(ty, tm)
                 } else {
                     sd.min(days_in_month(ty, tm))
                 };
-                months >= 0 && months % every == 0 && td == want
+                td == want
             }
             "YEARLY" => (ty - sy) % every == 0 && tm == sm && td == sd.min(days_in_month(ty, tm)),
             _ => false,
@@ -510,6 +540,18 @@ mod tests {
         };
         assert!(m.is_due("2026-02-28") && m.is_due("2026-03-31"));
         assert_eq!(weekday(days_from_civil(2026, 9, 7)), 1);
+        // Second Tuesday of September 2026 is the 8th; last Friday is the 25th.
+        assert_eq!(nth_weekday_of_month(2026, 9, 2, 2), 8);
+        assert_eq!(nth_weekday_of_month(2026, 9, 5, -1), 25);
+        let nth = RepeatCfg {
+            repeat_cycle: "MONTHLY".into(),
+            repeat_every: 1,
+            start_date: Some("2026-01-01".into()),
+            monthly_week_of_month: Some(2),
+            monthly_weekday: Some(2),
+            ..Default::default()
+        };
+        assert!(nth.is_due("2026-09-08") && !nth.is_due("2026-09-15"));
     }
     #[test]
     fn today_is_iso() {

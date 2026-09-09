@@ -78,11 +78,55 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
     days_row.add_suffix(&chips);
     group.add(&days_row);
 
-    let last_day = adw::SwitchRow::builder()
-        .title(gettext("On the last day of the month"))
-        .active(cfg.borrow().monthly_last_day)
+    // Monthly anchor: same date, last day, or the nth weekday (first Monday, last Friday, …)
+    let monthly = adw::ComboRow::builder()
+        .title(gettext("Monthly on"))
+        .model(&gtk::StringList::new(&[
+            &gettext("The same date"),
+            &gettext("The last day"),
+            &gettext("A weekday of the month"),
+        ]))
         .build();
-    group.add(&last_day);
+    monthly.set_selected(if cfg.borrow().nth_weekday_anchor().is_some() {
+        2
+    } else if cfg.borrow().monthly_last_day {
+        1
+    } else {
+        0
+    });
+    let nth_week = adw::ComboRow::builder()
+        .title(gettext("Which"))
+        .model(&gtk::StringList::new(&[
+            &gettext("First"),
+            &gettext("Second"),
+            &gettext("Third"),
+            &gettext("Fourth"),
+            &gettext("Last"),
+        ]))
+        .build();
+    let long_names = [
+        gettext("Sunday"),
+        gettext("Monday"),
+        gettext("Tuesday"),
+        gettext("Wednesday"),
+        gettext("Thursday"),
+        gettext("Friday"),
+        gettext("Saturday"),
+    ];
+    let nth_day = adw::ComboRow::builder()
+        .title(gettext("Weekday"))
+        .model(&gtk::StringList::new(
+            &long_names.iter().map(String::as_str).collect::<Vec<_>>(),
+        ))
+        .build();
+    {
+        let (w, d) = cfg.borrow().nth_weekday_anchor().unwrap_or((1, 1));
+        nth_week.set_selected(if w == -1 { 4 } else { (w - 1) as u32 });
+        nth_day.set_selected(d);
+    }
+    group.add(&monthly);
+    group.add(&nth_week);
+    group.add(&nth_day);
 
     // Start day with calendar popover
     let start_row = adw::ActionRow::builder()
@@ -145,11 +189,13 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
     let refresh = {
         let cfg = cfg.clone();
         let group = group.clone();
-        let (cycle, every, days_row, last_day, start_row, paused, cal) = (
+        let (cycle, every, days_row, monthly, nth_week, nth_day, start_row, paused, cal) = (
             cycle.clone(),
             every.clone(),
             days_row.clone(),
-            last_day.clone(),
+            monthly.clone(),
+            nth_week.clone(),
+            nth_day.clone(),
             start_row.clone(),
             paused.clone(),
             cal.clone(),
@@ -171,12 +217,26 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
                     _ => c.saturday = on,
                 }
             }
-            c.monthly_last_day = last_day.is_active();
+            c.monthly_last_day = monthly.selected() == 1;
+            if monthly.selected() == 2 {
+                c.monthly_week_of_month = Some(if nth_week.selected() == 4 {
+                    -1
+                } else {
+                    nth_week.selected() as i32 + 1
+                });
+                c.monthly_weekday = Some(nth_day.selected());
+            } else {
+                c.monthly_week_of_month = None;
+                c.monthly_weekday = None;
+            }
             c.is_paused = paused.is_active();
             c.start_date = cal.date().format("%Y-%m-%d").ok().map(|g| g.to_string());
             start_row.set_subtitle(&c.start_date.as_deref().map(crate::window::fmt_day).unwrap_or_default());
             days_row.set_visible(c.repeat_cycle == "WEEKLY");
-            last_day.set_visible(c.repeat_cycle == "MONTHLY");
+            let is_monthly = c.repeat_cycle == "MONTHLY";
+            monthly.set_visible(is_monthly);
+            nth_week.set_visible(is_monthly && monthly.selected() == 2);
+            nth_day.set_visible(is_monthly && monthly.selected() == 2);
             every.set_subtitle(&match c.repeat_cycle.as_str() {
                 "DAILY" => gettext("days"),
                 "WEEKLY" => gettext("weeks"),
@@ -197,11 +257,13 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         r,
         move |_| r()
     ));
-    last_day.connect_active_notify(glib::clone!(
-        #[strong]
-        r,
-        move |_| r()
-    ));
+    for row in [&monthly, &nth_week, &nth_day] {
+        row.connect_selected_notify(glib::clone!(
+            #[strong]
+            r,
+            move |_| r()
+        ));
+    }
     paused.connect_active_notify(glib::clone!(
         #[strong]
         r,
@@ -274,10 +336,14 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
                     cfg: c.clone(),
                 });
             } else {
-                let changes = serde_json::to_value(&c)
+                let mut changes = serde_json::to_value(&c)
                     .ok()
                     .and_then(|v| v.as_object().cloned())
                     .unwrap_or_default();
+                // Fields serde skips when None must still be cleared on the other side.
+                for key in ["monthlyWeekOfMonth", "monthlyWeekday"] {
+                    changes.entry(key).or_insert(serde_json::Value::Null);
+                }
                 win.dispatch(Action::UpdateRepeatCfg {
                     id: c.id.clone(),
                     changes,

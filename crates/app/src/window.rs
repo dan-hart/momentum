@@ -325,7 +325,16 @@ pub fn repeat_text(c: &RepeatCfg) -> String {
             }
         }
         "MONTHLY" => {
-            let day = if c.monthly_last_day {
+            let day = if let Some((w, d)) = c.nth_weekday_anchor() {
+                let which = match w {
+                    1 => gettext("the first"),
+                    2 => gettext("the second"),
+                    3 => gettext("the third"),
+                    4 => gettext("the fourth"),
+                    _ => gettext("the last"),
+                };
+                format!("{which} {}", names[d as usize])
+            } else if c.monthly_last_day {
                 gettext("the last day")
             } else {
                 match c.start_date.as_deref().and_then(parse_day) {

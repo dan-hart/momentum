@@ -133,10 +133,11 @@ spawns a task with the deterministic id `rpt_<cfgId>_<YYYY-MM-DD>` (so two clien
 double-create), the config's title, project, tags, estimate and notes, due today; the
 config's `lastTaskCreationDay` is then updated. Due rules: DAILY every N days from the
 start date; WEEKLY on the flagged weekdays every N weeks; MONTHLY on the start day of month
-(clamped, or last day); YEARLY on the start date. Only the current day is checked; there is
+(clamped), the last day, or the nth weekday (`monthlyWeekOfMonth` 1–4 or -1 with
+`monthlyWeekday`); YEARLY on the start date. Only the current day is checked; there is
 no catch-up for days when no client ran. Description strings: "Repeats daily", "Repeats
 every Monday", "Repeats weekly on Mon, Wed", "Repeats every 2 weeks on Monday", "Repeats
-monthly on the 5th", "Repeats yearly on 5 March".
+monthly on the 5th", "Repeats monthly on the second Tuesday", "Repeats yearly on 5 March".
 
 ### 2.5b Editing the repeat schedule
 
@@ -144,7 +145,9 @@ Opened from the task dialog's Repeat row, the context menu ("Repeat…" / "Edit 
 top-level tasks only) or Ctrl+Shift+R. The Repeat dialog shows a live description of the
 schedule and offers: Repeats (Daily, Weekly, Monthly, Yearly), Every N (unit follows the
 cycle), weekday chips (weekly, at least one required), "On the last day of the month"
-(monthly), Starts (calendar), Paused. Cancel / Repeat (or Save) in the header; existing
+(monthly: "Monthly on" = the same date, the last day, or a weekday of the month with
+First–Fourth/Last and a weekday, i.e. upstream's `monthlyWeekOfMonth`/`monthlyWeekday`),
+Starts (calendar), Paused. Cancel / Repeat (or Save) in the header; existing
 schedules also get a destructive Stop Repeating button.
 
 A new schedule is created with upstream's defaults: weekly on Monday to Friday, start day
@@ -361,7 +364,7 @@ Time tracking and the timer, pomodoro and break reminders, idle detection, board
 metrics and worklog, issue providers (Jira, GitHub, …), standalone notes, scheduled
 times (`dueWithTime`) and reminder editing, attachments, planner day view, the SuperSync
 server, Dropbox/OneDrive/WebDAV-generic/LocalFile providers, the v3 split sync format,
-repeat catch-up for missed days, nth-weekday monthly repeats, translations, and Flathub
+repeat catch-up for missed days, translations, and Flathub
 publication. All of their data is preserved untouched.
 
 ## 8. Porting notes for iOS and macOS
