@@ -6,6 +6,27 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-09
+
+### Added
+- `mo` command-line companion for Linux and macOS (add, today, tonight, upcoming, list,
+  search, done, undone, plan, rm, projects, tags, sync, config, `--json`); forwards to the
+  running app over D-Bus on Linux
+- GNOME Shell search provider and KDE KRunner runner
+- Reminder notifications with Done and Snooze 1 hour buttons; once-a-day morning summary
+- Run in the background (Background portal, autostart, Background Apps status line)
+- Launcher actions (New Task, Today, Search), quick-add window, drop or paste text and
+  links onto the list to create tasks
+- `momentum --add/--quick-add/--today/--search/--background`; `momentum://` and
+  `superproductivity://` URL schemes
+- Ctrl+Z global undo
+- German translation
+
+### Changed
+- The system-wide shortcut opens the quick-add window instead of the whole app
+- The main window exists hidden from startup so services can use the store
+
+
 ## [0.1.1] - 2026-09-09
 
 ### Added
@@ -42,6 +63,7 @@ First preview.
   the GlobalShortcuts portal
 - Follows the system accent color; color-coded projects and tags
 
-[Unreleased]: https://github.com/dan-hart/momentum/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/dan-hart/momentum/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/dan-hart/momentum/compare/v0.1.1...v0.1.5
 [0.1.1]: https://github.com/dan-hart/momentum/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/dan-hart/momentum/releases/tag/v0.1.0

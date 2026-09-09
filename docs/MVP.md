@@ -1,6 +1,6 @@
 # Momentum MVP
 
-This document records everything Momentum does as of version 0.1.1 (see the version
+This document records everything Momentum does as of version 0.1.5 (see the version
 notes at the end), written
 so that the same product can be rebuilt on another platform. It is the spec, not the
 history. If you start an iOS or macOS Momentum, this is the file to read first.
@@ -448,6 +448,11 @@ publication. All of their data is preserved untouched.
   bulk actions and multi-item drag; undo for every destructive action; the fresh-device
   guard; deterministic repeat instance ids; the search index and result caps; secrets
   never in plain storage; sync off by default.
+- **The `mo` CLI on macOS.** `crates/mo` already builds there: `keyring` uses the Keychain,
+  `dirs` resolves Application Support, and the D-Bus forwarding is compiled out. A macOS
+  Momentum should expose the same "hand actions to the running app" channel (an XPC service
+  or a URL scheme) so `mo` never writes behind the app's back; until then `mo` and the app
+  coordinate through the store files plus a file watcher, as on Linux without D-Bus.
 - **Getting started checklist.** 1) Read sections 3 to 6. 2) Build the model with
   unknown-field preservation. 3) Port `apply()` for the ops in section 4 with tests. 4) Port
   the sync cycle and crypto, test against `build-aux/mock-webdav.py`. 5) Build Today, the
@@ -464,3 +469,10 @@ publication. All of their data is preserved untouched.
   notes copy button, larger editor and notes badge (2.3); sync 20 s after the last local
   change (5); sidebar show/hide toggle (2.1); context-menu Move grouping (2.8); own Flatpak
   repository (7b).
+- **0.1.5** (2026-09-09): desktop integration (2.11): `mo` command line for Linux and
+  macOS, GNOME search provider and KRunner runner, notification Done/Snooze buttons and
+  the morning summary, background mode with autostart and status line, launcher actions,
+  quick-add window, drop and paste to create tasks, `momentum --add/--today/--search/
+  --quick-add/--background`, `momentum://` and `superproductivity://` URL schemes, Ctrl+Z
+  global undo, German translation; the app window now exists hidden from startup so
+  services have a store to talk to; a store file monitor reloads external writes.
