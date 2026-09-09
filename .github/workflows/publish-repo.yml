@@ -49,6 +49,8 @@ jobs:
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           [ -f repo/config ] || ostree init --repo=repo --mode=archive
+          # git does not keep empty directories; OSTree expects these to exist.
+          mkdir -p repo/refs/heads repo/refs/remotes repo/refs/mirrors repo/objects repo/tmp repo/state
           flatpak-builder --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub \
             --arch=${{ matrix.arch }} --default-branch=stable \
             --repo=repo --gpg-sign="$KEY_ID" build-dir src/$MANIFEST
