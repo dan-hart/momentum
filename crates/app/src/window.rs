@@ -611,6 +611,7 @@ impl MomentumWindow {
                 w.move_to_next_week(&ids);
             }),
             targeted("ctx-move", |w, id| w.move_to_dialog(id)),
+            targeted("ctx-repeat", |w, id| crate::repeat_dialog::open(w, id)),
             targeted("ctx-delete", |w, id| w.delete_task(id)),
             targeted("ctx-open-project", |w, id| w.go_to(View::Project(id.into()))),
             targeted("ctx-new-task", |w, id| {
@@ -694,6 +695,11 @@ impl MomentumWindow {
                     w.focused_task().into_iter().collect()
                 };
                 w.toggle_tonight(&ids);
+            }),
+            act("repeat", |w| {
+                if let Some(id) = w.focused_task() {
+                    crate::repeat_dialog::open(w, &id);
+                }
             }),
             act("move-to", |w| {
                 if let Some(id) = w.focused_task() {
@@ -1375,6 +1381,18 @@ impl MomentumWindow {
                     m.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
                 }
                 menu.append_section(None, &m);
+                if t.parent_id.is_none() {
+                    let r = gio::Menu::new();
+                    r.append_item(&item(
+                        if t.repeat_cfg_id.is_some() {
+                            gettext("Edit Repeat…")
+                        } else {
+                            gettext("Repeat…")
+                        },
+                        "win.ctx-repeat",
+                    ));
+                    menu.append_section(None, &r);
+                }
                 let b = gio::Menu::new();
                 b.append_item(&item(gettext("Delete"), "win.ctx-delete"));
                 menu.append_section(None, &b);
@@ -3516,6 +3534,34 @@ impl MomentumWindow {
             &t.project_id,
             None,
         ));
+        let repeat_row = adw::ActionRow::builder()
+            .title(gettext("Repeat"))
+            .subtitle(
+                t.repeat_cfg_id
+                    .as_ref()
+                    .and_then(|id| {
+                        imp.store
+                            .borrow()
+                            .state
+                            .task_repeat_cfg
+                            .entities
+                            .get(id)
+                            .map(repeat_text)
+                    })
+                    .unwrap_or_else(|| gettext("Does not repeat")),
+            )
+            .activatable(true)
+            .build();
+        repeat_row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+        {
+            let id = t.id.clone();
+            repeat_row.connect_activated(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_| crate::repeat_dialog::open(&w, &id)
+            ));
+        }
+        form.group.add(&repeat_row);
         let sub = adw::EntryRow::builder().title(gettext("Add subtask")).build();
         let del = gtk::Button::builder()
             .label(gettext("Delete Task"))

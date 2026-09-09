@@ -155,6 +155,7 @@ impl MomentumApplication {
         self.set_accels_for_action("win.toggle-tonight", &["<Control><Shift>t"]);
         self.set_accels_for_action("win.move-tomorrow", &["<Control><Shift>Right"]);
         self.set_accels_for_action("win.move-next-week", &["<Control><Shift>Down"]);
+        self.set_accels_for_action("win.repeat", &["<Control><Shift>r"]);
         self.set_accels_for_action("win.select-all", &["<Control>a"]);
         self.set_accels_for_action("win.select-none", &["<Control><Shift>a"]);
         self.set_accels_for_action("win.archive-done", &["<Control>e"]);

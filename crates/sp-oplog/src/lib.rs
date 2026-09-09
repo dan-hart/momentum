@@ -100,6 +100,13 @@ pub enum Action {
         id: String,
         changes: Map<String, Value>,
     },
+    AddRepeatCfg {
+        task_id: String,
+        cfg: RepeatCfg,
+    },
+    DeleteRepeatCfg {
+        id: String,
+    },
     RemoveFromToday {
         task_ids: Vec<String>,
     },
@@ -220,6 +227,20 @@ impl Action {
                 "TASK_REPEAT_CFG",
                 vec![id.clone()],
                 json!({"taskRepeatCfg": {"id": id, "changes": changes}}),
+            ),
+            AddRepeatCfg { task_id, cfg } => (
+                "[TaskRepeatCfg][Task] Add TaskRepeatCfg to Task",
+                "CRT",
+                "TASK_REPEAT_CFG",
+                vec![cfg.id.clone()],
+                json!({"taskId": task_id, "taskRepeatCfg": cfg}),
+            ),
+            DeleteRepeatCfg { id } => (
+                "[Task Shared] deleteTaskRepeatCfg",
+                "DEL",
+                "TASK_REPEAT_CFG",
+                vec![id.clone()],
+                json!({"taskRepeatCfgId": id}),
             ),
             RemoveFromToday { task_ids } => (
                 "[Task Shared] removeTasksFromTodayTag",
@@ -543,6 +564,21 @@ pub fn apply(d: &mut AppData, action: &Action) {
         UpdateRepeatCfg { id, changes } => {
             if let Some(c) = d.task_repeat_cfg.entities.get(id).cloned() {
                 d.task_repeat_cfg.entities.insert(id.clone(), merge_into(&c, changes));
+            }
+        }
+        AddRepeatCfg { task_id, cfg } => {
+            d.task_repeat_cfg.insert(&cfg.id.clone(), cfg.clone());
+            if let Some(t) = d.task.entities.get_mut(task_id) {
+                t.repeat_cfg_id = Some(cfg.id.clone());
+                t.modified = Some(now_ms());
+            }
+        }
+        DeleteRepeatCfg { id } => {
+            d.task_repeat_cfg.remove(id);
+            for t in d.task.entities.values_mut() {
+                if t.repeat_cfg_id.as_deref() == Some(id) {
+                    t.repeat_cfg_id = None;
+                }
             }
         }
         RemoveFromToday { task_ids } => {

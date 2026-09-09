@@ -138,6 +138,22 @@ no catch-up for days when no client ran. Description strings: "Repeats daily", "
 every Monday", "Repeats weekly on Mon, Wed", "Repeats every 2 weeks on Monday", "Repeats
 monthly on the 5th", "Repeats yearly on 5 March".
 
+### 2.5b Editing the repeat schedule
+
+Opened from the task dialog's Repeat row, the context menu ("Repeat…" / "Edit Repeat…",
+top-level tasks only) or Ctrl+Shift+R. The Repeat dialog shows a live description of the
+schedule and offers: Repeats (Daily, Weekly, Monthly, Yearly), Every N (unit follows the
+cycle), weekday chips (weekly, at least one required), "On the last day of the month"
+(monthly), Starts (calendar), Paused. Cancel / Repeat (or Save) in the header; existing
+schedules also get a destructive Stop Repeating button.
+
+A new schedule is created with upstream's defaults: weekly on Monday to Friday, start day
+= the task's due day or today, title/project/tags/estimate/notes copied from the task,
+`lastTaskCreationDay` = today so the current task counts as today's instance. Ops:
+`[TaskRepeatCfg][Task] Add TaskRepeatCfg to Task` (`{taskId, taskRepeatCfg}`, links the
+task), `[TaskRepeatCfg] Update TaskRepeatCfg`, and `[Task Shared] deleteTaskRepeatCfg`
+(`{taskRepeatCfgId}`, clears `repeatCfgId` on tasks).
+
 ### 2.6 Undo, feedback, errors
 
 - Undo toasts, not confirmation dialogs, for: delete task, mark done, archive, plan for
@@ -206,6 +222,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+Shift+T | Move focused task (or selection) between Today and Tonight |
 | Ctrl+Shift+Right | Move focused task (or selection) to tomorrow |
 | Ctrl+Shift+Down | Move focused task (or selection) to next week (the next Monday) |
+| Ctrl+Shift+R | Repeat schedule for the focused task |
 | Ctrl+M | Move focused task to a project (dialog) |
 | Delete | Delete focused task |
 | Enter | Open focused task |
@@ -228,7 +245,7 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 | Ctrl+Alt+T, Ctrl+Alt+M (system-wide) | Add a task from anywhere; show the window |
 
 Context menu contents. Task: Open, Mark as Done/Not Done; a separated group with Plan for Today/Remove from
-Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move to Project…; then Delete. Project: Open, New Task Here…, Edit…, Delete Project…
+Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move to Project…; Repeat… / Edit Repeat… (top-level tasks); then Delete. Project: Open, New Task Here…, Edit…, Delete Project…
 (not Inbox). Tag: Open, Edit…, Delete Tag….
 
 ### 2.9 Preferences
@@ -344,7 +361,7 @@ Time tracking and the timer, pomodoro and break reminders, idle detection, board
 metrics and worklog, issue providers (Jira, GitHub, …), standalone notes, scheduled
 times (`dueWithTime`) and reminder editing, attachments, planner day view, the SuperSync
 server, Dropbox/OneDrive/WebDAV-generic/LocalFile providers, the v3 split sync format,
-repeat catch-up for missed days, editing repeat configurations, translations, and Flathub
+repeat catch-up for missed days, nth-weekday monthly repeats, translations, and Flathub
 publication. All of their data is preserved untouched.
 
 ## 8. Porting notes for iOS and macOS

@@ -151,6 +151,42 @@ pub struct RepeatCfg {
     pub extra: Map<String, Value>,
 }
 impl RepeatCfg {
+    /// A new weekly (Mon–Fri) config for a task, mirroring upstream `DEFAULT_TASK_REPEAT_CFG`.
+    /// `lastTaskCreationDay` is today so the existing task counts as today's instance.
+    pub fn for_task(task: &Task) -> Self {
+        let today = today_str();
+        let extra = Map::from_iter([
+            ("lastTaskCreation".to_string(), json!(now_ms())),
+            ("quickSetting".to_string(), json!("CUSTOM")),
+            ("repeatFromCompletionDate".to_string(), json!(false)),
+            ("waitForCompletion".to_string(), json!(false)),
+            ("shouldInheritSubtasks".to_string(), json!(false)),
+            ("disableAutoUpdateSubtasks".to_string(), json!(false)),
+            ("order".to_string(), json!(0)),
+        ]);
+        Self {
+            id: new_id(),
+            project_id: Some(task.project_id.clone()).filter(|p| !p.is_empty()),
+            title: Some(task.title.clone()),
+            tag_ids: task.tag_ids.iter().filter(|t| *t != TODAY_TAG_ID).cloned().collect(),
+            default_estimate: (task.time_estimate > 0.0).then_some(task.time_estimate),
+            notes: task.notes.clone(),
+            is_paused: false,
+            repeat_cycle: "WEEKLY".into(),
+            repeat_every: 1,
+            start_date: Some(task.due_day.clone().unwrap_or(today.clone())),
+            last_task_creation_day: Some(today),
+            monthly_last_day: false,
+            monday: true,
+            tuesday: true,
+            wednesday: true,
+            thursday: true,
+            friday: true,
+            saturday: false,
+            sunday: false,
+            extra,
+        }
+    }
     pub fn weekdays(&self) -> [bool; 7] {
         [
             self.sunday,

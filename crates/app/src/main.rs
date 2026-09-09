@@ -6,6 +6,7 @@ mod config;
 mod demo;
 mod keyring;
 mod prefs;
+mod repeat_dialog;
 mod shortcuts;
 mod task_form;
 mod window;

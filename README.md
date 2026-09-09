@@ -34,8 +34,9 @@ Momentum whenever you are on your Linux machine.
 - **Guided task creation.** Title, project, due day with a calendar, estimate, tag chips
   and notes in one dialog. Or type `Fix the bug #work 1h 30m` into the quick-add box, with
   `#` autocomplete for your tags.
-- **Repeating tasks.** Daily, weekly, monthly and yearly schedules from Super Productivity
-  spawn their instances here too, badged with a plain-language "Repeats every Monday".
+- **Repeating tasks.** Create and edit daily, weekly, monthly and yearly schedules, and the
+  ones from Super Productivity spawn their instances here too, badged with a plain-language
+  "Repeats every Monday".
 - **Sync you can trust.** Compatible with Super Productivity's `sync-data.json`, including
   end-to-end encrypted files. Conflicts are resolved by rebasing your changes, never by
   overwriting. Secrets live in the system keyring.
@@ -95,6 +96,7 @@ minutes while the switch is on.
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | Move between Today and Tonight |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd> | Move to tomorrow |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>↓</kbd> | Move to next week (Monday) |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | Repeat schedule |
 | <kbd>Ctrl</kbd>+<kbd>M</kbd> | Move focused task to a project |
 | <kbd>Delete</kbd> | Delete focused task |
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> | Select all tasks in the view |
