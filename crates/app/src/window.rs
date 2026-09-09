@@ -2430,10 +2430,9 @@ impl MomentumWindow {
                 list.sort_by_key(|t| Self::is_tonight(&store, t)); // stable: keeps order within each group
             }
         }
-        let split_tonight =
-            *imp.view.borrow() == View::Today && open.iter().chain(done.iter()).any(|t| Self::is_tonight(&store, t));
+        let split_tonight = *imp.view.borrow() == View::Today && open.iter().any(|t| Self::is_tonight(&store, t));
         let mut rendered_section: Option<bool> = None; // Some(is_tonight) of the current section
-        for t in open.into_iter().chain(done) {
+        for t in open {
             if split_tonight {
                 let tonight = Self::is_tonight(&store, t);
                 if rendered_section != Some(tonight) {
@@ -2444,6 +2443,17 @@ impl MomentumWindow {
             self.task_row(t, &store, false, false);
             for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
                 self.task_row(s, &store, true, false);
+            }
+        }
+        // Completed tasks always sit in their own section at the bottom, so the plan above
+        // only ever shows what is still to do.
+        if !done.is_empty() {
+            self.new_section(Some(&format!("{} ({})", gettext("Completed"), done.len())));
+            for t in done {
+                self.task_row(t, &store, false, false);
+                for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
+                    self.task_row(s, &store, true, false);
+                }
             }
         }
         imp.empty.set_visible(imp.rows.borrow().is_empty());
