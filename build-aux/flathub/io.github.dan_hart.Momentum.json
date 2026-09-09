@@ -44,7 +44,7 @@
                     "type": "git",
                     "url": "https://github.com/dan-hart/momentum.git",
                     "tag": "v0.1.0",
-                    "commit": "eb6d9e1828f7c202047393dd77b2ef8a5bf4cfe0"
+                    "commit": "1c6344e23d02c0cc6c622b133b68ba580453de4d"
                 },
                 "cargo-sources.json"
             ]
