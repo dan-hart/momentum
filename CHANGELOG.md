@@ -6,6 +6,25 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-09
+
+### Added
+- Create, edit, pause and remove repeat schedules in the app (daily, weekly, monthly on a
+  date, the last day, or the nth weekday, yearly); Repeat row in the task dialog, context
+  menu item, Ctrl+Shift+R
+- Move to Next Week (next Monday) in the context menu and Ctrl+Shift+Down
+- Notes: copy button in the group header, taller editor, notes badge on task rows
+- Per-view empty states that say what to do next; "All done" panel with Archive Completed
+- Automatic sync 20 seconds after the last local change (debounced)
+- Sidebar show/hide toggle in the header bars
+- Own Flatpak repository on GitHub Pages with signed builds for x86_64 and aarch64
+
+### Changed
+- Task context menu groups the Move actions with a separator
+- Header bar carries only Sync Now and View Options; Select Tasks moved into the menu
+- Notes and task dialog are larger
+
+
 ## [0.1.0] - 2026-09-08
 
 First preview.
@@ -23,5 +42,6 @@ First preview.
   the GlobalShortcuts portal
 - Follows the system accent color; color-coded projects and tags
 
-[Unreleased]: https://github.com/dan-hart/momentum/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dan-hart/momentum/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/dan-hart/momentum/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/dan-hart/momentum/releases/tag/v0.1.0

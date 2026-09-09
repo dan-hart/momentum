@@ -1263,7 +1263,7 @@ dependencies = [
 
 [[package]]
 name = "momentum"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ashpd",
  "async-io",
@@ -1918,7 +1918,7 @@ checksum = "b9be42f50aa861c555654aa3a37f52f4b1074bacf4e48fe0ef7fa584e80f1f0f"
 
 [[package]]
 name = "sp-model"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1928,7 +1928,7 @@ dependencies = [
 
 [[package]]
 name = "sp-oplog"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1939,7 +1939,7 @@ dependencies = [
 
 [[package]]
 name = "sp-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1950,7 +1950,7 @@ dependencies = [
 
 [[package]]
 name = "sp-sync"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes-gcm",
  "argon2",
