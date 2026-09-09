@@ -245,7 +245,13 @@ impl TaskForm {
             .set_text(task.and_then(|t| t.notes.as_deref()).unwrap_or(""));
         notes_group.add(
             &gtk::Frame::builder()
-                .child(&gtk::ScrolledWindow::builder().child(&notes).build())
+                .child(
+                    &gtk::ScrolledWindow::builder()
+                        .child(&notes)
+                        .min_content_height(420)
+                        .propagate_natural_height(true)
+                        .build(),
+                )
                 .build(),
         );
 
