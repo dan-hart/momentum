@@ -40,6 +40,11 @@
     </key>
     <key name="run-in-background" type="b"><default>false</default><summary>Keep running after the window closes</summary></key>
     <key name="last-summary-day" type="s"><default>''</default><summary>Day the morning summary was last shown</summary></key>
+    <key name="modifier-key" type="s">
+      <choices><choice value="control"/><choice value="alt"/><choice value="super"/><choice value="option"/><choice value="command"/></choices>
+      <default>'control'</default>
+      <summary>Primary modifier for app shortcuts (Ctrl+E becomes Super+E with "super")</summary>
+    </key>
     <key name="p2p-enabled" type="b"><default>false</default><summary>Sync directly with nearby devices over the local network</summary></key>
     <key name="last-p2p-ms" type="x"><default>0</default><summary>Time of the last exchange with a nearby device (ms since epoch)</summary></key>
   </schema>

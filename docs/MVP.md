@@ -281,6 +281,13 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
 
 ### 2.9 Preferences
 
+- Desktop › Modifier key: `modifier-key` (`control` default, `alt`, `super`; `option`,
+  `command` on macOS). Every app accelerator is written with `<Control>` and rewritten
+  through one function at startup and on change; the Keyboard Shortcuts overlay and the
+  empty-state hints ("press Super+N") follow. Portal global shortcuts (Ctrl+Alt+T/M) are
+  not GTK accelerators and stay as they are. Desktop-reserved combinations (Super+A on
+  GNOME) never reach the app; the row says so.
+
 - Nextcloud Sync: master switch (off by default; nothing leaves the device until on),
   server URL, username, app password, sync folder, encryption password, sync
   automatically (at startup, every five minutes, and 20 seconds after the last local

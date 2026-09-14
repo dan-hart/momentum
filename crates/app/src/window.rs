@@ -463,7 +463,10 @@ impl MomentumWindow {
         glib::idle_add_local_once(glib::clone!(
             #[weak(rename_to = w)]
             self,
-            move || w.p2p_apply_setting()
+            move || {
+                w.p2p_apply_setting();
+                w.apply_modifier(); // the help overlay exists once the app has adopted the window
+            }
         ));
         adw::StyleManager::default().connect_high_contrast_notify(glib::clone!(
             #[weak(rename_to = w)]
@@ -956,6 +959,9 @@ impl MomentumWindow {
                 imp.add_entry.grab_focus();
                 imp.add_entry.set_text("Write the docs #");
                 imp.add_entry.set_position(-1);
+            }
+            if std::env::var_os("MOMENTUM_SCREENSHOT_PREFS").is_some() {
+                crate::prefs::MomentumPrefs::default().present(Some(self));
             }
             if std::env::var_os("MOMENTUM_SCREENSHOT_DEVICES").is_some() {
                 // The node starts from an idle callback; open the dialog once it is up.
@@ -1957,6 +1963,40 @@ impl MomentumWindow {
         self.new_task_dialog();
     }
 
+    /// Rewrites the Keyboard Shortcuts overlay for the configured modifier and refreshes
+    /// hints that name it. The overlay keeps its original accelerator in the widget name.
+    #[allow(deprecated)] // GtkShortcutsWindow is what gtk/help-overlay.ui still builds
+    pub fn apply_modifier(&self) {
+        #[allow(deprecated)]
+        fn walk(w: &gtk::Widget, token: &str) {
+            if let Some(sc) = w.downcast_ref::<gtk::ShortcutsShortcut>() {
+                let current = sc.accelerator().map(|a| a.to_string()).unwrap_or_default();
+                let original = if sc.widget_name().is_empty() {
+                    sc.set_widget_name(&current);
+                    current
+                } else {
+                    sc.widget_name().to_string()
+                };
+                // Global (portal) shortcuts stay Ctrl+Alt: they are not GTK accelerators.
+                if !original.contains("<Alt>") {
+                    sc.set_accelerator(Some(&original.replace("<Control>", token)));
+                }
+            }
+            let mut child = w.first_child();
+            while let Some(c) = child {
+                walk(&c, token);
+                child = c.next_sibling();
+            }
+        }
+        if let Some(overlay) = self.help_overlay() {
+            walk(
+                overlay.upcast_ref(),
+                crate::modifier::token(&crate::modifier::current()),
+            );
+        }
+        self.refresh_tasks();
+    }
+
     // ---- rendering -------------------------------------------------------
 
     /// Done top-level tasks with their subtasks, ready to archive.
@@ -2486,9 +2526,10 @@ impl MomentumWindow {
     fn empty_state(&self, store: &Store) -> (String, String, String) {
         let synced = self.sync_configured();
         let add = if synced {
-            gettext("Add a task above, or press Ctrl+N.")
+            gettext("Add a task above, or press {}.").replace("{}", &crate::modifier::hint("N"))
         } else {
-            gettext("Add a task above, press Ctrl+N, or turn on sync in Preferences to bring in your tasks.")
+            gettext("Add a task above, press {}, or turn on sync in Preferences to bring in your tasks.")
+                .replace("{}", &crate::modifier::hint("N"))
         };
         match &*self.imp().view.borrow() {
             View::Today => (
@@ -2496,13 +2537,15 @@ impl MomentumWindow {
                 gettext("Nothing planned for today"),
                 format!(
                     "{add} {}",
-                    gettext("Drag tasks here from Coming Up, or press Ctrl+T on any task.")
+                    gettext("Drag tasks here from Coming Up, or press {} on any task.")
+                        .replace("{}", &crate::modifier::hint("T"))
                 ),
             ),
             View::Tonight => (
                 "weather-clear-night-symbolic".into(),
                 gettext("Nothing planned for tonight"),
-                gettext("Tag a task “Evening”, or press Ctrl+Shift+T on a task to move it here."),
+                gettext("Tag a task “Evening”, or press {} on a task to move it here.")
+                    .replace("{}", &crate::modifier::hint("Shift+T")),
             ),
             View::Upcoming => {
                 let range = self.imp().settings.string("upcoming-range");
@@ -2519,7 +2562,8 @@ impl MomentumWindow {
             View::Archive => (
                 "archive-symbolic".into(),
                 gettext("No archived tasks"),
-                gettext("Completed tasks land here when you archive them with Ctrl+E."),
+                gettext("Completed tasks land here when you archive them with {}.")
+                    .replace("{}", &crate::modifier::hint("E")),
             ),
             View::Search => (
                 "edit-find-symbolic".into(),

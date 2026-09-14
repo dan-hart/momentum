@@ -134,6 +134,22 @@ mod imp {
             app.setup_css();
             app.setup_gactions();
             app.setup_accels();
+            let settings = gio::Settings::new(*APP_ID);
+            settings.connect_changed(
+                Some("modifier-key"),
+                glib::clone!(
+                    #[weak]
+                    app,
+                    move |_, _| {
+                        app.setup_accels();
+                        if let Some(w) = app.active_window().and_downcast::<MomentumWindow>() {
+                            w.apply_modifier();
+                        }
+                    }
+                ),
+            );
+            // Keep the settings object alive for the lifetime of the app.
+            std::mem::forget(settings);
             crate::shortcuts::register_global(&app);
             // The window exists from startup (hidden) so reminders, sync, the search provider
             // and the CLI have a store to talk to, even when launched as a service.
@@ -286,35 +302,43 @@ impl MomentumApplication {
         self.add_action_entries([action_quit, action_about]);
     }
 
-    fn setup_accels(&self) {
-        self.set_accels_for_action("app.quit", &["<Control>q"]);
-        self.set_accels_for_action("window.close", &["<Control>w"]);
-        self.set_accels_for_action("app.preferences", &["<Control>comma"]);
-        self.set_accels_for_action("app.add-task", &["<Control>n"]);
-        self.set_accels_for_action("app.sync", &["<Control>r", "F5"]);
-        self.set_accels_for_action("app.new-project", &["<Control><Shift>n"]);
-        self.set_accels_for_action("win.search", &["<Control>f"]);
-        self.set_accels_for_action("win.toggle-done", &["<Control>d"]);
-        self.set_accels_for_action("win.delete-task", &["Delete"]);
-        self.set_accels_for_action("win.plan-today", &["<Control>t"]);
-        self.set_accels_for_action("win.move-to", &["<Control>m"]);
-        self.set_accels_for_action("win.toggle-tonight", &["<Control><Shift>t"]);
-        self.set_accels_for_action("win.move-tomorrow", &["<Control><Shift>Right"]);
-        self.set_accels_for_action("win.move-next-week", &["<Control><Shift>Down"]);
-        self.set_accels_for_action("win.repeat", &["<Control><Shift>r"]);
-        self.set_accels_for_action("win.undo", &["<Control>z"]);
-        self.set_accels_for_action("win.select-all", &["<Control>a"]);
-        self.set_accels_for_action("win.select-none", &["<Control><Shift>a"]);
-        self.set_accels_for_action("win.archive-done", &["<Control>e"]);
-        self.set_accels_for_action("win.focus-add", &["<Control>l"]);
-        self.set_accels_for_action("win.toggle-sidebar", &["F9"]);
-        self.set_accels_for_action("win.next-view", &["<Control>Page_Down"]);
-        self.set_accels_for_action("win.prev-view", &["<Control>Page_Up"]);
-        self.set_accels_for_action("win.move-up", &["<Control>Up"]);
-        self.set_accels_for_action("win.move-down", &["<Control>Down"]);
-        self.set_accels_for_action("win.duplicate", &["<Control><Shift>d"]);
-        self.set_accels_for_action("win.copy-title", &["<Control><Shift>c"]);
-        self.set_accels_for_action("win.open-focused", &["<Control>o"]);
+    /// Every shortcut is written with `<Control>`; the modifier-key preference rewrites it.
+    pub fn setup_accels(&self) {
+        let set = |action: &str, accels: &[&str]| {
+            let mapped: Vec<String> = accels.iter().map(|a| crate::modifier::accel(a)).collect();
+            let refs: Vec<&str> = mapped.iter().map(String::as_str).collect();
+            self.set_accels_for_action(action, &refs);
+        };
+        set("app.quit", &["<Control>q"]);
+        set("window.close", &["<Control>w"]);
+        set("app.preferences", &["<Control>comma"]);
+        set("app.add-task", &["<Control>n"]);
+        set("app.sync", &["<Control>r", "F5"]);
+        set("app.new-project", &["<Control><Shift>n"]);
+        set("win.search", &["<Control>f"]);
+        set("win.toggle-done", &["<Control>d"]);
+        set("win.delete-task", &["Delete"]);
+        set("win.plan-today", &["<Control>t"]);
+        set("win.move-to", &["<Control>m"]);
+        set("win.toggle-tonight", &["<Control><Shift>t"]);
+        set("win.move-tomorrow", &["<Control><Shift>Right"]);
+        set("win.move-next-week", &["<Control><Shift>Down"]);
+        set("win.repeat", &["<Control><Shift>r"]);
+        set("win.undo", &["<Control>z"]);
+        set("win.select-all", &["<Control>a"]);
+        set("win.select-none", &["<Control><Shift>a"]);
+        set("win.archive-done", &["<Control>e"]);
+        set("win.focus-add", &["<Control>l"]);
+        set("win.toggle-sidebar", &["F9"]);
+        set("win.next-view", &["<Control>Page_Down"]);
+        set("win.prev-view", &["<Control>Page_Up"]);
+        set("win.move-up", &["<Control>Up"]);
+        set("win.move-down", &["<Control>Down"]);
+        set("win.duplicate", &["<Control><Shift>d"]);
+        set("win.copy-title", &["<Control><Shift>c"]);
+        set("win.open-focused", &["<Control>o"]);
+        set("win.show-help-overlay", &["<Control>question"]);
+        debug!("shortcuts use {}", crate::modifier::token(&crate::modifier::current()));
     }
 
     fn setup_css(&self) {

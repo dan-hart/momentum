@@ -82,6 +82,11 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         title: _("Run in the background");
         subtitle: _("Keep reminders and sync running after the window closes, and start at login");
       }
+
+      Adw.ComboRow modifier_row {
+        title: _("Modifier key");
+        subtitle: _("The key in every shortcut, so Ctrl+E becomes Super+E. Combinations the desktop uses itself, such as Super+A on GNOME, do not reach Momentum.");
+      }
     }
 
     Adw.PreferencesGroup {

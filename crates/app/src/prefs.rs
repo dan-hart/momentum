@@ -31,6 +31,8 @@ mod imp {
         pub background_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub p2p_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub modifier_row: TemplateChild<adw::ComboRow>,
     }
     #[glib::object_subclass]
     impl ObjectSubclass for MomentumPrefs {
@@ -76,6 +78,20 @@ mod imp {
             s.bind("colorful-labels", &*self.colorful_row, "active").build();
             s.bind("run-in-background", &*self.background_row, "active").build();
             s.bind("p2p-enabled", &*self.p2p_row, "active").build();
+            // Modifier key: platform-specific choices mapped to the setting's string value.
+            let choices = crate::modifier::choices();
+            let labels: Vec<&str> = choices.iter().map(|(_, l)| l.as_str()).collect();
+            self.modifier_row.set_model(Some(&gtk::StringList::new(&labels)));
+            let current = s.string("modifier-key");
+            let idx = choices.iter().position(|(k, _)| *k == current.as_str()).unwrap_or(0);
+            self.modifier_row.set_selected(idx as u32);
+            let values: Vec<&'static str> = choices.iter().map(|(k, _)| *k).collect();
+            let settings = s.clone();
+            self.modifier_row.connect_selected_notify(move |row| {
+                if let Some(v) = values.get(row.selected() as usize) {
+                    settings.set_string("modifier-key", v).ok();
+                }
+            });
             // Ask the Background portal for permission (and autostart) when switched on.
             self.background_row.connect_active_notify(|row| {
                 let on = row.is_active();

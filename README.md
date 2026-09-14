@@ -138,6 +138,9 @@ Add `--json` for machine-readable output. Set `MO_DATA_DIR` to point at another 
 
 ## Keyboard shortcuts
 
+Ctrl is the default modifier. Preferences › Desktop › **Modifier key** switches every
+shortcut below to Alt or Super (Option or Command on macOS), so Ctrl+E becomes Super+E.
+
 | Shortcut | Action |
 |---|---|
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | New task |

@@ -6,6 +6,10 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Modifier key preference: every shortcut uses Ctrl, Alt or Super (Option or Command on
+  macOS); the Keyboard Shortcuts overlay and the in-app hints follow the choice
+
 ## [0.2.0] - 2026-09-14
 
 ### Added
