@@ -223,6 +223,12 @@ impl MomentumApplication {
                 .activate(win(|w| crate::prefs::MomentumPrefs::default().present(Some(w))))
                 .build(),
             gio::ActionEntry::builder("sync").activate(win(|w| w.sync())).build(),
+            gio::ActionEntry::builder("devices")
+                .activate(win(|w| w.show_devices_dialog()))
+                .build(),
+            gio::ActionEntry::builder("sync-devices")
+                .activate(win(|w| w.p2p_sync_now()))
+                .build(),
             gio::ActionEntry::builder("import")
                 .activate(win(|w| w.import_backup()))
                 .build(),

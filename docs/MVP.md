@@ -340,6 +340,41 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   boxes read "Done: <title>"), badges labelled, Menu/Shift+F10 context menus, high
   contrast disables colour coding live, `build-aux/a11y-dump.py` verifies the tree.
 
+### 2.12 Sync with nearby devices (LibreSync)
+
+A second sync path that needs no server: Preferences › Nearby Devices. Off by default.
+
+- **Transport, not merge authority.** LibreSync moves records; Momentum's op log stays the
+  source of truth. Every op is one immutable record `Op/<op id>` (fields: `t`, `origin`,
+  `op` JSON, `action` JSON) in namespace `io.github.dan_hart.Momentum`, adapter `ops`.
+  Distinct ids never conflict, so the transport's last-writer-wins is loss-free. Received
+  ops are applied through `sp_oplog::apply` in `t` order, their vector clocks merged, and
+  queued for the device's own Nextcloud upload (skipped there if the server already lists
+  the op id). Ops from this client, or already applied, are ignored.
+- **Bootstrap snapshot.** Record `Snapshot/latest` holds a gzip+base64 JSON of the whole
+  `AppData`, republished at most once a minute when the state hash changed. On first
+  contact a device with no tasks and nothing pending adopts it whole (and skips ops older
+  than the snapshot); otherwise it adds the projects, tags, repeat configs and tasks it
+  lacks without emitting ops. `meta.p2p_bootstrapped` then blocks later snapshots so they
+  cannot resurrect deleted items.
+- **Bounded history.** A device tombstones its own ops older than 30 days.
+- **Linking.** Trust on first use guarded by a six-digit code valid five minutes while
+  the Nearby Devices dialog is open (`DeviceHandler::pairing_secret`). Both sides pin the
+  peer certificate fingerprint; a changed fingerprint is refused and reported. The device
+  list (`p2p/devices.json`) keeps name, fingerprint, last address and last-seen time.
+- **Scheduling.** Sync five seconds after local ops are published, every five minutes,
+  three seconds after start, and with Sync Now. Each pass discovers via mDNS (2 s) and
+  syncs with every linked device found, then tries linked devices that did not answer at
+  their last known address (overlay networks). The listener accepts inbound syncs at any
+  time; `Event::InboundSync` and `SyncFinished` drain the inbox on the main loop.
+- **Keys.** App key and device certificate/key in the keyring (`p2p-app-key`,
+  `p2p-device-cert`, `p2p-device-key`, base64). Engine state encrypted at
+  `p2p/state.bin`; journal at `p2p/journal.json`.
+- **Identity.** `device_id` = the store's client id, `user_id` = host name (shown to
+  peers), app id shared by Devel and release. Port 52345, else any free port.
+- **Status.** The caption under the list adds "N devices, synced just now"; the Sync
+  button shows when either backend is on.
+
 ## 3. Data model (what to reimplement)
 
 Momentum types the slices it needs and preserves everything else opaquely so a round trip
@@ -508,4 +543,5 @@ preserved untouched.
   services have a store to talk to; a store file monitor reloads external writes.
 - **Unreleased** (2026-09-14): scheduled times and reminders in the task dialog (2.3b);
   Overdue section in Today (2.1); repeat catch-up for missed days (2.5); accessibility
-  pass and AT-SPI check script; translation pipeline with Weblate instructions.
+  pass and AT-SPI check script; translation pipeline with Weblate instructions; sync with
+  nearby devices over LibreSync (2.12).

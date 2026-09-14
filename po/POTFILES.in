@@ -6,6 +6,7 @@ data/resources/ui/shortcuts.blp
 data/resources/ui/window.blp
 crates/app/src/application.rs
 crates/app/src/main.rs
+crates/app/src/p2p.rs
 crates/app/src/quick_add.rs
 crates/app/src/repeat_dialog.rs
 crates/app/src/search_provider.rs

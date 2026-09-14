@@ -84,6 +84,15 @@ works on any distribution with Flatpak: GNOME, KDE Plasma, Sway and the rest. St
 The last sync time shows under the task list. Sync also runs at startup and every five
 minutes while the switch is on.
 
+### Sync with nearby devices
+
+No server? Preferences › Nearby Devices › **Sync with nearby devices** on two machines,
+open **Manage Devices…** on both, and type one device's six-digit code on the other. From
+then on changes travel directly over the local network, end-to-end encrypted, a few
+seconds after you make them. A device that also has Nextcloud relays what it receives, so
+the rest of your devices and Super Productivity stay in step. Details in
+[docs/P2P.md](docs/P2P.md).
+
 ## Part of the desktop
 
 - **Search from the shell.** Type a task name in GNOME's Activities overview or KDE's KRunner
@@ -163,6 +172,9 @@ flatpak install --user flathub org.gnome.Sdk//50 org.gnome.Platform//50 \
   org.freedesktop.Sdk.Extension.rust-stable//25.08 \
   org.freedesktop.Sdk.Extension.llvm22//25.08 org.flatpak.Builder
 
+# Nearby-device sync links against LibreSync, checked out next to the workspace
+git clone https://github.com/dan-hart/LibreSync ../LibreSync && ln -s ../LibreSync libresync-src
+
 # Development build (striped header, debug logging, separate data)
 flatpak run org.flatpak.Builder --user --install --force-clean flatpak_app \
   build-aux/io.github.dan_hart.Momentum.Devel.json
@@ -184,6 +196,7 @@ Or open the folder in GNOME Builder and press Run.
 | `crates/sp-oplog` | Operation log: envelope, vector clocks, action codes, `apply()` |
 | `crates/sp-store` | Local persistence (JSON snapshot, pending ops, sync metadata) |
 | `crates/sp-sync` | Nextcloud WebDAV sync, gzip, Argon2id + AES-GCM encryption |
+| `crates/sp-p2p` | Sync with nearby devices over LibreSync (ops as records, bootstrap snapshot) |
 | `data/` | Desktop file, metainfo, GSettings schema, icons, Blueprint UI |
 | `build-aux/` | Flatpak manifests, Flathub files, mock WebDAV server |
 | `docs/PLAN.md` | Architecture and roadmap |

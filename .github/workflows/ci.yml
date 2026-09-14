@@ -11,6 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: v0.6.0
+          path: libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -44,6 +51,13 @@ jobs:
       options: --privileged
     steps:
     - uses: actions/checkout@v4
+    - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      uses: actions/checkout@v4
+      with:
+        repository: dan-hart/LibreSync
+        ref: v0.6.0
+        path: libresync-src
+        token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
     - uses: flathub-infra/flatpak-github-actions/flatpak-builder@933e9e8ca36e85046ebca8e211f0785c6becac40
       with:
         bundle: momentum-${{ matrix.arch }}.flatpak

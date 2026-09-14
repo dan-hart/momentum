@@ -39,6 +39,7 @@ blueprint-compiler):
 
 ```sh
 flatpak run --devel --share=network --filesystem=home --command=bash org.gnome.Sdk//50 -c '
+  export PATH=/usr/lib/sdk/rust-stable/bin:$PATH &&
   meson setup target-sdk/pot-build &&
   ninja -C target-sdk/pot-build momentum-pot momentum-update-po'
 ```

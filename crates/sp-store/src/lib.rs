@@ -3,7 +3,7 @@
 //! Local persistence: JSON snapshot + pending (unsynced) ops + sync metadata.
 use serde::{Deserialize, Serialize};
 use sp_model::AppData;
-use sp_oplog::{apply, Action, Op, VectorClock};
+use sp_oplog::{apply, merge_clocks, Action, Op, VectorClock};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +18,9 @@ pub struct Meta {
     pub vector_clock: VectorClock,
     pub last_sync_version: u64,
     pub last_etag: Option<String>,
+    /// A peer snapshot was adopted or judged unnecessary; later peer snapshots are ignored.
+    #[serde(default)]
+    pub p2p_bootstrapped: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +71,87 @@ impl Store {
         if let Err(e) = self.save() {
             eprintln!("save failed: {e}");
         }
+    }
+    pub fn dir(&self) -> &std::path::Path {
+        &self.dir
+    }
+    /// Applies an op that arrived from a peer. Ops from other clients are also queued for
+    /// the Nextcloud upload so a device without Nextcloud still reaches the server through
+    /// one that has it. Returns false when the op was already applied here.
+    pub fn apply_remote(&mut self, op: Op, action: Action) -> bool {
+        if op.c == self.meta.client_id || self.pending.iter().any(|p| p.op.id == op.id) {
+            return false;
+        }
+        apply(&mut self.state, &action);
+        self.meta.vector_clock = merge_clocks(&self.meta.vector_clock, &op.v);
+        self.pending.push(Pending { op, action });
+        true
+    }
+    /// Takes a peer's snapshot on board. A store with no tasks and nothing pending adopts it
+    /// whole; otherwise entities missing here are added without generating ops (their owner
+    /// already syncs them). Returns how many entities were added.
+    pub fn adopt_snapshot(&mut self, snap: AppData) -> usize {
+        self.meta.p2p_bootstrapped = true;
+        if self.state.task.ids.is_empty() && self.pending.is_empty() {
+            self.state = snap;
+            self.save().ok();
+            return usize::MAX;
+        }
+        let mut n = 0;
+        let projects: Vec<_> = snap
+            .project
+            .iter()
+            .filter(|p| !self.state.project.entities.contains_key(&p.id))
+            .cloned()
+            .collect();
+        for project in projects {
+            apply(&mut self.state, &Action::AddProject { project });
+            n += 1;
+        }
+        let tags: Vec<_> = snap
+            .tag
+            .iter()
+            .filter(|t| !self.state.tag.entities.contains_key(&t.id))
+            .cloned()
+            .collect();
+        for tag in tags {
+            apply(&mut self.state, &Action::AddTag { tag });
+            n += 1;
+        }
+        for c in snap.task_repeat_cfg.iter() {
+            if !self.state.task_repeat_cfg.entities.contains_key(&c.id) {
+                self.state.task_repeat_cfg.insert(&c.id.clone(), c.clone());
+                n += 1;
+            }
+        }
+        let missing: Vec<_> = snap
+            .task
+            .iter()
+            .filter(|t| !self.state.task.entities.contains_key(&t.id))
+            .cloned()
+            .collect();
+        for t in missing.iter().filter(|t| t.parent_id.is_none()) {
+            apply(
+                &mut self.state,
+                &Action::AddTask {
+                    task: t.clone(),
+                    bottom: true,
+                },
+            );
+            n += 1;
+        }
+        for t in missing.iter().filter(|t| t.parent_id.is_some()) {
+            apply(
+                &mut self.state,
+                &Action::AddSubTask {
+                    task: t.clone(),
+                    parent_id: t.parent_id.clone().unwrap_or_default(),
+                },
+            );
+            n += 1;
+        }
+        self.save().ok();
+        n
     }
     /// Replace the snapshot (backup import): pending ops are dropped, they no longer apply.
     pub fn replace_state(&mut self, state: AppData) {

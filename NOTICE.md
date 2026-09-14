@@ -24,3 +24,12 @@ source file. At the time of writing these are:
 - `crates/sp-sync/src/lib.rs` and `crypto.rs` (file format, encryption scheme)
 
 Momentum is not affiliated with or endorsed by the Super Productivity project.
+
+## LibreSync
+
+Sync with nearby devices (`crates/sp-p2p`) links against
+[LibreSync](https://github.com/dan-hart/LibreSync), Copyright (c) 2026 Dan Hart,
+released under the GNU Affero General Public License v3.0 (`LICENSES/AGPL-3.0-only.txt`).
+Its source is not vendored here; builds check it out next to the workspace as
+`libresync-src` (see `docs/P2P.md`). Momentum itself remains GPL-3.0-or-later; the
+combination is distributed under the terms of both licenses as GPLv3 section 13 allows.

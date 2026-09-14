@@ -5,6 +5,7 @@ mod application;
 mod config;
 mod demo;
 mod keyring;
+mod p2p;
 mod prefs;
 mod quick_add;
 mod repeat_dialog;
@@ -20,6 +21,7 @@ use self::application::MomentumApplication;
 use self::config::{GETTEXT_PACKAGE, LOCALEDIR, RESOURCES_FILE};
 
 fn main() -> glib::ExitCode {
+    // fmt::init also bridges the `log` facade used by LibreSync and mdns-sd.
     tracing_subscriber::fmt::init();
 
     gettextrs::setlocale(LocaleCategory::LcAll, "");

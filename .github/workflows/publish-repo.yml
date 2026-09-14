@@ -35,6 +35,13 @@ jobs:
         with:
           ref: ${{ inputs.version || github.ref }}
           path: src
+      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: v0.6.0
+          path: src/libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
       - name: Check out the repository branch
         uses: actions/checkout@v4
         with:

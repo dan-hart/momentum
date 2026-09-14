@@ -18,6 +18,8 @@ oo7 = { version = "0.6.0", default-features = false, features = ["async-std", "n
 async-io = "2.6.0"
 serde_json.workspace = true
 sp-oplog = { version = "0.1.0", path = "../sp-oplog" }
+sp-p2p = { path = "../sp-p2p" }
+base64 = "0.23"
 sp-store = { version = "0.1.0", path = "../sp-store" }
 sp-sync = { version = "0.1.0", path = "../sp-sync" }
 ashpd = { version = "0.13.13", default-features = false, features = ["async-io", "global_shortcuts", "background"] }

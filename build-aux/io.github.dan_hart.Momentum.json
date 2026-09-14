@@ -44,7 +44,21 @@
             "sources": [
                 {
                     "type": "dir",
-                    "path": "../"
+                    "path": "../",
+                    "skip": [
+                        "libresync-src",
+                        "target",
+                        "target-sdk",
+                        "flatpak_app",
+                        "flatpak_app_release",
+                        ".flatpak-builder",
+                        "preview"
+                    ]
+                },
+                {
+                    "type": "dir",
+                    "path": "../libresync-src",
+                    "dest": "libresync-src"
                 }
             ]
         }

@@ -106,6 +106,13 @@ mod imp {
         pub store_monitor: RefCell<Option<gio::FileMonitor>>,
         pub undo_stack: RefCell<Vec<Vec<Action>>>,
         pub last_status: RefCell<String>,
+        pub p2p: RefCell<Option<Rc<sp_p2p::P2p>>>,
+        pub p2p_discovered: RefCell<Vec<sp_p2p::DeviceInfo>>,
+        pub p2p_dialog: RefCell<Option<Rc<dyn Fn()>>>,
+        pub p2p_sync_debounce: RefCell<Option<glib::SourceId>>,
+        pub p2p_snapshot_debounce: RefCell<Option<glib::SourceId>>,
+        pub p2p_periodic: RefCell<Option<glib::SourceId>>,
+        pub p2p_snapshot_hash: Cell<u64>,
     }
 
     impl Default for MomentumWindow {
@@ -168,6 +175,13 @@ mod imp {
                 store_monitor: Default::default(),
                 undo_stack: Default::default(),
                 last_status: Default::default(),
+                p2p: Default::default(),
+                p2p_discovered: Default::default(),
+                p2p_dialog: Default::default(),
+                p2p_sync_debounce: Default::default(),
+                p2p_snapshot_debounce: Default::default(),
+                p2p_periodic: Default::default(),
+                p2p_snapshot_hash: Default::default(),
             }
         }
     }
@@ -283,6 +297,18 @@ pub fn fmt_time(ms: u64) -> String {
         .and_then(|d| d.format("%H:%M"))
         .map(|g| g.to_string())
         .unwrap_or_default()
+}
+
+/// "just now", "5 minutes ago", … for a past timestamp in ms.
+pub fn ago_text(ms: u64) -> String {
+    let secs = now_ms().saturating_sub(ms) / 1000;
+    match secs {
+        0..=9 => gettext("just now"),
+        10..=59 => format!("{secs} {}", gettext("seconds ago")),
+        60..=3599 => format!("{} {}", secs / 60, gettext("minutes ago")),
+        3600..=86399 => format!("{} {}", secs / 3600, gettext("hours ago")),
+        _ => format!("{} {}", secs / 86400, gettext("days ago")),
+    }
 }
 
 /// CSS colour string from the sync data → `#rrggbb` for Pango markup.
@@ -426,6 +452,19 @@ impl MomentumWindow {
 
     fn setup(&self) {
         let imp = self.imp();
+        imp.settings.connect_changed(
+            Some("p2p-enabled"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.p2p_apply_setting()
+            ),
+        );
+        glib::idle_add_local_once(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move || w.p2p_apply_setting()
+        ));
         adw::StyleManager::default().connect_high_contrast_notify(glib::clone!(
             #[weak(rename_to = w)]
             self,
@@ -933,25 +972,26 @@ impl MomentumWindow {
                 .iter()
                 .all(|k| !s.string(k).trim().is_empty())
     }
-    fn update_sync_button(&self) {
+    pub fn update_sync_button(&self) {
         let imp = self.imp();
-        let on = self.sync_configured();
+        let nextcloud = self.sync_configured();
+        let p2p = self.p2p_enabled() && imp.p2p.borrow().is_some();
+        let on = nextcloud || p2p;
         imp.sync_button.set_visible(on);
         imp.sync_label.set_visible(on && !imp.rows.borrow().is_empty());
-        let last = imp.settings.int64("last-sync-ms") as u64;
-        imp.sync_label.set_text(&if last == 0 {
-            gettext("Not synced yet")
-        } else {
-            let secs = now_ms().saturating_sub(last) / 1000;
-            let ago = match secs {
-                0..=9 => gettext("just now"),
-                10..=59 => format!("{secs} {}", gettext("seconds ago")),
-                60..=3599 => format!("{} {}", secs / 60, gettext("minutes ago")),
-                3600..=86399 => format!("{} {}", secs / 3600, gettext("hours ago")),
-                _ => format!("{} {}", secs / 86400, gettext("days ago")),
-            };
-            format!("{} {ago}", gettext("Last synced"))
-        });
+        let mut parts = vec![];
+        if nextcloud {
+            let last = imp.settings.int64("last-sync-ms") as u64;
+            parts.push(if last == 0 {
+                gettext("Not synced yet")
+            } else {
+                format!("{} {}", gettext("Last synced"), ago_text(last))
+            });
+        }
+        if let Some(text) = self.p2p_status_text().filter(|_| p2p) {
+            parts.push(text);
+        }
+        imp.sync_label.set_text(&parts.join("  ·  "));
     }
     fn focused_task(&self) -> Option<String> {
         let group = self.imp().task_box.focus_child()?;
@@ -1997,6 +2037,7 @@ impl MomentumWindow {
         if !self.imp().store.borrow().pending.is_empty() {
             self.schedule_sync();
         }
+        self.p2p_publish_pending();
         let (done, _) = self.done_tasks();
         // Menu item stays visible but disabled when there is nothing to archive (HIG).
         if let Some(a) = self.lookup_action("archive-done").and_downcast::<gio::SimpleAction>() {
@@ -4074,8 +4115,13 @@ impl MomentumWindow {
         if std::env::var_os("MOMENTUM_DEMO").is_some() {
             return;
         }
+        if self.p2p_enabled() {
+            self.p2p_sync_now();
+        }
         if !imp.settings.boolean("sync-enabled") {
-            self.toast(&gettext("Sync is turned off. Enable it in Preferences."));
+            if !self.p2p_enabled() {
+                self.toast(&gettext("Sync is turned off. Enable it in Preferences."));
+            }
             return;
         }
         if imp.syncing.replace(true) {

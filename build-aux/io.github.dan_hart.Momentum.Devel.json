@@ -14,7 +14,7 @@
         "--socket=fallback-x11",
         "--socket=wayland",
         "--device=dri",
-        "--env=RUST_LOG=momentum=debug",
+        "--env=RUST_LOG=momentum=debug,sp_p2p=debug,libresync=debug,mdns_sd=info",
         "--env=G_MESSAGES_DEBUG=none",
         "--env=RUST_BACKTRACE=1"
     ],
@@ -46,10 +46,23 @@
             "sources": [
                 {
                     "type": "dir",
-                    "path": "../"
+                    "path": "../",
+                    "skip": [
+                        "libresync-src",
+                        "target",
+                        "target-sdk",
+                        "flatpak_app",
+                        "flatpak_app_release",
+                        ".flatpak-builder",
+                        "preview"
+                    ]
+                },
+                {
+                    "type": "dir",
+                    "path": "../libresync-src",
+                    "dest": "libresync-src"
                 }
             ]
         }
     ]
 }
-

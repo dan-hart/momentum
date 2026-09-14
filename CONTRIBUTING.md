@@ -1,6 +1,6 @@
 # Contributing
 
-- Build with GNOME Builder (open the folder, press Run) or with the commands in the README.
+- Build with GNOME Builder (open the folder, press Run) or with the commands in the README. First put a LibreSync checkout next to the workspace: `ln -s ../LibreSync libresync-src` (see `docs/P2P.md`).
 - Run `cargo fmt --all` before committing; CI checks formatting and builds the Flatpak for x86_64 and aarch64.
 - Keep to the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/): standard widgets, no custom CSS, full keyboard access, tooltips on icon buttons.
 - Every user-visible string goes through `gettext` (Rust) or `_("…")` (Blueprint), and every file with strings is listed in `po/POTFILES.in` (`build-aux/check-potfiles.sh` enforces it in CI). Regenerate `po/momentum.pot` with the change that adds strings; see `docs/TRANSLATING.md`.

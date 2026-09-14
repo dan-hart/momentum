@@ -1,0 +1,23 @@
+[package]
+name = "sp-p2p"
+description = "Peer-to-peer transport for Momentum's operation log, built on LibreSync"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# LibreSync (AGPL-3.0-only) is checked out next to the workspace as `libresync-src`;
+# see docs/P2P.md for how that directory is provided locally, in CI and in the Flatpak build.
+libresync = { path = "../../libresync-src/crates/libresync", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+flate2 = "1.1"
+base64 = "0.23"
+log = "0.4"
+sp-oplog = { path = "../sp-oplog" }
+
+[dev-dependencies]
+tempfile = "3"
+sp-model = { path = "../sp-model" }

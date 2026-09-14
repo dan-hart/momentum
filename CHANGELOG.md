@@ -7,6 +7,11 @@ All notable changes to Momentum are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Sync with nearby devices: direct, serverless, end-to-end encrypted sync over the local
+  network using LibreSync as the transport. Link two devices once with a six-digit pairing
+  code (Preferences › Nearby Devices › Manage Devices…); ops travel a few seconds after a
+  change and every five minutes; a device with Nextcloud relays what it receives. New
+  `sp-p2p` crate with a two-device integration test; `docs/P2P.md`
 - Scheduled times: the task dialog has a Time row (`14:30`, `2pm`, `0930`), stored as
   `dueWithTime`; rows show the time and Coming Up and sorting use it
 - Reminders: none, at the scheduled time, or 5/10/15/30 minutes, 1 hour or 1 day before;

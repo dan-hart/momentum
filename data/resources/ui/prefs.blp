@@ -54,6 +54,28 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     }
 
     Adw.PreferencesGroup {
+      title: _("Nearby Devices");
+      description: _("Sync directly with your other devices on the same network: no server, end-to-end encrypted. Works with or without Nextcloud.");
+
+      Adw.SwitchRow p2p_row {
+        title: _("Sync with nearby devices");
+        subtitle: _("Off by default. Link each device once with a pairing code.");
+      }
+
+      Adw.ButtonRow {
+        title: _("Manage Devices…");
+        start-icon-name: "computer-symbolic";
+        action-name: "app.devices";
+      }
+
+      Adw.ButtonRow {
+        title: _("Sync Devices Now");
+        start-icon-name: "view-refresh-symbolic";
+        action-name: "app.sync-devices";
+      }
+    }
+
+    Adw.PreferencesGroup {
       title: _("Desktop");
 
       Adw.SwitchRow background_row {

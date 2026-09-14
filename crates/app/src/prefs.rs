@@ -29,6 +29,8 @@ mod imp {
         pub colorful_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub background_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub p2p_row: TemplateChild<adw::SwitchRow>,
     }
     #[glib::object_subclass]
     impl ObjectSubclass for MomentumPrefs {
@@ -73,6 +75,7 @@ mod imp {
             s.bind("compress", &*self.compress_row, "active").build();
             s.bind("colorful-labels", &*self.colorful_row, "active").build();
             s.bind("run-in-background", &*self.background_row, "active").build();
+            s.bind("p2p-enabled", &*self.p2p_row, "active").build();
             // Ask the Background portal for permission (and autostart) when switched on.
             self.background_row.connect_active_notify(|row| {
                 let on = row.is_active();

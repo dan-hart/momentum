@@ -262,10 +262,17 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
             return Ok(report);
         }
         let sv = file.sync_version + 1;
-        file.recent_ops.extend(store.pending.iter().map(|p| Op {
-            sv: Some(sv),
-            ..p.op.clone()
-        }));
+        let known: std::collections::HashSet<&str> = file.recent_ops.iter().map(|o| o.id.as_str()).collect();
+        let fresh: Vec<Op> = store
+            .pending
+            .iter()
+            .filter(|p| !known.contains(p.op.id.as_str()))
+            .map(|p| Op {
+                sv: Some(sv),
+                ..p.op.clone()
+            })
+            .collect();
+        file.recent_ops.extend(fresh);
         let cut = file.recent_ops.len().saturating_sub(MAX_RECENT_OPS);
         file.recent_ops.drain(..cut);
         file.oldest_op_sync_version = file.recent_ops.first().and_then(|o| o.sv);
