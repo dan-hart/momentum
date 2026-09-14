@@ -218,7 +218,9 @@ MOMENTUM_DEMO=1 MOMENTUM_SCREENSHOT=$PWD/data/resources/screenshots/today.png \
 ```
 
 Add `MOMENTUM_SCREENSHOT_DIALOG=1`, `MOMENTUM_SCREENSHOT_UPCOMING=1` or
-`MOMENTUM_SCREENSHOT_SEARCH=query` for the other views. Demo mode never syncs.
+`MOMENTUM_SCREENSHOT_SEARCH=query` for the other views, `MOMENTUM_SCREENSHOT_DEVICES=1` with
+`MOMENTUM_SCREENSHOT_DELAY=8` for the Nearby Devices dialog. Demo mode never syncs (the
+devices screenshot runs a node in the demo's temporary directory only).
 
 ## How it works with Super Productivity
 

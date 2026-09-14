@@ -42,7 +42,12 @@ fn hash_bytes(b: &[u8]) -> u64 {
 
 impl MomentumWindow {
     pub fn p2p_enabled(&self) -> bool {
-        std::env::var_os("MOMENTUM_DEMO").is_none() && self.imp().settings.boolean("p2p-enabled")
+        // Demo runs never sync, except the Nearby Devices screenshot, which needs a running
+        // node (in the demo's temporary directory, with file-backed keys).
+        if std::env::var_os("MOMENTUM_DEMO").is_some() {
+            return std::env::var_os("MOMENTUM_SCREENSHOT_DEVICES").is_some();
+        }
+        self.imp().settings.boolean("p2p-enabled")
     }
     fn p2p(&self) -> Option<Rc<P2p>> {
         self.imp().p2p.borrow().clone()
@@ -63,7 +68,18 @@ impl MomentumWindow {
             (s.dir().join("p2p"), s.meta.client_id.clone())
         };
         let name = glib::host_name().to_string();
-        match P2p::start(dir, &id, &name, Box::new(KeyringStore), sp_p2p::DEFAULT_PORT) {
+        let keys: Box<dyn sp_p2p::KeyStore> = if std::env::var_os("MOMENTUM_DEMO").is_some() {
+            match sp_p2p::FileKeyStore::new(dir.join("keys")) {
+                Ok(k) => Box::new(k),
+                Err(e) => {
+                    tracing::warn!("p2p: demo key store: {e}");
+                    return;
+                }
+            }
+        } else {
+            Box::new(KeyringStore)
+        };
+        match P2p::start(dir, &id, &name, keys, sp_p2p::DEFAULT_PORT) {
             Ok(p) => {
                 let p = Rc::new(p);
                 *imp.p2p.borrow_mut() = Some(p.clone());

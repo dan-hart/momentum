@@ -101,10 +101,11 @@ pub fn store(dir: std::path::PathBuf) -> Store {
     s
 }
 
-/// Render the window to a PNG after it has had a moment to lay out, then quit.
-pub fn screenshot(win: &gtk::Window, path: std::path::PathBuf) {
+/// Render the window to a PNG after `delay` seconds (time to lay out, or to discover
+/// devices), then quit.
+pub fn screenshot(win: &gtk::Window, path: std::path::PathBuf, delay: u32) {
     let win = win.clone();
-    glib::timeout_add_seconds_local_once(2, move || {
+    glib::timeout_add_seconds_local_once(delay, move || {
         let paintable = gtk::WidgetPaintable::new(Some(&win));
         let snapshot = gtk::Snapshot::new();
         let (w, h) = (win.width() as f64, win.height() as f64);

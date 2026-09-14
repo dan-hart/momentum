@@ -54,11 +54,14 @@ state (`state.bin`), op journal and device list live in `p2p/` under the data di
 ## Building
 
 LibreSync is AGPL-3.0-only and not on crates.io, so the crate is a path dependency on a
-checkout next to the workspace at `libresync-src`:
+checkout next to the workspace at `libresync-src` (a git dependency would also work now
+that the repository is public; the checkout keeps one pinned copy for cargo, meson and
+flatpak-builder alike):
 
 - locally: `ln -s ../LibreSync libresync-src` (the directory is gitignored);
 - in CI: `actions/checkout` of `dan-hart/LibreSync` at the pinned tag into
-  `libresync-src`, using the `LIBRESYNC_TOKEN` secret while that repository is private;
+  `libresync-src` (a `LIBRESYNC_TOKEN` secret is only needed if that repository were
+  private; it is public);
 - in the Flatpak manifests: a second `dir` source copies `../libresync-src` into the build.
 
 `crates/sp-p2p` is the only crate that talks to LibreSync; the app sees `P2p`, `Event`,

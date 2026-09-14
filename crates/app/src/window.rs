@@ -957,7 +957,22 @@ impl MomentumWindow {
                 imp.add_entry.set_text("Write the docs #");
                 imp.add_entry.set_position(-1);
             }
-            crate::demo::screenshot(self.upcast_ref(), path.into());
+            if std::env::var_os("MOMENTUM_SCREENSHOT_DEVICES").is_some() {
+                // The node starts from an idle callback; open the dialog once it is up.
+                glib::timeout_add_seconds_local_once(
+                    1,
+                    glib::clone!(
+                        #[weak(rename_to = w)]
+                        self,
+                        move || w.show_devices_dialog()
+                    ),
+                );
+            }
+            let delay = std::env::var("MOMENTUM_SCREENSHOT_DELAY")
+                .ok()
+                .and_then(|d| d.parse().ok())
+                .unwrap_or(2);
+            crate::demo::screenshot(self.upcast_ref(), path.into(), delay);
         }
     }
 
