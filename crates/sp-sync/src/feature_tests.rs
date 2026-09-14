@@ -170,7 +170,10 @@ fn wrong_password_and_unknown_versions_are_reported() {
     let mut none = cfg(&dav, false);
     none.encrypt_key = None;
     assert!(matches!(sync(&none, &mut b), Err(SyncError::Encrypted)));
-    assert!(matches!(decode("pf_2__{\"version\":3}", None), Err(SyncError::Version(3))));
+    assert!(matches!(
+        decode("pf_2__{\"version\":3}", None),
+        Err(SyncError::Version(3))
+    ));
     assert!(matches!(decode("pf_2__{}", None), Err(SyncError::Parse(_))));
     let f = SyncFile {
         schema_version: SCHEMA_VERSION + 1,

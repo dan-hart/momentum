@@ -39,6 +39,8 @@ jobs:
           token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Native libraries for the mo keyring
+        run: sudo apt-get update -q && sudo apt-get install -y -q libdbus-1-dev pkg-config
       - name: Test every crate except the GTK app
         run: cargo test --workspace --exclude momentum
         env:
