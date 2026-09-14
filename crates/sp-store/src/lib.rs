@@ -131,10 +131,12 @@ impl Store {
             .cloned()
             .collect();
         for t in missing.iter().filter(|t| t.parent_id.is_none()) {
+            let mut parent = t.clone();
+            parent.sub_task_ids.clear(); // re-linked below by AddSubTask, exactly once
             apply(
                 &mut self.state,
                 &Action::AddTask {
-                    task: t.clone(),
+                    task: parent,
                     bottom: true,
                 },
             );
@@ -160,3 +162,6 @@ impl Store {
         self.save().ok();
     }
 }
+
+#[cfg(test)]
+mod feature_tests;

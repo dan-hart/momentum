@@ -585,6 +585,9 @@ impl AppData {
 }
 
 #[cfg(test)]
+mod feature_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]

@@ -15,6 +15,9 @@ mod shortcuts;
 mod task_form;
 mod window;
 
+#[cfg(test)]
+mod tests;
+
 use gettextrs::{gettext, LocaleCategory};
 use gtk::{gio, glib};
 

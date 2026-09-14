@@ -212,12 +212,21 @@ Or open the folder in GNOME Builder and press Run.
 | `docs/MVP.md` | Feature and data-model spec, kept platform-neutral for ports |
 | `docs/TRANSLATING.md`, `docs/ACCESSIBILITY.md` | Translator and accessibility guides |
 
-### Test sync without a server
+### Run the tests
 
 ```sh
-python3 build-aux/mock-webdav.py 8765 &
-MOMENTUM_DAV=http://127.0.0.1:8765 cargo test -p sp-sync -- --ignored
+build-aux/test.sh                            # everything, headless, inside the SDK sandbox
+cargo test --workspace --exclude momentum    # core crates on any OS
 ```
+
+Model, op log, store, sync, p2p and the `mo` CLI are plain Rust tests; the app's window
+tests run on a Broadway display so they work in CI. See [docs/TESTING.md](docs/TESTING.md).
+
+### Test sync without a server
+
+The sync tests start an in-process WebDAV stand-in (`crates/sp-sync/src/mock_dav.rs`),
+so `cargo test -p sp-sync` covers first upload, convergence of two clients, conflict
+retry and encryption with nothing else running.
 
 ### Reproducible screenshots
 

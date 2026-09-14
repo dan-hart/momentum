@@ -658,3 +658,6 @@ impl P2p {
         let _ = self.engine.shutdown();
     }
 }
+
+#[cfg(test)]
+mod feature_tests;

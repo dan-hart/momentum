@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+# The LibreSync checkout is a path dependency, not a member: its own tests stay its own.
+exclude = ["libresync-src"]
 
 [workspace.package]
 version = "0.2.0"
@@ -16,3 +18,20 @@ thiserror = "2"
 
 [profile.release]
 lto = true
+
+# Key derivation and AES are unbearably slow unoptimised (Argon2id at 64 MiB takes seconds
+# per call in a debug build); optimise just those crates so tests stay fast.
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.aes-gcm]
+opt-level = 3
+[profile.dev.package.aes]
+opt-level = 3
+[profile.dev.package.pbkdf2]
+opt-level = 3
+[profile.dev.package.sha2]
+opt-level = 3
+[profile.dev.package.flate2]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3

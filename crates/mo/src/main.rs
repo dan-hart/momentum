@@ -188,14 +188,17 @@ fn forward(_payload: &str) -> Result<bool, String> {
 
 fn apply(store: &mut Store, action: Action) -> Result<(), String> {
     let payload = serde_json::to_string(&action).map_err(|e| e.to_string())?;
-    if forward(&payload)? {
+    // No session bus (CI, a headless box) means no running app to forward to.
+    if forward(&payload).unwrap_or(false) {
         return Ok(());
     }
     store.dispatch(action);
     Ok(())
 }
 
-fn find_task<'a>(store: &'a Store, needle: &str) -> Result<&'a Task, String> {
+/// A task by id prefix or unique title fragment. Open tasks only, unless `done_ok`
+/// (undone and rm must be able to reach completed tasks).
+fn find_task<'a>(store: &'a Store, needle: &str, done_ok: bool) -> Result<&'a Task, String> {
     let n = needle.to_lowercase();
     let by_id: Vec<&Task> = store.state.task.iter().filter(|t| t.id.starts_with(&n)).collect();
     if by_id.len() == 1 {
@@ -205,7 +208,7 @@ fn find_task<'a>(store: &'a Store, needle: &str) -> Result<&'a Task, String> {
         .state
         .task
         .iter()
-        .filter(|t| !t.is_done && t.title.to_lowercase().contains(&n))
+        .filter(|t| (done_ok || !t.is_done) && t.title.to_lowercase().contains(&n))
         .collect();
     match by_title.len() {
         1 => Ok(by_title[0]),
@@ -456,7 +459,7 @@ fn main() {
                 print_tasks(&store, &tasks, json);
             }
             Cmd::Done { task } => {
-                let t = find_task(&store, &task)?.clone();
+                let t = find_task(&store, &task, false)?.clone();
                 apply(
                     &mut store,
                     Action::UpdateTask {
@@ -467,7 +470,7 @@ fn main() {
                 println!("Done: {}", t.title);
             }
             Cmd::Undone { task } => {
-                let t = find_task(&store, &task)?.clone();
+                let t = find_task(&store, &task, true)?.clone();
                 apply(
                     &mut store,
                     Action::UpdateTask {
@@ -478,7 +481,7 @@ fn main() {
                 println!("Not done: {}", t.title);
             }
             Cmd::Plan { task } => {
-                let t = find_task(&store, &task)?.clone();
+                let t = find_task(&store, &task, false)?.clone();
                 apply(
                     &mut store,
                     Action::PlanForToday {
@@ -489,7 +492,7 @@ fn main() {
                 println!("Planned for today: {}", t.title);
             }
             Cmd::Rm { task } => {
-                let t = find_task(&store, &task)?.clone();
+                let t = find_task(&store, &task, true)?.clone();
                 let subs: Vec<Task> = t
                     .sub_task_ids
                     .iter()
@@ -505,6 +508,11 @@ fn main() {
                 println!("Deleted: {}", t.title);
             }
             Cmd::Projects => {
+                if json {
+                    let v: Vec<&sp_model::Project> = store.state.project.iter().filter(|p| !p.is_archived).collect();
+                    println!("{}", serde_json::to_string_pretty(&v).unwrap());
+                    return Ok(());
+                }
                 for p in store.state.project.iter().filter(|p| !p.is_archived) {
                     let open = p
                         .task_ids
@@ -516,12 +524,17 @@ fn main() {
                 }
             }
             Cmd::Tags => {
+                if json {
+                    let v: Vec<&sp_model::Tag> = store.state.tag.iter().filter(|g| g.id != TODAY_TAG_ID).collect();
+                    println!("{}", serde_json::to_string_pretty(&v).unwrap());
+                    return Ok(());
+                }
                 for g in store.state.tag.iter().filter(|g| g.id != TODAY_TAG_ID) {
                     println!("#{:<27} {} tasks", g.title, g.task_ids.len());
                 }
             }
             Cmd::Sync => {
-                if forward("\"sync\"")? {
+                if forward("\"sync\"").unwrap_or(false) {
                     println!("Sync requested from the running app.");
                     return Ok(());
                 }

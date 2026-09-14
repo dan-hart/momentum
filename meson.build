@@ -97,18 +97,14 @@ subdir('data')
 subdir('po')
 subdir('crates/app')
 
+# The whole suite, including the headless GTK UI tests: build-aux/run-tests.sh compiles the
+# test assets and starts a Broadway display when the build sandbox has none.
 test(
   'cargo-test',
-  cargo,
-  args: [
-    'test',
-    cargo_release_option,
-    '--all-targets',
-    '--all-features',
-    '--workspace',
-  ],
+  find_program('build-aux/run-tests.sh'),
+  args: [cargo_release_option, '--all-targets', '--all-features'],
   env: cargo_env,
-  timeout: 400,
+  timeout: 900,
 )
 
 gnome.post_install(

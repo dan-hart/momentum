@@ -541,10 +541,20 @@ preserved untouched.
   coordinate through the store files plus a file watcher, as on Linux without D-Bus.
 - **Getting started checklist.** 1) Read sections 3 to 6. 2) Build the model with
   unknown-field preservation. 3) Port `apply()` for the ops in section 4 with tests. 4) Port
-  the sync cycle and crypto, test against `build-aux/mock-webdav.py`. 5) Build Today, the
+  the sync cycle and crypto, test against the in-process WebDAV mock in `crates/sp-sync/src/mock_dav.rs`. 5) Build Today, the
   New Task form and the quick-add box. 6) Add Coming Up, projects, tags, Search, Archive.
   7) Undo, context menus, drag and drop, repeats, keyboard. 8) Preferences and the sync
   switch. 9) Screenshots, metadata, store listing.
+
+## 8b. Test contract
+
+`docs/TESTING.md` describes the suite. For a port, the layers that need no toolkit are the
+specification to keep green: `sp-model` (dates, repeats, Today and Overdue), `sp-oplog`
+(every action's payload and reducer), `sp-store` (persistence, peer ops, snapshots),
+`sp-sync` (the whole Nextcloud cycle against an in-process WebDAV mock), `sp-p2p`
+(journal, adapter, pairing, two live nodes) and the `mo` CLI. The Linux UI tests in
+`crates/app/src/tests/ui.rs` list the behaviours of section 2 by name; a native UI on
+another platform should have an equivalent for each.
 
 ## 9. Version notes
 
@@ -568,4 +578,7 @@ preserved untouched.
   catch-up for missed days (2.5); accessibility pass with the AT-SPI check script (2.11);
   translation pipeline with the Weblate workflow (2.11); Nextcloud upload skips ops the
   server already lists (5).
-- **Unreleased** (2026-09-14): modifier-key preference for every shortcut (2.8, 2.9).
+- **Unreleased** (2026-09-14): modifier-key preference for every shortcut (2.8, 2.9); the
+  test suite (8b) and the defects it found: duplicated subtask links on restore and
+  snapshot merge, delete and reorder missing from Ctrl+Z, timed tasks losing their day in
+  the editor, `mo undone`/`rm` on completed tasks.

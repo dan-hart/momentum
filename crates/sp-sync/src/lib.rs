@@ -306,6 +306,11 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
 }
 
 #[cfg(test)]
+mod feature_tests;
+#[cfg(test)]
+mod mock_dav;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
@@ -333,66 +338,5 @@ mod tests {
         assert!(enc.starts_with("pf_CE2__"));
         assert_eq!(decode(&enc, Some("secret")).unwrap().sync_version, 3);
         assert!(matches!(decode(&enc, Some("wrong")), Err(SyncError::Decrypt(_))));
-    }
-}
-
-/// Two clients converging through a WebDAV server. Run with
-/// `MOMENTUM_DAV=http://127.0.0.1:8765 cargo test -p sp-sync -- --ignored`.
-#[cfg(test)]
-mod dav_tests {
-    use super::*;
-    use sp_model::{Task, INBOX_PROJECT_ID};
-    use sp_oplog::Action;
-    #[test]
-    #[ignore]
-    fn two_clients_converge() {
-        let cfg = NextcloudCfg {
-            server_url: std::env::var("MOMENTUM_DAV").unwrap(),
-            user_name: "u".into(),
-            password: "p".into(),
-            folder: "sp".into(),
-            compress: true,
-            encrypt_key: Some("k".into()),
-        };
-        let tmp = std::env::temp_dir().join(format!("momentum-dav-{}", now_ms()));
-        let (mut a, mut b) = (Store::load(tmp.join("a")), Store::load(tmp.join("b")));
-        a.state.rest.insert("globalConfig".into(), serde_json::json!({}));
-        a.dispatch(Action::AddTask {
-            task: Task::new("from A", INBOX_PROJECT_ID),
-            bottom: true,
-        });
-        let r = sync(&cfg, &mut a).unwrap();
-        assert!(r.uploaded && r.ops_uploaded == 1);
-        let r = sync(&cfg, &mut b).unwrap();
-        assert!(r.downloaded && !r.uploaded);
-        assert_eq!(
-            b.state.task.iter().map(|t| t.title.as_str()).collect::<Vec<_>>(),
-            ["from A"]
-        );
-        b.dispatch(Action::AddTask {
-            task: Task::new("from B", INBOX_PROJECT_ID),
-            bottom: true,
-        });
-        a.dispatch(Action::AddTask {
-            task: Task::new("from A2", INBOX_PROJECT_ID),
-            bottom: true,
-        });
-        sync(&cfg, &mut b).unwrap();
-        sync(&cfg, &mut a).unwrap(); // rebases A2 onto B's upload
-        sync(&cfg, &mut b).unwrap();
-        let titles = |s: &Store| {
-            let mut v: Vec<String> = s.state.task.iter().map(|t| t.title.clone()).collect();
-            v.sort();
-            v
-        };
-        assert_eq!(titles(&a), ["from A", "from A2", "from B"]);
-        assert_eq!(titles(&a), titles(&b));
-        assert_eq!(a.meta.last_sync_version, 3);
-        assert!(a.pending.is_empty() && b.pending.is_empty());
-        let (f, _) = download(&cfg).unwrap().unwrap();
-        assert_eq!(f.recent_ops.len(), 3);
-        assert_eq!(f.recent_ops[0].a, "HA");
-        assert_eq!(f.recent_ops[2].sv, Some(3));
-        assert_eq!(f.vector_clock.len(), 2);
     }
 }

@@ -19,13 +19,13 @@ pub struct TaskForm {
     project_ids: Vec<String>,
     due: Rc<RefCell<Option<String>>>,
     due_row: adw::ActionRow,
-    time: adw::EntryRow,
-    reminder: adw::ComboRow,
+    pub(crate) time: adw::EntryRow,
+    pub(crate) reminder: adw::ComboRow,
     /// Minutes before the scheduled time for each Reminder choice; `None` = no reminder.
-    reminder_offsets: Vec<Option<u64>>,
-    estimate: adw::EntryRow,
+    pub(crate) reminder_offsets: Vec<Option<u64>>,
+    pub(crate) estimate: adw::EntryRow,
     tag_buttons: Vec<(String, gtk::ToggleButton)>,
-    new_tags: adw::EntryRow,
+    pub(crate) new_tags: adw::EntryRow,
     notes: gtk::TextView,
 }
 
@@ -139,7 +139,7 @@ impl TaskForm {
         group.add(&project);
 
         // Due day: calendar popover with quick choices
-        let due = Rc::new(RefCell::new(task.and_then(|t| t.due_day.clone()).or(default_due)));
+        let due = Rc::new(RefCell::new(task.and_then(|t| t.plan_day()).or(default_due)));
         let due_row = adw::ActionRow::builder().title(gettext("Due")).build();
         let pick = gtk::MenuButton::builder()
             .icon_name("x-office-calendar-symbolic")

@@ -32,7 +32,7 @@ const KRUNNER_XML: &str = r#"<node>
 const MAX_RESULTS: usize = 8;
 
 /// Result ids: a task id, or `add:<title>` for the "create" result.
-fn results(app: &MomentumApplication, terms: &[String]) -> Vec<String> {
+pub(crate) fn results(app: &MomentumApplication, terms: &[String]) -> Vec<String> {
     let query = terms.join(" ");
     let q: Vec<String> = query.to_lowercase().split_whitespace().map(str::to_string).collect();
     if q.is_empty() {
@@ -56,7 +56,7 @@ fn results(app: &MomentumApplication, terms: &[String]) -> Vec<String> {
     ids
 }
 
-fn meta(app: &MomentumApplication, id: &str) -> (String, String) {
+pub(crate) fn meta(app: &MomentumApplication, id: &str) -> (String, String) {
     if let Some(title) = id.strip_prefix("add:") {
         return (format!("{} “{title}”", gettext("Create task")), gettext("Momentum"));
     }

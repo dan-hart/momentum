@@ -11,6 +11,7 @@ use sp_oplog::Action;
 use sp_store::Store;
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::application::MomentumApplication;
@@ -33,7 +34,7 @@ pub enum MenuKind {
     Tag,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum View {
     Today,
     Tonight,
@@ -43,6 +44,19 @@ pub enum View {
     Project(String),
     Tag(String),
 }
+
+/// Data directory for windows created from now on (tests give every window its own).
+static TEST_DATA_DIR: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+pub fn set_test_data_dir(dir: Option<PathBuf>) {
+    *TEST_DATA_DIR.lock().unwrap_or_else(|e| e.into_inner()) = dir;
+}
+fn test_data_dir() -> Option<PathBuf> {
+    TEST_DATA_DIR.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+#[cfg(test)]
+#[path = "tests/ui.rs"]
+mod ui_tests;
 
 mod imp {
     use super::*;
@@ -118,7 +132,11 @@ mod imp {
     impl Default for MomentumWindow {
         fn default() -> Self {
             let demo = std::env::var_os("MOMENTUM_DEMO").is_some();
-            let dir = if demo {
+            let dir = if let Some(d) = super::test_data_dir() {
+                d
+            } else if let Some(d) = std::env::var_os("MOMENTUM_DATA_DIR") {
+                PathBuf::from(d)
+            } else if demo {
                 glib::tmp_dir().join("momentum-demo")
             } else {
                 glib::user_data_dir().join("momentum")
@@ -1810,14 +1828,16 @@ impl MomentumWindow {
     }
 
     /// Toast with an Undo button that dispatches the given actions.
-    pub fn toast_undo(&self, msg: &str, undo: Vec<Action>) {
-        {
-            let mut stack = self.imp().undo_stack.borrow_mut();
-            stack.push(undo.clone());
-            if stack.len() > 50 {
-                stack.remove(0);
-            }
+    /// Records a batch for Ctrl+Z without a toast (quiet changes such as a drag reorder).
+    pub fn push_undo(&self, undo: Vec<Action>) {
+        let mut stack = self.imp().undo_stack.borrow_mut();
+        stack.push(undo);
+        if stack.len() > 50 {
+            stack.remove(0);
         }
+    }
+    pub fn toast_undo(&self, msg: &str, undo: Vec<Action>) {
+        self.push_undo(undo.clone());
         let toast = adw::Toast::builder().title(msg).button_label(gettext("Undo")).build();
         toast.connect_button_clicked(glib::clone!(
             #[weak(rename_to = w)]
@@ -1970,12 +1990,14 @@ impl MomentumWindow {
         #[allow(deprecated)]
         fn walk(w: &gtk::Widget, token: &str) {
             if let Some(sc) = w.downcast_ref::<gtk::ShortcutsShortcut>() {
-                let current = sc.accelerator().map(|a| a.to_string()).unwrap_or_default();
-                let original = if sc.widget_name().is_empty() {
-                    sc.set_widget_name(&current);
-                    current
-                } else {
-                    sc.widget_name().to_string()
+                // GTK reports the type name when no widget name is set, so tag ours.
+                let original = match sc.widget_name().strip_prefix("accel:") {
+                    Some(o) => o.to_string(),
+                    None => {
+                        let current = sc.accelerator().map(|a| a.to_string()).unwrap_or_default();
+                        sc.set_widget_name(&format!("accel:{current}"));
+                        current
+                    }
                 };
                 // Global (portal) shortcuts stay Ctrl+Alt: they are not GTK accelerators.
                 if !original.contains("<Alt>") {
@@ -3342,28 +3364,19 @@ impl MomentumWindow {
             task: task.clone(),
             sub_tasks: sub_tasks.clone(),
         });
-        // HIG: destructive actions get an undo toast rather than a confirmation dialog.
-        let toast = adw::Toast::builder()
-            .title(gettext("Task deleted"))
-            .button_label(gettext("Undo"))
-            .build();
-        toast.connect_button_clicked(glib::clone!(
-            #[weak(rename_to = w)]
-            self,
-            move |_| {
-                w.dispatch(Action::AddTask {
-                    task: task.clone(),
-                    bottom: true,
-                });
-                for st in &sub_tasks {
-                    w.dispatch(Action::AddSubTask {
-                        task: st.clone(),
-                        parent_id: task.id.clone(),
-                    });
-                }
-            }
-        ));
-        self.imp().toast_overlay.add_toast(toast);
+        // HIG: destructive actions get an undo toast rather than a confirmation dialog; the
+        // same batch feeds the global undo stack (Ctrl+Z).
+        let mut parent = task.clone();
+        parent.sub_task_ids.clear(); // AddSubTask re-links each subtask exactly once
+        let mut undo = vec![Action::AddTask {
+            task: parent,
+            bottom: true,
+        }];
+        undo.extend(sub_tasks.iter().map(|st| Action::AddSubTask {
+            task: st.clone(),
+            parent_id: task.id.clone(),
+        }));
+        self.toast_undo(&gettext("Task deleted"), undo);
     }
 
     /// Drag reorder: put `moved` before `before` in the current context list.
@@ -3505,15 +3518,23 @@ impl MomentumWindow {
             View::Tag(id) => ("TAG", id.clone()),
             _ => return false,
         };
-        let list: Vec<String> = self
-            .view_task_ids(&imp.store.borrow())
-            .into_iter()
-            .filter(|i| i != moved)
-            .collect();
+        let full = self.view_task_ids(&imp.store.borrow());
+        let was_after = full
+            .iter()
+            .position(|i| i == moved)
+            .and_then(|p| p.checked_sub(1))
+            .and_then(|p| full.get(p).cloned());
+        let list: Vec<String> = full.into_iter().filter(|i| i != moved).collect();
         let Some(pos) = list.iter().position(|i| i == before) else {
             return false;
         };
         let after_task_id = if pos == 0 { None } else { list.get(pos - 1).cloned() };
+        self.push_undo(vec![Action::MoveInList {
+            task_id: moved.into(),
+            after_task_id: was_after,
+            context_type: context_type.into(),
+            context_id: context_id.clone(),
+        }]);
         self.dispatch(Action::MoveInList {
             task_id: moved.into(),
             after_task_id,

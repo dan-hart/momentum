@@ -544,6 +544,7 @@ pub fn apply(d: &mut AppData, action: &Action) {
             let mut parent = task.clone();
             parent.is_done = false;
             parent.done_on = None;
+            parent.sub_task_ids.clear(); // AddSubTask below re-links each subtask exactly once
             apply(
                 d,
                 &AddTask {
@@ -603,6 +604,9 @@ pub fn apply(d: &mut AppData, action: &Action) {
         }
     }
 }
+
+#[cfg(test)]
+mod feature_tests;
 
 #[cfg(test)]
 mod tests {

@@ -12,3 +12,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 sp-model = { path = "../sp-model" }
 sp-oplog = { path = "../sp-oplog" }
+
+[dev-dependencies]
+tempfile = "3"

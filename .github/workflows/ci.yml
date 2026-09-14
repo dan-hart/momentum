@@ -25,6 +25,25 @@ jobs:
         # Not --all: that would also format the LibreSync checkout in libresync-src.
         run: cargo fmt -p momentum -p mo -p sp-model -p sp-oplog -p sp-store -p sp-sync -p sp-p2p -- --check
 
+  core-tests:
+    name: Core tests (no GTK)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: v0.6.0
+          path: libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Test every crate except the GTK app
+        run: cargo test --workspace --exclude momentum
+        env:
+          DBUS_SESSION_BUS_ADDRESS: unix:path=/nonexistent
+
   translations:
     name: Translations
     runs-on: ubuntu-latest

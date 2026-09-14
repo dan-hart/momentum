@@ -7,6 +7,18 @@ All notable changes to Momentum are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Test suite: 110+ tests across every crate plus 40 headless GTK window tests
+  (`build-aux/test.sh`, Broadway display, in-process WebDAV mock replacing the Python one),
+  run by CI on every push; `docs/TESTING.md`
+- `mo projects` and `mo tags` honour `--json`
+
+### Fixed
+- Restoring an archived task, or merging a peer snapshot, linked each subtask twice
+- Deleting a task could only be undone from its toast, not with Ctrl+Z; drag reorders are
+  now undoable as well
+- Editing a task scheduled at a time showed "Not scheduled" for its day
+- `mo undone` and `mo rm` could not find completed tasks by title
+- `mo` failed outright when no session bus was available
 - Modifier key preference: every shortcut uses Ctrl, Alt or Super (Option or Command on
   macOS); the Keyboard Shortcuts overlay and the in-app hints follow the choice
 
