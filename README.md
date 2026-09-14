@@ -187,6 +187,8 @@ Or open the folder in GNOME Builder and press Run.
 | `data/` | Desktop file, metainfo, GSettings schema, icons, Blueprint UI |
 | `build-aux/` | Flatpak manifests, Flathub files, mock WebDAV server |
 | `docs/PLAN.md` | Architecture and roadmap |
+| `docs/MVP.md` | Feature and data-model spec, kept platform-neutral for ports |
+| `docs/TRANSLATING.md`, `docs/ACCESSIBILITY.md` | Translator and accessibility guides |
 
 ### Test sync without a server
 
@@ -221,6 +223,13 @@ and standalone notes. Their data survives untouched in the sync file.
 Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the
 house rules, and the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports go to the
 address in [SECURITY.md](SECURITY.md).
+
+**Translations** happen on [Weblate](https://hosted.weblate.org/projects/momentum/) or by
+sending a `.po` file; see [docs/TRANSLATING.md](docs/TRANSLATING.md).
+
+**Accessibility** is a requirement, not a feature: every control is named for Orca, high
+contrast turns colour coding off, and everything works from the keyboard. How that is
+checked is in [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md).
 
 ## License
 

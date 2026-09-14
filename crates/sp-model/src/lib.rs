@@ -20,25 +20,26 @@ pub fn new_id() -> String {
     uuid::Uuid::now_v7().to_string()
 }
 /// Local calendar day as `YYYY-MM-DD` (upstream `getDbDateStr`), via glibc `localtime_r`.
-pub fn today_str() -> String {
-    #[repr(C)]
-    struct Tm {
-        sec: i32,
-        min: i32,
-        hour: i32,
-        mday: i32,
-        mon: i32,
-        year: i32,
-        wday: i32,
-        yday: i32,
-        isdst: i32,
-        gmtoff: i64,
-        zone: *const u8,
-    }
-    extern "C" {
-        fn time(t: *mut i64) -> i64;
-        fn localtime_r(t: *const i64, out: *mut Tm) -> *mut Tm;
-    }
+#[repr(C)]
+struct Tm {
+    sec: i32,
+    min: i32,
+    hour: i32,
+    mday: i32,
+    mon: i32,
+    year: i32,
+    wday: i32,
+    yday: i32,
+    isdst: i32,
+    gmtoff: i64,
+    zone: *const u8,
+}
+extern "C" {
+    fn time(t: *mut i64) -> i64;
+    fn localtime_r(t: *const i64, out: *mut Tm) -> *mut Tm;
+    fn mktime(tm: *mut Tm) -> i64;
+}
+fn local_tm(secs: i64) -> Tm {
     let mut tm = Tm {
         sec: 0,
         min: 0,
@@ -53,14 +54,46 @@ pub fn today_str() -> String {
         zone: std::ptr::null(),
     };
     unsafe {
-        let mut t = 0i64;
-        time(&mut t);
-        localtime_r(&t, &mut tm);
+        localtime_r(&secs, &mut tm);
     }
+    tm
+}
+/// Local calendar day (`YYYY-MM-DD`) of a Unix millisecond timestamp.
+pub fn day_of_ms(ms: u64) -> String {
+    let tm = local_tm((ms / 1000) as i64);
     format!("{:04}-{:02}-{:02}", tm.year + 1900, tm.mon + 1, tm.mday)
 }
-
-/// Civil-date helpers on `YYYY-MM-DD` strings (no timezone maths needed).
+/// Local `(hour, minute)` of a Unix millisecond timestamp.
+pub fn time_of_ms(ms: u64) -> (u32, u32) {
+    let tm = local_tm((ms / 1000) as i64);
+    (tm.hour as u32, tm.min as u32)
+}
+/// Unix milliseconds for `day` at `hour:minute` local time (DST resolved by libc).
+pub fn local_ms(day: &str, hour: u32, minute: u32) -> Option<u64> {
+    let (y, m, d) = parse_day(day)?;
+    let mut tm = Tm {
+        sec: 0,
+        min: minute as i32,
+        hour: hour as i32,
+        mday: d as i32,
+        mon: m as i32 - 1,
+        year: y as i32 - 1900,
+        wday: 0,
+        yday: 0,
+        isdst: -1,
+        gmtoff: 0,
+        zone: std::ptr::null(),
+    };
+    let secs = unsafe { mktime(&mut tm) };
+    (secs >= 0).then_some(secs as u64 * 1000)
+}
+pub fn today_str() -> String {
+    let mut t = 0i64;
+    unsafe {
+        time(&mut t);
+    }
+    day_of_ms(t as u64 * 1000)
+}
 pub fn parse_day(d: &str) -> Option<(i64, u32, u32)> {
     let mut it = d.split('-');
     Some((
@@ -222,20 +255,48 @@ impl RepeatCfg {
             self.saturday,
         ]
     }
-    /// Whether an instance is due on `today` (`YYYY-MM-DD`), following upstream's cycle rules
-    /// for the current day only.
+    /// Whether an instance is due on `today` (`YYYY-MM-DD`) and none was created for it yet.
     pub fn is_due(&self, today: &str) -> bool {
+        self.newest_due_day(today).as_deref() == Some(today)
+    }
+    /// The most recent day up to `today` on which an instance was due but not created
+    /// (upstream `getNewestPossibleDueDate`). Scans back from `today` to the day after
+    /// `lastTaskCreationDay`, never before `startDate`, and at most one cycle length, so a
+    /// weekly task missed on Monday still appears on Wednesday, dated Monday, without
+    /// flooding a daily task with one instance per missed day.
+    pub fn newest_due_day(&self, today: &str) -> Option<String> {
         if self.is_paused || self.repeat_every == 0 {
-            return false;
+            return None;
         }
-        let Some((ty, tm, td)) = parse_day(today) else {
+        let t = day_number(today)?;
+        let st = self.start_date.as_deref().and_then(day_number)?;
+        let every = self.repeat_every as i64;
+        let span = match self.repeat_cycle.as_str() {
+            "DAILY" => every,
+            "WEEKLY" => every * 7,
+            "MONTHLY" => every * 31,
+            "YEARLY" => every * 366,
+            _ => return None,
+        };
+        let after_last = self
+            .last_task_creation_day
+            .as_deref()
+            .and_then(day_number)
+            .map(|l| l + 1)
+            .unwrap_or(st);
+        let floor = st.max(after_last).max(t - span);
+        (floor..=t).rev().map(day_str).find(|d| self.matches_day(d))
+    }
+    /// Whether `day` falls on the cycle, ignoring pauses and what was already created.
+    pub fn matches_day(&self, day: &str) -> bool {
+        let Some((ty, tm, td)) = parse_day(day) else {
             return false;
         };
         let Some((sy, sm, sd)) = self.start_date.as_deref().and_then(parse_day) else {
             return false;
         };
         let (t, st) = (days_from_civil(ty, tm, td), days_from_civil(sy, sm, sd));
-        if st > t || self.last_task_creation_day.as_deref().is_some_and(|l| l >= today) {
+        if st > t || self.repeat_every == 0 {
             return false;
         }
         let every = self.repeat_every as i64;
@@ -332,6 +393,15 @@ pub struct Task {
     pub extra: Map<String, Value>,
 }
 impl Task {
+    /// The day this task is planned for: the local day of `dueWithTime` when scheduled at a
+    /// time, else `dueDay`. Upstream's virtual Today tag uses the same rule.
+    pub fn plan_day(&self) -> Option<String> {
+        self.due_with_time.map(day_of_ms).or_else(|| self.due_day.clone())
+    }
+    /// Planned for a day before `today` and still open.
+    pub fn is_overdue(&self, today: &str) -> bool {
+        !self.is_done && self.plan_day().is_some_and(|d| d.as_str() < today)
+    }
     pub fn new(title: &str, project_id: &str) -> Self {
         Self {
             id: new_id(),
@@ -492,14 +562,25 @@ impl AppData {
             self.task
                 .entities
                 .get(i)
-                .is_some_and(|t| t.parent_id.is_none() && t.due_day.as_deref() == Some(&today))
+                .is_some_and(|t| t.parent_id.is_none() && t.plan_day().as_deref() == Some(&today))
         });
         for t in self.task.iter() {
-            if t.parent_id.is_none() && t.due_day.as_deref() == Some(&today) && !ids.contains(&t.id) {
+            if t.parent_id.is_none() && t.plan_day().as_deref() == Some(&today) && !ids.contains(&t.id) {
                 ids.push(t.id.clone());
             }
         }
         ids
+    }
+    /// Open top-level tasks planned for a day that has passed, oldest first.
+    pub fn overdue_ids(&self) -> Vec<String> {
+        let today = today_str();
+        let mut v: Vec<&Task> = self
+            .task
+            .iter()
+            .filter(|t| t.parent_id.is_none() && t.is_overdue(&today))
+            .collect();
+        v.sort_by(|a, b| a.plan_day().cmp(&b.plan_day()).then_with(|| a.created.cmp(&b.created)));
+        v.into_iter().map(|t| t.id.clone()).collect()
     }
 }
 
@@ -552,6 +633,55 @@ mod tests {
             ..Default::default()
         };
         assert!(nth.is_due("2026-09-08") && !nth.is_due("2026-09-15"));
+    }
+    #[test]
+    fn repeat_catch_up() {
+        // Weekly on Monday, last created a week ago: opening the app on Wednesday yields Monday.
+        let mut c = RepeatCfg {
+            repeat_cycle: "WEEKLY".into(),
+            repeat_every: 1,
+            start_date: Some("2026-08-03".into()),
+            last_task_creation_day: Some("2026-08-31".into()),
+            monday: true,
+            ..Default::default()
+        };
+        assert_eq!(c.newest_due_day("2026-09-09").as_deref(), Some("2026-09-07"));
+        assert!(!c.is_due("2026-09-09"));
+        c.last_task_creation_day = Some("2026-09-07".into());
+        assert_eq!(c.newest_due_day("2026-09-09"), None);
+        // Daily missed for a week: only the newest day, not one per missed day.
+        let d = RepeatCfg {
+            repeat_cycle: "DAILY".into(),
+            repeat_every: 1,
+            start_date: Some("2026-01-01".into()),
+            last_task_creation_day: Some("2026-09-01".into()),
+            ..Default::default()
+        };
+        assert_eq!(d.newest_due_day("2026-09-09").as_deref(), Some("2026-09-09"));
+        // Never before the start date, never while paused.
+        let mut m = RepeatCfg {
+            repeat_cycle: "MONTHLY".into(),
+            repeat_every: 1,
+            start_date: Some("2026-09-15".into()),
+            ..Default::default()
+        };
+        assert_eq!(m.newest_due_day("2026-09-20").as_deref(), Some("2026-09-15"));
+        assert_eq!(m.newest_due_day("2026-09-10"), None);
+        m.is_paused = true;
+        assert_eq!(m.newest_due_day("2026-09-20"), None);
+    }
+    #[test]
+    fn local_time_roundtrip() {
+        let ms = local_ms("2026-09-14", 14, 30).unwrap();
+        assert_eq!(day_of_ms(ms), "2026-09-14");
+        assert_eq!(time_of_ms(ms), (14, 30));
+        let t = Task {
+            due_with_time: Some(ms),
+            due_day: Some("2026-01-01".into()),
+            ..Default::default()
+        };
+        assert_eq!(t.plan_day().as_deref(), Some("2026-09-14"));
+        assert!(t.is_overdue("2026-09-15") && !t.is_overdue("2026-09-14"));
     }
     #[test]
     fn today_is_iso() {

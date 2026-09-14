@@ -43,7 +43,18 @@ pub fn store(dir: std::path::PathBuf) -> Store {
         mk("Review sync conflict handling", &wid, 3_600_000.0, &[&uid], true),
         mk("Write release notes for 0.1", &wid, 1_800_000.0, &[], true),
         mk("Test with Orca and high contrast", &wid, 2_700_000.0, &[&gid], true),
-        mk("Book dentist appointment", &hid, 600_000.0, &[], true),
+        {
+            let mut t = Task::new("Dentist appointment", &hid);
+            t.time_estimate = 3_600_000.0;
+            t.due_with_time = local_ms(&today, 15, 30);
+            t.remind_at = t.due_with_time.map(|ms| ms - 30 * 60_000);
+            Action::AddTask { task: t, bottom: true }
+        },
+        {
+            let mut t = Task::new("Renew library books", &hid);
+            t.due_day = Some(day_str(day_number(&today).unwrap_or(0) - 2));
+            Action::AddTask { task: t, bottom: true }
+        },
         mk("Read two chapters", &hid, 1_800_000.0, &[&eid], true),
         mk("Prep tomorrow's lunch", &hid, 900_000.0, &[&eid], true),
         mk("Plan weekend hike", &hid, 0.0, &[], false),

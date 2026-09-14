@@ -160,6 +160,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             ToggleButton {
               icon-name: "sidebar-show-symbolic";
               tooltip-text: _("Hide Sidebar");
+              accessibility {
+                label: _("Hide Sidebar");
+              }
               active: bind split_view.show-sidebar bidirectional;
             }
 
@@ -169,6 +172,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
               menu-model: primary_menu;
               primary: true;
               tooltip-text: _("Main Menu");
+              accessibility {
+                label: _("Main Menu");
+              }
             }
           }
 
@@ -220,6 +226,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             ToggleButton {
               icon-name: "sidebar-show-symbolic";
               tooltip-text: _("Show Sidebar");
+              accessibility {
+                label: _("Show Sidebar");
+              }
               visible: bind split_view.show-sidebar inverted;
               active: bind split_view.show-sidebar bidirectional;
             }
@@ -236,12 +245,18 @@ template $MomentumWindow: Adw.ApplicationWindow {
               icon-name: "view-more-symbolic";
               menu-model: view_menu;
               tooltip-text: _("View Options");
+              accessibility {
+                label: _("View Options");
+              }
             }
 
             [end]
             Button sync_button {
               icon-name: "view-refresh-symbolic";
               tooltip-text: _("Sync Now");
+              accessibility {
+                label: _("Sync Now");
+              }
               action-name: "app.sync";
             }
           }
@@ -262,6 +277,10 @@ template $MomentumWindow: Adw.ApplicationWindow {
 
             child: SearchEntry search_entry {
               placeholder-text: _("Search tasks, notes, projects and tags");
+
+              accessibility {
+                label: _("Search");
+              }
             };
           }
 
@@ -276,6 +295,11 @@ template $MomentumWindow: Adw.ApplicationWindow {
             child: Entry add_entry {
               placeholder-text: _("Add a task…  #tag  1h 30m");
               primary-icon-name: "list-add-symbolic";
+
+              accessibility {
+                label: _("Add a task");
+                description: _("Type a title; #tag adds a tag and 1h 30m sets an estimate");
+              }
             };
           }
 
@@ -300,6 +324,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             Button {
               icon-name: "user-trash-symbolic";
               tooltip-text: _("Delete");
+              accessibility {
+                label: _("Delete Selected Tasks");
+              }
               action-name: "win.sel-delete";
 
               styles [
@@ -311,6 +338,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             Button {
               icon-name: "tag-symbolic";
               tooltip-text: _("Add Tag…");
+              accessibility {
+                label: _("Add Tag to Selected Tasks");
+              }
               action-name: "win.sel-tag";
             }
 
@@ -318,6 +348,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             Button {
               icon-name: "folder-symbolic";
               tooltip-text: _("Move to Project…");
+              accessibility {
+                label: _("Move Selected Tasks to Project");
+              }
               action-name: "win.sel-move";
             }
 
@@ -325,6 +358,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             Button {
               icon-name: "starred-symbolic";
               tooltip-text: _("Plan for Today");
+              accessibility {
+                label: _("Plan Selected Tasks for Today");
+              }
               action-name: "win.sel-today";
             }
 
@@ -332,6 +368,9 @@ template $MomentumWindow: Adw.ApplicationWindow {
             Button {
               icon-name: "object-select-symbolic";
               tooltip-text: _("Mark as Done");
+              accessibility {
+                label: _("Mark Selected Tasks as Done");
+              }
               action-name: "win.sel-done";
             }
           }

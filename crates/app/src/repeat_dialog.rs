@@ -137,7 +137,9 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         .icon_name("x-office-calendar-symbolic")
         .valign(gtk::Align::Center)
         .css_classes(["flat"])
+        .tooltip_text(gettext("Pick a start day"))
         .build();
+    pick.update_property(&[gtk::accessible::Property::Label(&gettext("Pick a start day"))]);
     let cal = gtk::Calendar::new();
     if let Some((y, m, d)) = cfg.borrow().start_date.as_deref().and_then(parse_day) {
         if let Ok(dt) = glib::DateTime::from_local(y as i32, m as i32, d as i32, 0, 0, 0.0) {

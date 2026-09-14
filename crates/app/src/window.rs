@@ -277,6 +277,14 @@ pub fn fmt_day(day: &str) -> String {
     }
 }
 
+/// Local clock time of a Unix millisecond timestamp, e.g. `14:30`.
+pub fn fmt_time(ms: u64) -> String {
+    glib::DateTime::from_unix_local(ms as i64 / 1000)
+        .and_then(|d| d.format("%H:%M"))
+        .map(|g| g.to_string())
+        .unwrap_or_default()
+}
+
 /// CSS colour string from the sync data → `#rrggbb` for Pango markup.
 pub fn hex_color(color: &str) -> Option<String> {
     let c = gtk::gdk::RGBA::parse(color).ok()?;
@@ -418,6 +426,11 @@ impl MomentumWindow {
 
     fn setup(&self) {
         let imp = self.imp();
+        adw::StyleManager::default().connect_high_contrast_notify(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            move |_| w.refresh()
+        ));
         imp.sidebar_list.connect_row_selected(glib::clone!(
             #[weak(rename_to = w)]
             self,
@@ -1071,7 +1084,7 @@ impl MomentumWindow {
             ch.insert("tagIds".into(), json!(ids));
             let mut back = Map::new();
             back.insert("tagIds".into(), json!(t.tag_ids));
-            if t.due_day.as_deref() != Some(&today) {
+            if t.plan_day().as_deref() != Some(&today) {
                 ch.insert("dueDay".into(), json!(today));
                 ch.insert("dueWithTime".into(), Value::Null);
                 back.insert("dueDay".into(), json!(t.due_day));
@@ -1125,7 +1138,7 @@ impl MomentumWindow {
                 .collect()
         };
         let mut undo = vec![];
-        for t in tasks.iter().filter(|t| t.due_day.as_deref() != Some(&tomorrow)) {
+        for t in tasks.iter().filter(|t| t.plan_day().as_deref() != Some(&tomorrow)) {
             let mut back = Map::new();
             back.insert("dueDay".into(), json!(t.due_day));
             back.insert("dueWithTime".into(), json!(t.due_with_time));
@@ -1183,7 +1196,7 @@ impl MomentumWindow {
         let today = today_str();
         let ids: Vec<String> = tasks
             .iter()
-            .filter(|t| t.due_day.as_deref() != Some(&today))
+            .filter(|t| t.plan_day().as_deref() != Some(&today))
             .map(|t| t.id.clone())
             .collect();
         if ids.is_empty() {
@@ -1447,7 +1460,7 @@ impl MomentumWindow {
                 menu.append_section(None, &a);
                 // Scheduling moves in their own section, labelled so the group reads as one idea.
                 let m = gio::Menu::new();
-                let planned = t.due_day.as_deref() == Some(&today);
+                let planned = t.plan_day().as_deref() == Some(&today);
                 m.append_item(&item(
                     if planned {
                         gettext("Remove from Today")
@@ -1653,7 +1666,7 @@ impl MomentumWindow {
         };
         let store = imp.store.borrow();
         let lower = prefix.to_lowercase();
-        let colorful = imp.settings.boolean("colorful-labels");
+        let colorful = self.colorful();
         let matches: Vec<(String, Option<String>, usize)> = store
             .state
             .tag
@@ -1994,6 +2007,11 @@ impl MomentumWindow {
     }
 
     /// CSS class that colours symbolic icons with a project/tag colour from the sync data.
+    /// Colour-coded labels are a preference, and never shown in high contrast: the tag and
+    /// project colours come from the sync data, so their contrast cannot be guaranteed.
+    pub fn colorful(&self) -> bool {
+        self.imp().settings.boolean("colorful-labels") && !adw::StyleManager::default().is_high_contrast()
+    }
     pub fn color_class(&self, color: &str) -> Option<String> {
         let safe: String = color
             .chars()
@@ -2135,7 +2153,7 @@ impl MomentumWindow {
         self.sidebar_row(&gettext("Archive"), "archive-symbolic", Some(View::Archive), None, None);
         self.sidebar_row(&gettext("Search"), "edit-find-symbolic", Some(View::Search), None, None);
         self.sidebar_row(&gettext("Projects"), "", None, None, Some("projects-collapsed"));
-        let colorful = imp.settings.boolean("colorful-labels");
+        let colorful = self.colorful();
         if !imp.settings.boolean("projects-collapsed") {
             for p in store
                 .state
@@ -2309,7 +2327,7 @@ impl MomentumWindow {
                 ));
             }
         }
-        let colorful = imp.settings.boolean("colorful-labels");
+        let colorful = self.colorful();
         let projects: Vec<&Project> = idx
             .projects
             .iter()
@@ -2519,7 +2537,7 @@ impl MomentumWindow {
 
     fn task_row(&self, t: &Task, store: &Store, indent: bool, archived: bool) {
         let imp = self.imp();
-        let colorful = imp.settings.boolean("colorful-labels");
+        let colorful = self.colorful();
         let mut sub = vec![];
         // Outside a project view, lead with the project name in the project's own colour.
         if !matches!(*imp.view.borrow(), View::Project(_)) {
@@ -2558,9 +2576,16 @@ impl MomentumWindow {
                 );
             }
         }
-        if let Some(d) = &t.due_day {
-            if !matches!(*imp.view.borrow(), View::Today | View::Tonight | View::Upcoming) {
-                sub.push(glib::markup_escape_text(&fmt_day(d)).to_string());
+        if let Some(d) = t.plan_day() {
+            // Day views already say which day it is, except for overdue tasks, whose day is the point.
+            let day_known = matches!(*imp.view.borrow(), View::Today | View::Tonight | View::Upcoming)
+                && d.as_str() >= today_str().as_str();
+            let mut when = if day_known { String::new() } else { fmt_day(&d) };
+            if let Some(ms) = t.due_with_time {
+                when = format!("{when} {}", fmt_time(ms)).trim().to_string();
+            }
+            if !when.is_empty() {
+                sub.push(glib::markup_escape_text(&when).to_string());
             }
         }
         for tag in &t.tag_ids {
@@ -2593,6 +2618,11 @@ impl MomentumWindow {
             .valign(gtk::Align::Center)
             .sensitive(!archived)
             .build();
+        check.update_property(&[gtk::accessible::Property::Label(&format!(
+            "{}: {}",
+            if selecting { gettext("Select") } else { gettext("Done") },
+            t.title
+        ))]);
         let id = t.id.clone();
         if selecting {
             check.add_css_class("selection-mode");
@@ -2651,6 +2681,16 @@ impl MomentumWindow {
                 .css_classes(["dim-label"])
                 .build();
             icon.update_property(&[gtk::accessible::Property::Label(&gettext("Has notes"))]);
+            row.add_suffix(&icon);
+        }
+        if let Some(at) = t.remind_at.filter(|_| !t.is_done) {
+            let text = format!("{} {}", gettext("Reminder at"), fmt_time(at));
+            let icon = gtk::Image::builder()
+                .icon_name("alarm-symbolic")
+                .tooltip_text(&text)
+                .css_classes(["dim-label"])
+                .build();
+            icon.update_property(&[gtk::accessible::Property::Label(&text)]);
             row.add_suffix(&icon);
         }
         if let Some(text) = &repeat {
@@ -2772,16 +2812,21 @@ impl MomentumWindow {
                 .iter()
                 .filter(|t| !t.is_done && t.parent_id.is_none() && t.title.to_lowercase().contains(&*filter))
                 .filter(|t| {
-                    t.due_day
+                    t.plan_day()
                         .as_deref()
                         .and_then(day_number)
                         .is_some_and(|d| d > today_n && d <= today_n + range)
                 })
                 .collect();
-            tasks.sort_by(|a, b| a.due_day.cmp(&b.due_day).then_with(|| a.title.cmp(&b.title)));
+            tasks.sort_by(|a, b| {
+                a.plan_day()
+                    .cmp(&b.plan_day())
+                    .then_with(|| a.due_with_time.cmp(&b.due_with_time))
+                    .then_with(|| a.title.cmp(&b.title))
+            });
             let mut current_day = String::new();
             for t in tasks {
-                let day = t.due_day.clone().unwrap_or_default();
+                let day = t.plan_day().unwrap_or_default();
                 if day != current_day {
                     current_day = day.clone();
                     self.new_section(Some(&fmt_day(&day)));
@@ -2860,10 +2905,11 @@ impl MomentumWindow {
             match sort.as_str() {
                 "title" => list.sort_by_key(|t| t.title.to_lowercase()),
                 "due" => list.sort_by(|a, b| {
-                    a.due_day
-                        .is_none()
-                        .cmp(&b.due_day.is_none())
-                        .then_with(|| a.due_day.cmp(&b.due_day))
+                    let (x, y) = (a.plan_day(), b.plan_day());
+                    x.is_none()
+                        .cmp(&y.is_none())
+                        .then_with(|| x.cmp(&y))
+                        .then_with(|| a.due_with_time.cmp(&b.due_with_time))
                 }),
                 "estimate" => list.sort_by(|a, b| a.time_estimate.total_cmp(&b.time_estimate)),
                 "created" => list.sort_by_key(|t| t.created),
@@ -2878,8 +2924,28 @@ impl MomentumWindow {
                 list.sort_by_key(|t| Self::is_tonight(&store, t)); // stable: keeps order within each group
             }
         }
-        let open_count = open.len();
-        let split_tonight = *imp.view.borrow() == View::Today && open.iter().any(|t| Self::is_tonight(&store, t));
+        // Today leads with what slipped: open tasks planned for a day that has passed.
+        let overdue_ids = if *imp.view.borrow() == View::Today {
+            store.state.overdue_ids()
+        } else {
+            vec![]
+        };
+        let overdue: Vec<&Task> = overdue_ids
+            .iter()
+            .filter_map(|i| store.state.task.entities.get(i))
+            .collect();
+        if !overdue.is_empty() {
+            self.new_section(Some(&format!("{} ({})", gettext("Overdue"), overdue.len())));
+            for t in &overdue {
+                self.task_row(t, &store, false, false);
+                for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
+                    self.task_row(s, &store, true, false);
+                }
+            }
+        }
+        let open_count = open.len() + overdue.len();
+        let split_tonight = *imp.view.borrow() == View::Today
+            && (!overdue.is_empty() || open.iter().any(|t| Self::is_tonight(&store, t)));
         let mut rendered_section: Option<bool> = None; // Some(is_tonight) of the current section
         for t in open {
             if split_tonight {
@@ -3054,7 +3120,7 @@ impl MomentumWindow {
         match dest {
             View::Tonight => {
                 let evening = self.ensure_evening_tag();
-                if task.due_day.as_deref() == Some(&today) && task.tag_ids.contains(&evening) {
+                if task.plan_day().as_deref() == Some(&today) && task.tag_ids.contains(&evening) {
                     return false;
                 }
                 let mut ids = task.tag_ids.clone();
@@ -3063,7 +3129,7 @@ impl MomentumWindow {
                 }
                 let mut ch = Map::new();
                 ch.insert("tagIds".into(), json!(ids));
-                if task.due_day.as_deref() != Some(&today) {
+                if task.plan_day().as_deref() != Some(&today) {
                     ch.insert("dueDay".into(), json!(today));
                     ch.insert("dueWithTime".into(), Value::Null);
                 }
@@ -3079,7 +3145,7 @@ impl MomentumWindow {
                     }],
                 );
             }
-            View::Today if task.due_day.as_deref() != Some(&today) => {
+            View::Today if task.plan_day().as_deref() != Some(&today) => {
                 self.dispatch(Action::PlanForToday {
                     task_ids: vec![task.id.clone()],
                     today,
@@ -3611,22 +3677,24 @@ impl MomentumWindow {
     /// Create today's instances of repeating tasks, like upstream's TaskRepeatCfgService.
     pub fn spawn_repeats(&self) {
         let today = today_str();
-        let due: Vec<RepeatCfg> = {
+        // Each config yields at most its newest missed day (upstream getNewestPossibleDueDate):
+        // a weekly task missed on Monday is created on Wednesday, dated Monday, and shows
+        // under Overdue in Today.
+        let due: Vec<(RepeatCfg, String)> = {
             let store = self.imp().store.borrow();
             let archived: Vec<Task> = archived_tasks(&store);
             store
                 .state
                 .task_repeat_cfg
                 .iter()
-                .filter(|c| c.is_due(&today))
-                .filter(|c| {
-                    let id = format!("rpt_{}_{}", c.id, today);
+                .filter_map(|c| c.newest_due_day(&today).map(|d| (c.clone(), d)))
+                .filter(|(c, day)| {
+                    let id = format!("rpt_{}_{}", c.id, day);
                     !store.state.task.entities.contains_key(&id) && !archived.iter().any(|t| t.id == id)
                 })
-                .cloned()
                 .collect()
         };
-        for cfg in due {
+        for (cfg, today) in due {
             let project = cfg
                 .project_id
                 .clone()
@@ -3671,7 +3739,10 @@ impl MomentumWindow {
         for t in due {
             imp.notified.borrow_mut().insert(t.id.clone());
             let n = gio::Notification::new(&t.title);
-            n.set_body(Some(&gettext("Reminder")));
+            n.set_body(Some(&match t.due_with_time {
+                Some(ms) => format!("{} {}", gettext("Due at"), fmt_time(ms)),
+                None => gettext("Reminder"),
+            }));
             n.set_default_action_and_target_value("app.search", Some(&t.title.to_variant()));
             n.add_button_with_target_value(&gettext("Done"), "app.notify-done", Some(&t.id.to_variant()));
             n.add_button_with_target_value(&gettext("Snooze 1 hour"), "app.notify-snooze", Some(&t.id.to_variant()));
@@ -3948,12 +4019,19 @@ impl MomentumWindow {
                 if ne != t.time_estimate {
                     ch.insert("timeEstimate".into(), json!(ne));
                 }
-                let nd = form.due_day();
+                // A time fixes the day too: `dueWithTime` and `dueDay` never coexist upstream.
+                let nw = form.due_with_time();
+                let nd = form.due_day().filter(|_| nw.is_none());
+                if nw != t.due_with_time {
+                    ch.insert("dueWithTime".into(), json!(nw));
+                }
                 if nd != t.due_day {
                     ch.insert("dueDay".into(), json!(nd));
-                    if nd.is_some() {
-                        ch.insert("dueWithTime".into(), Value::Null);
-                    }
+                }
+                let nr = form.remind_at();
+                if nr != t.remind_at {
+                    ch.insert("remindAt".into(), json!(nr));
+                    imp.notified.borrow_mut().remove(&id);
                 }
                 let np = form.project_id();
                 if t.parent_id.is_none() && !np.is_empty() && np != t.project_id {

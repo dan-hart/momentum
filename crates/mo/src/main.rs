@@ -249,8 +249,13 @@ fn print_tasks(store: &Store, tasks: &[&Task], json: bool) {
         if t.time_estimate > 0.0 {
             bits.push(format!("~{}", fmt_ms(t.time_estimate)));
         }
-        if let Some(d) = &t.due_day {
-            bits.push(if *d == today { "today".into() } else { d.clone() });
+        if let Some(d) = t.plan_day() {
+            let mut when = if d == today { "today".to_string() } else { d };
+            if let Some(ms) = t.due_with_time {
+                let (h, m) = time_of_ms(ms);
+                when = format!("{when} {h:02}:{m:02}");
+            }
+            bits.push(when);
         }
         for g in t.tag_ids.iter().filter_map(|i| store.state.tag.entities.get(i)) {
             bits.push(format!("#{}", g.title));

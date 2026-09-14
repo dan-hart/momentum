@@ -17,6 +17,22 @@ jobs:
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
 
+  translations:
+    name: Translations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install gettext
+        run: sudo apt-get update -q && sudo apt-get install -y -q gettext
+      - name: POTFILES.in lists every file with strings
+        run: build-aux/check-potfiles.sh
+      - name: Every .po compiles
+        run: |
+          for f in po/*.po; do msgfmt --check --statistics -o /dev/null "$f"; done
+      - name: LINGUAS matches the .po files
+        run: |
+          diff <(grep -v '^#' po/LINGUAS | sort) <(ls po/*.po | xargs -n1 basename | sed 's/\.po$//' | sort)
+
   flatpak:
     name: Flatpak (${{ matrix.arch }})
     strategy:

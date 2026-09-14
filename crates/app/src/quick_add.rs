@@ -14,6 +14,7 @@ pub fn open(app: &MomentumApplication) {
         .primary_icon_name("list-add-symbolic")
         .width_chars(48)
         .build();
+    entry.update_property(&[gtk::accessible::Property::Label(&gettext("Add a task"))]);
     let hint = gtk::Label::builder()
         .label(gettext("Added to Today"))
         .css_classes(["dim-label", "caption"])

@@ -6,6 +6,25 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Scheduled times: the task dialog has a Time row (`14:30`, `2pm`, `0930`), stored as
+  `dueWithTime`; rows show the time and Coming Up and sorting use it
+- Reminders: none, at the scheduled time, or 5/10/15/30 minutes, 1 hour or 1 day before;
+  a bell badge on the row; notifications say "Due at 15:30"
+- Overdue section at the top of Today for open tasks whose day has passed
+- Repeating tasks catch up: a repeat missed while the app was closed is created for its
+  newest missed day (weekly on Monday, opened Wednesday, shows under Overdue dated Monday)
+- Accessibility pass: every icon-only control and every task check box has an accessible
+  name, badges are labelled, high contrast turns colour coding off; `build-aux/a11y-dump.py`
+  checks the AT-SPI tree; `docs/ACCESSIBILITY.md`
+- Translation pipeline: complete `po/POTFILES.in`, committed `po/momentum.pot`, CI checks
+  for POTFILES completeness and compiling `.po` files, `docs/TRANSLATING.md` with the
+  Weblate setup
+
+### Changed
+- Today membership follows `dueWithTime` when set, else `dueDay`, matching upstream's
+  virtual Today tag; `mo today` shows scheduled times
+
 ## [0.1.5] - 2026-09-09
 
 ### Added

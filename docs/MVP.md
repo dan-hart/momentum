@@ -27,7 +27,7 @@ Everything below is implemented and working in the Linux app.
 
 | View | Contents | Notes |
 |---|---|---|
-| **Today** | Top-level tasks due today, in the stored Today order, then any other task due today | Open tasks in the main list; completed tasks move to a "Completed (N)" section at the bottom (this applies to every list view). The Today membership follows upstream's virtual TODAY tag rule: `dueWithTime` if set, else `dueDay == today`. |
+| **Today** | Top-level tasks due today, in the stored Today order, then any other task due today | An "Overdue (N)" section first, listing open top-level tasks planned for a day that has passed (oldest first, with the day spelled out), then open tasks; completed tasks move to a "Completed (N)" section at the bottom (this applies to every list view). The Today membership follows upstream's virtual TODAY tag rule: the local day of `dueWithTime` if set, else `dueDay == today`. |
 | **Tonight** | Today's tasks that carry the "Evening" tag (case-insensitive) | In the Today view these tasks are split into a second "Tonight" section under the day's tasks. Quick-add and the dialog from this view add today's date and the Evening tag, creating the tag if needed. Dropping a task here does the same. |
 | **Coming Up** | Open top-level tasks due in the next 7 days (default) or 30 days | Grouped into one section per day with a relative heading (Tomorrow, Friday, 14 October). No day label on rows. |
 | **Archive** | Archived tasks from both archive tiers, newest completion first | Read-only rows: no checkbox, no drag, no menu. Paged 100 at a time with a Show More button. |
@@ -80,6 +80,22 @@ Done rows are dimmed.
 - Done/undone via the checkbox, Ctrl+D on the focused row, or the context menu. Marking
   done sets `doneOn`; undone clears it.
 - Subtasks live under their parent, inherit its project, and move with it.
+
+### 2.3b Scheduled times and reminders
+
+The task dialog has a **Time** row under Due, free text so `14:30`, `14.30`, `0930`,
+`2pm` and `2:30 pm` all work (invalid text is marked with the error style and ignored).
+A time pins the task to a moment: `dueWithTime` = due day (today if none was picked) at
+that local time, and `dueDay` is cleared, because upstream never stores both. Clearing the
+time restores a plain `dueDay`. Day moves (Today, Tomorrow, Next Week, drop on Today)
+always clear `dueWithTime`, as before.
+
+The **Reminder** row is a combo enabled only while a valid time is typed: None, At the
+scheduled time, 5/10/15/30 minutes before, 1 hour before, 1 day before; it writes
+`remindAt` as an absolute timestamp. Editing a reminder re-arms it even if the old one
+already fired. Both are plain `updateTask` changes. Rows show the time after the day
+("Tomorrow 09:00", or just "15:30" in day views) and a bell badge with "Reminder at
+HH:MM" while a reminder is pending; the notification body reads "Due at HH:MM".
 
 ### 2.4 Organising
 
@@ -140,6 +156,14 @@ no catch-up for days when no client ran. Description strings: "Repeats daily", "
 every Monday", "Repeats weekly on Mon, Wed", "Repeats every 2 weeks on Monday", "Repeats
 monthly on the 5th", "Repeats monthly on the second Tuesday", "Repeats yearly on 5 March".
 
+**Catch-up.** Instances are created on launch and on every refresh, for each config's
+*newest* missed day (upstream `getNewestPossibleDueDate`): scanning back from today to the
+day after `lastTaskCreationDay`, never before `startDate`, and at most one cycle length
+(`repeatEvery` days, weeks, months or years). A weekly Monday task opened on Wednesday is
+created dated Monday and appears under Overdue; a daily task closed for a week yields one
+instance, today. The instance id is `rpt_<cfgId>_<day>` and `lastTaskCreationDay` becomes
+that day, so a client that was offline never duplicates what another client created.
+
 ### 2.5b Editing the repeat schedule
 
 Opened from the task dialog's Repeat row, the context menu ("Repeat…" / "Edit Repeat…",
@@ -174,7 +198,8 @@ task), `[TaskRepeatCfg] Update TaskRepeatCfg`, and `[Task Shared] deleteTaskRepe
   off. Afterwards "Last synced just now" for the first ten seconds, then "N seconds /
   minutes / hours / days ago", refreshed every 30 seconds. The caption is hidden on
   empty views and when sync is off.
-- Reminders (`remindAt`) fire desktop notifications, checked every 30 seconds.
+- Reminders (`remindAt`) fire desktop notifications, checked every 30 seconds (see 2.3b for
+  how they are set).
 
 ### 2.6b Empty states and "all done"
 
@@ -307,7 +332,13 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   `org.gtk.Actions.Activate("cli")` on the app's bus name; otherwise `mo` writes the store
   directly and the app reloads on file change. Sync from `mo` reads the Flatpak app's
   GSettings keyfile for server/user/folder and the system keychain for passwords.
-- **Localisation**: gettext pipeline live, German as the first translation (`po/de.po`).
+- **Localisation**: gettext pipeline live, German as the first translation (`po/de.po`);
+  `po/POTFILES.in` completeness and `.po` compilation are CI checks, the template
+  `po/momentum.pot` is committed, and translation happens on Weblate
+  (`docs/TRANSLATING.md`).
+- **Accessibility** (`docs/ACCESSIBILITY.md`): every control named for AT-SPI (task check
+  boxes read "Done: <title>"), badges labelled, Menu/Shift+F10 context menus, high
+  contrast disables colour coding live, `build-aux/a11y-dump.py` verifies the tree.
 
 ## 3. Data model (what to reimplement)
 
@@ -404,11 +435,10 @@ rename). GSettings hold non-secret preferences; the keyring holds secrets.
 ## 7. Explicitly out of scope for the MVP
 
 Time tracking and the timer, pomodoro and break reminders, idle detection, boards,
-metrics and worklog, issue providers (Jira, GitHub, …), standalone notes, scheduled
-times (`dueWithTime`) and reminder editing, attachments, planner day view, the SuperSync
-server, Dropbox/OneDrive/WebDAV-generic/LocalFile providers, the v3 split sync format,
-repeat catch-up for missed days, translations, and Flathub
-publication. All of their data is preserved untouched.
+metrics and worklog, issue providers (Jira, GitHub, …), standalone notes, attachments,
+planner day view, the SuperSync server, Dropbox/OneDrive/WebDAV-generic/LocalFile
+providers, the v3 split sync format, and Flathub publication. All of their data is
+preserved untouched.
 
 ## 7b. Distribution
 
@@ -476,3 +506,6 @@ publication. All of their data is preserved untouched.
   --quick-add/--background`, `momentum://` and `superproductivity://` URL schemes, Ctrl+Z
   global undo, German translation; the app window now exists hidden from startup so
   services have a store to talk to; a store file monitor reloads external writes.
+- **Unreleased** (2026-09-14): scheduled times and reminders in the task dialog (2.3b);
+  Overdue section in Today (2.1); repeat catch-up for missed days (2.5); accessibility
+  pass and AT-SPI check script; translation pipeline with Weblate instructions.

@@ -3,7 +3,7 @@
 //! Shared form for creating and editing a task: title, project, due day, estimate, tags, notes.
 use adw::prelude::*;
 use gettextrs::gettext;
-use gtk::{gio, glib};
+use gtk::glib;
 use sp_model::*;
 use sp_store::Store;
 use std::cell::RefCell;
@@ -19,10 +19,43 @@ pub struct TaskForm {
     project_ids: Vec<String>,
     due: Rc<RefCell<Option<String>>>,
     due_row: adw::ActionRow,
+    time: adw::EntryRow,
+    reminder: adw::ComboRow,
+    /// Minutes before the scheduled time for each Reminder choice; `None` = no reminder.
+    reminder_offsets: Vec<Option<u64>>,
     estimate: adw::EntryRow,
     tag_buttons: Vec<(String, gtk::ToggleButton)>,
     new_tags: adw::EntryRow,
     notes: gtk::TextView,
+}
+
+/// `14:30`, `14.30`, `1430`, `2pm`, `2:30 pm`, `9` → `(hour, minute)`.
+pub fn parse_time(s: &str) -> Option<(u32, u32)> {
+    let t = s.trim().to_ascii_lowercase();
+    if t.is_empty() {
+        return None;
+    }
+    let (body, pm) = match (t.strip_suffix("pm"), t.strip_suffix("am")) {
+        (Some(b), _) => (b.trim(), Some(true)),
+        (_, Some(b)) => (b.trim(), Some(false)),
+        _ => (t.as_str(), None),
+    };
+    let (h, m) = match body.split_once([':', '.', 'h']) {
+        Some((h, m)) => (
+            h.trim().parse().ok()?,
+            if m.is_empty() { 0 } else { m.trim().parse().ok()? },
+        ),
+        None if body.len() == 4 && body.chars().all(|c| c.is_ascii_digit()) => {
+            (body[..2].parse().ok()?, body[2..].parse().ok()?)
+        }
+        None => (body.parse().ok()?, 0u32),
+    };
+    let h: u32 = match (h, pm) {
+        (12, Some(false)) => 0,
+        (h, Some(true)) if h < 12 => h + 12,
+        (h, _) => h,
+    };
+    (h < 24 && m < 60).then_some((h, m))
 }
 
 fn tomorrow() -> String {
@@ -43,7 +76,7 @@ impl TaskForm {
         default_project: &str,
         default_due: Option<String>,
     ) -> Self {
-        let colorful = gio::Settings::new(*crate::config::APP_ID).boolean("colorful-labels");
+        let colorful = win.colorful();
         let page = adw::PreferencesPage::new();
         let group = adw::PreferencesGroup::new();
         let title = adw::EntryRow::builder()
@@ -114,6 +147,7 @@ impl TaskForm {
             .css_classes(["flat"])
             .tooltip_text(gettext("Pick a day"))
             .build();
+        pick.update_property(&[gtk::accessible::Property::Label(&gettext("Pick a day"))]);
         let cal = gtk::Calendar::new();
         let quick = gtk::Box::builder()
             .orientation(gtk::Orientation::Horizontal)
@@ -165,6 +199,74 @@ impl TaskForm {
         set_due(initial);
         due_row.add_suffix(&pick);
         group.add(&due_row);
+
+        // Time of day: free text so "2pm" works; a time also pins the day (today if unset).
+        let time = adw::EntryRow::builder()
+            .title(gettext("Time, e.g. 14:30"))
+            .text(
+                task.and_then(|t| t.due_with_time)
+                    .map(|ms| {
+                        let (h, m) = time_of_ms(ms);
+                        format!("{h:02}:{m:02}")
+                    })
+                    .unwrap_or_default(),
+            )
+            .build();
+        group.add(&time);
+        let reminder_offsets: Vec<Option<u64>> = vec![
+            None,
+            Some(0),
+            Some(5),
+            Some(10),
+            Some(15),
+            Some(30),
+            Some(60),
+            Some(1440),
+        ];
+        let labels = [
+            gettext("None"),
+            gettext("At the scheduled time"),
+            gettext("5 minutes before"),
+            gettext("10 minutes before"),
+            gettext("15 minutes before"),
+            gettext("30 minutes before"),
+            gettext("1 hour before"),
+            gettext("1 day before"),
+        ];
+        let reminder = adw::ComboRow::builder()
+            .title(gettext("Reminder"))
+            .subtitle(gettext("Needs a time"))
+            .model(&gtk::StringList::new(
+                &labels.iter().map(String::as_str).collect::<Vec<_>>(),
+            ))
+            .sensitive(!time.text().is_empty())
+            .build();
+        if let (Some(due), Some(at)) = (task.and_then(|t| t.due_with_time), task.and_then(|t| t.remind_at)) {
+            let minutes = due.saturating_sub(at) / 60_000;
+            let idx = reminder_offsets.iter().position(|o| *o == Some(minutes)).unwrap_or(1);
+            reminder.set_selected(idx as u32);
+        }
+        group.add(&reminder);
+        time.connect_changed(glib::clone!(
+            #[weak]
+            reminder,
+            #[strong]
+            due,
+            #[strong]
+            set_due,
+            move |e| {
+                let parsed = parse_time(&e.text());
+                reminder.set_sensitive(parsed.is_some());
+                if parsed.is_some() && due.borrow().is_none() {
+                    set_due(Some(today_str()));
+                }
+                if e.text().trim().is_empty() || parsed.is_some() {
+                    e.remove_css_class("error");
+                } else {
+                    e.add_css_class("error");
+                }
+            }
+        ));
 
         let estimate = adw::EntryRow::builder()
             .title(gettext("Estimate, e.g. 1h 30m"))
@@ -219,6 +321,7 @@ impl TaskForm {
             .valign(gtk::Align::Center)
             .css_classes(["flat"])
             .build();
+        copy.update_property(&[gtk::accessible::Property::Label(&gettext("Copy Notes"))]);
         notes_group.set_header_suffix(Some(&copy));
         let notes = gtk::TextView::builder()
             .wrap_mode(gtk::WrapMode::WordChar)
@@ -243,6 +346,7 @@ impl TaskForm {
         notes
             .buffer()
             .set_text(task.and_then(|t| t.notes.as_deref()).unwrap_or(""));
+        notes.update_property(&[gtk::accessible::Property::Label(&gettext("Notes"))]);
         notes_group.add(
             &gtk::Frame::builder()
                 .child(
@@ -266,6 +370,9 @@ impl TaskForm {
             project_ids,
             due,
             due_row,
+            time,
+            reminder,
+            reminder_offsets,
             estimate,
             tag_buttons,
             new_tags,
@@ -284,6 +391,16 @@ impl TaskForm {
     }
     pub fn due_day(&self) -> Option<String> {
         self.due.borrow().clone()
+    }
+    /// The scheduled moment when a valid time was typed: the due day (today if none) at that time.
+    pub fn due_with_time(&self) -> Option<u64> {
+        let (h, m) = parse_time(&self.time.text())?;
+        local_ms(&self.due_day().unwrap_or_else(today_str), h, m)
+    }
+    pub fn remind_at(&self) -> Option<u64> {
+        let due = self.due_with_time()?;
+        let minutes = (*self.reminder_offsets.get(self.reminder.selected() as usize)?)?;
+        Some(due.saturating_sub(minutes * 60_000))
     }
     pub fn estimate_ms(&self) -> f64 {
         crate::window::parse_ms(&self.estimate.text()).unwrap_or(0.0)
@@ -322,7 +439,9 @@ impl TaskForm {
     /// Build a new task from the form.
     pub fn into_task(&self, store: &mut Store) -> Task {
         let mut t = Task::new(&self.title_text(), &self.project_id());
-        t.due_day = self.due_day();
+        t.due_with_time = self.due_with_time();
+        t.due_day = self.due_day().filter(|_| t.due_with_time.is_none());
+        t.remind_at = self.remind_at();
         t.time_estimate = self.estimate_ms();
         let n = self.notes_text();
         if !n.is_empty() {
@@ -334,5 +453,24 @@ impl TaskForm {
     #[allow(dead_code)]
     pub fn due_row(&self) -> &adw::ActionRow {
         &self.due_row
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_time;
+    #[test]
+    fn times() {
+        assert_eq!(parse_time("14:30"), Some((14, 30)));
+        assert_eq!(parse_time(" 9 "), Some((9, 0)));
+        assert_eq!(parse_time("2pm"), Some((14, 0)));
+        assert_eq!(parse_time("2:30 PM"), Some((14, 30)));
+        assert_eq!(parse_time("12am"), Some((0, 0)));
+        assert_eq!(parse_time("12:15pm"), Some((12, 15)));
+        assert_eq!(parse_time("0930"), Some((9, 30)));
+        assert_eq!(parse_time("14.05"), Some((14, 5)));
+        assert_eq!(parse_time("25:00"), None);
+        assert_eq!(parse_time("abc"), None);
+        assert_eq!(parse_time(""), None);
     }
 }

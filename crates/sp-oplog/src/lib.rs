@@ -358,7 +358,7 @@ pub fn apply(d: &mut AppData, action: &Action) {
                     g.task_ids.insert(0, t.id.clone());
                 }
             }
-            if t.due_day.as_deref() == Some(&today) {
+            if t.plan_day().as_deref() == Some(&today) {
                 set_today(d, &t.id, true);
             }
             d.task.insert(&t.id.clone(), t);
@@ -391,8 +391,8 @@ pub fn apply(d: &mut AppData, action: &Action) {
                     }
                 }
             }
-            if t.due_day != old.due_day {
-                let on = t.due_day.as_deref() == Some(&today);
+            if t.due_day != old.due_day || t.due_with_time != old.due_with_time {
+                let on = t.plan_day().as_deref() == Some(&today);
                 set_today(d, id, on && t.parent_id.is_none());
             }
             if t.project_id != old.project_id {
