@@ -14,7 +14,8 @@ platform it would mean the equivalent native toolkit and its guidelines, not a p
 UI.
 
 Momentum uses [Super Productivity](https://super-productivity.com)'s open data model and
-sync format as its foundation. That was a deliberate choice: an established schema, an
+sync format as its foundation, and adds a second, serverless sync path between its own
+instances (section 2.12) that carries the same operations. That was a deliberate choice: an established schema, an
 existing sync protocol with conflict handling, and a family of clients on other platforms
 that Momentum can sit next to. Momentum is not a clone of Super Productivity's interface
 and does not aim for feature parity; it picks the planning features and does them well.
@@ -431,6 +432,9 @@ short-code table (155 action types) is generated from upstream into `action_code
 
 ## 5. Sync protocol (Nextcloud, file based)
 
+Section 2.12 describes the peer-to-peer path; this section is the server path both share
+the op format with.
+
 - Remote path: `<server>/remote.php/dav/files/<user>/<folder>/sync-data.json`, HTTP
   Basic auth with an app password.
 - File body: prefix `pf_` + `C` if gzip + `E` if encrypted + `2__`, then the payload.
@@ -541,7 +545,9 @@ preserved untouched.
   --quick-add/--background`, `momentum://` and `superproductivity://` URL schemes, Ctrl+Z
   global undo, German translation; the app window now exists hidden from startup so
   services have a store to talk to; a store file monitor reloads external writes.
-- **Unreleased** (2026-09-14): scheduled times and reminders in the task dialog (2.3b);
-  Overdue section in Today (2.1); repeat catch-up for missed days (2.5); accessibility
-  pass and AT-SPI check script; translation pipeline with Weblate instructions; sync with
-  nearby devices over LibreSync (2.12).
+- **0.2.0** (2026-09-14): sync with nearby devices over LibreSync (2.12), including the
+  Nearby Devices dialog, pairing codes, bootstrap snapshot and Nextcloud relay; scheduled
+  times and reminders in the task dialog (2.3b); Overdue section in Today (2.1); repeat
+  catch-up for missed days (2.5); accessibility pass with the AT-SPI check script (2.11);
+  translation pipeline with the Weblate workflow (2.11); Nextcloud upload skips ops the
+  server already lists (5).

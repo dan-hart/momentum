@@ -40,6 +40,12 @@ Momentum whenever you are on your Linux machine.
 - **Sync you can trust.** Compatible with Super Productivity's `sync-data.json`, including
   end-to-end encrypted files. Conflicts are resolved by rebasing your changes, never by
   overwriting. Secrets live in the system keyring.
+- **Or no server at all.** Link two devices once with a six-digit code and they sync
+  directly over the local network, end-to-end encrypted, seconds after a change. A device
+  that also has Nextcloud relays for the others.
+- **Times, reminders, overdue.** Give a task a time and a reminder; what slipped waits
+  under an Overdue heading, and a repeating task you missed still shows up, dated the day
+  it was due.
 - **Fast search over everything.** Tasks, notes, subtasks, the archive, projects and tags,
   grouped and instant.
 - **Drag and drop, multi-select, bulk edit.** Drop a task on a project, a tag, Today or
@@ -53,8 +59,8 @@ Momentum whenever you are on your Linux machine.
   follow the system, accent color follows your setting, controls carry accessible labels.
 
 <p align="center">
-  <img src="data/resources/screenshots/coming-up.png" width="360" alt="Coming Up view">
   <img src="data/resources/screenshots/new-task.png" width="360" alt="New Task dialog">
+  <img src="data/resources/screenshots/devices.png" width="360" alt="Nearby Devices dialog">
 </p>
 
 ## Install

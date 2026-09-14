@@ -19,16 +19,20 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.1.5/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.2.0/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.1.5/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.2.0/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.1.5/data/resources/screenshots/new-task.png</image>
-      <caption>Creating a task with a due day, estimate and tags</caption>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.2.0/data/resources/screenshots/new-task.png</image>
+      <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.2.0/data/resources/screenshots/devices.png</image>
+      <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
   <url type="homepage">https://github.com/dan-hart/momentum</url>
@@ -37,6 +41,18 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.2.0" date="2026-09-14">
+      <description>
+        <p>Sync without a server, and tasks with a time.</p>
+        <ul>
+          <li>Sync with nearby devices: direct, end-to-end encrypted sync over the local network, linked once with a pairing code; works alongside Nextcloud</li>
+          <li>Scheduled times and reminders in the task dialog; rows show the time and a bell</li>
+          <li>Overdue section at the top of Today; repeating tasks catch up on missed days</li>
+          <li>Accessibility pass: every control named for screen readers, high contrast turns color coding off</li>
+          <li>Translation template and Weblate workflow</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.5" date="2026-09-09">
       <description>
         <p>Momentum becomes part of the desktop.</p>

@@ -22,7 +22,8 @@ jobs:
         with:
           components: rustfmt
       - name: Run cargo fmt
-        run: cargo fmt --all -- --check
+        # Not --all: that would also format the LibreSync checkout in libresync-src.
+        run: cargo fmt -p momentum -p mo -p sp-model -p sp-oplog -p sp-store -p sp-sync -p sp-p2p -- --check
 
   translations:
     name: Translations

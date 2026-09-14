@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-14
+
 ### Added
 - Sync with nearby devices: direct, serverless, end-to-end encrypted sync over the local
   network using LibreSync as the transport. Link two devices once with a six-digit pairing
@@ -88,6 +90,7 @@ First preview.
 - Follows the system accent color; color-coded projects and tags
 
 [Unreleased]: https://github.com/dan-hart/momentum/compare/v0.1.5...HEAD
+[0.2.0]: https://github.com/dan-hart/momentum/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/dan-hart/momentum/compare/v0.1.1...v0.1.5
 [0.1.1]: https://github.com/dan-hart/momentum/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/dan-hart/momentum/releases/tag/v0.1.0
