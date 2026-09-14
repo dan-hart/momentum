@@ -242,6 +242,9 @@ at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
 
 ### 2.8 Keyboard and input
 
+"Ctrl" below is the configured modifier (2.9): with `modifier-key = super` every row reads
+Super+…, and the Keyboard Shortcuts overlay and hints say so.
+
 | Key | Action |
 |---|---|
 | Ctrl+N | New Task dialog |
@@ -503,6 +506,13 @@ preserved untouched.
 
 ## 8. Porting notes for iOS and macOS
 
+- **Nearby-device sync on other platforms.** `sp-p2p` is plain Rust on LibreSync, which
+  ships a C ABI (`libresync-ffi`) and a Swift package with an event pump, so an iOS or
+  macOS port can reuse the same record shape (one record per op, `Snapshot/latest` for
+  bootstrap) and link with a Linux Momentum. Keys go to the Keychain through the
+  `KeyStore` trait; discovery is Bonjour, the same `_libresync._tcp` service.
+- **Modifier key.** The setting offers Command, Control and Option on macOS builds;
+  `<Control>` in the accelerator table is rewritten to `<Meta>` for Command.
 - **Reuse the core.** `sp-model`, `sp-oplog`, `sp-store` and `sp-sync` have no GTK
   dependency. They can be compiled as a Rust library and exposed to Swift via UniFFI or a
   C ABI, or reimplemented in Swift from sections 3 to 6 of this document. Keep the
@@ -558,3 +568,4 @@ preserved untouched.
   catch-up for missed days (2.5); accessibility pass with the AT-SPI check script (2.11);
   translation pipeline with the Weblate workflow (2.11); Nextcloud upload skips ops the
   server already lists (5).
+- **Unreleased** (2026-09-14): modifier-key preference for every shortcut (2.8, 2.9).
