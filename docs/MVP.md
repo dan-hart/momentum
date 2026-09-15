@@ -592,3 +592,8 @@ another platform should have an equivalent for each.
   delete and reorder missing from Ctrl+Z (2.6), timed tasks losing their day in the
   editor (2.3b), `mo undone`/`rm` on completed tasks and `mo --json` for projects and
   tags (2.11), the shortcuts overlay rewrite.
+
+- **0.3.5** (2026-09-15): Morning slot (2.1, 2.4c): view, section at the top of Today,
+  Ctrl+Shift+M, context menu, drop target, one slot per task; Morning and Tonight sidebar
+  entries shown only on days that use them, with a fall-back to Today; `mo morning` and
+  `mo add --morning` (2.11).

@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.0/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.0/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.0/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.0/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,16 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.3.5" date="2026-09-15">
+      <description>
+        <p>Mornings.</p>
+        <ul>
+          <li>A Morning section and view for tasks tagged "Morning", the mirror of Tonight: Ctrl+Shift+M, context menu, drop target</li>
+          <li>Morning and Tonight appear in the sidebar only on days that use them</li>
+          <li>mo morning and mo add --morning</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-09-15">
       <description>
         <p>Your modifier key, and a test suite behind every feature.</p>

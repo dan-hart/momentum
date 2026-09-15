@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-09-15
+
 ### Added
 - Morning: a view and a section at the top of Today for tasks tagged "Morning", mirroring
   Tonight (Ctrl+Shift+M, context menu, drop target, `mo morning`, `mo add --morning`)
@@ -115,6 +117,7 @@ First preview.
 - Follows the system accent color; color-coded projects and tags
 
 [Unreleased]: https://github.com/dan-hart/momentum/compare/v0.1.5...HEAD
+[0.3.5]: https://github.com/dan-hart/momentum/compare/v0.3.0...v0.3.5
 [0.3.0]: https://github.com/dan-hart/momentum/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dan-hart/momentum/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/dan-hart/momentum/compare/v0.1.1...v0.1.5
