@@ -33,6 +33,8 @@ mod imp {
         pub p2p_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub modifier_row: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub auto_archive_row: TemplateChild<adw::SwitchRow>,
     }
     #[glib::object_subclass]
     impl ObjectSubclass for MomentumPrefs {
@@ -78,6 +80,7 @@ mod imp {
             s.bind("colorful-labels", &*self.colorful_row, "active").build();
             s.bind("run-in-background", &*self.background_row, "active").build();
             s.bind("p2p-enabled", &*self.p2p_row, "active").build();
+            s.bind("auto-archive", &*self.auto_archive_row, "active").build();
             // Modifier key: platform-specific choices mapped to the setting's string value.
             let choices = crate::modifier::choices();
             let labels: Vec<&str> = choices.iter().map(|(_, l)| l.as_str()).collect();

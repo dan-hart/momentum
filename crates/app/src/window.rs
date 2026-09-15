@@ -60,12 +60,6 @@ impl Slot {
             Slot::Tonight => "Evening",
         }
     }
-    pub fn view(self) -> View {
-        match self {
-            Slot::Morning => View::Morning,
-            Slot::Tonight => View::Tonight,
-        }
-    }
     fn other(self) -> Slot {
         match self {
             Slot::Morning => Slot::Tonight,
@@ -76,6 +70,7 @@ impl Slot {
 
 /// Data directory for windows created from now on (tests give every window its own).
 static TEST_DATA_DIR: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+#[allow(dead_code)] // tests only
 pub fn set_test_data_dir(dir: Option<PathBuf>) {
     *TEST_DATA_DIR.lock().unwrap_or_else(|e| e.into_inner()) = dir;
 }
@@ -1320,6 +1315,19 @@ impl MomentumWindow {
         }
         self.set_selecting(false);
         self.refresh();
+        let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
+        if let Some(archived) = self.auto_archive(&ids) {
+            // Restoring reopens the archived ones; the rest (subtasks) get their flag back.
+            let mut batch = archived;
+            batch.extend(undo.into_iter().filter(|a| match a {
+                Action::UpdateTask { id, .. } => {
+                    !ids.iter().any(|i| i == id) || tasks.iter().any(|t| t.id == *id && t.parent_id.is_some())
+                }
+                _ => true,
+            }));
+            self.toast_undo(&format!("{n} {}", gettext("tasks completed and archived")), batch);
+            return;
+        }
         self.toast_undo(&format!("{n} {}", gettext("tasks completed")), undo);
     }
 
@@ -3480,12 +3488,61 @@ impl MomentumWindow {
     fn set_done(&self, id: &str, done: bool) {
         self.update_task(id, [("isDone".to_string(), json!(done))].into_iter().collect());
         if done {
+            if let Some(undo) = self.auto_archive(&[id.to_string()]) {
+                self.toast_undo(&gettext("Task completed and archived"), undo);
+                return;
+            }
             let undo = Action::UpdateTask {
                 id: id.into(),
                 changes: [("isDone".to_string(), json!(false))].into_iter().collect(),
             };
             self.toast_undo(&gettext("Task completed"), vec![undo]);
         }
+    }
+    /// With the "auto-archive" preference on, moves just-completed top-level tasks (and
+    /// their subtasks) to the archive and syncs, like Archive Completed does. Returns the
+    /// undo batch (restore, which also reopens them) when something was archived.
+    fn auto_archive(&self, ids: &[String]) -> Option<Vec<Action>> {
+        if !self.imp().settings.boolean("auto-archive") {
+            return None;
+        }
+        let (tasks, sub_tasks): (Vec<Task>, Vec<Task>) = {
+            let store = self.imp().store.borrow();
+            let tasks: Vec<Task> = ids
+                .iter()
+                .filter_map(|i| store.state.task.entities.get(i))
+                .filter(|t| t.is_done && t.parent_id.is_none())
+                .cloned()
+                .collect();
+            let subs = tasks
+                .iter()
+                .flat_map(|t| {
+                    t.sub_task_ids
+                        .iter()
+                        .filter_map(|i| store.state.task.entities.get(i).cloned())
+                })
+                .collect();
+            (tasks, subs)
+        };
+        if tasks.is_empty() {
+            return None;
+        }
+        let undo: Vec<Action> = tasks
+            .iter()
+            .map(|t| Action::RestoreTask {
+                task: t.clone(),
+                sub_tasks: sub_tasks
+                    .iter()
+                    .filter(|s| s.parent_id.as_deref() == Some(&t.id))
+                    .cloned()
+                    .collect(),
+            })
+            .collect();
+        self.dispatch(Action::MoveToArchive { tasks, sub_tasks });
+        if self.sync_configured() {
+            self.sync();
+        }
+        Some(undo)
     }
     fn update_task(&self, id: &str, changes: Map<String, Value>) {
         self.dispatch(Action::UpdateTask { id: id.into(), changes });

@@ -45,6 +45,7 @@
       <default>'control'</default>
       <summary>Primary modifier for app shortcuts (Ctrl+E becomes Super+E with "super")</summary>
     </key>
+    <key name="auto-archive" type="b"><default>false</default><summary>Move a task to the archive as soon as it is completed</summary></key>
     <key name="p2p-enabled" type="b"><default>false</default><summary>Sync directly with nearby devices over the local network</summary></key>
     <key name="last-p2p-ms" type="x"><default>0</default><summary>Time of the last exchange with a nearby device (ms since epoch)</summary></key>
   </schema>

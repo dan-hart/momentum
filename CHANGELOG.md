@@ -6,6 +6,10 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Preferences › Tasks › "Archive completed tasks immediately": a completed task goes
+  straight to the archive and syncs; undo brings it back open
+
 ## [0.3.5] - 2026-09-15
 
 ### Added

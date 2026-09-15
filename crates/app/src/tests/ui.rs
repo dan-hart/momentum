@@ -769,6 +769,9 @@ fn preferences_rows_are_bound_to_settings() {
         imp.enabled_row.set_active(true);
         assert!(settings().boolean("sync-enabled") && imp.server_row.is_sensitive());
         imp.enabled_row.set_active(false);
+        imp.auto_archive_row.set_active(true);
+        assert!(settings().boolean("auto-archive"));
+        imp.auto_archive_row.set_active(false);
         let choices = crate::modifier::choices();
         let super_idx = choices.iter().position(|(k, _)| *k == "super").unwrap();
         imp.modifier_row.set_selected(super_idx as u32);
@@ -1063,5 +1066,68 @@ fn morning_and_tonight_entries_appear_only_when_today_uses_them() {
             has(&demo, View::Morning) && has(&demo, View::Tonight),
             "demo data has both"
         );
+    });
+}
+
+#[test]
+fn auto_archive_sends_completed_tasks_straight_to_the_archive() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        reset_settings();
+        let id = id_of(&win, "Write release notes for 0.1");
+        // Off by default: completing keeps the task in a Completed section.
+        win.set_done(&id, true);
+        pump();
+        assert!(win.imp().store.borrow().state.task.entities.contains_key(&id));
+        win.undo_last();
+        pump();
+        settings().set_boolean("auto-archive", true).unwrap();
+        win.set_done(&id, true);
+        pump();
+        {
+            let store = win.imp().store.borrow();
+            assert!(!store.state.task.entities.contains_key(&id), "gone from the live list");
+            assert_eq!(
+                store.state.rest["archiveYoung"]["task"]["entities"][&id]["isDone"],
+                true
+            );
+        }
+        assert!(!headings(&win).iter().any(|h| h.starts_with("Completed")));
+        win.undo_last();
+        pump();
+        let store = win.imp().store.borrow();
+        let back = &store.state.task.entities[&id];
+        assert!(!back.is_done, "undo restores it as an open task");
+        drop(store);
+        // Bulk completion archives the whole selection in one undoable batch.
+        let a = id_of(&win, "Read two chapters");
+        let b = id_of(&win, "Prep tomorrow's lunch");
+        win.set_selecting(true);
+        win.toggle_selected(&a);
+        win.toggle_selected(&b);
+        win.bulk_done();
+        pump();
+        {
+            let store = win.imp().store.borrow();
+            assert!(!store.state.task.entities.contains_key(&a) && !store.state.task.entities.contains_key(&b));
+            assert_eq!(
+                store.state.rest["archiveYoung"]["task"]["ids"]
+                    .as_array()
+                    .unwrap()
+                    .len(),
+                2
+            );
+        }
+        win.undo_last();
+        pump();
+        let store = win.imp().store.borrow();
+        assert!(store.state.task.entities.contains_key(&a) && !store.state.task.entities[&b].is_done);
+        drop(store);
+        // Reopening (done -> not done) never archives.
+        settings().set_boolean("auto-archive", true).unwrap();
+        win.set_done(&a, false);
+        pump();
+        assert!(win.imp().store.borrow().state.task.entities.contains_key(&a));
+        reset_settings();
     });
 }

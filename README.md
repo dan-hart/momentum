@@ -55,7 +55,8 @@ Momentum whenever you are on your Linux machine.
 - **Keyboard first.** Standard GNOME shortcuts, a shortcuts dialog, context menus on
   everything, and system-wide shortcuts through the GlobalShortcuts portal.
 - **Undo, not confirmation.** Delete, done, archive, moves and tag drops all get an Undo
-  toast.
+  toast. Prefer a clean list? Turn on "Archive completed tasks immediately" in
+  Preferences and completed tasks go straight to the archive.
 - **Native, adaptive, accessible.** Sidebar collapses on narrow windows, light and dark
   follow the system, accent color follows your setting, controls carry accessible labels.
 

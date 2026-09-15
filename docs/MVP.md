@@ -289,6 +289,12 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
 
 ### 2.9 Preferences
 
+- Tasks › Archive completed tasks immediately (`auto-archive`, off by default): completing
+  a top-level task (check box, Ctrl+D, bulk Mark as Done, a notification's Done button,
+  `mo done` through the running app) moves it and its subtasks to the archive at once
+  with `moveToArchive`, then syncs as Archive Completed does. The toast reads "Task
+  completed and archived"; undo restores it as an open task. Reopening a task never
+  archives.
 - Desktop › Modifier key: `modifier-key` (`control` default, `alt`, `super`; `option`,
   `command` on macOS). Every app accelerator is written with `<Control>` and rewritten
   through one function at startup and on change; the Keyboard Shortcuts overlay and the

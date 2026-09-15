@@ -76,6 +76,15 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     }
 
     Adw.PreferencesGroup {
+      title: _("Tasks");
+
+      Adw.SwitchRow auto_archive_row {
+        title: _("Archive completed tasks immediately");
+        subtitle: _("A completed task goes straight to the archive and syncs. Undo brings it back.");
+      }
+    }
+
+    Adw.PreferencesGroup {
       title: _("Desktop");
 
       Adw.SwitchRow background_row {

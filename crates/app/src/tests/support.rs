@@ -132,6 +132,7 @@ pub fn reset_settings() {
         "p2p-enabled",
         "sync-enabled",
         "auto-sync",
+        "auto-archive",
     ] {
         s.reset(k);
     }

@@ -43,9 +43,6 @@ impl Mo {
         serde_json::from_slice(&std::fs::read(self.dir.path().join("state.json")).unwrap()).unwrap()
     }
 }
-fn today() -> String {
-    sp_model::today_str()
-}
 fn task_titles(v: &serde_json::Value) -> Vec<String> {
     v.as_array()
         .unwrap()
