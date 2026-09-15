@@ -12,13 +12,19 @@ pub fn store(dir: std::path::PathBuf) -> Store {
     let _ = std::fs::remove_dir_all(&dir);
     let mut s = Store::load(dir);
     let (work, home) = (Project::new("Momentum"), Project::new("Home"));
-    let (urgent, gnome, evening) = (Tag::new("urgent"), Tag::new("gnome"), Tag::new("Evening"));
-    let (wid, hid, uid, gid, eid) = (
+    let (urgent, gnome, evening, morning) = (
+        Tag::new("urgent"),
+        Tag::new("gnome"),
+        Tag::new("Evening"),
+        Tag::new("Morning"),
+    );
+    let (wid, hid, uid, gid, eid, mid) = (
         work.id.clone(),
         home.id.clone(),
         urgent.id.clone(),
         gnome.id.clone(),
         evening.id.clone(),
+        morning.id.clone(),
     );
     for a in [
         Action::AddProject { project: work },
@@ -26,6 +32,7 @@ pub fn store(dir: std::path::PathBuf) -> Store {
         Action::AddTag { tag: urgent },
         Action::AddTag { tag: gnome },
         Action::AddTag { tag: evening },
+        Action::AddTag { tag: morning },
     ] {
         s.dispatch(a);
     }
@@ -55,6 +62,7 @@ pub fn store(dir: std::path::PathBuf) -> Store {
             t.due_day = Some(day_str(day_number(&today).unwrap_or(0) - 2));
             Action::AddTask { task: t, bottom: true }
         },
+        mk("Stretch and plan the day", &hid, 600_000.0, &[&mid], true),
         mk("Read two chapters", &hid, 1_800_000.0, &[&eid], true),
         mk("Prep tomorrow's lunch", &hid, 900_000.0, &[&eid], true),
         mk("Plan weekend hike", &hid, 0.0, &[], false),

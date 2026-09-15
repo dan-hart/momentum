@@ -321,6 +321,7 @@ impl MomentumApplication {
         set("win.plan-today", &["<Control>t"]);
         set("win.move-to", &["<Control>m"]);
         set("win.toggle-tonight", &["<Control><Shift>t"]);
+        set("win.toggle-morning", &["<Control><Shift>m"]);
         set("win.move-tomorrow", &["<Control><Shift>Right"]);
         set("win.move-next-week", &["<Control><Shift>Down"]);
         set("win.repeat", &["<Control><Shift>r"]);

@@ -6,6 +6,13 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Morning: a view and a section at the top of Today for tasks tagged "Morning", mirroring
+  Tonight (Ctrl+Shift+M, context menu, drop target, `mo morning`, `mo add --morning`)
+
+### Changed
+- The Morning and Tonight sidebar entries show only while today has tasks in that slot
+
 ## [0.3.0] - 2026-09-15
 
 ### Added

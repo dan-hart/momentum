@@ -65,11 +65,14 @@ fn add_parses_tags_estimate_and_scheduling_flags() {
     assert!(tags.as_array().unwrap().iter().any(|t| t["title"] == "work"));
     mo.ok(&["add", "Today thing", "--today"]);
     mo.ok(&["add", "Evening thing", "--tonight"]);
+    mo.ok(&["add", "Morning thing", "--morning"]);
     mo.ok(&["add", "Tomorrow thing", "--tomorrow"]);
     mo.ok(&["add", "Dated", "--due", "2030-01-02", "--notes", "some notes"]);
     let today_list = task_titles(&mo.json(&["today"]));
     assert!(today_list.contains(&"Today thing".to_string()) && today_list.contains(&"Evening thing".to_string()));
     assert_eq!(task_titles(&mo.json(&["tonight"])), ["Evening thing"]);
+    assert_eq!(task_titles(&mo.json(&["morning"])), ["Morning thing"]);
+    assert!(task_titles(&mo.json(&["today"])).contains(&"Morning thing".to_string()));
     let up = task_titles(&mo.json(&["upcoming", "--days", "3"]));
     assert_eq!(
         up,
@@ -168,8 +171,8 @@ fn help_lists_every_command() {
     let mo = Mo::new();
     let text = mo.ok(&["--help"]);
     for cmd in [
-        "add", "today", "tonight", "upcoming", "list", "search", "done", "undone", "plan", "rm", "projects", "tags",
-        "sync", "config",
+        "add", "today", "morning", "tonight", "upcoming", "list", "search", "done", "undone", "plan", "rm", "projects",
+        "tags", "sync", "config",
     ] {
         assert!(text.contains(cmd), "help lacks {cmd}");
     }

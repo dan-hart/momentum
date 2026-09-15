@@ -371,64 +371,45 @@ fn sorting_by_title_estimate_and_direction() {
         reset_settings();
         s.set_string("task-sort", "title").unwrap();
         pump();
-        let titles = |w: &MomentumWindow| -> Vec<String> {
-            let store = w.imp().store.borrow();
-            row_ids(w)
-                .iter()
-                .filter_map(|i| store.state.task.entities.get(i))
-                .filter(|t| t.due_day.as_deref() == Some(today_str().as_str()) && !t.is_done)
-                .map(|t| t.title.to_lowercase())
-                .collect()
+        // The plain Today section: due today, open, in neither the Morning nor the Tonight slot.
+        let (evening, morning) = {
+            let store = win.imp().store.borrow();
+            let find = |name: &str| store.state.tag.iter().find(|g| g.title == name).unwrap().id.clone();
+            (find("Evening"), find("Morning"))
         };
-        // Within the Today section (due today, not Evening) titles are ascending.
-        let evening = win
-            .imp()
-            .store
-            .borrow()
-            .state
-            .tag
-            .iter()
-            .find(|g| g.title == "Evening")
-            .unwrap()
-            .id
-            .clone();
-        let today_titles = |w: &MomentumWindow| -> Vec<String> {
+        let section = |w: &MomentumWindow| -> Vec<Task> {
             let store = w.imp().store.borrow();
             row_ids(w)
                 .iter()
                 .filter_map(|i| store.state.task.entities.get(i))
                 .filter(|t| {
-                    t.plan_day().as_deref() == Some(today_str().as_str()) && !t.is_done && !t.tag_ids.contains(&evening)
+                    t.plan_day().as_deref() == Some(today_str().as_str())
+                        && !t.is_done
+                        && !t.tag_ids.contains(&evening)
+                        && !t.tag_ids.contains(&morning)
                 })
-                .map(|t| t.title.to_lowercase())
+                .cloned()
                 .collect()
         };
-        let t = today_titles(&win);
-        let mut sorted = t.clone();
+        let titles: Vec<String> = section(&win).iter().map(|t| t.title.to_lowercase()).collect();
+        let mut sorted = titles.clone();
         sorted.sort();
-        assert!(t.len() >= 3 && t == sorted, "{t:?}");
+        assert!(titles.len() >= 3 && titles == sorted, "{titles:?}");
         s.set_string("sort-direction", "descending").unwrap();
         pump();
-        let t2 = today_titles(&win);
-        let mut desc = t2.clone();
+        let titles: Vec<String> = section(&win).iter().map(|t| t.title.to_lowercase()).collect();
+        let mut desc = titles.clone();
         desc.sort_by(|a, b| b.cmp(a));
-        assert_eq!(t2, desc);
-        let _ = titles(&win);
+        assert_eq!(titles, desc);
         s.set_string("task-sort", "estimate").unwrap();
         s.set_string("sort-direction", "ascending").unwrap();
         pump();
-        let store = win.imp().store.borrow();
-        let ests: Vec<f64> = row_ids(&win)
-            .iter()
-            .filter_map(|i| store.state.task.entities.get(i))
-            .filter(|t| t.plan_day().as_deref() == Some(today_str().as_str()) && !t.tag_ids.contains(&evening))
-            .map(|t| t.time_estimate)
-            .collect();
+        let ests: Vec<f64> = section(&win).iter().map(|t| t.time_estimate).collect();
         assert!(ests.windows(2).all(|w| w[0] <= w[1]), "{ests:?}");
-        drop(store);
         reset_settings();
     });
 }
+
 #[test]
 fn coming_up_groups_by_day_and_honours_the_range() {
     on_gtk(|| {
@@ -940,6 +921,147 @@ fn project_and_tag_management_from_the_sidebar() {
             *win.imp().view.borrow(),
             View::Today,
             "falls back to Today when the view is gone"
+        );
+    });
+}
+
+#[test]
+fn morning_view_toggle_and_drop_mirror_tonight() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        let stretch = id_of(&win, "Stretch and plan the day");
+        let notes = id_of(&win, "Write release notes for 0.1");
+        let read = id_of(&win, "Read two chapters");
+        win.go_to(View::Morning);
+        assert_eq!(row_ids(&win), vec![stretch.clone()]);
+        assert_eq!(win.imp().content_page.title(), "Morning");
+        // A task added here is planned for today and tagged Morning.
+        win.add_task("Coffee first");
+        let coffee = id_of(&win, "Coffee first");
+        let morning = win
+            .imp()
+            .store
+            .borrow()
+            .state
+            .tag
+            .iter()
+            .find(|g| g.title == "Morning")
+            .unwrap()
+            .id
+            .clone();
+        let evening = win
+            .imp()
+            .store
+            .borrow()
+            .state
+            .tag
+            .iter()
+            .find(|g| g.title == "Evening")
+            .unwrap()
+            .id
+            .clone();
+        assert!(win.imp().store.borrow().state.task.entities[&coffee]
+            .tag_ids
+            .contains(&morning));
+        assert!(row_ids(&win).contains(&coffee));
+        // Toggling moves a plain task in, and an evening task swaps slots (never both tags).
+        win.toggle_morning(&[notes.clone(), read.clone()]);
+        pump();
+        {
+            let store = win.imp().store.borrow();
+            for id in [&notes, &read] {
+                let t = &store.state.task.entities[id];
+                assert!(
+                    t.tag_ids.contains(&morning) && !t.tag_ids.contains(&evening),
+                    "{}",
+                    t.title
+                );
+            }
+        }
+        win.undo_last();
+        pump();
+        assert!(
+            win.imp().store.borrow().state.task.entities[&read]
+                .tag_ids
+                .contains(&evening),
+            "undo restores the evening tag"
+        );
+        // Toggling a morning task back sends it to the plain day.
+        win.toggle_morning(&[stretch.clone()]);
+        pump();
+        assert!(!win.imp().store.borrow().state.task.entities[&stretch]
+            .tag_ids
+            .contains(&morning));
+        assert!(!row_ids(&win).contains(&stretch));
+        // Drop targets: Morning plans and tags; dropping a morning task on Tonight swaps.
+        let hike = id_of(&win, "Plan weekend hike");
+        assert!(win.drop_task(&hike, &View::Morning));
+        assert!(!win.drop_task(&hike, &View::Morning), "already there");
+        assert!(win.drop_task(&hike, &View::Tonight));
+        let t = win.imp().store.borrow().state.task.entities[&hike].clone();
+        assert!(t.tag_ids.contains(&evening) && !t.tag_ids.contains(&morning));
+        assert_eq!(t.due_day.as_deref(), Some(today_str().as_str()));
+        // Context menu offers the move for each slot; accelerator is bound.
+        let menu = win.context_menu_model(&MenuKind::Task, &coffee);
+        let mut labels = vec![];
+        for i in 0..menu.n_items() {
+            if let Some(sec) = menu.item_link(i, "section") {
+                for j in 0..sec.n_items() {
+                    if let Some(l) = sec.item_attribute_value(j, "label", None) {
+                        labels.push(l.str().unwrap_or_default().to_string());
+                    }
+                }
+            }
+        }
+        assert!(
+            labels.iter().any(|l| l == "Move to Today") && labels.iter().any(|l| l == "Move to Tonight"),
+            "{labels:?}"
+        );
+        assert_eq!(app().accels_for_action("win.toggle-morning"), vec!["<Shift><Control>m"]);
+        // Emptying the slot removes its sidebar entry and falls back to Today.
+        win.go_to(View::Morning);
+        for id in row_ids(&win) {
+            win.toggle_morning(&[id]);
+        }
+        pump();
+        assert_eq!(*win.imp().view.borrow(), View::Today);
+        assert!(!win.imp().views.borrow().iter().flatten().any(|v| *v == View::Morning));
+        let (_, title, _) = win.empty_state(&win.imp().store.borrow());
+        assert!(!title.is_empty());
+    });
+}
+
+#[test]
+fn morning_and_tonight_entries_appear_only_when_today_uses_them() {
+    on_gtk(|| {
+        let has = |w: &MomentumWindow, v: View| w.imp().views.borrow().iter().flatten().any(|x| *x == v);
+        let (win, _dir) = empty_window();
+        assert!(
+            !has(&win, View::Morning) && !has(&win, View::Tonight),
+            "empty store: neither entry"
+        );
+        win.add_task("Plain");
+        let id = id_of(&win, "Plain");
+        assert!(!has(&win, View::Morning));
+        win.toggle_morning(&[id.clone()]);
+        pump();
+        assert!(has(&win, View::Morning) && !has(&win, View::Tonight));
+        win.go_to(View::Morning);
+        assert_eq!(row_ids(&win), vec![id.clone()]);
+        // Moving the only morning task away removes the entry and drops back to Today.
+        win.toggle_tonight(&[id.clone()]);
+        pump();
+        assert!(!has(&win, View::Morning) && has(&win, View::Tonight));
+        assert_eq!(*win.imp().view.borrow(), View::Today);
+        assert!(row_ids(&win).contains(&id));
+        // A task tagged for the slot but planned for another day does not count.
+        win.move_to_tomorrow(&[id.clone()]);
+        pump();
+        assert!(!has(&win, View::Tonight));
+        let (demo, _d2) = demo_window();
+        assert!(
+            has(&demo, View::Morning) && has(&demo, View::Tonight),
+            "demo data has both"
         );
     });
 }

@@ -37,6 +37,8 @@ enum Cmd {
         #[arg(long)]
         tonight: bool,
         #[arg(long)]
+        morning: bool,
+        #[arg(long)]
         tomorrow: bool,
         #[arg(long, value_name = "YYYY-MM-DD")]
         due: Option<String>,
@@ -45,6 +47,8 @@ enum Cmd {
     },
     /// Tasks due today
     Today,
+    /// Today's tasks tagged Morning
+    Morning,
     /// Today's tasks tagged Evening
     Tonight,
     /// Tasks due in the coming days
@@ -291,6 +295,7 @@ fn main() {
                 project,
                 today,
                 tonight,
+                morning,
                 tomorrow,
                 due,
                 notes,
@@ -327,10 +332,13 @@ fn main() {
                 if tonight {
                     tags.push("Evening".into());
                 }
+                if morning {
+                    tags.push("Morning".into());
+                }
                 let mut task = Task::new(&words.join(" "), &project_id);
                 task.time_estimate = est;
                 task.notes = notes;
-                task.due_day = if today || tonight {
+                task.due_day = if today || tonight || morning {
                     Some(today_str())
                 } else if tomorrow {
                     Some(day_str(day_number(&today_str()).unwrap_or(0) + 1))
@@ -366,12 +374,17 @@ fn main() {
                 let tasks: Vec<&Task> = ids.iter().filter_map(|i| store.state.task.entities.get(i)).collect();
                 print_tasks(&store, &tasks, json);
             }
-            Cmd::Tonight => {
+            Cmd::Tonight | Cmd::Morning => {
+                let want = if matches!(cli.cmd, Cmd::Morning) {
+                    "morning"
+                } else {
+                    "evening"
+                };
                 let evening = store
                     .state
                     .tag
                     .iter()
-                    .find(|t| t.title.eq_ignore_ascii_case("evening"))
+                    .find(|t| t.title.eq_ignore_ascii_case(want))
                     .map(|t| t.id.clone());
                 let ids = store.state.today_ids();
                 let tasks: Vec<&Task> = ids

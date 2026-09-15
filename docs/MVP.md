@@ -29,6 +29,7 @@ Everything below is implemented and working in the Linux app.
 | View | Contents | Notes |
 |---|---|---|
 | **Today** | Top-level tasks due today, in the stored Today order, then any other task due today | An "Overdue (N)" section first, listing open top-level tasks planned for a day that has passed (oldest first, with the day spelled out), then open tasks; completed tasks move to a "Completed (N)" section at the bottom (this applies to every list view). The Today membership follows upstream's virtual TODAY tag rule: the local day of `dueWithTime` if set, else `dueDay == today`. |
+| **Morning** | Today's tasks tagged "Morning" (case-insensitive; the tag is created on first use) | Same rules as Tonight; the Morning section leads Today's open tasks. Ctrl+Shift+M, context menu "Move to Morning", drop target. A task is in one slot at most: moving to Morning drops the Evening tag and vice versa. The Morning and Tonight sidebar entries appear only while a task planned for today carries the tag; if the entry disappears while it is the current view, the window falls back to Today. |
 | **Tonight** | Today's tasks that carry the "Evening" tag (case-insensitive) | In the Today view these tasks are split into a second "Tonight" section under the day's tasks. Quick-add and the dialog from this view add today's date and the Evening tag, creating the tag if needed. Dropping a task here does the same. |
 | **Coming Up** | Open top-level tasks due in the next 7 days (default) or 30 days | Grouped into one section per day with a relative heading (Tomorrow, Friday, 14 October). No day label on rows. |
 | **Archive** | Archived tasks from both archive tiers, newest completion first | Read-only rows: no checkbox, no drag, no menu. Paged 100 at a time with a Show More button. |
@@ -132,9 +133,11 @@ Three one-keystroke moves, each available on the focused task, on the whole sele
 selection mode, and in the context menu, and each undoable as one batch:
 
 - **Plan for Today / Remove from Today** (Ctrl+T, drop on Today): sets or clears `dueDay`.
-- **Move to Tonight / Move to Today** (Ctrl+Shift+T, drop on Tonight): adds or removes the
-  "Evening" tag, creating the tag on first use; moving to tonight also plans the task for
-  today if it was not. A batch goes the direction of its first task.
+- **Move to Tonight / Move to Today** (Ctrl+Shift+T, drop on Tonight) and **Move to
+  Morning / Move to Today** (Ctrl+Shift+M, drop on Morning): add or remove the "Evening"
+  or "Morning" tag, creating the tag on first use; moving into a slot also plans the task
+  for today if it was not and removes the other slot's tag. A batch goes the direction of
+  its first task.
 - **Move to Tomorrow** (Ctrl+Shift+Right): sets `dueDay` to tomorrow, keeps tags, clears
   `dueWithTime`. Tasks already due tomorrow are skipped.
 - **Move to Next Week** (Ctrl+Shift+Down): same, to the next Monday strictly after today
@@ -211,6 +214,7 @@ tasks" when sync is not configured, or "press Ctrl+N" when it is.
 | View | Icon | Title | Hint |
 |---|---|---|---|
 | Today | star | Nothing planned for today | Add a task above; drag tasks here from Coming Up; Ctrl+T on any task |
+| Morning | sun | Nothing planned for the morning | Tag a task "Morning", or Ctrl+Shift+M on a task |
 | Tonight | moon | Nothing planned for tonight | Tag a task "Evening", or Ctrl+Shift+T on a task |
 | Coming Up | calendar | Nothing coming up | Tasks due in the next 7 (or 30) days appear here; set a due day in a task's details |
 | Archive | archive box | No archived tasks | Completed tasks land here when archived with Ctrl+E |
@@ -253,6 +257,7 @@ Super+…, and the Keyboard Shortcuts overlay and hints say so.
 | Ctrl+D | Toggle done on focused task |
 | Ctrl+T | Plan focused task for today |
 | Ctrl+Shift+T | Move focused task (or selection) between Today and Tonight |
+| Ctrl+Shift+M | Move focused task (or selection) between Today and Morning |
 | Ctrl+Shift+Right | Move focused task (or selection) to tomorrow |
 | Ctrl+Shift+Down | Move focused task (or selection) to next week (the next Monday) |
 | Ctrl+Shift+R | Repeat schedule for the focused task |

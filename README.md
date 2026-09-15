@@ -29,8 +29,9 @@ Momentum whenever you are on your Linux machine.
 
 ## Highlights
 
-- **Today, Tonight, Coming Up, projects and tags.** Today is the plan, with an evening
-  section for tasks tagged "Evening". Coming Up shows the next 7 or 30 days grouped by day. Every project and tag is one click away in the sidebar.
+- **Today, Morning, Tonight, Coming Up, projects and tags.** Today is the plan, with a
+  morning section for tasks tagged "Morning" and an evening one for "Evening"; those two
+  sidebar entries appear only on days that use them. Coming Up shows the next 7 or 30 days grouped by day. Every project and tag is one click away in the sidebar.
 - **Guided task creation.** Title, project, due day with a calendar, estimate, tag chips
   and notes in one dialog. Or type `Fix the bug #work 1h 30m` into the quick-add box, with
   `#` autocomplete for your tags.
@@ -145,6 +146,7 @@ shortcut below to Alt or Super (Option or Command on macOS), so Ctrl+E becomes S
 |---|---|
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | New task |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | New project |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | Move task to the morning / back to today |
 | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Search |
 | <kbd>Ctrl</kbd>+<kbd>D</kbd> | Mark focused task done / not done |
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> | Plan focused task for today |

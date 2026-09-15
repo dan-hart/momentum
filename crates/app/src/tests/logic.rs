@@ -171,7 +171,7 @@ fn demo_data_is_what_the_screenshots_and_tests_rely_on() {
         assert!(titles.contains(&want), "missing {want}");
     }
     assert_eq!(s.state.task_repeat_cfg.ids, vec!["demo-weekly"]);
-    assert!(s.state.tag.iter().any(|g| g.title == "Evening"));
+    assert!(s.state.tag.iter().any(|g| g.title == "Evening") && s.state.tag.iter().any(|g| g.title == "Morning"));
     assert!(dir.path().join("state.json").exists(), "the demo store is persisted");
     let overdue = s.state.overdue_ids();
     assert_eq!(overdue.len(), 1);
