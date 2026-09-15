@@ -347,7 +347,8 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   `superproductivity://create-task?title=&notes=`, `superproductivity://complete-task?title=`.
 - **Global undo**: Ctrl+Z pops the last batch off an undo stack (50 deep) fed by every undo
   toast, plus quiet changes with no toast (drag reorder). Delete, done, archive, day
-  moves, tag and project drops, bulk actions and reorders are all on the stack.
+  moves, tag and project drops, bulk actions and reorders are all on the stack; with
+  auto-archive on, a completion's undo is the restore of the archived task.
 - **`mo` CLI** (Linux and macOS, `crates/mo`): add / today / tonight / upcoming / list /
   search / done / undone / plan / rm / projects / tags / sync / config, `--json` on every
   listing. `undone` and `rm` also match completed tasks; a missing session bus means "no
@@ -603,3 +604,6 @@ another platform should have an equivalent for each.
   Ctrl+Shift+M, context menu, drop target, one slot per task; Morning and Tonight sidebar
   entries shown only on days that use them, with a fall-back to Today; `mo morning` and
   `mo add --morning` (2.11).
+- **Unreleased** (2026-09-15): "Archive completed tasks immediately" preference (2.9):
+  completion moves the task and its subtasks to the archive with one `moveToArchive` op
+  and syncs; the toast's undo restores it open.
