@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-15
+
 ### Added
 - Test suite: 110+ tests across every crate plus 40 headless GTK window tests
   (`build-aux/test.sh`, Broadway display, in-process WebDAV mock replacing the Python one),
@@ -106,6 +108,7 @@ First preview.
 - Follows the system accent color; color-coded projects and tags
 
 [Unreleased]: https://github.com/dan-hart/momentum/compare/v0.1.5...HEAD
+[0.3.0]: https://github.com/dan-hart/momentum/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dan-hart/momentum/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/dan-hart/momentum/compare/v0.1.1...v0.1.5
 [0.1.1]: https://github.com/dan-hart/momentum/compare/v0.1.0...v0.1.1

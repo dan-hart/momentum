@@ -335,9 +335,12 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   `--background`. **URL schemes**: `momentum://add?title=&notes=&due=&tags=`,
   `superproductivity://create-task?title=&notes=`, `superproductivity://complete-task?title=`.
 - **Global undo**: Ctrl+Z pops the last batch off an undo stack (50 deep) fed by every undo
-  toast.
+  toast, plus quiet changes with no toast (drag reorder). Delete, done, archive, day
+  moves, tag and project drops, bulk actions and reorders are all on the stack.
 - **`mo` CLI** (Linux and macOS, `crates/mo`): add / today / tonight / upcoming / list /
-  search / done / undone / plan / rm / projects / tags / sync / config, `--json`. Uses the
+  search / done / undone / plan / rm / projects / tags / sync / config, `--json` on every
+  listing. `undone` and `rm` also match completed tasks; a missing session bus means "no
+  app running", never an error. Uses the
   app's data directory (Flatpak release, then Devel, then the platform data dir; `MO_DATA_DIR`
   overrides). On Linux, when the app is running, actions are forwarded as JSON over
   `org.gtk.Actions.Activate("cli")` on the app's bus name; otherwise `mo` writes the store
@@ -578,7 +581,9 @@ another platform should have an equivalent for each.
   catch-up for missed days (2.5); accessibility pass with the AT-SPI check script (2.11);
   translation pipeline with the Weblate workflow (2.11); Nextcloud upload skips ops the
   server already lists (5).
-- **Unreleased** (2026-09-14): modifier-key preference for every shortcut (2.8, 2.9); the
-  test suite (8b) and the defects it found: duplicated subtask links on restore and
-  snapshot merge, delete and reorder missing from Ctrl+Z, timed tasks losing their day in
-  the editor, `mo undone`/`rm` on completed tasks.
+- **0.3.0** (2026-09-15): modifier-key preference for every shortcut (2.8, 2.9); the test
+  suite (8b, `docs/TESTING.md`: 110+ portable tests plus 40 headless window tests, run by
+  CI) and the defects it found: duplicated subtask links on restore and snapshot merge,
+  delete and reorder missing from Ctrl+Z (2.6), timed tasks losing their day in the
+  editor (2.3b), `mo undone`/`rm` on completed tasks and `mo --json` for projects and
+  tags (2.11), the shortcuts overlay rewrite.

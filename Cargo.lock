@@ -1762,7 +1762,7 @@ dependencies = [
 
 [[package]]
 name = "mo"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "dirs",
@@ -1780,7 +1780,7 @@ dependencies = [
 
 [[package]]
 name = "momentum"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ashpd",
  "async-io",
@@ -2741,7 +2741,7 @@ dependencies = [
 
 [[package]]
 name = "sp-model"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2751,7 +2751,7 @@ dependencies = [
 
 [[package]]
 name = "sp-oplog"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2762,7 +2762,7 @@ dependencies = [
 
 [[package]]
 name = "sp-p2p"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64",
  "flate2",
@@ -2777,7 +2777,7 @@ dependencies = [
 
 [[package]]
 name = "sp-store"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2789,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "sp-sync"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "aes-gcm",
  "argon2",
