@@ -1,0 +1,16 @@
+[package]
+name = "uniffi-bindgen"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Generates the Swift bindings for momentum-ffi (cargo run -p uniffi-bindgen -- …)"
+publish = false
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/main.rs"
+
+[dependencies]
+uniffi = { version = "0.32", features = ["cli"] }

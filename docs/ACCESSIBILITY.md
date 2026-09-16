@@ -70,3 +70,27 @@ Manual, once per release:
   image: give it a label.
 - New shortcut: add it to `data/resources/ui/shortcuts.blp` too.
 - Colour: only through `color_class`/`hex_color`, which respect the high-contrast switch.
+
+
+## macOS
+
+The macOS front end uses SwiftUI/AppKit controls and native list multi-selection. Notes,
+due-date controls, task checkboxes, reminder/repeat badges and dismiss buttons have
+accessible names. Color labels defer to Increase Contrast and Differentiate Without
+Color, and toast animations defer to Reduce Motion. The color policy is host-less tested.
+
+With a demo window open, a read-only audit can check the actual AX tree:
+
+```sh
+swift macos/scripts/a11y-audit.swift --all
+swift macos/scripts/a11y-audit.swift --pid PID
+swift macos/scripts/a11y-audit.swift --self-test
+```
+
+The audit checks named interactive controls, exits 1 for missing names, and exits 2 if no
+readable window/accessibility permission is available. It never enables permissions.
+Use a demo instance: `--all` prints visible task/control text. Test New Task, an editor,
+Settings, menus, and the main list separately. The checker does not prove useful reading
+order, contrast, keyboard operability, or correct VoiceOver speech; review those manually.
+
+The live macOS audit is still pending; see [MACOS-MVP-CHECKLIST.md](MACOS-MVP-CHECKLIST.md).

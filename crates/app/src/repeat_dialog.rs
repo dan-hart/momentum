@@ -1,38 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
 //! Create or edit a task's repeat schedule: cycle, interval, weekdays, start day, paused.
+//! Edits a [`momentum_core::RepeatDraft`]; the engine builds it, previews it and saves it.
 use adw::prelude::*;
-use adw::subclass::prelude::ObjectSubclassIsExt;
 use gettextrs::gettext;
 use gtk::glib;
-use sp_model::*;
-use sp_oplog::Action;
+use momentum_core::{MonthlyRule, RepeatCycle};
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::window::{repeat_text, MomentumWindow};
 
-const CYCLES: [&str; 4] = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
+const CYCLES: [RepeatCycle; 4] = [
+    RepeatCycle::Daily,
+    RepeatCycle::Weekly,
+    RepeatCycle::Monthly,
+    RepeatCycle::Yearly,
+];
 
 pub fn open(win: &MomentumWindow, task_id: &str) {
-    let (task, existing) = {
-        let store = win.imp().store.borrow();
-        let Some(t) = store.state.task.entities.get(task_id).cloned() else {
-            return;
-        };
-        let cfg = t
-            .repeat_cfg_id
-            .as_ref()
-            .and_then(|id| store.state.task_repeat_cfg.entities.get(id).cloned());
-        (t, cfg)
+    let engine = win.engine();
+    let Some(initial) = engine.repeat_draft(task_id.to_string()) else {
+        return;
     };
-    let cfg = Rc::new(RefCell::new(
-        existing.clone().unwrap_or_else(|| RepeatCfg::for_task(&task)),
-    ));
+    let existing = initial.existing;
+    let draft = Rc::new(RefCell::new(initial));
 
     let page = adw::PreferencesPage::new();
     let group = adw::PreferencesGroup::builder()
-        .description(repeat_text(&cfg.borrow()))
+        .description(repeat_text(&engine.describe_repeat_draft(draft.borrow().clone())))
         .build();
 
     let cycle = adw::ComboRow::builder()
@@ -44,10 +40,10 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
             &gettext("Yearly"),
         ]))
         .build();
-    cycle.set_selected(CYCLES.iter().position(|c| *c == cfg.borrow().repeat_cycle).unwrap_or(1) as u32);
+    cycle.set_selected(CYCLES.iter().position(|c| *c == draft.borrow().cycle).unwrap_or(1) as u32);
     let every = adw::SpinRow::with_range(1.0, 99.0, 1.0);
     every.set_title(&gettext("Every"));
-    every.set_value(cfg.borrow().repeat_every.max(1) as f64);
+    every.set_value(draft.borrow().every.max(1) as f64);
     group.add(&cycle);
     group.add(&every);
 
@@ -63,13 +59,13 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         gettext("Sat"),
         gettext("Sun"),
     ];
-    let flags = cfg.borrow().weekdays(); // Sunday first
+    let flags = draft.borrow().weekdays.clone(); // Sunday first
     let order = [1usize, 2, 3, 4, 5, 6, 0]; // Monday-first display
     let mut chip_widgets = vec![];
     for (i, &wd) in order.iter().enumerate() {
         let b = gtk::ToggleButton::builder()
             .label(&names[i])
-            .active(flags[wd])
+            .active(flags.get(wd).copied().unwrap_or(false))
             .css_classes(["pill", "small"])
             .build();
         chips.append(&b);
@@ -87,12 +83,10 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
             &gettext("A weekday of the month"),
         ]))
         .build();
-    monthly.set_selected(if cfg.borrow().nth_weekday_anchor().is_some() {
-        2
-    } else if cfg.borrow().monthly_last_day {
-        1
-    } else {
-        0
+    monthly.set_selected(match draft.borrow().monthly {
+        MonthlyRule::NthWeekday { .. } => 2,
+        MonthlyRule::LastDay => 1,
+        _ => 0,
     });
     let nth_week = adw::ComboRow::builder()
         .title(gettext("Which"))
@@ -120,7 +114,10 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         ))
         .build();
     {
-        let (w, d) = cfg.borrow().nth_weekday_anchor().unwrap_or((1, 1));
+        let (w, d) = match draft.borrow().monthly {
+            MonthlyRule::NthWeekday { week, weekday } => (week, weekday),
+            _ => (1, 1),
+        };
         nth_week.set_selected(if w == -1 { 4 } else { (w - 1) as u32 });
         nth_day.set_selected(d);
     }
@@ -131,7 +128,15 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
     // Start day with calendar popover
     let start_row = adw::ActionRow::builder()
         .title(gettext("Starts"))
-        .subtitle(cfg.borrow().start_date.clone().unwrap_or_default())
+        .subtitle(
+            draft
+                .borrow()
+                .start_date
+                .as_deref()
+                .map(momentum_core::text::day_label)
+                .map(|l| crate::window::fmt_day(&l))
+                .unwrap_or_default(),
+        )
         .build();
     let pick = gtk::MenuButton::builder()
         .icon_name("x-office-calendar-symbolic")
@@ -141,7 +146,7 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         .build();
     pick.update_property(&[gtk::accessible::Property::Label(&gettext("Pick a start day"))]);
     let cal = gtk::Calendar::new();
-    if let Some((y, m, d)) = cfg.borrow().start_date.as_deref().and_then(parse_day) {
+    if let Some((y, m, d)) = draft.borrow().start_date.as_deref().and_then(sp_model::parse_day) {
         if let Ok(dt) = glib::DateTime::from_local(y as i32, m as i32, d as i32, 0, 0, 0.0) {
             cal.select_day(&dt);
         }
@@ -153,12 +158,12 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
     let paused = adw::SwitchRow::builder()
         .title(gettext("Paused"))
         .subtitle(gettext("Keep the schedule but stop creating tasks"))
-        .active(cfg.borrow().is_paused)
+        .active(draft.borrow().paused)
         .build();
     group.add(&paused);
     page.add(&group);
 
-    if existing.is_some() {
+    if existing {
         let remove_group = adw::PreferencesGroup::new();
         let remove = gtk::Button::builder()
             .label(gettext("Stop Repeating"))
@@ -167,19 +172,20 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
             .build();
         remove_group.add(&remove);
         page.add(&remove_group);
-        let id = cfg.borrow().id.clone();
-        let task_title = task.title.clone();
+        let task_id = task_id.to_string();
         remove.connect_clicked(glib::clone!(
             #[weak]
             win,
+            #[strong]
+            task_id,
             move |b| {
                 let dialog = b
                     .root()
                     .and_downcast::<gtk::Window>()
                     .and_then(|_| b.ancestor(adw::Dialog::static_type()))
                     .and_downcast::<adw::Dialog>();
-                win.dispatch(Action::DeleteRepeatCfg { id: id.clone() });
-                win.toast(&format!("“{task_title}” {}", gettext("no longer repeats")));
+                let out = win.engine().stop_repeat(task_id.clone());
+                win.apply(out);
                 if let Some(d) = dialog {
                     d.close();
                 }
@@ -189,8 +195,9 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
 
     // Live preview + show/hide cycle-specific rows
     let refresh = {
-        let cfg = cfg.clone();
+        let draft = draft.clone();
         let group = group.clone();
+        let engine = engine.clone();
         let (cycle, every, days_row, monthly, nth_week, nth_day, start_row, paused, cal) = (
             cycle.clone(),
             every.clone(),
@@ -204,48 +211,49 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         );
         let chips = chip_widgets.clone();
         move || {
-            let mut c = cfg.borrow_mut();
-            c.repeat_cycle = CYCLES[cycle.selected() as usize].into();
-            c.repeat_every = every.value() as u32;
+            let mut d = draft.borrow_mut();
+            d.cycle = CYCLES[cycle.selected() as usize];
+            d.every = every.value() as u32;
             for (wd, b) in &chips {
-                let on = b.is_active();
-                match wd {
-                    0 => c.sunday = on,
-                    1 => c.monday = on,
-                    2 => c.tuesday = on,
-                    3 => c.wednesday = on,
-                    4 => c.thursday = on,
-                    5 => c.friday = on,
-                    _ => c.saturday = on,
+                if let Some(slot) = d.weekdays.get_mut(*wd) {
+                    *slot = b.is_active();
                 }
             }
-            c.monthly_last_day = monthly.selected() == 1;
-            if monthly.selected() == 2 {
-                c.monthly_week_of_month = Some(if nth_week.selected() == 4 {
-                    -1
-                } else {
-                    nth_week.selected() as i32 + 1
-                });
-                c.monthly_weekday = Some(nth_day.selected());
+            d.monthly = if monthly.selected() == 2 {
+                MonthlyRule::NthWeekday {
+                    week: if nth_week.selected() == 4 {
+                        -1
+                    } else {
+                        nth_week.selected() as i32 + 1
+                    },
+                    weekday: nth_day.selected(),
+                }
+            } else if monthly.selected() == 1 {
+                MonthlyRule::LastDay
             } else {
-                c.monthly_week_of_month = None;
-                c.monthly_weekday = None;
-            }
-            c.is_paused = paused.is_active();
-            c.start_date = cal.date().format("%Y-%m-%d").ok().map(|g| g.to_string());
-            start_row.set_subtitle(&c.start_date.as_deref().map(crate::window::fmt_day).unwrap_or_default());
-            days_row.set_visible(c.repeat_cycle == "WEEKLY");
-            let is_monthly = c.repeat_cycle == "MONTHLY";
+                MonthlyRule::SameDay
+            };
+            d.paused = paused.is_active();
+            d.start_date = cal.date().format("%Y-%m-%d").ok().map(|g| g.to_string());
+            start_row.set_subtitle(
+                &d.start_date
+                    .as_deref()
+                    .map(momentum_core::text::day_label)
+                    .map(|l| crate::window::fmt_day(&l))
+                    .unwrap_or_default(),
+            );
+            days_row.set_visible(d.cycle == RepeatCycle::Weekly);
+            let is_monthly = d.cycle == RepeatCycle::Monthly;
             monthly.set_visible(is_monthly);
             nth_week.set_visible(is_monthly && monthly.selected() == 2);
             nth_day.set_visible(is_monthly && monthly.selected() == 2);
-            every.set_subtitle(&match c.repeat_cycle.as_str() {
-                "DAILY" => gettext("days"),
-                "WEEKLY" => gettext("weeks"),
-                "MONTHLY" => gettext("months"),
-                _ => gettext("years"),
+            every.set_subtitle(&match d.cycle {
+                RepeatCycle::Daily => gettext("days"),
+                RepeatCycle::Weekly => gettext("weeks"),
+                RepeatCycle::Monthly => gettext("months"),
+                RepeatCycle::Yearly => gettext("years"),
             });
-            group.set_description(Some(&repeat_text(&c)));
+            group.set_description(Some(&repeat_text(&engine.describe_repeat_draft(d.clone()))));
         }
     };
     let r = Rc::new(refresh);
@@ -291,11 +299,7 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         .build();
     let cancel = gtk::Button::with_label(&gettext("Cancel"));
     let save = gtk::Button::builder()
-        .label(if existing.is_some() {
-            gettext("Save")
-        } else {
-            gettext("Repeat")
-        })
+        .label(if existing { gettext("Save") } else { gettext("Repeat") })
         .css_classes(["suggested-action"])
         .build();
     header.pack_start(&cancel);
@@ -317,42 +321,24 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
             dialog.close();
         }
     ));
-    let is_new = existing.is_none();
-    let task_id = task.id.clone();
+    let task_id = task_id.to_string();
     save.connect_clicked(glib::clone!(
         #[weak]
         win,
         #[weak]
         dialog,
         #[strong]
-        cfg,
+        draft,
+        #[strong]
+        task_id,
         move |_| {
-            let c = cfg.borrow().clone();
-            if c.repeat_cycle == "WEEKLY" && !c.weekdays().iter().any(|d| *d) {
-                win.toast(&gettext("Pick at least one weekday"));
-                return;
+            let d = draft.borrow().clone();
+            let out = win.engine().save_repeat(task_id.clone(), d);
+            let ok = out.changed;
+            win.apply(out);
+            if ok {
+                dialog.close();
             }
-            if is_new {
-                win.dispatch(Action::AddRepeatCfg {
-                    task_id: task_id.clone(),
-                    cfg: c.clone(),
-                });
-            } else {
-                let mut changes = serde_json::to_value(&c)
-                    .ok()
-                    .and_then(|v| v.as_object().cloned())
-                    .unwrap_or_default();
-                // Fields serde skips when None must still be cleared on the other side.
-                for key in ["monthlyWeekOfMonth", "monthlyWeekday"] {
-                    changes.entry(key).or_insert(serde_json::Value::Null);
-                }
-                win.dispatch(Action::UpdateRepeatCfg {
-                    id: c.id.clone(),
-                    changes,
-                });
-            }
-            win.toast(&repeat_text(&c));
-            dialog.close();
         }
     ));
     dialog.present(Some(win));

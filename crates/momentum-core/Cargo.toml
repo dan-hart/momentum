@@ -1,0 +1,31 @@
+[package]
+name = "momentum-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Momentum's toolkit-free application logic: views, day moves, search, undo, repeats, reminders, sync orchestration"
+
+[features]
+default = ["p2p"]
+# Sync with nearby devices (LibreSync). Off for builds that do not ship the transport.
+p2p = ["dep:sp-p2p"]
+# UniFFI attributes on every public type so the Swift (and any other) bindings can be
+# generated from this crate. The GTK app builds without it.
+ffi = ["dep:uniffi"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+log = "0.4"
+sp-model = { path = "../sp-model" }
+sp-oplog = { path = "../sp-oplog" }
+sp-store = { path = "../sp-store" }
+sp-sync = { path = "../sp-sync" }
+sp-p2p = { path = "../sp-p2p", optional = true }
+uniffi = { version = "0.32", optional = true }
+
+[dev-dependencies]
+tempfile = "3"

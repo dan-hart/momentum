@@ -23,7 +23,7 @@ jobs:
           components: rustfmt
       - name: Run cargo fmt
         # Not --all: that would also format the LibreSync checkout in libresync-src.
-        run: cargo fmt -p momentum -p mo -p sp-model -p sp-oplog -p sp-store -p sp-sync -p sp-p2p -- --check
+        run: cargo fmt -p momentum -p mo -p momentum-core -p momentum-ffi -p uniffi-bindgen -p sp-model -p sp-oplog -p sp-store -p sp-sync -p sp-p2p -- --check
 
   core-tests:
     name: Core tests (no GTK)

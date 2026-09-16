@@ -9,13 +9,18 @@ template $MomentumPrefs: Adw.PreferencesDialog {
 
   Adw.PreferencesPage {
     Adw.PreferencesGroup {
-      title: _("Nextcloud Sync");
-      description: _("Shares the same sync-data.json as Super Productivity. Use the same folder and encryption password as your other devices.");
+      title: _("Sync");
+      description: _("Choose one service. Switching keeps your tasks and saved connections.");
 
-      Adw.SwitchRow enabled_row {
-        title: _("Sync with Nextcloud");
+      Adw.ComboRow method_row {
+        title: _("Sync method");
         subtitle: _("Off by default. Nothing leaves this device until you turn it on.");
       }
+    }
+
+    Adw.PreferencesGroup nextcloud_group {
+      title: _("Nextcloud");
+      description: _("Shares the same sync-data.json as Super Productivity. Use the same folder and encryption password as your other devices.");
 
       Adw.EntryRow server_row {
         title: _("Server URL");
@@ -53,14 +58,9 @@ template $MomentumPrefs: Adw.PreferencesDialog {
       }
     }
 
-    Adw.PreferencesGroup {
-      title: _("Nearby Devices");
-      description: _("Sync directly with your other devices on the same network: no server, end-to-end encrypted. Works with or without Nextcloud.");
-
-      Adw.SwitchRow p2p_row {
-        title: _("Sync with nearby devices");
-        subtitle: _("Off by default. Link each device once with a pairing code.");
-      }
+    Adw.PreferencesGroup nearby_group {
+      title: _("LibreSync");
+      description: _("Sync directly with linked devices on your network. Changes sync automatically while this service is selected.");
 
       Adw.ButtonRow {
         title: _("Manage Devices…");
@@ -81,6 +81,28 @@ template $MomentumPrefs: Adw.PreferencesDialog {
       Adw.SwitchRow auto_archive_row {
         title: _("Archive completed tasks immediately");
         subtitle: _("A completed task goes straight to the archive and syncs. Undo brings it back.");
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Notifications");
+      description: _("Summarize today's tasks once a day at this local time, or when Momentum next opens. Task reminders are separate.");
+
+      Adw.SwitchRow morning_summary_row {
+        title: _("Morning summary");
+        subtitle: _("Off by default. Momentum must be running to send notifications.");
+      }
+      Adw.SpinRow morning_hour_row {
+        title: _("Hour (0–23)");
+        numeric: true;
+        snap-to-ticks: true;
+        adjustment: Gtk.Adjustment { lower: 0; upper: 23; step-increment: 1; page-increment: 1; };
+      }
+      Adw.SpinRow morning_minute_row {
+        title: _("Minute");
+        numeric: true;
+        snap-to-ticks: true;
+        adjustment: Gtk.Adjustment { lower: 0; upper: 59; step-increment: 1; page-increment: 5; };
       }
     }
 

@@ -208,7 +208,7 @@ impl MomentumApplication {
                 };
                 let w = app.main_window();
                 if payload == "\"sync\"" {
-                    w.sync();
+                    w.dispatch_json(&payload);
                 } else if let Ok(action) = serde_json::from_str::<sp_oplog::Action>(&payload) {
                     w.dispatch(action);
                 } else {

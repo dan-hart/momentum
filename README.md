@@ -23,6 +23,11 @@ Momentum is what [Super Productivity](https://super-productivity.com) would look
 had been written for GNOME: a fast Rust app built on GTK 4 and libadwaita, following the
 Human Interface Guidelines, respecting your accent color, and staying out of your way.
 
+**And on your Mac.** Momentum is also a native macOS app — SwiftUI, real menus, Spotlight,
+the Keychain, a menu bar item — not a port of the Linux window. Both are drawn on one
+shared Rust core, so a task list means the same thing on either, and the two sync with each
+other directly over your network. See [macos/README.md](macos/README.md).
+
 It reads, writes and syncs **the same data** as Super Productivity through a shared
 Nextcloud folder, so you can keep using the desktop, Android and iOS apps and switch to
 Momentum whenever you are on your Linux machine.
@@ -42,8 +47,8 @@ Momentum whenever you are on your Linux machine.
   end-to-end encrypted files. Conflicts are resolved by rebasing your changes, never by
   overwriting. Secrets live in the system keyring.
 - **Or no server at all.** Link two devices once with a six-digit code and they sync
-  directly over the local network, end-to-end encrypted, seconds after a change. A device
-  that also has Nextcloud relays for the others.
+  directly over the local network, end-to-end encrypted, seconds after a change. Choose LibreSync as your
+  sync provider; switching back to Nextcloud preserves your tasks and connections.
 - **Times, reminders, overdue.** Give a task a time and a reminder; what slipped waits
   under an Overdue heading, and a repeating task you missed still shows up, dated the day
   it was due.
@@ -67,6 +72,17 @@ Momentum whenever you are on your Linux machine.
 
 ## Install
 
+### macOS
+
+Build it from source for now (Xcode 27 and a Rust toolchain):
+
+```sh
+brew install xcodegen
+cd macos && xcodegen generate && open Momentum.xcodeproj
+```
+
+### Linux
+
 **One click:** open [dan-hart.github.io/momentum](https://dan-hart.github.io/momentum/) and press
 Install. GNOME Software or KDE Discover adds Momentum's repository and keeps it updated.
 
@@ -84,7 +100,7 @@ works on any distribution with Flatpak: GNOME, KDE Plasma, Sway and the rest. St
 ### Set up sync
 
 1. In Super Productivity, note the Nextcloud folder and encryption password you use.
-2. In Momentum, press <kbd>Ctrl</kbd>+<kbd>,</kbd>, turn on **Sync with Nextcloud**, and
+2. In Momentum, press <kbd>Ctrl</kbd>+<kbd>,</kbd>, choose **Sync → Nextcloud**, and
    enter the server URL, username, an app password (Nextcloud → Settings → Security), the
    folder, and the encryption password.
 3. Press <kbd>Ctrl</kbd>+<kbd>R</kbd>. The first sync only downloads, so it is safe to try.
@@ -94,11 +110,11 @@ minutes while the switch is on.
 
 ### Sync with nearby devices
 
-No server? Preferences › Nearby Devices › **Sync with nearby devices** on two machines,
+No server? Preferences/Settings → Sync → **LibreSync** on two machines,
 open **Manage Devices…** on both, and type one device's six-digit code on the other. From
 then on changes travel directly over the local network, end-to-end encrypted, a few
-seconds after you make them. A device that also has Nextcloud relays what it receives, so
-the rest of your devices and Super Productivity stay in step. Details in
+seconds after you make them. Only the selected provider runs. Switching to Nextcloud later keeps the received
+changes and saved connections. Details in
 [docs/P2P.md](docs/P2P.md).
 
 ## Part of the desktop

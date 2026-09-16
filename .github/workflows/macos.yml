@@ -1,0 +1,67 @@
+# Builds the shared Rust core for Apple targets, checks the Swift bindings still match it,
+# and runs the macOS unit tests. These need no app to launch and no UI automation, so the
+# whole job is a couple of minutes.
+name: macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core-and-app:
+    name: Core, bindings and app
+    # MomentumKit's tests link macOS 26 APIs and must run on that OS, not just build its SDK.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: v0.6.0
+          path: libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      # The core's own tests run on every platform; this is the macOS half of "it still
+      # works on both", and it must pass before anything Swift is built on top of it.
+      - name: Core tests
+        run: cargo test --workspace --exclude momentum
+
+      - name: Build the core and generate the Swift bindings
+        run: macos/scripts/build-core.sh
+
+      # The bindings are generated from the compiled library, so a core API change that
+      # the Swift side has not caught up with fails here.
+      - name: macOS unit tests
+        run: swift test --package-path macos/Packages/MomentumKit
+
+      - name: Native nearby-sync integration
+        env:
+          MOMENTUM_TEST_NEARBY: "1"
+        run: swift test --package-path macos/Packages/MomentumKit --filter NearbySyncTests
+
+      - name: Localization tooling and accessibility audit self-test
+        run: |
+          python3 -m unittest discover -s macos/scripts/tests -p test_localize.py
+          swift macos/scripts/a11y-audit.swift --self-test
+
+      - name: Build the app
+        run: |
+          brew install xcodegen
+          cd macos
+          xcodegen generate
+          xcodebuild -project Momentum.xcodeproj -scheme Momentum -configuration Debug \
+            -derivedDataPath ../build/macos CODE_SIGNING_ALLOWED=NO build
+
+      - name: Verify extracted translations and compiled resources
+        run: |
+          python3 macos/scripts/localize.py --sync build/macos --require-complete
+          swift macos/scripts/check-localization.swift build/macos/Build/Products/Debug/Momentum.app

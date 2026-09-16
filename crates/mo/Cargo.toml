@@ -12,6 +12,7 @@ name = "mo"
 path = "src/main.rs"
 
 [dependencies]
+momentum-core = { path = "../momentum-core", default-features = false }
 sp-model = { path = "../sp-model" }
 sp-oplog = { path = "../sp-oplog" }
 sp-store = { path = "../sp-store" }

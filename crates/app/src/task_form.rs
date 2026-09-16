@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
 //! Shared form for creating and editing a task: title, project, due day, estimate, tags, notes.
+//! Builds and reads a [`momentum_core::TaskDraft`]; the engine does everything else (creating
+//! or saving the task, ensuring new tags).
 use adw::prelude::*;
 use gettextrs::gettext;
 use gtk::glib;
-use sp_model::*;
-use sp_store::Store;
+use momentum_core::{ClockTime, TaskDetail, TaskDraft};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::window::{tag_color, MomentumWindow};
+use crate::window::MomentumWindow;
 
 pub struct TaskForm {
     pub page: adw::PreferencesPage,
@@ -22,60 +23,25 @@ pub struct TaskForm {
     pub(crate) time: adw::EntryRow,
     pub(crate) reminder: adw::ComboRow,
     /// Minutes before the scheduled time for each Reminder choice; `None` = no reminder.
-    pub(crate) reminder_offsets: Vec<Option<u64>>,
+    pub(crate) reminder_offsets: Vec<Option<u32>>,
     pub(crate) estimate: adw::EntryRow,
     tag_buttons: Vec<(String, gtk::ToggleButton)>,
     pub(crate) new_tags: adw::EntryRow,
     notes: gtk::TextView,
 }
 
-/// `14:30`, `14.30`, `1430`, `2pm`, `2:30 pm`, `9` → `(hour, minute)`.
-pub fn parse_time(s: &str) -> Option<(u32, u32)> {
-    let t = s.trim().to_ascii_lowercase();
-    if t.is_empty() {
-        return None;
-    }
-    let (body, pm) = match (t.strip_suffix("pm"), t.strip_suffix("am")) {
-        (Some(b), _) => (b.trim(), Some(true)),
-        (_, Some(b)) => (b.trim(), Some(false)),
-        _ => (t.as_str(), None),
-    };
-    let (h, m) = match body.split_once([':', '.', 'h']) {
-        Some((h, m)) => (
-            h.trim().parse().ok()?,
-            if m.is_empty() { 0 } else { m.trim().parse().ok()? },
-        ),
-        None if body.len() == 4 && body.chars().all(|c| c.is_ascii_digit()) => {
-            (body[..2].parse().ok()?, body[2..].parse().ok()?)
-        }
-        None => (body.parse().ok()?, 0u32),
-    };
-    let h: u32 = match (h, pm) {
-        (12, Some(false)) => 0,
-        (h, Some(true)) if h < 12 => h + 12,
-        (h, _) => h,
-    };
-    (h < 24 && m < 60).then_some((h, m))
-}
-
 fn tomorrow() -> String {
-    glib::DateTime::now_local()
-        .unwrap()
-        .add_days(1)
-        .unwrap()
-        .format("%Y-%m-%d")
-        .unwrap()
-        .to_string()
+    momentum_core::day_offset(momentum_core::today(), 1)
 }
 
 impl TaskForm {
     pub fn new(
         win: &MomentumWindow,
-        store: &Store,
-        task: Option<&Task>,
+        task: Option<&TaskDetail>,
         default_project: &str,
         default_due: Option<String>,
     ) -> Self {
+        let engine = win.engine();
         let colorful = win.colorful();
         let page = adw::PreferencesPage::new();
         let group = adw::PreferencesGroup::new();
@@ -86,7 +52,7 @@ impl TaskForm {
         group.add(&title);
 
         // Project
-        let projects: Vec<&Project> = store.state.project.iter().filter(|p| !p.is_archived).collect();
+        let projects = engine.projects();
         let project_ids: Vec<String> = projects.iter().map(|p| p.id.clone()).collect();
         let names = gtk::StringList::new(&projects.iter().map(|p| p.title.as_str()).collect::<Vec<_>>());
         let project = adw::ComboRow::builder().title(gettext("Project")).model(&names).build();
@@ -94,7 +60,7 @@ impl TaskForm {
         let classes: Rc<Vec<Option<String>>> = Rc::new(
             projects
                 .iter()
-                .map(|p| p.color().filter(|_| colorful).and_then(|c| win.color_class(c)))
+                .map(|p| p.color.as_deref().filter(|_| colorful).and_then(|c| win.color_class(c)))
                 .collect(),
         );
         let titles: Rc<Vec<String>> = Rc::new(projects.iter().map(|p| p.title.clone()).collect());
@@ -139,7 +105,7 @@ impl TaskForm {
         group.add(&project);
 
         // Due day: calendar popover with quick choices
-        let due = Rc::new(RefCell::new(task.and_then(|t| t.plan_day()).or(default_due)));
+        let due = Rc::new(RefCell::new(task.and_then(|t| t.due_day.clone()).or(default_due)));
         let due_row = adw::ActionRow::builder().title(gettext("Due")).build();
         let pick = gtk::MenuButton::builder()
             .icon_name("x-office-calendar-symbolic")
@@ -166,14 +132,15 @@ impl TaskForm {
             move |v: Option<String>| {
                 row.set_subtitle(
                     &v.as_deref()
-                        .map(crate::window::fmt_day)
+                        .map(momentum_core::text::day_label)
+                        .map(|l| crate::window::fmt_day(&l))
                         .unwrap_or_else(|| gettext("Not scheduled")),
                 );
                 *due.borrow_mut() = v;
             }
         };
         for (label, value) in [
-            (gettext("Today"), Some(today_str())),
+            (gettext("Today"), Some(momentum_core::today())),
             (gettext("Tomorrow"), Some(tomorrow())),
             (gettext("None"), None),
         ] {
@@ -204,16 +171,13 @@ impl TaskForm {
         let time = adw::EntryRow::builder()
             .title(gettext("Time, e.g. 14:30"))
             .text(
-                task.and_then(|t| t.due_with_time)
-                    .map(|ms| {
-                        let (h, m) = time_of_ms(ms);
-                        format!("{h:02}:{m:02}")
-                    })
+                task.and_then(|t| t.time)
+                    .map(|t| crate::window::fmt_clock(&t))
                     .unwrap_or_default(),
             )
             .build();
         group.add(&time);
-        let reminder_offsets: Vec<Option<u64>> = vec![
+        let reminder_offsets: Vec<Option<u32>> = vec![
             None,
             Some(0),
             Some(5),
@@ -241,10 +205,14 @@ impl TaskForm {
             ))
             .sensitive(!time.text().is_empty())
             .build();
-        if let (Some(due), Some(at)) = (task.and_then(|t| t.due_with_time), task.and_then(|t| t.remind_at)) {
-            let minutes = due.saturating_sub(at) / 60_000;
-            let idx = reminder_offsets.iter().position(|o| *o == Some(minutes)).unwrap_or(1);
-            reminder.set_selected(idx as u32);
+        if let Some(t) = task {
+            if t.time.is_some() {
+                let idx = reminder_offsets
+                    .iter()
+                    .position(|o| *o == t.reminder_minutes_before)
+                    .unwrap_or(1);
+                reminder.set_selected(idx as u32);
+            }
         }
         group.add(&reminder);
         time.connect_changed(glib::clone!(
@@ -255,10 +223,10 @@ impl TaskForm {
             #[strong]
             set_due,
             move |e| {
-                let parsed = parse_time(&e.text());
+                let parsed = momentum_core::parse_time(e.text().to_string());
                 reminder.set_sensitive(parsed.is_some());
                 if parsed.is_some() && due.borrow().is_none() {
-                    set_due(Some(today_str()));
+                    set_due(Some(momentum_core::today()));
                 }
                 if e.text().trim().is_empty() || parsed.is_some() {
                     e.remove_css_class("error");
@@ -271,8 +239,8 @@ impl TaskForm {
         let estimate = adw::EntryRow::builder()
             .title(gettext("Estimate, e.g. 1h 30m"))
             .text(
-                task.filter(|t| t.time_estimate > 0.0)
-                    .map(|t| crate::window::fmt_ms(t.time_estimate))
+                task.filter(|t| t.estimate_ms > 0.0)
+                    .map(|t| crate::window::fmt_ms(t.estimate_ms))
                     .unwrap_or_default(),
             )
             .build();
@@ -287,10 +255,10 @@ impl TaskForm {
             .margin_bottom(6)
             .build();
         let mut tag_buttons = vec![];
-        for g in store.state.tag.iter().filter(|g| g.id != TODAY_TAG_ID) {
+        for g in engine.tags() {
             let content = gtk::Box::builder().spacing(6).build();
             let icon = gtk::Image::from_icon_name("tag-symbolic");
-            if let Some(c) = tag_color(g).filter(|_| colorful).and_then(|c| win.color_class(c)) {
+            if let Some(c) = g.color.as_deref().filter(|_| colorful).and_then(|c| win.color_class(c)) {
                 icon.add_css_class(&c);
             }
             content.append(&icon);
@@ -343,9 +311,7 @@ impl TaskForm {
                 }
             }
         ));
-        notes
-            .buffer()
-            .set_text(task.and_then(|t| t.notes.as_deref()).unwrap_or(""));
+        notes.buffer().set_text(task.map(|t| t.notes.as_str()).unwrap_or(""));
         notes.update_property(&[gtk::accessible::Property::Label(&gettext("Notes"))]);
         notes_group.add(
             &gtk::Frame::builder()
@@ -392,15 +358,16 @@ impl TaskForm {
     pub fn due_day(&self) -> Option<String> {
         self.due.borrow().clone()
     }
-    /// The scheduled moment when a valid time was typed: the due day (today if none) at that time.
-    pub fn due_with_time(&self) -> Option<u64> {
-        let (h, m) = parse_time(&self.time.text())?;
-        local_ms(&self.due_day().unwrap_or_else(today_str), h, m)
+    /// The time typed in the form, when it parses.
+    pub fn time_value(&self) -> Option<ClockTime> {
+        momentum_core::parse_time(self.time.text().to_string())
     }
-    pub fn remind_at(&self) -> Option<u64> {
-        let due = self.due_with_time()?;
-        let minutes = (*self.reminder_offsets.get(self.reminder.selected() as usize)?)?;
-        Some(due.saturating_sub(minutes * 60_000))
+    pub fn reminder_minutes_before(&self) -> Option<u32> {
+        self.time_value()?;
+        self.reminder_offsets
+            .get(self.reminder.selected() as usize)
+            .copied()
+            .flatten()
     }
     pub fn estimate_ms(&self) -> f64 {
         crate::window::parse_ms(&self.estimate.text()).unwrap_or(0.0)
@@ -409,68 +376,40 @@ impl TaskForm {
         let b = self.notes.buffer();
         b.text(&b.start_iter(), &b.end_iter(), false).to_string()
     }
-    /// Selected existing tags plus any typed new ones (created on the fly).
-    pub fn tag_ids(&self, store: &mut Store) -> Vec<String> {
-        let mut ids: Vec<String> = self
-            .tag_buttons
+    /// Existing tags toggled on.
+    pub fn tag_ids(&self) -> Vec<String> {
+        self.tag_buttons
             .iter()
             .filter(|(_, b)| b.is_active())
             .map(|(id, _)| id.clone())
-            .collect();
-        for name in self.new_tags.text().split(',').map(str::trim).filter(|s| !s.is_empty()) {
-            let existing = store
-                .state
-                .tag
-                .iter()
-                .find(|g| g.title.eq_ignore_ascii_case(name))
-                .map(|g| g.id.clone());
-            let id = existing.unwrap_or_else(|| {
-                let tag = Tag::new(name);
-                let id = tag.id.clone();
-                store.dispatch(sp_oplog::Action::AddTag { tag });
-                id
-            });
-            if !ids.contains(&id) {
-                ids.push(id);
-            }
-        }
-        ids
+            .collect()
     }
-    /// Build a new task from the form.
-    pub fn into_task(&self, store: &mut Store) -> Task {
-        let mut t = Task::new(&self.title_text(), &self.project_id());
-        t.due_with_time = self.due_with_time();
-        t.due_day = self.due_day().filter(|_| t.due_with_time.is_none());
-        t.remind_at = self.remind_at();
-        t.time_estimate = self.estimate_ms();
-        let n = self.notes_text();
-        if !n.is_empty() {
-            t.notes = Some(n);
+    /// New tag names typed in, comma separated; the engine creates or reuses each one.
+    pub fn new_tag_names(&self) -> Vec<String> {
+        self.new_tags
+            .text()
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    }
+    /// What the form has to hand the engine, to create or save a task.
+    #[allow(clippy::wrong_self_convention)] // the form stays alive; window.rs reads it after
+    pub fn into_draft(&self) -> TaskDraft {
+        TaskDraft {
+            title: self.title_text(),
+            project_id: self.project_id(),
+            due_day: self.due_day(),
+            time: self.time_value(),
+            reminder_minutes_before: self.reminder_minutes_before(),
+            estimate_ms: self.estimate_ms(),
+            notes: self.notes_text(),
+            tag_ids: self.tag_ids(),
+            new_tags: self.new_tag_names(),
         }
-        t.tag_ids = self.tag_ids(store);
-        t
     }
     #[allow(dead_code)]
     pub fn due_row(&self) -> &adw::ActionRow {
         &self.due_row
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_time;
-    #[test]
-    fn times() {
-        assert_eq!(parse_time("14:30"), Some((14, 30)));
-        assert_eq!(parse_time(" 9 "), Some((9, 0)));
-        assert_eq!(parse_time("2pm"), Some((14, 0)));
-        assert_eq!(parse_time("2:30 PM"), Some((14, 30)));
-        assert_eq!(parse_time("12am"), Some((0, 0)));
-        assert_eq!(parse_time("12:15pm"), Some((12, 15)));
-        assert_eq!(parse_time("0930"), Some((9, 30)));
-        assert_eq!(parse_time("14.05"), Some((14, 5)));
-        assert_eq!(parse_time("25:00"), None);
-        assert_eq!(parse_time("abc"), None);
-        assert_eq!(parse_time(""), None);
     }
 }

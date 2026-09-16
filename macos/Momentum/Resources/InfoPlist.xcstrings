@@ -1,0 +1,40 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum synchronisiert sich über das lokale Netzwerk mit deinen anderen Geräten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum syncs with your other devices on the local network."
+          }
+        }
+      }
+    },
+    "NSUserNotificationsUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerungen und eine morgendliche Übersicht über die Aufgaben des Tages."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reminders and a morning summary of the day's tasks."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.1"
+}

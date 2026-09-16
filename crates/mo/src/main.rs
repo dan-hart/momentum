@@ -2,15 +2,15 @@
 // Copyright (C) 2026 Dan Hart
 //! `mo`: Momentum from the terminal, on Linux and macOS.
 //!
-//! Reads the same data as the app. When the desktop app is running (Linux), changes are
-//! handed to it over D-Bus so nothing is written behind its back; otherwise `mo` applies
+//! Reads the same data as the app. When the desktop app is running, changes are
+//! handed to its local socket (or Linux D-Bus); otherwise `mo` applies
 //! them to the store directly. Queries always read the store.
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use sp_model::*;
 use sp_oplog::Action;
 use sp_store::Store;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "mo", version, about = "Momentum from the terminal", long_about = None)]
@@ -32,15 +32,15 @@ enum Cmd {
         title: Vec<String>,
         #[arg(short, long)]
         project: Option<String>,
-        #[arg(long)]
+        #[arg(long, conflicts_with_all = ["tonight", "morning", "tomorrow", "due"])]
         today: bool,
-        #[arg(long)]
+        #[arg(long, conflicts_with_all = ["morning", "tomorrow", "due"])]
         tonight: bool,
-        #[arg(long)]
+        #[arg(long, conflicts_with_all = ["tomorrow", "due"])]
         morning: bool,
-        #[arg(long)]
+        #[arg(long, conflicts_with = "due")]
         tomorrow: bool,
-        #[arg(long, value_name = "YYYY-MM-DD")]
+        #[arg(long, value_name = "YYYY-MM-DD", value_parser = valid_day)]
         due: Option<String>,
         #[arg(short, long)]
         notes: Option<String>,
@@ -53,7 +53,7 @@ enum Cmd {
     Tonight,
     /// Tasks due in the coming days
     Upcoming {
-        #[arg(long, default_value_t = 7)]
+        #[arg(long, default_value_t = 7, value_parser = clap::value_parser!(i64).range(1..=36500))]
         days: i64,
     },
     /// Tasks in a project (by name) or with a tag (#name); all open tasks by default
@@ -93,6 +93,7 @@ enum Cmd {
 
 #[derive(Default, Serialize, Deserialize)]
 struct CliConfig {
+    method: Option<String>,
     server: Option<String>,
     user: Option<String>,
     folder: Option<String>,
@@ -100,13 +101,22 @@ struct CliConfig {
     compress: bool,
 }
 
+#[cfg(target_os = "linux")]
 const APP_IDS: [&str; 2] = ["io.github.dan_hart.Momentum", "io.github.dan_hart.Momentum.Devel"];
 
 fn data_dir(explicit: Option<PathBuf>) -> PathBuf {
     if let Some(d) = explicit {
         return d;
     }
+    if let Some(d) = std::env::var_os("MOMENTUM_DATA_DIR").filter(|d| !d.is_empty()) {
+        return PathBuf::from(d);
+    }
+    default_data_dir()
+}
+
+fn default_data_dir() -> PathBuf {
     let home = dirs::home_dir().unwrap_or_default();
+    #[cfg(target_os = "linux")]
     for id in APP_IDS {
         let p = home.join(".var/app").join(id).join("data/momentum");
         if p.join("state.json").exists() {
@@ -118,24 +128,18 @@ fn data_dir(explicit: Option<PathBuf>) -> PathBuf {
 
 /// Nextcloud settings: `cli-config.json` first, then the Flatpak app's GSettings keyfile.
 fn load_config(dir: &PathBuf) -> CliConfig {
+    #[allow(unused_mut)] // Linux fills missing settings from the app's keyfile.
     let mut cfg: CliConfig = std::fs::read(dir.join("cli-config.json"))
         .ok()
         .and_then(|b| serde_json::from_slice(&b).ok())
         .unwrap_or_default();
-    if cfg.server.is_none() {
+    #[cfg(target_os = "linux")]
+    if dir == &default_data_dir() {
         let home = dirs::home_dir().unwrap_or_default();
         for id in APP_IDS {
             let keyfile = home.join(".var/app").join(id).join("config/glib-2.0/settings/keyfile");
             if let Ok(text) = std::fs::read_to_string(keyfile) {
-                let get = |k: &str| {
-                    text.lines()
-                        .find_map(|l| l.strip_prefix(&format!("{k}=")))
-                        .map(|v| v.trim().trim_matches('\'').to_string())
-                };
-                cfg.server = cfg.server.or_else(|| get("nextcloud-server"));
-                cfg.user = cfg.user.or_else(|| get("nextcloud-user"));
-                cfg.folder = cfg.folder.or_else(|| get("nextcloud-folder"));
-                cfg.compress = get("compress").is_some_and(|v| v == "true");
+                merge_linux_settings(&mut cfg, &text);
                 if cfg.server.is_some() {
                     break;
                 }
@@ -145,16 +149,61 @@ fn load_config(dir: &PathBuf) -> CliConfig {
     cfg
 }
 
+/// Connection fields may come from `mo config`, but the native app owns which
+/// service is allowed to run. Read that choice even when cached server fields exist.
+#[cfg(any(target_os = "linux", test))]
+fn merge_linux_settings(cfg: &mut CliConfig, text: &str) {
+    let get = |key: &str| {
+        text.lines()
+            .find_map(|line| line.strip_prefix(&format!("{key}=")))
+            .map(|value| value.trim().trim_matches('\'').to_string())
+    };
+    let method = get("sync-method").filter(|value| !value.is_empty());
+    cfg.method = Some(method.unwrap_or_else(|| {
+        if get("p2p-enabled").as_deref() == Some("true") {
+            "libresync"
+        } else if get("sync-enabled").as_deref() == Some("true") {
+            "nextcloud"
+        } else {
+            "off"
+        }
+        .into()
+    }));
+    if cfg.server.is_none() {
+        cfg.compress = get("compress").as_deref() == Some("true");
+    }
+    cfg.server = cfg.server.take().or_else(|| get("nextcloud-server"));
+    cfg.user = cfg.user.take().or_else(|| get("nextcloud-user"));
+    cfg.folder = cfg.folder.take().or_else(|| get("nextcloud-folder"));
+}
+
 fn secret(purpose: &str) -> Option<String> {
     keyring::Entry::new("momentum", purpose).ok()?.get_password().ok()
 }
 
+/// Hand a payload to a running app: the data directory's socket first (any platform,
+/// see `momentum_core::ipc`), then D-Bus on Linux for the case the socket is not up yet.
+/// Ok(false) means no running app answered, so the caller writes the store itself.
+fn forward(dir: &Path, payload: &str) -> Result<bool, String> {
+    if momentum_core::ipc::forward(dir, payload)? {
+        return Ok(true);
+    }
+    // A separate profile must never send actions to the default app on D-Bus.
+    if dir == default_data_dir() {
+        forward_dbus(payload)
+    } else {
+        Ok(false)
+    }
+}
+
 /// Hand an action to the running desktop app over D-Bus (Linux). Ok(false) = app not running.
 #[cfg(target_os = "linux")]
-fn forward(payload: &str) -> Result<bool, String> {
+fn forward_dbus(payload: &str) -> Result<bool, String> {
     use zbus::blocking::Connection;
     use zbus::zvariant::Value;
-    let conn = Connection::session().map_err(|e| e.to_string())?;
+    let Ok(conn) = Connection::session() else {
+        return Ok(false);
+    };
     for id in APP_IDS {
         let path = format!("/{}", id.replace('.', "/"));
         let has_owner: bool = conn
@@ -186,46 +235,109 @@ fn forward(payload: &str) -> Result<bool, String> {
     Ok(false)
 }
 #[cfg(not(target_os = "linux"))]
-fn forward(_payload: &str) -> Result<bool, String> {
+fn forward_dbus(_payload: &str) -> Result<bool, String> {
     Ok(false)
 }
 
-fn apply(store: &mut Store, action: Action) -> Result<(), String> {
+fn apply(store: &mut Store, dir: &Path, action: Action) -> Result<(), String> {
     let payload = serde_json::to_string(&action).map_err(|e| e.to_string())?;
-    // No session bus (CI, a headless box) means no running app to forward to.
-    if forward(&payload).unwrap_or(false) {
+    // No running app (CI, a headless box, the app not started) means write it ourselves.
+    if forward(dir, &payload)? {
+        // D-Bus activation can be asynchronous; apply only to this process's snapshot.
+        // Never queue or persist the action a second time.
+        sp_oplog::apply(&mut store.state, &action);
         return Ok(());
     }
-    store.dispatch(action);
-    Ok(())
+    // A previous action may have been forwarded before the app exited. Refresh its
+    // persisted metadata so an offline continuation retains that action and its op.
+    *store = Store::load(dir.to_path_buf());
+    sp_oplog::apply(&mut store.state, &action);
+    let op = action.to_op(&store.meta.client_id, &mut store.meta.vector_clock);
+    store.pending.push(sp_store::Pending { op, action });
+    store.save().map_err(|e| e.to_string())
 }
 
 /// A task by id prefix or unique title fragment. Open tasks only, unless `done_ok`
 /// (undone and rm must be able to reach completed tasks).
 fn find_task<'a>(store: &'a Store, needle: &str, done_ok: bool) -> Result<&'a Task, String> {
-    let n = needle.to_lowercase();
-    let by_id: Vec<&Task> = store.state.task.iter().filter(|t| t.id.starts_with(&n)).collect();
-    if by_id.len() == 1 {
-        return Ok(by_id[0]);
+    if needle.trim().is_empty() {
+        return Err("a task id or title fragment is required".into());
     }
-    let by_title: Vec<&Task> = store
-        .state
-        .task
-        .iter()
-        .filter(|t| (done_ok || !t.is_done) && t.title.to_lowercase().contains(&n))
-        .collect();
-    match by_title.len() {
-        1 => Ok(by_title[0]),
+    if let Some(task) = store.state.task.entities.get(needle) {
+        return Ok(task);
+    }
+    // Imported IDs are case-sensitive opaque strings, not necessarily UUIDs.
+    let by_id: Vec<&Task> = store.state.task.iter().filter(|t| t.id.starts_with(needle)).collect();
+    if !by_id.is_empty() {
+        return unique_task(by_id, needle);
+    }
+    let n = needle.to_lowercase();
+    unique_task(
+        store
+            .state
+            .task
+            .iter()
+            .filter(|t| (done_ok || !t.is_done) && t.title.to_lowercase().contains(&n))
+            .collect(),
+        needle,
+    )
+}
+
+fn unique_task<'a>(tasks: Vec<&'a Task>, needle: &str) -> Result<&'a Task, String> {
+    match tasks.len() {
+        1 => Ok(tasks[0]),
         0 => Err(format!("no task matches “{needle}”")),
         _ => Err(format!(
-            "{} tasks match “{needle}”; use an id prefix:\n{}",
-            by_title.len(),
-            by_title
+            "{} tasks match “{needle}”; use a longer id prefix:\n{}",
+            tasks.len(),
+            tasks
                 .iter()
-                .map(|t| format!("  {}  {}", &t.id[..8], t.title))
+                .map(|t| format!("  {}  {}", t.id, t.title))
                 .collect::<Vec<_>>()
                 .join("\n")
         )),
+    }
+}
+
+fn short_id(store: &Store, id: &str) -> String {
+    let mut length = 8.min(id.chars().count());
+    loop {
+        let prefix: String = id.chars().take(length).collect();
+        if prefix == id || !store.state.task.iter().any(|t| t.id != id && t.id.starts_with(&prefix)) {
+            return prefix;
+        }
+        length += 1;
+    }
+}
+
+fn valid_day(day: &str) -> Result<String, String> {
+    let valid = day.len() == 10
+        && day.bytes().enumerate().all(|(i, c)| {
+            if i == 4 || i == 7 {
+                c == b'-'
+            } else {
+                c.is_ascii_digit()
+            }
+        })
+        && parse_day(day).is_some_and(|(year, month, date)| {
+            (1..=9999).contains(&year)
+                && (1..=12).contains(&month)
+                && (1..=31).contains(&date)
+                && day_str(days_from_civil(year, month, date)) == day
+        });
+    if valid {
+        Ok(day.into())
+    } else {
+        Err("expected a valid date in YYYY-MM-DD format".into())
+    }
+}
+
+fn print_change(store: &Store, task: &Task, status: &str, label: &str, json: bool) {
+    if json {
+        let current = store.state.task.entities.get(&task.id).unwrap_or(task);
+        println!("{}", serde_json::json!({"status": status, "task": current}));
+    } else {
+        println!("{label}: {}", task.title);
     }
 }
 
@@ -271,7 +383,7 @@ fn print_tasks(store: &Store, tasks: &[&Task], json: bool) {
         println!(
             "[{}] {}  {}{}{}",
             if t.is_done { "x" } else { " " },
-            &t.id[..8],
+            short_id(store, &t.id),
             indent,
             t.title,
             if bits.is_empty() {
@@ -300,17 +412,9 @@ fn main() {
                 due,
                 notes,
             } => {
-                let (mut words, mut tags, mut est) = (vec![], vec![], 0.0);
-                for w in &title {
-                    if let Some(t) = w.strip_prefix('#') {
-                        tags.push(t.to_string());
-                    } else if let Some(ms) = parse_estimate(w) {
-                        est = ms;
-                    } else {
-                        words.push(w.as_str());
-                    }
-                }
-                if words.is_empty() {
+                let parsed = momentum_core::text::parse_quick_add(&title.join(" "));
+                let mut tags = parsed.tags;
+                if parsed.title.is_empty() {
                     return Err("a title is required".into());
                 }
                 let project_id = match &project {
@@ -335,8 +439,8 @@ fn main() {
                 if morning {
                     tags.push("Morning".into());
                 }
-                let mut task = Task::new(&words.join(" "), &project_id);
-                task.time_estimate = est;
+                let mut task = Task::new(&parsed.title, &project_id);
+                task.time_estimate = parsed.estimate_ms;
                 task.notes = notes;
                 task.due_day = if today || tonight || morning {
                     Some(today_str())
@@ -357,7 +461,7 @@ fn main() {
                         None => {
                             let tag = Tag::new(&name);
                             let id = tag.id.clone();
-                            apply(&mut store, Action::AddTag { tag })?;
+                            apply(&mut store, &dir, Action::AddTag { tag })?;
                             id
                         }
                     };
@@ -366,7 +470,7 @@ fn main() {
                     }
                 }
                 let shown = task.clone();
-                apply(&mut store, Action::AddTask { task, bottom: true })?;
+                apply(&mut store, &dir, Action::AddTask { task, bottom: true })?;
                 print_tasks(&store, &[&shown], json);
             }
             Cmd::Today => {
@@ -402,13 +506,13 @@ fn main() {
                     .iter()
                     .filter(|t| !t.is_done && t.parent_id.is_none())
                     .filter(|t| {
-                        t.due_day
+                        t.plan_day()
                             .as_deref()
                             .and_then(day_number)
                             .is_some_and(|d| d > today_n && d <= today_n + days)
                     })
                     .collect();
-                tasks.sort_by(|a, b| a.due_day.cmp(&b.due_day));
+                tasks.sort_by_key(|t| (t.plan_day(), t.due_with_time));
                 print_tasks(&store, &tasks, json);
             }
             Cmd::List { filter } => {
@@ -475,34 +579,37 @@ fn main() {
                 let t = find_task(&store, &task, false)?.clone();
                 apply(
                     &mut store,
+                    &dir,
                     Action::UpdateTask {
                         id: t.id.clone(),
                         changes: [("isDone".to_string(), serde_json::json!(true))].into_iter().collect(),
                     },
                 )?;
-                println!("Done: {}", t.title);
+                print_change(&store, &t, "done", "Done", json);
             }
             Cmd::Undone { task } => {
                 let t = find_task(&store, &task, true)?.clone();
                 apply(
                     &mut store,
+                    &dir,
                     Action::UpdateTask {
                         id: t.id.clone(),
                         changes: [("isDone".to_string(), serde_json::json!(false))].into_iter().collect(),
                     },
                 )?;
-                println!("Not done: {}", t.title);
+                print_change(&store, &t, "undone", "Not done", json);
             }
             Cmd::Plan { task } => {
                 let t = find_task(&store, &task, false)?.clone();
                 apply(
                     &mut store,
+                    &dir,
                     Action::PlanForToday {
                         task_ids: vec![t.id.clone()],
                         today: today_str(),
                     },
                 )?;
-                println!("Planned for today: {}", t.title);
+                print_change(&store, &t, "planned", "Planned for today", json);
             }
             Cmd::Rm { task } => {
                 let t = find_task(&store, &task, true)?.clone();
@@ -513,12 +620,13 @@ fn main() {
                     .collect();
                 apply(
                     &mut store,
+                    &dir,
                     Action::DeleteTask {
                         task: t.clone(),
                         sub_tasks: subs,
                     },
                 )?;
-                println!("Deleted: {}", t.title);
+                print_change(&store, &t, "deleted", "Deleted", json);
             }
             Cmd::Projects => {
                 if json {
@@ -547,11 +655,23 @@ fn main() {
                 }
             }
             Cmd::Sync => {
-                if forward("\"sync\"").unwrap_or(false) {
-                    println!("Sync requested from the running app.");
+                let c = load_config(&dir);
+                match c.method.as_deref() {
+                    Some("off") => return Err("Sync is turned off. Select a sync method in Momentum Settings.".into()),
+                    None | Some("nextcloud") | Some("libresync") => {}
+                    Some(_) => return Err("Unknown sync method. Select a sync method in Momentum Settings.".into()),
+                }
+                if forward(&dir, "\"sync\"")? {
+                    if json {
+                        println!("{}", serde_json::json!({"status": "requested"}));
+                    } else {
+                        println!("Sync requested from the running app.");
+                    }
                     return Ok(());
                 }
-                let c = load_config(&dir);
+                if c.method.as_deref() == Some("libresync") {
+                    return Err("Open Momentum to sync with LibreSync.".into());
+                }
                 let cfg = sp_sync::NextcloudCfg {
                     server_url: c.server.clone().ok_or(
                         "no server configured; run `mo config --server URL --user NAME --folder DIR --password`",
@@ -563,12 +683,19 @@ fn main() {
                     encrypt_key: secret("encryption"),
                 };
                 let r = sp_sync::sync(&cfg, &mut store).map_err(|e| e.to_string())?;
-                println!(
-                    "Synced (downloaded: {}, uploaded: {} op{}).",
-                    r.downloaded,
-                    r.ops_uploaded,
-                    if r.ops_uploaded == 1 { "" } else { "s" }
-                );
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::json!({"status": "synced", "downloaded": r.downloaded, "ops_uploaded": r.ops_uploaded})
+                    );
+                } else {
+                    println!(
+                        "Synced (downloaded: {}, uploaded: {} op{}).",
+                        r.downloaded,
+                        r.ops_uploaded,
+                        if r.ops_uploaded == 1 { "" } else { "s" }
+                    );
+                }
             }
             Cmd::Config {
                 server,
@@ -577,6 +704,7 @@ fn main() {
                 password,
                 encryption_password,
             } => {
+                let settings_changed = server.is_some() || user.is_some() || folder.is_some();
                 let mut c = load_config(&dir);
                 if let Some(s) = server {
                     c.server = Some(s);
@@ -587,9 +715,12 @@ fn main() {
                 if let Some(f) = folder {
                     c.folder = Some(f);
                 }
-                std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-                std::fs::write(dir.join("cli-config.json"), serde_json::to_vec_pretty(&c).unwrap())
-                    .map_err(|e| e.to_string())?;
+                if settings_changed {
+                    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+                    let temporary = dir.join("cli-config.json.tmp");
+                    std::fs::write(&temporary, serde_json::to_vec_pretty(&c).unwrap()).map_err(|e| e.to_string())?;
+                    std::fs::rename(temporary, dir.join("cli-config.json")).map_err(|e| e.to_string())?;
+                }
                 for (on, purpose, prompt) in [
                     (password, "nextcloud", "Nextcloud app password: "),
                     (encryption_password, "encryption", "Encryption password: "),
@@ -601,35 +732,64 @@ fn main() {
                             .map_err(|e| e.to_string())?;
                     }
                 }
-                println!(
-                    "server:  {}\nuser:    {}\nfolder:  {}\ndata:    {}",
-                    c.server.as_deref().unwrap_or("-"),
-                    c.user.as_deref().unwrap_or("-"),
-                    c.folder.as_deref().unwrap_or("super-productivity"),
-                    dir.display()
-                );
+                if settings_changed || password || encryption_password {
+                    momentum_core::ipc::forward(&dir, "\"config\"")?;
+                }
+                if json {
+                    let mut value = serde_json::to_value(&c).unwrap();
+                    value["data_dir"] = serde_json::json!(dir);
+                    println!("{}", value);
+                } else {
+                    println!(
+                        "server:  {}\nuser:    {}\nfolder:  {}\ndata:    {}",
+                        c.server.as_deref().unwrap_or("-"),
+                        c.user.as_deref().unwrap_or("-"),
+                        c.folder.as_deref().unwrap_or("super-productivity"),
+                        dir.display()
+                    );
+                }
             }
         }
         Ok(())
     })();
     if let Err(e) = result {
-        eprintln!("mo: {e}");
+        if json {
+            eprintln!("{}", serde_json::json!({"error": e}));
+        } else {
+            eprintln!("mo: {e}");
+        }
         std::process::exit(1);
     }
 }
 
-fn parse_estimate(s: &str) -> Option<f64> {
-    let (mut total, mut num, mut any) = (0.0, String::new(), false);
-    for c in s.chars() {
-        if c.is_ascii_digit() || c == '.' {
-            num.push(c)
-        } else if c == 'h' || c == 'm' {
-            total += num.parse::<f64>().ok()? * if c == 'h' { 3_600_000.0 } else { 60_000.0 };
-            num.clear();
-            any = true;
-        } else {
-            return None;
-        }
+#[cfg(test)]
+mod sync_config_tests {
+    use super::*;
+    #[test]
+    fn linux_provider_preference_overrides_cached_connection_settings() {
+        let mut config = CliConfig {
+            server: Some("https://saved.example".into()),
+            ..Default::default()
+        };
+        merge_linux_settings(
+            &mut config,
+            "sync-method='off'\nnextcloud-server='https://other.example'\n",
+        );
+        assert_eq!(config.method.as_deref(), Some("off"));
+        assert_eq!(config.server.as_deref(), Some("https://saved.example"));
+        merge_linux_settings(&mut config, "sync-method='libresync'\nsync-enabled=true\n");
+        assert_eq!(config.method.as_deref(), Some("libresync"));
     }
-    (any && num.is_empty()).then_some(total)
+    #[test]
+    fn legacy_linux_dual_sync_prefers_libresync_and_unknown_method_fails_closed() {
+        let mut config = CliConfig::default();
+        merge_linux_settings(&mut config, "sync-enabled=true\np2p-enabled=true\n");
+        assert_eq!(config.method.as_deref(), Some("libresync"));
+        merge_linux_settings(&mut config, "sync-method='future-provider'\n");
+        assert_eq!(
+            config.method.as_deref(),
+            Some("future-provider"),
+            "the caller rejects unknown providers rather than falling back to Nextcloud"
+        );
+    }
 }

@@ -4,7 +4,6 @@
 //! Both are served from the app process; the desktop D-Bus-activates the app when needed and
 //! the window stays hidden until a result is activated.
 use adw::prelude::*;
-use adw::subclass::prelude::ObjectSubclassIsExt;
 use gettextrs::gettext;
 use gtk::{gio, glib};
 
@@ -29,28 +28,19 @@ const KRUNNER_XML: &str = r#"<node>
   </interface>
 </node>"#;
 
-const MAX_RESULTS: usize = 8;
-
-/// Result ids: a task id, or `add:<title>` for the "create" result.
+/// Result ids: a task id, or `add:<title>` for the "create" result. The engine already caps
+/// matches at `momentum_core::QUICK_MATCHES`.
 pub(crate) fn results(app: &MomentumApplication, terms: &[String]) -> Vec<String> {
     let query = terms.join(" ");
-    let q: Vec<String> = query.to_lowercase().split_whitespace().map(str::to_string).collect();
-    if q.is_empty() {
+    if query.trim().is_empty() {
         return vec![];
     }
     let win = app.ensure_window();
-    let store = win.imp().store.borrow();
-    let mut ids: Vec<String> = store
-        .state
-        .task
-        .iter()
-        .filter(|t| !t.is_done)
-        .filter(|t| {
-            let hay = t.title.to_lowercase();
-            q.iter().all(|w| hay.contains(w.as_str()))
-        })
-        .take(MAX_RESULTS)
-        .map(|t| t.id.clone())
+    let mut ids: Vec<String> = win
+        .engine()
+        .quick_matches(query.clone())
+        .into_iter()
+        .map(|t| t.id)
         .collect();
     ids.push(format!("add:{query}"));
     ids
@@ -61,17 +51,16 @@ pub(crate) fn meta(app: &MomentumApplication, id: &str) -> (String, String) {
         return (format!("{} “{title}”", gettext("Create task")), gettext("Momentum"));
     }
     let win = app.ensure_window();
-    let store = win.imp().store.borrow();
-    match store.state.task.entities.get(id) {
-        Some(t) => {
+    match win.engine().task_row(id.to_string()) {
+        Some(row) => {
             let mut bits = vec![];
-            if let Some(p) = store.state.project.entities.get(&t.project_id) {
+            if let Some(p) = &row.project {
                 bits.push(p.title.clone());
             }
-            if let Some(d) = &t.due_day {
+            if let Some(d) = &row.day {
                 bits.push(crate::window::fmt_day(d));
             }
-            (t.title.clone(), bits.join(" · "))
+            (row.title, bits.join(" · "))
         }
         None => (id.to_string(), String::new()),
     }

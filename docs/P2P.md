@@ -3,14 +3,13 @@
 # Sync with nearby devices
 
 Momentum can sync directly between your devices on the same network, without a server,
-using [LibreSync](https://github.com/dan-hart/LibreSync) as the transport. It works on its
-own or next to Nextcloud sync: a device that has Nextcloud relays what it receives from
-nearby devices to the server, so a laptop without credentials still reaches
-Super Productivity on your phone.
+using [LibreSync](https://github.com/dan-hart/LibreSync) as the transport. Choose LibreSync or Nextcloud as the active provider; they do not run together.
+Switching providers retains tasks, pending changes and saved connections. Changes
+received through LibreSync can be uploaded later if you switch to Nextcloud.
 
 ## Using it
 
-1. Preferences › Nearby Devices › **Sync with nearby devices** on both devices.
+1. Preferences/Settings → Sync → **LibreSync** on both devices.
 2. **Manage Devices…** on both. Each shows a six-digit pairing code and lists the other
    under Nearby. On one of them press **Link…** and type the code shown on the other.
 3. Done. Changes travel within a few seconds of being made, and every five minutes as a
@@ -26,8 +25,8 @@ unlink and link again. Unlink from the same dialog.
   the Nextcloud sync uploads). Each becomes one immutable LibreSync record keyed by the
   op id, so records never conflict and last-writer-wins on the transport loses nothing.
   The receiving device applies the typed action through `sp_oplog::apply`, exactly like a
-  local change, and queues it for its own Nextcloud upload unless the server already has
-  that op id.
+  local change, and queues it for a future Nextcloud upload if that provider is selected later,
+  unless the server already has that op id.
 - **A bootstrap snapshot.** Each device publishes a gzip-compressed snapshot of its whole
   state (at most once a minute, only when it changed). A device syncing for the first time
   adopts the newest snapshot if it has no tasks of its own, otherwise merges in the
@@ -48,6 +47,8 @@ state (`state.bin`), op journal and device list live in `p2p/` under the data di
   LibreSync's `docs/PACKAGING-LINUX.md`.
 - Only devices with the same app id (`io.github.dan_hart.Momentum`, shared by Devel and
   release builds) are discovered.
+  This is a cross-platform protocol identifier, independent of the macOS bundle ID
+  `com.codedbydan.Momentum`.
 - A linked device that does not answer discovery is still tried at its last known address,
   which covers a Tailscale or other overlay network once it has been linked on the LAN.
 

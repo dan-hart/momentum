@@ -44,6 +44,35 @@ menu view_menu {
 
   }
 
+  submenu {
+    label: _("Group By");
+    item {
+      label: _("Morning & Night");
+      action: "win.group-by";
+      target: "morning-night";
+    }
+    item {
+      label: _("None");
+      action: "win.group-by";
+      target: "none";
+    }
+    item {
+      label: _("Project");
+      action: "win.group-by";
+      target: "project";
+    }
+    item {
+      label: _("Tag");
+      action: "win.group-by";
+      target: "tag";
+    }
+    item {
+      label: _("Time Estimate");
+      action: "win.group-by";
+      target: "estimate";
+    }
+  }
+
   section {
     label: _("Sort By");
 
@@ -263,7 +292,7 @@ template $MomentumWindow: Adw.ApplicationWindow {
 
           [top]
           Adw.Banner banner {
-            button-label: _("Preferences");
+            button-label: _("Details");
           }
 
           [top]
@@ -375,6 +404,28 @@ template $MomentumWindow: Adw.ApplicationWindow {
             }
           }
 
+          [bottom]
+          Box {
+            spacing: 8;
+            margin-start: 12;
+            margin-end: 12;
+            margin-top: 6;
+            margin-bottom: 6;
+
+            Label sync_label {
+              hexpand: true;
+              wrap: true;
+              xalign: 0;
+              styles ["dim-label", "caption"]
+            }
+            Button sync_retry {
+              label: _("Sync Now");
+              action-name: "app.sync";
+              valign: center;
+              styles ["flat"]
+            }
+          }
+
           content: ScrolledWindow {
             hscrollbar-policy: never;
 
@@ -390,17 +441,6 @@ template $MomentumWindow: Adw.ApplicationWindow {
                 Box task_box {
                   orientation: vertical;
                   spacing: 24;
-                }
-
-                Label sync_label {
-                  visible: false;
-                  margin-top: 12;
-                  xalign: 0.5;
-
-                  styles [
-                    "dim-label",
-                    "caption",
-                  ]
                 }
 
                 Adw.StatusPage empty {

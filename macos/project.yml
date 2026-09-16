@@ -1,0 +1,138 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Dan Hart
+#
+# XcodeGen spec for the macOS app. `xcodegen generate` (in this directory) writes
+# Momentum.xcodeproj, which is not committed. The Rust core is built by a pre-build
+# script phase (macos/scripts/build-core.sh) so `xcodebuild` and Xcode both just work.
+name: Momentum
+options:
+  developmentLanguage: en
+  knownRegions: [en, de]
+  bundleIdPrefix: com.codedbydan
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "27.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_EMIT_LOC_STRINGS: true
+    LOCALIZATION_PREFERS_STRING_CATALOGS: true
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.4.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: true
+    DEAD_CODE_STRIPPING: true
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ENABLE_USER_SCRIPT_SANDBOXING: false
+packages:
+  MomentumCore:
+    path: Packages/MomentumCore
+  MomentumKit:
+    path: Packages/MomentumKit
+targets:
+  Momentum:
+    type: application
+    platform: macOS
+    sources:
+      - path: Momentum
+        excludes: ["**/.DS_Store"]
+    dependencies:
+      - package: MomentumCore
+      - package: MomentumKit
+    entitlements:
+      path: Momentum/Momentum.entitlements
+    preBuildScripts:
+      - name: Build Rust core
+        script: |
+          # Debug builds compile the host architecture only; release builds every Apple
+          # target the toolchain has, for a universal binary.
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            "$SRCROOT/scripts/build-core.sh" --debug
+          else
+            "$SRCROOT/scripts/build-core.sh"
+          fi
+        basedOnDependencyAnalysis: false
+    postBuildScripts:
+      - name: Bundle mo command line companion
+        script: |
+          mkdir -p "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH"
+          cp "$SRCROOT/../target/xcframework-stage/mo" "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/mo"
+          chmod 755 "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/mo"
+          if [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
+            codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --options runtime "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/mo"
+          fi
+        basedOnDependencyAnalysis: false
+    info:
+      path: Momentum/Info.plist
+      properties:
+        CFBundleName: Momentum
+        CFBundleDisplayName: Momentum
+        CFBundleIdentifier: com.codedbydan.Momentum
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: "© 2026 Dan Hart. GPL-3.0-or-later."
+        NSPrincipalClass: NSApplication
+        NSSupportsAutomaticTermination: false
+        NSSupportsSuddenTermination: false
+        NSLocalNetworkUsageDescription: "Momentum syncs with your other devices on the local network."
+        NSBonjourServices: ["_libresync._tcp"]
+        NSUserNotificationsUsageDescription: "Reminders and a morning summary of the day's tasks."
+        CFBundleURLTypes:
+          - CFBundleURLName: com.codedbydan.Momentum
+            CFBundleURLSchemes: [momentum, superproductivity]
+            CFBundleTypeRole: Editor
+        NSServices:
+          - NSMenuItem:
+              default: "New Momentum Task"
+            NSMessage: newTaskFromSelection
+            NSPortName: Momentum
+            NSSendTypes: [public.utf8-plain-text]
+        NSAppleEventsUsageDescription: ""
+        # The type a dragged task row carries, so a drag between Momentum's own lists is
+        # recognised as tasks rather than as the plain text it also offers other apps.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.codedbydan.momentum.tasks
+            UTTypeDescription: Momentum Tasks
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codedbydan.Momentum
+        PRODUCT_NAME: Momentum
+        INFOPLIST_KEY_NSMainStoryboardFile: ""
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        OTHER_LDFLAGS: "$(inherited) -lresolv"
+schemes:
+  Momentum:
+    build:
+      # Package dependencies compile before the app's pre-build phase. Prepare their
+      # generated bindings and static binary before Xcode schedules those dependencies.
+      # The target phase also runs so Rust errors still fail the build reliably.
+      preActions:
+        - name: Prepare Rust package dependencies
+          settingsTarget: Momentum
+          script: |
+            if [ "$CONFIGURATION" = "Debug" ]; then
+              "$SRCROOT/scripts/build-core.sh" --debug
+            else
+              "$SRCROOT/scripts/build-core.sh"
+            fi
+      targets:
+        Momentum: all
+    run:
+      config: Debug
+    # The unit tests live in Packages/MomentumKit and need no app host: run them with
+    # `swift test` in that directory, or from Xcode's test navigator, which lists the
+    # local package's tests because the app depends on it.
+    test:
+      config: Debug
+      gatherCoverageData: false
+    archive:
+      config: Release

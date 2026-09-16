@@ -1976,3 +1976,108 @@ msgstr ""
 #: crates/app/src/window.rs:4421
 msgid "Syncing…"
 msgstr "Synchronisiere…"
+
+msgid "Off"
+msgstr "Aus"
+
+msgid "Nextcloud"
+msgstr "Nextcloud"
+
+msgid "LibreSync"
+msgstr "LibreSync"
+
+msgid "Sync"
+msgstr "Synchronisierung"
+
+msgid "Choose one service. Switching keeps your tasks and saved connections."
+msgstr "Wähle einen Dienst. Beim Wechsel bleiben deine Aufgaben und gespeicherten Verbindungen erhalten."
+
+msgid "Sync method"
+msgstr "Synchronisierungsdienst"
+
+msgid "Sync directly with linked devices on your network. Changes sync automatically while this service is selected."
+msgstr "Synchronisiere direkt mit verknüpften Geräten in deinem Netzwerk. Änderungen werden automatisch synchronisiert, solange dieser Dienst ausgewählt ist."
+
+msgid "Preview mode · Sync is off"
+msgstr "Vorschaumodus · Synchronisierung ist aus"
+
+msgid "Sync is off"
+msgstr "Synchronisierung ist aus"
+
+msgid "Finish setup in Preferences"
+msgstr "Einrichtung in den Einstellungen abschließen"
+
+msgid "Retry"
+msgstr "Erneut versuchen"
+
+msgid "Details"
+msgstr "Details"
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Could not save sync preferences for the command line."
+msgstr "Die Synchronisierungseinstellungen für die Befehlszeile konnten nicht gespeichert werden."
+
+msgid "Select LibreSync in Preferences first."
+msgstr "Wähle zuerst LibreSync in den Einstellungen."
+
+msgid "Selected sync provider (empty retains the legacy preference)"
+msgstr "Ausgewählter Synchronisierungsdienst (leer behält die bisherige Einstellung bei)"
+
+msgid "Group By"
+msgstr "Gruppieren nach"
+
+msgid "Tag"
+msgstr "Schlagwort"
+
+msgid "Time Estimate"
+msgstr "Zeitschätzung"
+
+msgid "No Project"
+msgstr "Kein Projekt"
+
+msgid "Untagged"
+msgstr "Ohne Schlagwort"
+
+msgid "Up to 15 min"
+msgstr "Bis zu 15 Min."
+
+msgid "16–30 min"
+msgstr "16–30 Min."
+
+msgid "31–60 min"
+msgstr "31–60 Min."
+
+msgid "1–2 hours"
+msgstr "1–2 Stunden"
+
+msgid "Over 2 hours"
+msgstr "Über 2 Stunden"
+
+msgid "No estimate"
+msgstr "Keine Schätzung"
+
+msgid "Morning & Night"
+msgstr "Morgen & Abend"
+
+msgid "Evening"
+msgstr "Abend"
+
+msgid "Notifications"
+msgstr "Mitteilungen"
+
+msgid "Morning summary"
+msgstr "Morgenübersicht"
+
+msgid "Summarize today's tasks once a day at this local time, or when Momentum next opens. Task reminders are separate."
+msgstr "Die heutigen Aufgaben einmal täglich zu dieser Ortszeit zusammenfassen oder beim nächsten Öffnen von Momentum. Aufgabenerinnerungen sind davon unabhängig."
+
+msgid "Off by default. Momentum must be running to send notifications."
+msgstr "Standardmäßig ausgeschaltet. Momentum muss laufen, um Mitteilungen zu senden."
+
+msgid "Hour (0–23)"
+msgstr "Stunde (0–23)"
+
+msgid "Minute"
+msgstr "Minute"

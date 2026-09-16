@@ -20,6 +20,11 @@
     <key name="compress" type="b"><default>false</default><summary>Gzip the sync file</summary></key>
     <key name="projects-collapsed" type="b"><default>false</default><summary>Projects section collapsed in the sidebar</summary></key>
     <key name="tags-collapsed" type="b"><default>false</default><summary>Tags section collapsed in the sidebar</summary></key>
+    <key name="group-by" type="s">
+      <choices><choice value="morning-night"/><choice value="none"/><choice value="project"/><choice value="tag"/><choice value="estimate"/></choices>
+      <default>'morning-night'</default>
+      <summary>Group tasks by time of day, project, first tag, or time estimate</summary>
+    </key>
     <key name="task-sort" type="s">
       <choices><choice value="manual"/><choice value="title"/><choice value="due"/><choice value="estimate"/><choice value="created"/></choices>
       <default>'manual'</default>
@@ -27,6 +32,11 @@
     </key>
     <key name="colorful-labels" type="b"><default>true</default><summary>Color-code projects and tags</summary></key>
     <key name="last-sync-ms" type="x"><default>0</default><summary>Time of the last successful sync (ms since epoch)</summary></key>
+    <key name="sync-method" type="s">
+      <choices><choice value=""/><choice value="off"/><choice value="nextcloud"/><choice value="libresync"/></choices>
+      <default>''</default>
+      <summary>Selected sync provider (empty retains the legacy preference)</summary>
+    </key>
     <key name="sync-enabled" type="b"><default>false</default><summary>Nextcloud sync switched on</summary></key>
     <key name="sort-direction" type="s">
       <choices><choice value="ascending"/><choice value="descending"/></choices>
@@ -39,6 +49,9 @@
       <summary>Days shown in Coming Up</summary>
     </key>
     <key name="run-in-background" type="b"><default>false</default><summary>Keep running after the window closes</summary></key>
+    <key name="morning-summary-enabled" type="b"><default>false</default><summary>Show a daily morning summary</summary></key>
+    <key name="morning-summary-hour" type="i"><range min="0" max="23"/><default>8</default><summary>Morning summary hour in local time</summary></key>
+    <key name="morning-summary-minute" type="i"><range min="0" max="59"/><default>0</default><summary>Morning summary minute</summary></key>
     <key name="last-summary-day" type="s"><default>''</default><summary>Day the morning summary was last shown</summary></key>
     <key name="modifier-key" type="s">
       <choices><choice value="control"/><choice value="alt"/><choice value="super"/><choice value="option"/><choice value="command"/></choices>

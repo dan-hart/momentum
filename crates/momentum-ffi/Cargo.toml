@@ -1,0 +1,17 @@
+[package]
+name = "momentum-ffi"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The C library the macOS app links: momentum-core with its UniFFI scaffolding"
+publish = false
+
+[lib]
+name = "momentum_ffi"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+momentum-core = { path = "../momentum-core", features = ["ffi"] }
+uniffi = "0.32"

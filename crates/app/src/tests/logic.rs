@@ -4,9 +4,10 @@
 //! modifier key. They touch glib and gettext, so they run on the GTK thread too.
 use super::support::{on_gtk, reset_settings, settings};
 use crate::modifier;
-use crate::task_form::parse_time;
-use crate::window::{ago_text, fmt_day, fmt_ms, fmt_time, hex_color, parse_ms, repeat_text, tag_color};
+use crate::window::{ago_text, fmt_clock, fmt_day, fmt_ms, hex_color, parse_ms, repeat_text};
 use gtk::prelude::*;
+use momentum_core::text::{day_label, describe_repeat, parse_time, tag_color};
+use momentum_core::ClockTime;
 use sp_model::*;
 
 #[test]
@@ -27,27 +28,27 @@ fn estimates_parse_and_format_both_ways() {
 fn relative_days_read_naturally() {
     on_gtk(|| {
         let today = day_number(&today_str()).unwrap();
-        assert_eq!(fmt_day(&today_str()), "Today");
-        assert_eq!(fmt_day(&day_str(today + 1)), "Tomorrow");
-        assert_eq!(fmt_day(&day_str(today - 1)), "Yesterday");
-        let in_three = fmt_day(&day_str(today + 3));
+        let fmt = |d: &str| fmt_day(&day_label(d));
+        assert_eq!(fmt(&today_str()), "Today");
+        assert_eq!(fmt(&day_str(today + 1)), "Tomorrow");
+        assert_eq!(fmt(&day_str(today - 1)), "Yesterday");
+        let in_three = fmt(&day_str(today + 3));
         assert!(
             !in_three.contains(' ') && in_three.len() >= 6,
             "a weekday name: {in_three}"
         );
-        let far = fmt_day(&day_str(today + 400));
+        let far = fmt(&day_str(today + 400));
         assert!(
             far.chars().any(|c| c.is_ascii_digit()) && far.len() > 8,
             "a full date: {far}"
         );
-        assert_eq!(fmt_day("not a day"), "not a day");
+        assert_eq!(fmt("not a day"), "not a day");
     });
 }
 #[test]
 fn clock_times_and_ago_text() {
     on_gtk(|| {
-        let ms = local_ms("2026-09-14", 15, 30).unwrap();
-        assert_eq!(fmt_time(ms), "15:30");
+        assert_eq!(fmt_clock(&ClockTime { hour: 15, minute: 30 }), "15:30");
         let now = now_ms();
         assert_eq!(ago_text(now), "just now");
         assert_eq!(ago_text(now - 30_000), "30 seconds ago");
@@ -65,7 +66,11 @@ fn colours_from_sync_data_become_hex() {
         let mut g = Tag::new("g");
         assert!(tag_color(&g).is_some(), "new tags carry a theme colour");
         g.color = Some("#123456".into());
-        assert_eq!(tag_color(&g), Some("#123456"), "an explicit colour wins over the theme");
+        assert_eq!(
+            tag_color(&g).as_deref(),
+            Some("#123456"),
+            "an explicit colour wins over the theme"
+        );
     });
 }
 #[test]
@@ -76,35 +81,38 @@ fn repeat_descriptions_are_plain_language() {
             repeat_every: 1,
             ..Default::default()
         };
-        assert_eq!(repeat_text(&c), "Repeats daily");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats daily");
         c.repeat_every = 3;
-        assert_eq!(repeat_text(&c), "Repeats every 3 days");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats every 3 days");
         c = RepeatCfg {
             repeat_cycle: "WEEKLY".into(),
             repeat_every: 1,
             monday: true,
             ..Default::default()
         };
-        assert_eq!(repeat_text(&c), "Repeats every Monday");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats every Monday");
         c.wednesday = true;
-        assert_eq!(repeat_text(&c), "Repeats weekly on Mon, Wed");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats weekly on Mon, Wed");
         c.repeat_every = 2;
-        assert_eq!(repeat_text(&c), "Repeats every 2 weeks on Mon, Wed");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats every 2 weeks on Mon, Wed");
         c = RepeatCfg {
             repeat_cycle: "MONTHLY".into(),
             repeat_every: 1,
             start_date: Some("2026-01-03".into()),
             ..Default::default()
         };
-        assert_eq!(repeat_text(&c), "Repeats monthly on the 3rd");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats monthly on the 3rd");
         c.monthly_last_day = true;
-        assert_eq!(repeat_text(&c), "Repeats monthly on the last day");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats monthly on the last day");
         c.monthly_last_day = false;
         c.monthly_week_of_month = Some(2);
         c.monthly_weekday = Some(2);
-        assert_eq!(repeat_text(&c), "Repeats monthly on the second Tuesday");
+        assert_eq!(
+            repeat_text(&describe_repeat(&c)),
+            "Repeats monthly on the second Tuesday"
+        );
         c.monthly_week_of_month = Some(-1);
-        assert_eq!(repeat_text(&c), "Repeats monthly on the last Tuesday");
+        assert_eq!(repeat_text(&describe_repeat(&c)), "Repeats monthly on the last Tuesday");
         c = RepeatCfg {
             repeat_cycle: "YEARLY".into(),
             repeat_every: 2,
@@ -112,21 +120,26 @@ fn repeat_descriptions_are_plain_language() {
             ..Default::default()
         };
         assert!(
-            repeat_text(&c).starts_with("Repeats every 2 years on"),
+            repeat_text(&describe_repeat(&c)).starts_with("Repeats every 2 years on"),
             "{}",
-            repeat_text(&c)
+            repeat_text(&describe_repeat(&c))
         );
         c.repeat_every = 1;
-        assert!(repeat_text(&c).starts_with("Repeats yearly on"), "{}", repeat_text(&c));
+        assert!(
+            repeat_text(&describe_repeat(&c)).starts_with("Repeats yearly on"),
+            "{}",
+            repeat_text(&describe_repeat(&c))
+        );
     });
 }
 #[test]
 fn times_typed_by_hand_are_forgiving() {
-    assert_eq!(parse_time("14:30"), Some((14, 30)));
-    assert_eq!(parse_time("2:30pm"), Some((14, 30)));
-    assert_eq!(parse_time("12am"), Some((0, 0)));
-    assert_eq!(parse_time("0930"), Some((9, 30)));
-    assert_eq!(parse_time("7"), Some((7, 0)));
+    let t = |hour, minute| Some(ClockTime { hour, minute });
+    assert_eq!(parse_time("14:30"), t(14, 30));
+    assert_eq!(parse_time("2:30pm"), t(14, 30));
+    assert_eq!(parse_time("12am"), t(0, 0));
+    assert_eq!(parse_time("0930"), t(9, 30));
+    assert_eq!(parse_time("7"), t(7, 0));
     assert_eq!(parse_time("24:00"), None);
     assert_eq!(parse_time("tea time"), None);
 }
@@ -160,7 +173,7 @@ fn modifier_key_maps_to_gtk_tokens_and_labels() {
 #[test]
 fn demo_data_is_what_the_screenshots_and_tests_rely_on() {
     let dir = tempfile::tempdir().unwrap();
-    let s = crate::demo::store(dir.path().to_path_buf());
+    let s = momentum_core::demo::store(dir.path().to_path_buf());
     let titles: Vec<&str> = s.state.task.iter().map(|t| t.title.as_str()).collect();
     for want in [
         "Write release notes for 0.1",

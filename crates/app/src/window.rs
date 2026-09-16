@@ -1,71 +1,37 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
+//! The main window: widgets, rendering and input. Everything the window shows comes from
+//! `momentum_core::Engine` (the same core the macOS app drives); everything the user does
+//! goes back to it and comes out as an [`Outcome`] that this file turns into a refresh, a
+//! toast and an Undo button.
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
-use serde_json::{json, Map, Value};
-use sp_model::*;
+use momentum_core::{
+    AllDone, ClockTime, DayLabel, DayRelation, EmptyState, Engine, EstimateRange, GroupBy, MonthlyRule, Outcome,
+    Preferences, RepeatDescription, Row, SectionKind, SectionNote, Slot, SortDirection, SortKey, TaskGroup, TaskRow,
+    ViewTitle,
+};
+use sp_model::{now_ms, INBOX_PROJECT_ID};
 use sp_oplog::Action;
-use sp_store::Store;
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::application::MomentumApplication;
 use crate::config::{APP_ID, PROFILE};
 
-/// Precomputed lowercase haystacks so typing never re-lowercases or re-parses the archive.
-#[derive(Default)]
-pub struct SearchIndex {
-    tasks: Vec<(String, String)>,    // (task id, haystack)
-    archived: Vec<(Task, String)>,   // parsed once
-    projects: Vec<(String, String)>, // (project id, lower title)
-    tags: Vec<(String, String)>,     // (tag id, lower title)
-}
-const SEARCH_LIMIT: usize = 60;
+pub use momentum_core::View;
 
 #[derive(Clone, Copy)]
 pub enum MenuKind {
     Task,
     Project,
     Tag,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum View {
-    Today,
-    Morning,
-    Tonight,
-    Upcoming,
-    Archive,
-    Search,
-    Project(String),
-    Tag(String),
-}
-
-/// A part of the day inside Today: tasks tagged "Morning" or "Evening".
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Slot {
-    Morning,
-    Tonight,
-}
-impl Slot {
-    /// The tag (matched case-insensitively) that puts a task in this slot.
-    pub fn tag_name(self) -> &'static str {
-        match self {
-            Slot::Morning => "Morning",
-            Slot::Tonight => "Evening",
-        }
-    }
-    fn other(self) -> Slot {
-        match self {
-            Slot::Morning => Slot::Tonight,
-            Slot::Tonight => Slot::Morning,
-        }
-    }
 }
 
 /// Data directory for windows created from now on (tests give every window its own).
@@ -116,7 +82,7 @@ mod imp {
         #[template_child]
         pub empty: TemplateChild<adw::StatusPage>,
         pub settings: gio::Settings,
-        pub store: RefCell<Store>,
+        pub engine: Arc<Engine>,
         pub view: RefCell<View>,
         pub views: RefCell<Vec<Option<View>>>,
         pub rows: RefCell<Vec<String>>,
@@ -126,11 +92,13 @@ mod imp {
         pub tag_list: gtk::ListBox,
         pub tag_matches: RefCell<Vec<String>>,
         pub color_provider: gtk::CssProvider,
+        /// A Nextcloud cycle is running (drives the button and label; the engine refuses a second one anyway).
         pub syncing: Cell<bool>,
-        pub notified: RefCell<HashSet<String>>,
-        pub last_day: RefCell<String>,
-        pub index: RefCell<Option<Rc<SearchIndex>>>,
-        pub archive_shown: Cell<usize>,
+        pub nearby_syncing: Cell<bool>,
+        pub sync_error: RefCell<Option<String>>,
+        #[template_child]
+        pub sync_retry: TemplateChild<gtk::Button>,
+        pub archive_shown: Cell<u32>,
         pub selecting: Cell<bool>,
         pub selected: RefCell<HashSet<String>>,
         #[template_child]
@@ -142,15 +110,8 @@ mod imp {
         pub search_debounce: RefCell<Option<glib::SourceId>>,
         pub sync_debounce: RefCell<Option<glib::SourceId>>,
         pub store_monitor: RefCell<Option<gio::FileMonitor>>,
-        pub undo_stack: RefCell<Vec<Vec<Action>>>,
         pub last_status: RefCell<String>,
-        pub p2p: RefCell<Option<Rc<sp_p2p::P2p>>>,
-        pub p2p_discovered: RefCell<Vec<sp_p2p::DeviceInfo>>,
         pub p2p_dialog: RefCell<Option<Rc<dyn Fn()>>>,
-        pub p2p_sync_debounce: RefCell<Option<glib::SourceId>>,
-        pub p2p_snapshot_debounce: RefCell<Option<glib::SourceId>>,
-        pub p2p_periodic: RefCell<Option<glib::SourceId>>,
-        pub p2p_snapshot_hash: Cell<u64>,
     }
 
     impl Default for MomentumWindow {
@@ -165,6 +126,7 @@ mod imp {
             } else {
                 glib::user_data_dir().join("momentum")
             };
+            let dir = dir.to_string_lossy().into_owned();
             Self {
                 split_view: Default::default(),
                 sidebar_list: Default::default(),
@@ -181,11 +143,7 @@ mod imp {
                 toast_overlay: Default::default(),
                 empty: Default::default(),
                 settings: gio::Settings::new(*APP_ID),
-                store: RefCell::new(if demo {
-                    crate::demo::store(dir)
-                } else {
-                    Store::load(dir)
-                }),
+                engine: if demo { Engine::demo(dir) } else { Engine::open(dir) },
                 view: RefCell::new(View::Today),
                 views: Default::default(),
                 rows: Default::default(),
@@ -203,9 +161,9 @@ mod imp {
                 tag_matches: Default::default(),
                 color_provider: gtk::CssProvider::new(),
                 syncing: Cell::new(false),
-                notified: Default::default(),
-                last_day: RefCell::new(today_str()),
-                index: Default::default(),
+                nearby_syncing: Cell::new(false),
+                sync_error: Default::default(),
+                sync_retry: Default::default(),
                 archive_shown: Cell::new(100),
                 selecting: Cell::new(false),
                 selected: Default::default(),
@@ -215,15 +173,8 @@ mod imp {
                 search_debounce: Default::default(),
                 sync_debounce: Default::default(),
                 store_monitor: Default::default(),
-                undo_stack: Default::default(),
                 last_status: Default::default(),
-                p2p: Default::default(),
-                p2p_discovered: Default::default(),
                 p2p_dialog: Default::default(),
-                p2p_sync_debounce: Default::default(),
-                p2p_snapshot_debounce: Default::default(),
-                p2p_periodic: Default::default(),
-                p2p_snapshot_hash: Default::default(),
             }
         }
     }
@@ -268,6 +219,8 @@ mod imp {
     impl WidgetImpl for MomentumWindow {}
     impl Drop for MomentumWindow {
         fn drop(&mut self) {
+            self.engine.p2p_stop();
+            self.engine.stop_cli_server();
             self.tag_popover.unparent();
         }
     }
@@ -299,48 +252,43 @@ glib::wrapper! {
                     gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
+// ---- formatting of core types (the wording the po files carry) ---------------------
+
+/// Milliseconds → "1h 30m" or "45m".
 pub fn fmt_ms(ms: f64) -> String {
-    let m = (ms / 60000.0).round() as u64;
-    if m >= 60 {
-        format!("{}h {:02}m", m / 60, m % 60)
-    } else {
-        format!("{m}m")
-    }
+    momentum_core::text::format_estimate(ms)
+}
+/// "1h 30m", "45m", "2h" → ms
+pub fn parse_ms(s: &str) -> Option<f64> {
+    momentum_core::text::parse_estimate(s)
+}
+
+fn glib_day(d: &str) -> Option<glib::DateTime> {
+    let mut it = d.split('-').map(|x| x.parse::<i32>().ok());
+    glib::DateTime::from_local(it.next()??, it.next()??, it.next()??, 0, 0, 0.0).ok()
+}
+fn fmt_day_as(day: &str, f: &str) -> String {
+    glib_day(day)
+        .and_then(|d| d.format(f).ok())
+        .map(|g| g.to_string())
+        .unwrap_or_else(|| day.to_string())
 }
 /// Relative day label: Today, Tomorrow, Yesterday, a weekday within the week, else a locale date.
-pub fn fmt_day(day: &str) -> String {
-    let parse = |d: &str| -> Option<glib::DateTime> {
-        let mut it = d.split('-').map(|x| x.parse::<i32>().ok());
-        glib::DateTime::from_local(it.next()??, it.next()??, it.next()??, 0, 0, 0.0).ok()
-    };
-    let (Some(target), Some(today)) = (parse(day), parse(&today_str())) else {
-        return day.to_string();
-    };
-    let diff = (target.to_unix() - today.to_unix()) / 86_400;
-    let fmt = |f: &str| {
-        target
-            .format(f)
-            .map(|g| g.to_string())
-            .unwrap_or_else(|_| day.to_string())
-    };
-    match diff {
-        0 => gettext("Today"),
-        1 => gettext("Tomorrow"),
-        -1 => gettext("Yesterday"),
-        2..=6 => fmt("%A"),
-        _ if target.year() == today.year() => fmt("%-d %B"),
-        _ => fmt("%-d %B %Y"),
+pub fn fmt_day(label: &DayLabel) -> String {
+    match label.relation {
+        DayRelation::Today => gettext("Today"),
+        DayRelation::Tomorrow => gettext("Tomorrow"),
+        DayRelation::Yesterday => gettext("Yesterday"),
+        DayRelation::ThisWeek => fmt_day_as(&label.day, "%A"),
+        DayRelation::ThisYear => fmt_day_as(&label.day, "%-d %B"),
+        DayRelation::Other => fmt_day_as(&label.day, "%-d %B %Y"),
     }
 }
 
-/// Local clock time of a Unix millisecond timestamp, e.g. `14:30`.
-pub fn fmt_time(ms: u64) -> String {
-    glib::DateTime::from_unix_local(ms as i64 / 1000)
-        .and_then(|d| d.format("%H:%M"))
-        .map(|g| g.to_string())
-        .unwrap_or_default()
+/// A clock time as `14:30`.
+pub fn fmt_clock(t: &ClockTime) -> String {
+    format!("{:02}:{:02}", t.hour, t.minute)
 }
-
 /// "just now", "5 minutes ago", … for a past timestamp in ms.
 pub fn ago_text(ms: u64) -> String {
     let secs = now_ms().saturating_sub(ms) / 1000;
@@ -353,7 +301,7 @@ pub fn ago_text(ms: u64) -> String {
     }
 }
 
-/// CSS colour string from the sync data → `#rrggbb` for Pango markup.
+/// CSS colour string → `#rrggbb` for Pango markup.
 pub fn hex_color(color: &str) -> Option<String> {
     let c = gtk::gdk::RGBA::parse(color).ok()?;
     Some(format!(
@@ -363,28 +311,9 @@ pub fn hex_color(color: &str) -> Option<String> {
         (c.blue() * 255.0) as u8
     ))
 }
-pub fn tag_color(g: &Tag) -> Option<&str> {
-    g.color
-        .as_deref()
-        .or_else(|| g.theme.get("primary").and_then(Value::as_str))
-}
 
-/// Tasks in `archiveYoung` and `archiveOld` (kept in `state.rest` by sp-sync).
-fn archived_tasks(store: &Store) -> Vec<Task> {
-    ["archiveYoung", "archiveOld"]
-        .iter()
-        .filter_map(|k| store.state.rest.get(*k)?.get("task")?.get("entities")?.as_object())
-        .flat_map(|e| {
-            e.values()
-                .filter_map(|v| serde_json::from_value::<Task>(v.clone()).ok())
-        })
-        .collect()
-}
-
-/// Short, human description of a repeat config: "Repeats every Monday", "Repeats daily", …
-pub fn repeat_text(c: &RepeatCfg) -> String {
-    let every = c.repeat_every.max(1);
-    let names = [
+fn weekday_names() -> [String; 7] {
+    [
         gettext("Sunday"),
         gettext("Monday"),
         gettext("Tuesday"),
@@ -392,71 +321,65 @@ pub fn repeat_text(c: &RepeatCfg) -> String {
         gettext("Thursday"),
         gettext("Friday"),
         gettext("Saturday"),
-    ];
-    let days: Vec<&String> = c
-        .weekdays()
-        .iter()
-        .zip(names.iter())
-        .filter(|(on, _)| **on)
-        .map(|(_, n)| n)
-        .collect();
-    match c.repeat_cycle.as_str() {
-        "DAILY" if every == 1 => gettext("Repeats daily"),
-        "DAILY" => format!("{} {every} {}", gettext("Repeats every"), gettext("days")),
-        "WEEKLY" if days.len() == 7 && every == 1 => gettext("Repeats daily"),
-        "WEEKLY" if days.len() == 1 && every == 1 => format!("{} {}", gettext("Repeats every"), days[0]),
-        "WEEKLY" => {
-            let list = days
+    ]
+}
+
+/// Short, human description of a repeat schedule: "Repeats every Monday", "Repeats daily", …
+pub fn repeat_text(d: &RepeatDescription) -> String {
+    let names = weekday_names();
+    let name = |wd: u32| names.get(wd as usize).cloned().unwrap_or_default();
+    match d {
+        RepeatDescription::Daily => gettext("Repeats daily"),
+        RepeatDescription::EveryNDays { n } => format!("{} {n} {}", gettext("Repeats every"), gettext("days")),
+        RepeatDescription::EveryWeekday { weekday } => format!("{} {}", gettext("Repeats every"), name(*weekday)),
+        RepeatDescription::Weekly { n, weekdays } => {
+            let list = weekdays
                 .iter()
-                .map(|d| d.chars().take(3).collect::<String>())
+                .map(|d| name(*d).chars().take(3).collect::<String>())
                 .collect::<Vec<_>>()
                 .join(", ");
-            if every == 1 {
+            if *n == 1 {
                 format!("{} {list}", gettext("Repeats weekly on"))
             } else {
-                format!("{} {every} {} {list}", gettext("Repeats every"), gettext("weeks on"))
+                format!("{} {n} {} {list}", gettext("Repeats every"), gettext("weeks on"))
             }
         }
-        "MONTHLY" => {
-            let day = if let Some((w, d)) = c.nth_weekday_anchor() {
-                let which = match w {
-                    1 => gettext("the first"),
-                    2 => gettext("the second"),
-                    3 => gettext("the third"),
-                    4 => gettext("the fourth"),
-                    _ => gettext("the last"),
-                };
-                format!("{which} {}", names[d as usize])
-            } else if c.monthly_last_day {
-                gettext("the last day")
-            } else {
-                match c.start_date.as_deref().and_then(parse_day) {
-                    Some((_, _, d)) => format!("{} {}", gettext("the"), ordinal(d)),
-                    None => gettext("the same day"),
+        RepeatDescription::Monthly { n, rule } => {
+            let day = match rule {
+                MonthlyRule::NthWeekday { week, weekday } => {
+                    let which = match week {
+                        1 => gettext("the first"),
+                        2 => gettext("the second"),
+                        3 => gettext("the third"),
+                        4 => gettext("the fourth"),
+                        _ => gettext("the last"),
+                    };
+                    format!("{which} {}", name(*weekday))
                 }
+                MonthlyRule::LastDay => gettext("the last day"),
+                MonthlyRule::DayOfMonth { day } => format!("{} {}", gettext("the"), ordinal(*day)),
+                MonthlyRule::SameDay => gettext("the same day"),
             };
-            if every == 1 {
+            if *n == 1 {
                 format!("{} {day}", gettext("Repeats monthly on"))
             } else {
-                format!("{} {every} {} {day}", gettext("Repeats every"), gettext("months on"))
+                format!("{} {n} {} {day}", gettext("Repeats every"), gettext("months on"))
             }
         }
-        "YEARLY" => {
-            let date = c
-                .start_date
-                .as_deref()
-                .and_then(parse_day)
-                .and_then(|(y, m, d)| glib::DateTime::from_local(y as i32, m as i32, d as i32, 0, 0, 0.0).ok())
+        RepeatDescription::Yearly { n, month, day } => {
+            // The year does not show; 2000 is a leap year so 29 February stays valid.
+            let date = glib::DateTime::from_local(2000, *month as i32, *day as i32, 0, 0, 0.0)
+                .ok()
                 .and_then(|d| d.format("%-d %B").ok())
                 .map(|g| g.to_string())
                 .unwrap_or_default();
-            if every == 1 {
+            if *n == 1 {
                 format!("{} {date}", gettext("Repeats yearly on"))
             } else {
-                format!("{} {every} {} {date}", gettext("Repeats every"), gettext("years on"))
+                format!("{} {n} {} {date}", gettext("Repeats every"), gettext("years on"))
             }
         }
-        _ => gettext("Repeats"),
+        RepeatDescription::Repeats => gettext("Repeats"),
     }
 }
 fn ordinal(d: u32) -> String {
@@ -470,21 +393,30 @@ fn ordinal(d: u32) -> String {
     format!("{d}{suffix}")
 }
 
-/// "1h 30m", "45m", "2h" → ms
-pub fn parse_ms(s: &str) -> Option<f64> {
-    let mut total = 0.0;
-    let mut num = String::new();
-    let mut any = false;
-    for c in s.chars() {
-        if c.is_ascii_digit() || c == '.' {
-            num.push(c)
-        } else if c == 'h' || c == 'm' {
-            total += num.parse::<f64>().ok()? * if c == 'h' { 3_600_000.0 } else { 60_000.0 };
-            num.clear();
-            any = true;
-        }
+/// `mo` over the data directory's socket: changes and sync requests arrive on a
+/// background thread and are handed to the main loop.
+#[cfg(target_os = "linux")]
+struct CliBridge(glib::SendWeakRef<MomentumWindow>);
+#[cfg(target_os = "linux")]
+impl momentum_core::ipc::CliDelegate for CliBridge {
+    fn store_changed(&self) {
+        let w = self.0.clone();
+        glib::idle_add_once(move || {
+            if let Some(w) = w.upgrade() {
+                w.import_cli_config();
+                w.refresh();
+            }
+        });
     }
-    any.then_some(total)
+    fn sync_requested(&self) {
+        let w = self.0.clone();
+        glib::idle_add_once(move || {
+            if let Some(w) = w.upgrade() {
+                w.import_cli_config();
+                w.sync();
+            }
+        });
+    }
 }
 
 impl MomentumWindow {
@@ -492,14 +424,30 @@ impl MomentumWindow {
         glib::Object::builder().property("application", app).build()
     }
 
+    /// The application core this window renders and drives.
+    pub fn engine(&self) -> Arc<Engine> {
+        self.imp().engine.clone()
+    }
+
     fn setup(&self) {
         let imp = self.imp();
+        self.apply_preferences();
+        self.import_cli_config();
+        self.export_cli_config();
         imp.settings.connect_changed(
-            Some("p2p-enabled"),
+            Some("sync-method"),
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
-                move |_, _| w.p2p_apply_setting()
+                move |_, _| {
+                    if let Some(id) = w.imp().sync_debounce.borrow_mut().take() {
+                        id.remove();
+                    }
+                    w.imp().nearby_syncing.set(false);
+                    w.set_sync_error(None);
+                    w.p2p_apply_setting();
+                    w.export_cli_config();
+                }
             ),
         );
         glib::idle_add_local_once(glib::clone!(
@@ -546,39 +494,45 @@ impl MomentumWindow {
             );
         }
         // Stateful sort action backed by GSettings; the header menu's radio items target it.
+        self.add_action(&imp.settings.create_action("group-by"));
         self.add_action(&imp.settings.create_action("task-sort"));
         self.add_action(&imp.settings.create_action("sort-direction"));
         self.add_action(&imp.settings.create_action("upcoming-range"));
-        imp.settings.connect_changed(
-            Some("upcoming-range"),
-            glib::clone!(
-                #[weak(rename_to = w)]
-                self,
-                move |_, _| w.refresh_tasks()
-            ),
-        );
+        // The preferences the core computes with: handed over whenever they change.
+        for key in ["group-by", "task-sort", "sort-direction", "upcoming-range"] {
+            imp.settings.connect_changed(
+                Some(key),
+                glib::clone!(
+                    #[weak(rename_to = w)]
+                    self,
+                    move |_, _| {
+                        w.apply_preferences();
+                        w.refresh_tasks();
+                    }
+                ),
+            );
+        }
+        for key in [
+            "auto-archive",
+            "morning-summary-enabled",
+            "morning-summary-hour",
+            "morning-summary-minute",
+        ] {
+            imp.settings.connect_changed(
+                Some(key),
+                glib::clone!(
+                    #[weak(rename_to = w)]
+                    self,
+                    move |_, _| w.apply_preferences()
+                ),
+            );
+        }
         self.update_selection_ui();
         imp.banner.connect_button_clicked(glib::clone!(
             #[weak(rename_to = w)]
             self,
-            move |_| crate::prefs::MomentumPrefs::default().present(Some(&w))
+            move |_| w.show_sync_error()
         ));
-        imp.settings.connect_changed(
-            Some("task-sort"),
-            glib::clone!(
-                #[weak(rename_to = w)]
-                self,
-                move |_, _| w.refresh_tasks()
-            ),
-        );
-        imp.settings.connect_changed(
-            Some("sort-direction"),
-            glib::clone!(
-                #[weak(rename_to = w)]
-                self,
-                move |_, _| w.refresh_tasks()
-            ),
-        );
         imp.settings.connect_changed(
             Some("colorful-labels"),
             glib::clone!(
@@ -597,10 +551,7 @@ impl MomentumWindow {
             false,
             move |_, value, _, _| {
                 let Ok(text) = value.get::<String>() else { return false };
-                let is_task_ids = text
-                    .lines()
-                    .all(|l| w.imp().store.borrow().state.task.entities.contains_key(l.trim()));
-                if is_task_ids {
+                if w.engine().is_task_id_list(text.clone()) {
                     return false; // our own row drags are handled by the row targets
                 }
                 w.add_from_text(&text);
@@ -624,8 +575,8 @@ impl MomentumWindow {
             }
         ));
         // If another process (mo without D-Bus, or a second instance) writes the store, reload it.
-        let dir = glib::user_data_dir().join("momentum");
-        let monitor = gio::File::for_path(dir.join("pending.json"))
+        let pending = PathBuf::from(imp.engine.data_dir()).join("pending.json");
+        let monitor = gio::File::for_path(pending)
             .monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)
             .ok();
         if let Some(m) = monitor {
@@ -633,21 +584,23 @@ impl MomentumWindow {
                 #[weak(rename_to = w)]
                 self,
                 move |_, _, _, event| {
-                    if event != gio::FileMonitorEvent::ChangesDoneHint || w.imp().syncing.get() {
+                    if event != gio::FileMonitorEvent::ChangesDoneHint {
                         return;
                     }
-                    let on_disk = Store::load(glib::user_data_dir().join("momentum"));
-                    let mine = w.imp().store.borrow();
-                    if on_disk.pending.len() != mine.pending.len()
-                        || on_disk.meta.vector_clock != mine.meta.vector_clock
-                    {
-                        drop(mine);
-                        *w.imp().store.borrow_mut() = on_disk;
+                    if w.engine().reload_from_disk() {
                         w.refresh();
                     }
                 }
             ));
             *imp.store_monitor.borrow_mut() = Some(m);
+        }
+        // `mo` on the same machine can also hand actions over the data directory's socket.
+        #[cfg(target_os = "linux")]
+        {
+            let bridge = Arc::new(CliBridge(glib::SendWeakRef::from(self.downgrade())));
+            if let Err(e) = imp.engine.clone().serve_cli(bridge) {
+                tracing::warn!("cli socket: {e}");
+            }
         }
         imp.search_entry.connect_search_changed(glib::clone!(
             #[weak(rename_to = w)]
@@ -731,8 +684,8 @@ impl MomentumWindow {
             }),
             act("toggle-done", |w| {
                 if let Some(id) = w.focused_task() {
-                    let done = w.imp().store.borrow().state.task.entities[&id].is_done;
-                    w.set_done(&id, !done);
+                    let out = w.engine().toggle_done(id);
+                    w.apply(out);
                 }
             }),
             act("delete-task", |w| {
@@ -744,43 +697,12 @@ impl MomentumWindow {
             // Context-menu actions carry the target id as a string parameter.
             targeted("ctx-open", |w, id| w.open_task(id)),
             targeted("ctx-done", |w, id| {
-                let done = w
-                    .imp()
-                    .store
-                    .borrow()
-                    .state
-                    .task
-                    .entities
-                    .get(id)
-                    .map(|t| t.is_done)
-                    .unwrap_or(false);
-                w.set_done(id, !done);
+                let out = w.engine().toggle_done(id.into());
+                w.apply(out);
             }),
             targeted("ctx-today", |w, id| {
-                let planned = w
-                    .imp()
-                    .store
-                    .borrow()
-                    .state
-                    .task
-                    .entities
-                    .get(id)
-                    .and_then(|t| t.due_day.clone())
-                    == Some(today_str());
-                if planned {
-                    w.dispatch(Action::RemoveFromToday {
-                        task_ids: vec![id.to_string()],
-                    });
-                    w.toast_undo(
-                        &gettext("Removed from today"),
-                        vec![Action::PlanForToday {
-                            task_ids: vec![id.to_string()],
-                            today: today_str(),
-                        }],
-                    );
-                } else {
-                    w.drop_task(id, &View::Today);
-                }
+                let out = w.engine().toggle_today(id.into());
+                w.apply(out);
             }),
             targeted("ctx-tonight", |w, id| {
                 let ids = w.selection_or(id);
@@ -801,22 +723,18 @@ impl MomentumWindow {
             targeted("ctx-move", |w, id| w.move_to_dialog(id)),
             targeted("ctx-repeat", |w, id| crate::repeat_dialog::open(w, id)),
             targeted("ctx-delete", |w, id| w.delete_task(id)),
-            targeted("ctx-open-project", |w, id| w.go_to(View::Project(id.into()))),
+            targeted("ctx-open-project", |w, id| w.go_to(View::project(id))),
             targeted("ctx-new-task", |w, id| {
-                w.go_to(View::Project(id.into()));
+                w.go_to(View::project(id));
                 w.new_task_dialog();
             }),
-            targeted("ctx-edit-project", |w, id| {
-                w.edit_context_dialog_for(View::Project(id.into()))
-            }),
+            targeted("ctx-edit-project", |w, id| w.edit_context_dialog_for(View::project(id))),
             targeted("ctx-delete-project", |w, id| {
-                w.delete_context_dialog_for(View::Project(id.into()))
+                w.delete_context_dialog_for(View::project(id))
             }),
-            targeted("ctx-open-tag", |w, id| w.go_to(View::Tag(id.into()))),
-            targeted("ctx-edit-tag", |w, id| w.edit_context_dialog_for(View::Tag(id.into()))),
-            targeted("ctx-delete-tag", |w, id| {
-                w.delete_context_dialog_for(View::Tag(id.into()))
-            }),
+            targeted("ctx-open-tag", |w, id| w.go_to(View::tag(id))),
+            targeted("ctx-edit-tag", |w, id| w.edit_context_dialog_for(View::tag(id))),
+            targeted("ctx-delete-tag", |w, id| w.delete_context_dialog_for(View::tag(id))),
             act("plan-today", |w| {
                 if let Some(id) = w.focused_task() {
                     w.drop_task(&id, &View::Today);
@@ -841,16 +759,7 @@ impl MomentumWindow {
             }),
             act("copy-title", |w| {
                 if let Some(id) = w.focused_task() {
-                    let title = w
-                        .imp()
-                        .store
-                        .borrow()
-                        .state
-                        .task
-                        .entities
-                        .get(&id)
-                        .map(|t| t.title.clone())
-                        .unwrap_or_default();
+                    let title = w.engine().task_title(id).unwrap_or_default();
                     w.clipboard().set_text(&title);
                     w.toast(&gettext("Title copied"));
                 }
@@ -861,35 +770,19 @@ impl MomentumWindow {
                 }
             }),
             act("move-next-week", |w| {
-                let ids: Vec<String> = if w.imp().selecting.get() {
-                    w.selected_tasks().iter().map(|t| t.id.clone()).collect()
-                } else {
-                    w.focused_task().into_iter().collect()
-                };
+                let ids = w.selected_or_focused();
                 w.move_to_next_week(&ids);
             }),
             act("move-tomorrow", |w| {
-                let ids: Vec<String> = if w.imp().selecting.get() {
-                    w.selected_tasks().iter().map(|t| t.id.clone()).collect()
-                } else {
-                    w.focused_task().into_iter().collect()
-                };
+                let ids = w.selected_or_focused();
                 w.move_to_tomorrow(&ids);
             }),
             act("toggle-tonight", |w| {
-                let ids: Vec<String> = if w.imp().selecting.get() {
-                    w.selected_tasks().iter().map(|t| t.id.clone()).collect()
-                } else {
-                    w.focused_task().into_iter().collect()
-                };
+                let ids = w.selected_or_focused();
                 w.toggle_tonight(&ids);
             }),
             act("toggle-morning", |w| {
-                let ids: Vec<String> = if w.imp().selecting.get() {
-                    w.selected_tasks().iter().map(|t| t.id.clone()).collect()
-                } else {
-                    w.focused_task().into_iter().collect()
-                };
+                let ids = w.selected_or_focused();
                 w.toggle_morning(&ids);
             }),
             act("repeat", |w| {
@@ -927,7 +820,12 @@ impl MomentumWindow {
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
-                move |_, _| w.update_sync_button()
+                move |_, key| {
+                    w.update_sync_button();
+                    if ["nextcloud-server", "nextcloud-user", "nextcloud-folder", "compress"].contains(&key) {
+                        w.export_cli_config();
+                    }
+                }
             ),
         );
         self.update_sync_button();
@@ -941,9 +839,7 @@ impl MomentumWindow {
                 move || {
                     w.check_reminders();
                     w.update_sync_button();
-                    let today = today_str();
-                    if *w.imp().last_day.borrow() != today {
-                        *w.imp().last_day.borrow_mut() = today;
+                    if w.engine().day_changed() {
                         w.spawn_repeats();
                         w.refresh();
                     }
@@ -985,11 +881,11 @@ impl MomentumWindow {
                 self.refresh();
             }
             if std::env::var_os("MOMENTUM_SCREENSHOT_DONE").is_some() {
-                let ids: Vec<String> = imp.store.borrow().state.today_ids();
+                let ids: Vec<String> = imp.engine.with_store(|s| s.state.today_ids());
                 for id in ids {
-                    imp.store.borrow_mut().dispatch(Action::UpdateTask {
+                    imp.engine.dispatch(Action::UpdateTask {
                         id,
-                        changes: [("isDone".to_string(), json!(true))].into_iter().collect(),
+                        changes: [("isDone".to_string(), serde_json::json!(true))].into_iter().collect(),
                     });
                 }
                 self.refresh();
@@ -1036,37 +932,221 @@ impl MomentumWindow {
         }
     }
 
+    /// The sort, direction, Coming Up range and auto-archive preferences, as the core needs them.
+    fn apply_preferences(&self) {
+        let s = &self.imp().settings;
+        let sort = match s.string("task-sort").as_str() {
+            "title" => SortKey::Title,
+            "due" => SortKey::Due,
+            "estimate" => SortKey::Estimate,
+            "created" => SortKey::Created,
+            _ => SortKey::Manual,
+        };
+        let direction = if s.string("sort-direction") == "descending" {
+            SortDirection::Descending
+        } else {
+            SortDirection::Ascending
+        };
+        self.engine().set_preferences(Preferences {
+            group_by: match s.string("group-by").as_str() {
+                "none" => GroupBy::None,
+                "project" => GroupBy::Project,
+                "tag" => GroupBy::Tag,
+                "estimate" => GroupBy::Estimate,
+                _ => GroupBy::MorningNight,
+            },
+            sort,
+            direction,
+            upcoming_days: s.string("upcoming-range").parse().unwrap_or(7),
+            auto_archive: s.boolean("auto-archive"),
+            morning_summary_enabled: s.boolean("morning-summary-enabled"),
+            morning_summary_time: ClockTime {
+                hour: s.int("morning-summary-hour") as u32,
+                minute: s.int("morning-summary-minute") as u32,
+            },
+        });
+    }
+
+    /// What a change did: rebuild the views, say so in a toast (with Undo when the change
+    /// pushed a batch), and upload right away when the change asks for it.
+    pub(crate) fn apply(&self, out: Outcome) {
+        if out.changed {
+            self.refresh();
+        }
+        if let Some(m) = &out.message {
+            let text = crate::messages::text(m);
+            match out.undo {
+                Some(batch) => self.toast_undo(&text, batch),
+                None => self.toast(&text),
+            }
+        }
+        if out.sync_now && self.sync_configured() {
+            self.sync();
+        }
+    }
+
     fn sync_configured(&self) -> bool {
         // Demo/screenshot runs must never touch a real server.
         if std::env::var_os("MOMENTUM_DEMO").is_some() {
             return false;
         }
         let s = &self.imp().settings;
-        s.boolean("sync-enabled")
+        crate::prefs::sync_method(s) == "nextcloud"
             && ["nextcloud-server", "nextcloud-user", "nextcloud-folder"]
                 .iter()
                 .all(|k| !s.string(k).trim().is_empty())
     }
     pub fn update_sync_button(&self) {
         let imp = self.imp();
-        let nextcloud = self.sync_configured();
-        let p2p = self.p2p_enabled() && imp.p2p.borrow().is_some();
-        let on = nextcloud || p2p;
-        imp.sync_button.set_visible(on);
-        imp.sync_label.set_visible(on && !imp.rows.borrow().is_empty());
-        let mut parts = vec![];
-        if nextcloud {
-            let last = imp.settings.int64("last-sync-ms") as u64;
-            parts.push(if last == 0 {
-                gettext("Not synced yet")
+        let status = imp.engine.sync_status();
+        let method = crate::prefs::sync_method(&imp.settings);
+        let demo = std::env::var_os("MOMENTUM_DEMO").is_some();
+        let active = !demo && method != "off";
+        let busy = imp.syncing.get() || (method == "libresync" && imp.nearby_syncing.get());
+        let service = match method.as_str() {
+            "nextcloud" => gettext("Nextcloud"),
+            "libresync" => gettext("LibreSync"),
+            _ => gettext("Sync"),
+        };
+        let error = imp.sync_error.borrow();
+        let text = if demo {
+            gettext("Preview mode · Sync is off")
+        } else if busy {
+            format!(
+                "{} · {}",
+                if imp.syncing.get() {
+                    gettext("Nextcloud")
+                } else {
+                    service.clone()
+                },
+                gettext("Syncing…")
+            )
+        } else if !active {
+            gettext("Sync is off")
+        } else if error.is_some() {
+            format!("{service} · {}", gettext("Sync needs attention"))
+        } else if method == "nextcloud" && !self.sync_configured() {
+            format!("{service} · {}", gettext("Finish setup in Preferences"))
+        } else if method == "libresync" && status.linked_devices == 0 {
+            format!("{service} · {}", gettext("No linked devices"))
+        } else {
+            let last = if method == "nextcloud" {
+                status.last_nextcloud_ms
             } else {
-                format!("{} {}", gettext("Last synced"), ago_text(last))
-            });
+                status.last_nearby_ms
+            };
+            format!(
+                "{service} · {}",
+                if last == 0 {
+                    gettext("Not synced yet")
+                } else {
+                    format!("{} {}", gettext("Last synced"), ago_text(last))
+                }
+            )
+        };
+        imp.sync_label.set_visible(true);
+        imp.sync_label.set_text(&text);
+        imp.sync_button.set_visible(active || busy);
+        imp.sync_button.set_sensitive(active && !busy);
+        if busy {
+            imp.sync_button.set_child(Some(&adw::Spinner::new()));
+        } else {
+            imp.sync_button.set_icon_name("view-refresh-symbolic");
         }
-        if let Some(text) = self.p2p_status_text().filter(|_| p2p) {
-            parts.push(text);
+        imp.sync_button.set_tooltip_text(Some(&text));
+        imp.sync_retry.set_visible(active);
+        imp.sync_retry.set_sensitive(!busy);
+        imp.sync_retry.set_label(&if error.is_some() {
+            gettext("Retry")
+        } else {
+            gettext("Sync Now")
+        });
+        imp.banner.set_revealed(active && error.is_some());
+        imp.banner
+            .set_title(&format!("{service} · {}", gettext("Sync needs attention")));
+    }
+
+    pub fn set_sync_error(&self, error: Option<String>) {
+        *self.imp().sync_error.borrow_mut() = error;
+        self.update_sync_button();
+    }
+
+    fn show_sync_error(&self) {
+        let Some(error) = self.imp().sync_error.borrow().clone() else {
+            return;
+        };
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Sync needs attention"))
+            .body(error)
+            .build();
+        dialog.add_responses(&[
+            ("close", &gettext("Close")),
+            ("preferences", &gettext("Preferences")),
+            ("retry", &gettext("Retry")),
+        ]);
+        dialog.set_close_response("close");
+        dialog.connect_response(
+            None,
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, response| {
+                    match response {
+                        "retry" => w.sync(),
+                        "preferences" => crate::prefs::MomentumPrefs::default().present(Some(&w)),
+                        _ => {}
+                    }
+                }
+            ),
+        );
+        dialog.present(Some(self));
+    }
+
+    fn import_cli_config(&self) {
+        // Import only connection fields, never the UI's selected provider.
+        let path = PathBuf::from(self.engine().data_dir()).join("cli-config.json");
+        let Ok(bytes) = std::fs::read(path) else { return };
+        let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+            return;
+        };
+        for (field, key) in [
+            ("server", "nextcloud-server"),
+            ("user", "nextcloud-user"),
+            ("folder", "nextcloud-folder"),
+        ] {
+            if let Some(text) = value[field].as_str() {
+                self.imp().settings.set_string(key, text).ok();
+            }
         }
-        imp.sync_label.set_text(&parts.join("  ·  "));
+        if let Some(value) = value["compress"].as_bool() {
+            self.imp().settings.set_boolean("compress", value).ok();
+        }
+    }
+
+    fn export_cli_config(&self) {
+        let settings = &self.imp().settings;
+        let value = serde_json::json!({
+            "method": if std::env::var_os("MOMENTUM_DEMO").is_some() { "off".into() } else { crate::prefs::sync_method(settings) },
+            "server": settings.string("nextcloud-server").as_str(),
+            "user": settings.string("nextcloud-user").as_str(),
+            "folder": settings.string("nextcloud-folder").as_str(),
+            "compress": settings.boolean("compress"),
+        });
+        let path = PathBuf::from(self.engine().data_dir()).join("cli-config.json");
+        let bytes = serde_json::to_vec_pretty(&value).expect("serializable settings");
+        if std::fs::read(&path).ok().as_ref() == Some(&bytes) {
+            return;
+        }
+        if let Err(error) = gio::File::for_path(path).replace_contents(
+            &bytes,
+            None,
+            false,
+            gio::FileCreateFlags::PRIVATE,
+            gio::Cancellable::NONE,
+        ) {
+            tracing::warn!("Could not save CLI sync preferences: {error}");
+            self.toast(&gettext("Could not save sync preferences for the command line."));
+        }
     }
     fn focused_task(&self) -> Option<String> {
         let group = self.imp().task_box.focus_child()?;
@@ -1074,6 +1154,14 @@ impl MomentumWindow {
         let row = list.focus_child()?.downcast::<gtk::ListBoxRow>().ok()?;
         let id = row.widget_name().to_string();
         (!id.is_empty() && !id.contains(':')).then_some(id)
+    }
+    /// The selection in selection mode, else the focused task.
+    fn selected_or_focused(&self) -> Vec<String> {
+        if self.imp().selecting.get() {
+            self.selected_ids()
+        } else {
+            self.focused_task().into_iter().collect()
+        }
     }
 
     // ---- selection mode (HIG: header toggle, per-row checks, action bar) ----
@@ -1137,15 +1225,18 @@ impl MomentumWindow {
         }
     }
 
-    fn selected_tasks(&self) -> Vec<Task> {
+    /// Selected task ids in the visual order of the current list.
+    fn selected_ids(&self) -> Vec<String> {
         let imp = self.imp();
-        let store = imp.store.borrow();
         let sel = imp.selected.borrow();
-        imp.rows
-            .borrow()
-            .iter()
-            .filter(|r| sel.contains(*r))
-            .filter_map(|id| store.state.task.entities.get(id).cloned())
+        imp.rows.borrow().iter().filter(|r| sel.contains(*r)).cloned().collect()
+    }
+
+    fn selected_tasks(&self) -> Vec<TaskRow> {
+        let engine = self.engine();
+        self.selected_ids()
+            .into_iter()
+            .filter_map(|id| engine.task_row(id))
             .collect()
     }
 
@@ -1175,245 +1266,63 @@ impl MomentumWindow {
     fn toggle_morning(&self, ids: &[String]) {
         self.toggle_slot(ids, Slot::Morning);
     }
-    /// Move tasks between the plain day and a slot (Morning or Tonight): add or remove the
-    /// slot's tag, drop the other slot's tag, and plan for today if needed.
+    /// Move tasks between the plain day and a slot (Morning or Tonight).
     fn toggle_slot(&self, ids: &[String], slot: Slot) {
-        let evening = self.ensure_slot_tag(slot);
-        let other = Self::slot_tag_id(&self.imp().store.borrow(), slot.other());
-        let today = today_str();
-        let tasks: Vec<Task> = {
-            let store = self.imp().store.borrow();
-            ids.iter()
-                .filter_map(|i| store.state.task.entities.get(i).cloned())
-                .collect()
-        };
-        if tasks.is_empty() {
-            return;
-        }
-        // Whole batch goes the same direction as the first task.
-        let to_tonight = !tasks[0].tag_ids.contains(&evening);
-        let mut undo = vec![];
-        for t in &tasks {
-            let mut ids = t.tag_ids.clone();
-            if to_tonight {
-                if !ids.contains(&evening) {
-                    ids.push(evening.clone());
-                }
-                if let Some(o) = &other {
-                    ids.retain(|i| i != o);
-                }
-            } else {
-                ids.retain(|i| *i != evening);
-            }
-            let mut ch = Map::new();
-            ch.insert("tagIds".into(), json!(ids));
-            let mut back = Map::new();
-            back.insert("tagIds".into(), json!(t.tag_ids));
-            if t.plan_day().as_deref() != Some(&today) {
-                ch.insert("dueDay".into(), json!(today));
-                ch.insert("dueWithTime".into(), Value::Null);
-                back.insert("dueDay".into(), json!(t.due_day));
-            }
-            undo.push(Action::UpdateTask {
-                id: t.id.clone(),
-                changes: back,
-            });
-            self.imp().store.borrow_mut().dispatch(Action::UpdateTask {
-                id: t.id.clone(),
-                changes: ch,
-            });
-        }
-        if self.imp().selecting.get() {
+        let out = self.engine().toggle_slot(ids.to_vec(), slot);
+        if out.changed && self.imp().selecting.get() {
             self.set_selecting(false);
         }
-        self.refresh();
-        let msg = match (to_tonight, tasks.len(), slot) {
-            (true, 1, Slot::Tonight) => gettext("Moved to tonight"),
-            (true, 1, Slot::Morning) => gettext("Moved to the morning"),
-            (false, 1, _) => gettext("Moved to today"),
-            (true, n, Slot::Tonight) => format!("{n} {}", gettext("tasks moved to tonight")),
-            (true, n, Slot::Morning) => format!("{n} {}", gettext("tasks moved to the morning")),
-            (false, n, _) => format!("{n} {}", gettext("tasks moved to today")),
-        };
-        self.toast_undo(&msg, undo);
+        self.apply(out);
     }
 
     /// Push tasks to tomorrow (keeps tags; clears any time of day).
     fn move_to_tomorrow(&self, ids: &[String]) {
-        let tomorrow = day_str(day_number(&today_str()).unwrap_or(0) + 1);
-        self.move_to_day(ids, &tomorrow, &gettext("tomorrow"));
-    }
-
-    /// The next Monday strictly after today (a Monday moves to the following Monday).
-    fn next_monday() -> String {
-        let today = day_number(&today_str()).unwrap_or(0);
-        let ahead = (8 - weekday(today) as i64) % 7; // weekday: 0 = Sunday … 1 = Monday
-        day_str(today + if ahead == 0 { 7 } else { ahead })
+        let out = self.engine().move_to_tomorrow(ids.to_vec());
+        self.leave_selection_and_apply(out);
     }
 
     fn move_to_next_week(&self, ids: &[String]) {
-        self.move_to_day(ids, &Self::next_monday(), &gettext("next week"));
+        let out = self.engine().move_to_next_week(ids.to_vec());
+        self.leave_selection_and_apply(out);
     }
 
-    /// Push tasks to a given day (keeps tags; clears any time of day), with one undo.
-    fn move_to_day(&self, ids: &[String], tomorrow: &str, label: &str) {
-        let tomorrow = tomorrow.to_string();
-        let tasks: Vec<Task> = {
-            let store = self.imp().store.borrow();
-            ids.iter()
-                .filter_map(|i| store.state.task.entities.get(i).cloned())
-                .collect()
-        };
-        let mut undo = vec![];
-        for t in tasks.iter().filter(|t| t.plan_day().as_deref() != Some(&tomorrow)) {
-            let mut back = Map::new();
-            back.insert("dueDay".into(), json!(t.due_day));
-            back.insert("dueWithTime".into(), json!(t.due_with_time));
-            undo.push(Action::UpdateTask {
-                id: t.id.clone(),
-                changes: back,
-            });
-            let mut ch = Map::new();
-            ch.insert("dueDay".into(), json!(tomorrow));
-            ch.insert("dueWithTime".into(), Value::Null);
-            self.imp().store.borrow_mut().dispatch(Action::UpdateTask {
-                id: t.id.clone(),
-                changes: ch,
-            });
-        }
-        if undo.is_empty() {
-            return;
-        }
-        if self.imp().selecting.get() {
+    /// A change made from selection mode ends it when something happened.
+    fn leave_selection_and_apply(&self, out: Outcome) {
+        if out.changed && self.imp().selecting.get() {
             self.set_selecting(false);
         }
-        self.refresh();
-        let n = undo.len();
-        let msg = if n == 1 {
-            format!("{} {label}", gettext("Moved to"))
-        } else {
-            format!("{n} {} {label}", gettext("tasks moved to"))
-        };
-        self.toast_undo(&msg, undo);
+        self.apply(out);
     }
 
     fn bulk_done(&self) {
-        let tasks = self.selected_tasks();
-        let n = tasks.len();
-        let undo: Vec<Action> = tasks
-            .iter()
-            .map(|t| Action::UpdateTask {
-                id: t.id.clone(),
-                changes: [("isDone".to_string(), json!(t.is_done))].into_iter().collect(),
-            })
-            .collect();
-        for t in &tasks {
-            self.imp().store.borrow_mut().dispatch(Action::UpdateTask {
-                id: t.id.clone(),
-                changes: [("isDone".to_string(), json!(true))].into_iter().collect(),
-            });
-        }
+        let out = self.engine().bulk_done(self.selected_ids());
         self.set_selecting(false);
-        self.refresh();
-        let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
-        if let Some(archived) = self.auto_archive(&ids) {
-            // Restoring reopens the archived ones; the rest (subtasks) get their flag back.
-            let mut batch = archived;
-            batch.extend(undo.into_iter().filter(|a| match a {
-                Action::UpdateTask { id, .. } => {
-                    !ids.iter().any(|i| i == id) || tasks.iter().any(|t| t.id == *id && t.parent_id.is_some())
-                }
-                _ => true,
-            }));
-            self.toast_undo(&format!("{n} {}", gettext("tasks completed and archived")), batch);
-            return;
-        }
-        self.toast_undo(&format!("{n} {}", gettext("tasks completed")), undo);
+        self.apply(out);
     }
 
     fn bulk_today(&self) {
-        let tasks = self.selected_tasks();
-        let today = today_str();
-        let ids: Vec<String> = tasks
-            .iter()
-            .filter(|t| t.plan_day().as_deref() != Some(&today))
-            .map(|t| t.id.clone())
-            .collect();
-        if ids.is_empty() {
+        let out = self.engine().plan_for_today(self.selected_ids());
+        if !out.changed {
             return;
         }
-        let undo: Vec<Action> = tasks
-            .iter()
-            .filter(|t| ids.contains(&t.id))
-            .map(|t| match &t.due_day {
-                Some(d) => Action::PlanForToday {
-                    task_ids: vec![t.id.clone()],
-                    today: d.clone(),
-                },
-                None => Action::RemoveFromToday {
-                    task_ids: vec![t.id.clone()],
-                },
-            })
-            .collect();
-        let n = ids.len();
-        self.imp()
-            .store
-            .borrow_mut()
-            .dispatch(Action::PlanForToday { task_ids: ids, today });
         self.set_selecting(false);
-        self.refresh();
-        self.toast_undo(&format!("{n} {}", gettext("tasks planned for today")), undo);
+        self.apply(out);
     }
 
     fn bulk_delete(&self) {
-        let tasks = self.selected_tasks();
-        let n = tasks.len();
-        let mut undo = vec![];
-        for t in &tasks {
-            let subs: Vec<Task> = {
-                let store = self.imp().store.borrow();
-                t.sub_task_ids
-                    .iter()
-                    .filter_map(|i| store.state.task.entities.get(i).cloned())
-                    .collect()
-            };
-            undo.push(Action::AddTask {
-                task: t.clone(),
-                bottom: true,
-            });
-            for st in &subs {
-                undo.push(Action::AddSubTask {
-                    task: st.clone(),
-                    parent_id: t.id.clone(),
-                });
-            }
-            self.imp().store.borrow_mut().dispatch(Action::DeleteTask {
-                task: t.clone(),
-                sub_tasks: subs,
-            });
-        }
+        let out = self.engine().bulk_delete(self.selected_ids());
         self.set_selecting(false);
-        self.refresh();
-        self.toast_undo(&format!("{n} {}", gettext("tasks deleted")), undo);
+        self.apply(out);
     }
 
     /// Bulk add a tag: dropdown of tags, or type a new one.
     fn bulk_tag_dialog(&self) {
-        let tasks = self.selected_tasks();
-        if tasks.is_empty() {
+        let ids = self.selected_ids();
+        if ids.is_empty() {
             return;
         }
-        let tags: Vec<(String, String)> = self
-            .imp()
-            .store
-            .borrow()
-            .state
-            .tag
-            .iter()
-            .filter(|t| t.id != TODAY_TAG_ID)
-            .map(|t| (t.id.clone(), t.title.clone()))
-            .collect();
-        let names: Vec<&str> = tags.iter().map(|(_, t)| t.as_str()).collect();
+        let tags = self.engine().tags();
+        let names: Vec<&str> = tags.iter().map(|t| t.title.as_str()).collect();
         let content = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .spacing(12)
@@ -1425,12 +1334,7 @@ impl MomentumWindow {
         content.append(&drop_down);
         content.append(&entry);
         let d = adw::AlertDialog::builder()
-            .heading(format!(
-                "{} {} {}",
-                gettext("Add Tag to"),
-                tasks.len(),
-                gettext("Tasks")
-            ))
+            .heading(format!("{} {} {}", gettext("Add Tag to"), ids.len(), gettext("Tasks")))
             .extra_child(&content)
             .default_response("add")
             .build();
@@ -1450,48 +1354,16 @@ impl MomentumWindow {
                         return;
                     }
                     let typed = entry.text().trim().to_string();
-                    let tag_id = if !typed.is_empty() {
-                        let existing = w
-                            .imp()
-                            .store
-                            .borrow()
-                            .state
-                            .tag
-                            .iter()
-                            .find(|g| g.title.eq_ignore_ascii_case(&typed))
-                            .map(|g| g.id.clone());
-                        existing.unwrap_or_else(|| {
-                            let tag = Tag::new(&typed);
-                            let id = tag.id.clone();
-                            w.imp().store.borrow_mut().dispatch(Action::AddTag { tag });
-                            id
-                        })
+                    let out = if !typed.is_empty() {
+                        w.engine().add_tag_by_name(ids.clone(), typed)
                     } else {
                         match tags.get(drop_down.selected() as usize) {
-                            Some((id, _)) => id.clone(),
+                            Some(t) => w.engine().add_tag_to(ids.clone(), t.id.clone()),
                             None => return,
                         }
                     };
-                    let mut undo = vec![];
-                    for t in &tasks {
-                        if t.tag_ids.contains(&tag_id) {
-                            continue;
-                        }
-                        let mut ids = t.tag_ids.clone();
-                        ids.push(tag_id.clone());
-                        undo.push(Action::UpdateTask {
-                            id: t.id.clone(),
-                            changes: [("tagIds".to_string(), json!(t.tag_ids))].into_iter().collect(),
-                        });
-                        w.imp().store.borrow_mut().dispatch(Action::UpdateTask {
-                            id: t.id.clone(),
-                            changes: [("tagIds".to_string(), json!(ids))].into_iter().collect(),
-                        });
-                    }
-                    let n = undo.len();
                     w.set_selecting(false);
-                    w.refresh();
-                    w.toast_undo(&format!("{n} {}", gettext("tasks tagged")), undo);
+                    w.apply(out);
                 }
             ),
         );
@@ -1505,9 +1377,9 @@ impl MomentumWindow {
             return;
         }
         if let Some(pid) = id.strip_prefix("project:") {
-            self.go_to(View::Project(pid.into()));
+            self.go_to(View::project(pid));
         } else if let Some(tid) = id.strip_prefix("tag:") {
-            self.go_to(View::Tag(tid.into()));
+            self.go_to(View::tag(tid));
         } else if !id.is_empty() {
             self.open_task(id);
         }
@@ -1574,8 +1446,6 @@ impl MomentumWindow {
     }
 
     fn context_menu_model(&self, kind: &MenuKind, id: &str) -> gio::Menu {
-        let store = self.imp().store.borrow();
-        let today = today_str();
         let menu = gio::Menu::new();
         let item = |label: String, action: &str| {
             let it = gio::MenuItem::new(Some(&label), None);
@@ -1584,7 +1454,7 @@ impl MomentumWindow {
         };
         match kind {
             MenuKind::Task => {
-                let Some(t) = store.state.task.entities.get(id) else {
+                let Some(t) = self.engine().task_menu(id.to_string()) else {
                     return menu;
                 };
                 let a = gio::Menu::new();
@@ -1600,18 +1470,16 @@ impl MomentumWindow {
                 menu.append_section(None, &a);
                 // Scheduling moves in their own section, labelled so the group reads as one idea.
                 let m = gio::Menu::new();
-                let planned = t.plan_day().as_deref() == Some(&today);
                 m.append_item(&item(
-                    if planned {
+                    if t.planned_today {
                         gettext("Remove from Today")
                     } else {
                         gettext("Plan for Today")
                     },
                     "win.ctx-today",
                 ));
-                let slot = Self::slot_of(&store, t);
                 m.append_item(&item(
-                    if slot == Some(Slot::Morning) {
+                    if t.slot == Some(Slot::Morning) {
                         gettext("Move to Today")
                     } else {
                         gettext("Move to Morning")
@@ -1619,7 +1487,7 @@ impl MomentumWindow {
                     "win.ctx-morning",
                 ));
                 m.append_item(&item(
-                    if slot == Some(Slot::Tonight) {
+                    if t.slot == Some(Slot::Tonight) {
                         gettext("Move to Today")
                     } else {
                         gettext("Move to Tonight")
@@ -1628,14 +1496,14 @@ impl MomentumWindow {
                 ));
                 m.append_item(&item(gettext("Move to Tomorrow"), "win.ctx-tomorrow"));
                 m.append_item(&item(gettext("Move to Next Week"), "win.ctx-next-week"));
-                if t.parent_id.is_none() {
+                if t.top_level {
                     m.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
                 }
                 menu.append_section(None, &m);
-                if t.parent_id.is_none() {
+                if t.top_level {
                     let r = gio::Menu::new();
                     r.append_item(&item(
-                        if t.repeat_cfg_id.is_some() {
+                        if t.repeats {
                             gettext("Edit Repeat…")
                         } else {
                             gettext("Repeat…")
@@ -1674,21 +1542,36 @@ impl MomentumWindow {
     }
 
     /// Start a new boxed-list section (optionally titled), like an AdwPreferencesGroup.
-    fn new_section(&self, title: Option<&str>) -> gtk::ListBox {
+    fn new_section(&self, title: Option<&str>, task_group: Option<&TaskGroup>) -> gtk::ListBox {
         let imp = self.imp();
         let group = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .spacing(6)
             .build();
         if let Some(t) = title {
-            group.append(
-                &gtk::Label::builder()
-                    .label(t)
-                    .xalign(0.0)
-                    .margin_start(6)
-                    .css_classes(["heading"])
-                    .build(),
-            );
+            let label = gtk::Label::builder()
+                .label(t)
+                .xalign(0.0)
+                .wrap(true)
+                .margin_start(6)
+                .css_classes(["heading"])
+                .build();
+            let colored_heading = match task_group {
+                Some(TaskGroup::Tag { title, color, .. }) => Some((format!("#{title}"), color)),
+                Some(TaskGroup::Project { title, color, .. }) => Some((title.clone(), color)),
+                _ => None,
+            };
+            if let Some((name, color)) = colored_heading {
+                if let Some(hex) = color.as_deref().filter(|_| self.colorful()).and_then(hex_color) {
+                    let context = t.strip_suffix(&name).unwrap_or("");
+                    label.set_markup(&format!(
+                        "{}<span foreground=\"{hex}\">{}</span>",
+                        glib::markup_escape_text(context),
+                        glib::markup_escape_text(&name)
+                    ));
+                }
+            }
+            group.append(&label);
         }
         let list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
@@ -1711,7 +1594,7 @@ impl MomentumWindow {
         let existing = self.imp().current_list.borrow().clone();
         let list = match existing {
             Some(l) => l,
-            None => self.new_section(None),
+            None => self.new_section(None, None),
         };
         row.set_widget_name(id);
         list.append(row);
@@ -1791,49 +1674,25 @@ impl MomentumWindow {
         imp.add_entry.add_controller(focus);
     }
 
-    /// The `#word` under the cursor, as (start byte offset, text without `#`).
-    fn hash_word_at_cursor(&self) -> Option<(usize, String)> {
-        let entry = &self.imp().add_entry;
-        let text = entry.text();
-        let cursor: usize = text
-            .char_indices()
-            .nth(entry.position() as usize)
-            .map(|(i, _)| i)
-            .unwrap_or(text.len());
-        let start = text[..cursor].rfind(char::is_whitespace).map(|i| i + 1).unwrap_or(0);
-        let word = &text[start..cursor];
-        word.strip_prefix('#').map(|w| (start, w.to_string()))
-    }
-
     fn update_tag_completion(&self) {
         let imp = self.imp();
-        let Some((_, prefix)) = self.hash_word_at_cursor() else {
+        let entry: &gtk::Entry = &imp.add_entry;
+        let Some(word) = momentum_core::text::hash_word_at(&entry.text(), entry.position().max(0) as u32) else {
             imp.tag_popover.popdown();
             return;
         };
-        let store = imp.store.borrow();
-        let lower = prefix.to_lowercase();
         let colorful = self.colorful();
-        let matches: Vec<(String, Option<String>, usize)> = store
-            .state
-            .tag
-            .iter()
-            .filter(|t| t.id != TODAY_TAG_ID && t.title.to_lowercase().starts_with(&lower))
-            .map(|t| {
-                (
-                    t.title.clone(),
-                    tag_color(t).filter(|_| colorful).map(str::to_string),
-                    t.task_ids.len(),
-                )
-            })
-            .take(8)
-            .collect();
-        drop(store);
+        let matches = self.engine().tag_completions(word.prefix);
         imp.tag_list.remove_all();
-        for (title, color, count) in &matches {
+        for m in &matches {
             // Same look as the sidebar: coloured tag icon, name, and a dim task count.
             let icon = gtk::Image::from_icon_name("tag-symbolic");
-            if let Some(class) = color.as_deref().and_then(|c| self.color_class(c)) {
+            if let Some(class) = m
+                .color
+                .as_deref()
+                .filter(|_| colorful)
+                .and_then(|c| self.color_class(c))
+            {
                 icon.add_css_class(&class);
             }
             let row = gtk::Box::builder()
@@ -1844,23 +1703,21 @@ impl MomentumWindow {
                 .margin_bottom(4)
                 .build();
             row.append(&icon);
-            row.append(&gtk::Label::builder().label(title).xalign(0.0).hexpand(true).build());
+            row.append(&gtk::Label::builder().label(&m.title).xalign(0.0).hexpand(true).build());
             row.append(
                 &gtk::Label::builder()
-                    .label(count.to_string())
+                    .label(m.task_count.to_string())
                     .css_classes(["dim-label", "caption"])
                     .build(),
             );
             imp.tag_list.append(&row);
         }
-        let matches: Vec<String> = matches.into_iter().map(|(t, _, _)| t).collect();
-        *imp.tag_matches.borrow_mut() = matches;
+        *imp.tag_matches.borrow_mut() = matches.into_iter().map(|m| m.title).collect();
         if imp.tag_matches.borrow().is_empty() {
             imp.tag_popover.popdown();
         } else {
             imp.tag_list.select_row(imp.tag_list.row_at_index(0).as_ref());
             // Anchor under the text cursor rather than centred below the whole entry.
-            let entry: &gtk::Entry = &imp.add_entry;
             let byte_index = entry
                 .text()
                 .char_indices()
@@ -1882,37 +1739,25 @@ impl MomentumWindow {
         let Some(name) = imp.tag_matches.borrow().get(index.max(0) as usize).cloned() else {
             return;
         };
-        let Some((start, prefix)) = self.hash_word_at_cursor() else {
+        let entry: &gtk::Entry = &imp.add_entry;
+        let Some(done) = momentum_core::text::complete_hash_word(&entry.text(), entry.position().max(0) as u32, &name)
+        else {
             return;
         };
-        let entry = &imp.add_entry;
-        let text = entry.text().to_string();
-        let end = start + 1 + prefix.len();
-        let new = format!("{}#{name} {}", &text[..start], text[end..].trim_start());
-        let cursor = text[..start].chars().count() + name.chars().count() + 2;
         imp.tag_popover.popdown();
-        entry.set_text(&new);
-        entry.set_position(cursor as i32);
+        entry.set_text(&done.text);
+        entry.set_position(done.cursor as i32);
     }
 
-    /// Toast with an Undo button that dispatches the given actions.
-    /// Records a batch for Ctrl+Z without a toast (quiet changes such as a drag reorder).
-    pub fn push_undo(&self, undo: Vec<Action>) {
-        let mut stack = self.imp().undo_stack.borrow_mut();
-        stack.push(undo);
-        if stack.len() > 50 {
-            stack.remove(0);
-        }
-    }
-    pub fn toast_undo(&self, msg: &str, undo: Vec<Action>) {
-        self.push_undo(undo.clone());
+    /// Toast with an Undo button that reverts the engine's batch.
+    fn toast_undo(&self, msg: &str, batch: u64) {
         let toast = adw::Toast::builder().title(msg).button_label(gettext("Undo")).build();
         toast.connect_button_clicked(glib::clone!(
             #[weak(rename_to = w)]
             self,
             move |_| {
-                for a in undo.clone() {
-                    w.dispatch(a);
+                if w.engine().undo_batch(batch).changed {
+                    w.refresh();
                 }
             }
         ));
@@ -1921,47 +1766,21 @@ impl MomentumWindow {
 
     /// Add via short syntax and plan for today (quick-add, `--add`, search provider).
     pub fn add_task_for_today(&self, text: &str) {
-        let view = self.imp().view.borrow().clone();
-        *self.imp().view.borrow_mut() = View::Today;
-        self.add_task(text);
-        *self.imp().view.borrow_mut() = view;
-        self.refresh_tasks();
+        let out = self.engine().add_task_for_today(text.into());
+        self.apply(out);
     }
 
     /// URL scheme: title with short syntax, optional notes and due day.
     pub fn add_task_with_notes(&self, text: &str, notes: Option<&str>, due: Option<&str>) {
-        self.add_task(text);
-        let Some(last) = self.imp().store.borrow().pending.last().and_then(|p| match &p.action {
-            Action::AddTask { task, .. } => Some(task.id.clone()),
-            _ => None,
-        }) else {
-            return;
-        };
-        let mut ch = Map::new();
-        if let Some(n) = notes.filter(|n| !n.trim().is_empty()) {
-            ch.insert("notes".into(), json!(n));
-        }
-        if let Some(d) = due.filter(|d| d.len() == 10) {
-            ch.insert("dueDay".into(), json!(d));
-        }
-        if !ch.is_empty() {
-            self.update_task(&last, ch);
-        }
+        let out = self
+            .engine()
+            .add_task_with_notes(text.into(), notes.map(str::to_string), due.map(str::to_string));
+        self.apply(out);
     }
 
     pub fn complete_by_title(&self, title: &str) {
-        let id = self
-            .imp()
-            .store
-            .borrow()
-            .state
-            .task
-            .iter()
-            .find(|t| !t.is_done && t.title.eq_ignore_ascii_case(title.trim()))
-            .map(|t| t.id.clone());
-        if let Some(id) = id {
-            self.complete_task(&id);
-        }
+        let out = self.engine().complete_by_title(title.into());
+        self.apply(out);
     }
 
     pub fn complete_task(&self, id: &str) {
@@ -1972,18 +1791,12 @@ impl MomentumWindow {
     }
 
     /// Push a reminder forward by `minutes` and let it fire again.
-    pub fn snooze_task(&self, id: &str, minutes: u64) {
+    pub fn snooze_task(&self, id: &str, minutes: u32) {
         if let Some(app) = self.application() {
             app.withdraw_notification(id);
         }
-        self.imp().notified.borrow_mut().remove(id);
-        self.update_task(
-            id,
-            [("remindAt".to_string(), json!(now_ms() + minutes * 60_000))]
-                .into_iter()
-                .collect(),
-        );
-        self.toast(&format!("{} {minutes} {}", gettext("Snoozed for"), gettext("minutes")));
+        let out = self.engine().snooze(id.into(), minutes);
+        self.apply(out);
     }
 
     pub fn set_search_query(&self, q: &str) {
@@ -1993,55 +1806,37 @@ impl MomentumWindow {
 
     /// Ctrl+Z: undo the most recent undoable change, even after its toast is gone.
     fn undo_last(&self) {
-        let Some(actions) = self.imp().undo_stack.borrow_mut().pop() else {
-            self.toast(&gettext("Nothing to undo"));
-            return;
-        };
-        for a in actions {
-            self.dispatch(a);
-        }
-        self.toast(&gettext("Undone"));
+        let out = self.engine().undo();
+        self.apply(out);
     }
 
     /// Text from a drop or a multi-line paste: a URL or a paragraph becomes one task with the
     /// text in its notes; several short lines become several tasks.
     pub fn add_from_text(&self, text: &str) {
-        let lines: Vec<&str> = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
-        if lines.is_empty() {
+        let view = self.imp().view.borrow().clone();
+        let out = self.engine().add_from_text(text.into(), view);
+        self.apply(out);
+    }
+
+    /// An action handed over by `mo` (the D-Bus "cli" action): `"sync"` or an action as JSON.
+    pub fn dispatch_json(&self, payload: &str) {
+        if payload == "\"sync\"" {
+            self.import_cli_config();
+            self.sync();
             return;
         }
-        let is_url = lines.len() == 1 && (lines[0].starts_with("http://") || lines[0].starts_with("https://"));
-        let all_short = lines.iter().all(|l| l.len() <= 120 && !l.starts_with("http"));
-        let n = if is_url {
-            let title = lines[0]
-                .trim_start_matches("https://")
-                .trim_start_matches("http://")
-                .trim_end_matches('/')
-                .to_string();
-            self.add_task_with_notes(&title, Some(lines[0]), None);
-            1
-        } else if all_short && lines.len() > 1 {
-            for l in &lines {
-                self.add_task(l);
-            }
-            lines.len()
-        } else {
-            let title: String = lines[0].chars().take(120).collect();
-            self.add_task_with_notes(&title, Some(text.trim()), None);
-            1
-        };
-        self.toast(&if n == 1 {
-            gettext("Task added")
-        } else {
-            format!("{n} {}", gettext("tasks added"))
-        });
+        match self.engine().dispatch_json(payload.into()) {
+            Ok(out) => self.apply(out),
+            Err(e) => tracing::warn!("cli: unrecognised payload: {e}"),
+        }
     }
 
     pub fn toast(&self, msg: &str) {
         self.imp().toast_overlay.add_toast(adw::Toast::new(msg));
     }
+    /// A raw action (tests, screenshot setups): no undo, no toast.
     pub fn dispatch(&self, a: Action) {
-        self.imp().store.borrow_mut().dispatch(a);
+        self.engine().dispatch(a);
         self.refresh();
     }
     pub fn focus_add(&self) {
@@ -2089,56 +1884,16 @@ impl MomentumWindow {
 
     // ---- rendering -------------------------------------------------------
 
-    /// Done top-level tasks with their subtasks, ready to archive.
-    fn done_tasks(&self) -> (Vec<Task>, Vec<Task>) {
-        let store = self.imp().store.borrow();
-        let tasks: Vec<Task> = store
-            .state
-            .task
-            .iter()
-            .filter(|t| t.is_done && t.parent_id.is_none())
-            .cloned()
-            .collect();
-        let sub_tasks = tasks
-            .iter()
-            .flat_map(|t| {
-                t.sub_task_ids
-                    .iter()
-                    .filter_map(|i| store.state.task.entities.get(i).cloned())
-            })
-            .collect();
-        (tasks, sub_tasks)
-    }
-
     fn archive_done(&self) {
-        let (tasks, sub_tasks) = self.done_tasks();
-        if tasks.is_empty() {
-            return;
-        }
-        let n = tasks.len();
-        let undo: Vec<Action> = tasks
-            .iter()
-            .map(|t| Action::RestoreTask {
-                task: t.clone(),
-                sub_tasks: sub_tasks
-                    .iter()
-                    .filter(|s| s.parent_id.as_deref() == Some(&t.id))
-                    .cloned()
-                    .collect(),
-            })
-            .collect();
-        self.dispatch(Action::MoveToArchive { tasks, sub_tasks });
-        self.toast_undo(&format!("{n} {}", gettext("completed tasks archived")), undo);
-        if self.sync_configured() {
-            self.sync();
-        }
+        let out = self.engine().archive_done();
+        self.apply(out);
     }
 
     fn update_context_actions(&self) {
         let view = self.imp().view.borrow().clone();
         let (editable, deletable) = match &view {
-            View::Project(id) => (true, id != INBOX_PROJECT_ID),
-            View::Tag(_) => (true, true),
+            View::Project { id } => (true, id != INBOX_PROJECT_ID),
+            View::Tag { .. } => (true, true),
             _ => (false, false),
         };
         for (name, on) in [("edit-context", editable), ("delete-context", deletable)] {
@@ -2165,9 +1920,12 @@ impl MomentumWindow {
                 self,
                 move || {
                     w.imp().sync_debounce.borrow_mut().take();
+                    if !w.imp().settings.boolean("auto-sync") || !w.sync_configured() {
+                        return;
+                    }
                     if w.imp().syncing.get() {
                         w.schedule_sync(); // a sync is running; try again after it
-                    } else if !w.imp().store.borrow().pending.is_empty() {
+                    } else if w.engine().pending_count() > 0 {
                         w.sync();
                     }
                 }
@@ -2177,16 +1935,13 @@ impl MomentumWindow {
     }
 
     pub fn refresh(&self) {
-        *self.imp().index.borrow_mut() = None;
         self.update_background_status();
-        if !self.imp().store.borrow().pending.is_empty() {
+        if self.engine().pending_count() > 0 {
             self.schedule_sync();
         }
-        self.p2p_publish_pending();
-        let (done, _) = self.done_tasks();
         // Menu item stays visible but disabled when there is nothing to archive (HIG).
         if let Some(a) = self.lookup_action("archive-done").and_downcast::<gio::SimpleAction>() {
-            a.set_enabled(!done.is_empty());
+            a.set_enabled(self.engine().can_archive());
         }
         self.refresh_sidebar();
         self.refresh_tasks();
@@ -2238,8 +1993,8 @@ impl MomentumWindow {
             }
             r.add_prefix(&img);
             match view.clone().unwrap() {
-                View::Project(id) => self.attach_context_menu(&r, MenuKind::Project, id),
-                View::Tag(id) => self.attach_context_menu(&r, MenuKind::Tag, id),
+                View::Project { id } => self.attach_context_menu(&r, MenuKind::Project, id),
+                View::Tag { id } => self.attach_context_menu(&r, MenuKind::Tag, id),
                 _ => {}
             }
             let target = gtk::DropTarget::new(String::static_type(), gtk::gdk::DragAction::MOVE);
@@ -2253,11 +2008,12 @@ impl MomentumWindow {
                     let Ok(task_id) = value.get::<String>() else {
                         return false;
                     };
-                    let mut any = false;
-                    for id in task_id.split('\n') {
-                        any |= w.drop_task(id, &dest);
-                    }
-                    any
+                    // A selected row drags the whole selection, one id per line.
+                    let ids: Vec<String> = task_id.split('\n').map(str::to_string).collect();
+                    let out = w.engine().drop_tasks(ids, dest.clone());
+                    let changed = out.changed;
+                    w.apply(out);
+                    changed
                 }
             ));
             r.add_controller(target);
@@ -2320,70 +2076,45 @@ impl MomentumWindow {
         let current = imp.view.borrow().clone();
         imp.sidebar_list.remove_all();
         imp.views.borrow_mut().clear();
-        let store = imp.store.borrow();
-        self.sidebar_row(&gettext("Today"), "starred-symbolic", Some(View::Today), None, None);
-        // Morning and Tonight only exist as entries while today has tasks in that slot.
-        let has_slot = |slot: Slot| {
-            store
-                .state
-                .today_ids()
-                .iter()
-                .filter_map(|i| store.state.task.entities.get(i))
-                .any(|t| Self::slot_of(&store, t) == Some(slot))
-        };
-        if has_slot(Slot::Morning) {
-            self.sidebar_row(
-                &gettext("Morning"),
-                "weather-clear-symbolic",
-                Some(View::Morning),
-                None,
-                None,
-            );
+        let sidebar = imp.engine.sidebar();
+        // Built-in views are named here; Morning and Tonight are listed only while today uses them.
+        for entry in &sidebar.fixed {
+            let (name, icon) = match entry.view {
+                View::Today => (gettext("Today"), "starred-symbolic"),
+                View::Morning => (gettext("Morning"), "weather-clear-symbolic"),
+                View::Tonight => (gettext("Tonight"), "weather-clear-night-symbolic"),
+                View::Upcoming => (gettext("Coming Up"), "x-office-calendar-symbolic"),
+                View::Archive => (gettext("Archive"), "archive-symbolic"),
+                View::Search => (gettext("Search"), "edit-find-symbolic"),
+                View::Project { .. } | View::Tag { .. } => continue,
+            };
+            self.sidebar_row(&name, icon, Some(entry.view.clone()), None, None);
         }
-        if has_slot(Slot::Tonight) {
-            self.sidebar_row(
-                &gettext("Tonight"),
-                "weather-clear-night-symbolic",
-                Some(View::Tonight),
-                None,
-                None,
-            );
-        }
-        self.sidebar_row(
-            &gettext("Coming Up"),
-            "x-office-calendar-symbolic",
-            Some(View::Upcoming),
-            None,
-            None,
-        );
-        self.sidebar_row(&gettext("Archive"), "archive-symbolic", Some(View::Archive), None, None);
-        self.sidebar_row(&gettext("Search"), "edit-find-symbolic", Some(View::Search), None, None);
         self.sidebar_row(&gettext("Projects"), "", None, None, Some("projects-collapsed"));
         let colorful = self.colorful();
         if !imp.settings.boolean("projects-collapsed") {
-            for p in store
-                .state
-                .project
-                .iter()
-                .filter(|p| !p.is_archived && !p.is_hidden_from_menu)
-            {
+            for p in &sidebar.projects {
                 self.sidebar_row(
                     &p.title,
                     "folder-symbolic",
-                    Some(View::Project(p.id.clone())),
-                    p.color().filter(|_| colorful),
+                    Some(p.view.clone()),
+                    p.color.as_deref().filter(|_| colorful),
                     None,
                 );
             }
         }
         self.sidebar_row(&gettext("Tags"), "", None, None, Some("tags-collapsed"));
         if !imp.settings.boolean("tags-collapsed") {
-            for t in store.state.tag.iter().filter(|t| t.id != TODAY_TAG_ID) {
-                let color = tag_color(t).filter(|_| colorful);
-                self.sidebar_row(&t.title, "tag-symbolic", Some(View::Tag(t.id.clone())), color, None);
+            for t in &sidebar.tags {
+                self.sidebar_row(
+                    &t.title,
+                    "tag-symbolic",
+                    Some(t.view.clone()),
+                    t.color.as_deref().filter(|_| colorful),
+                    None,
+                );
             }
         }
-        drop(store);
         let idx = imp
             .views
             .borrow()
@@ -2419,11 +2150,25 @@ impl MomentumWindow {
         self.refresh();
     }
 
-    fn section_header(&self, title: &str, _first: bool) {
-        self.new_section(Some(title));
-    }
-
-    fn section_note(&self, text: &str) {
+    fn section_note(&self, note: &SectionNote) {
+        let text = if note.suggest_narrowing {
+            format!(
+                "{} {} {} {}. {}",
+                gettext("Showing"),
+                note.shown,
+                gettext("of"),
+                note.total,
+                gettext("Add another word to narrow it down.")
+            )
+        } else {
+            format!(
+                "{} {} {} {}.",
+                gettext("Showing"),
+                note.shown,
+                gettext("of"),
+                note.total
+            )
+        };
         let label = gtk::Label::builder()
             .label(text)
             .xalign(0.0)
@@ -2444,222 +2189,86 @@ impl MomentumWindow {
         );
     }
 
-    /// Global search across tasks (open, done, subtasks, archived), projects and tags.
-    fn search_index(&self, store: &Store) -> Rc<SearchIndex> {
-        if let Some(i) = self.imp().index.borrow().as_ref() {
-            return i.clone();
-        }
-        let tag_name = |id: &String| {
-            store
-                .state
-                .tag
-                .entities
-                .get(id)
-                .map(|g| g.title.to_lowercase())
-                .unwrap_or_default()
-        };
-        let hay = |t: &Task| {
-            let mut h = t.title.to_lowercase();
-            if let Some(n) = &t.notes {
-                h.push('\n');
-                h.push_str(&n.to_lowercase());
-            }
-            for tag in &t.tag_ids {
-                h.push('\n');
-                h.push_str(&tag_name(tag));
-            }
-            if let Some(p) = store.state.project.entities.get(&t.project_id) {
-                h.push('\n');
-                h.push_str(&p.title.to_lowercase());
-            }
-            h
-        };
-        let mut idx = SearchIndex {
-            tasks: store.state.task.iter().map(|t| (t.id.clone(), hay(t))).collect(),
-            archived: archived_tasks(store)
-                .into_iter()
-                .map(|t| {
-                    let h = hay(&t);
-                    (t, h)
-                })
-                .collect(),
-            projects: store
-                .state
-                .project
-                .iter()
-                .map(|p| (p.id.clone(), p.title.to_lowercase()))
-                .collect(),
-            tags: store
-                .state
-                .tag
-                .iter()
-                .filter(|t| t.id != TODAY_TAG_ID)
-                .map(|t| (t.id.clone(), t.title.to_lowercase()))
-                .collect(),
-        };
-        idx.archived
-            .sort_by_key(|(t, _)| std::cmp::Reverse(t.done_on.unwrap_or(t.created)));
-        let idx = Rc::new(idx);
-        *self.imp().index.borrow_mut() = Some(idx.clone());
-        idx
+    /// Heading of a section, or none for the single untitled list of a plain view.
+    fn section_title(&self, kind: &SectionKind, count: u32) -> Option<String> {
+        Some(match kind {
+            SectionKind::Plain => return None,
+            SectionKind::Overdue => format!("{} ({count})", gettext("Overdue")),
+            SectionKind::Morning => gettext("Morning"),
+            SectionKind::Today => gettext("Today"),
+            SectionKind::Tonight => gettext("Tonight"),
+            SectionKind::Day { label } => fmt_day(label),
+            SectionKind::Completed => format!("{} ({count})", gettext("Completed")),
+            SectionKind::SearchTasks => format!("{} ({count})", gettext("Tasks")),
+            SectionKind::SearchProjects => gettext("Projects"),
+            SectionKind::SearchTags => gettext("Tags"),
+            SectionKind::SearchArchived => format!("{} ({count})", gettext("Archived")),
+        })
     }
 
-    /// Global search across tasks (open, done, subtasks, archived), projects and tags.
-    fn render_search(&self, store: &Store, query: &str) {
-        let imp = self.imp();
-        let idx = self.search_index(store);
-        // Every word must match somewhere in the haystack.
-        let words: Vec<String> = query.to_lowercase().split_whitespace().map(str::to_string).collect();
-        let matches = |h: &str| words.iter().all(|w| h.contains(w.as_str()));
-        let mut first = true;
-        let mut tasks: Vec<&Task> = idx
-            .tasks
-            .iter()
-            .filter(|(_, h)| matches(h))
-            .filter_map(|(id, _)| store.state.task.entities.get(id))
-            .collect();
-        tasks.sort_by(|a, b| {
-            a.is_done
-                .cmp(&b.is_done)
-                .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
-        });
-        let total = tasks.len();
-        if total > 0 {
-            self.section_header(&format!("{} ({total})", gettext("Tasks")), first);
-            first = false;
-            for t in tasks.iter().take(SEARCH_LIMIT) {
-                self.task_row(t, store, t.parent_id.is_some(), false);
-            }
-            if total > SEARCH_LIMIT {
-                self.section_note(&format!(
-                    "{} {SEARCH_LIMIT} {} {total}. {}",
-                    gettext("Showing"),
-                    gettext("of"),
-                    gettext("Add another word to narrow it down.")
-                ));
-            }
+    fn group_title(group: &TaskGroup) -> String {
+        match group {
+            TaskGroup::Today => gettext("Today"),
+            TaskGroup::Morning => gettext("Morning"),
+            TaskGroup::Evening => gettext("Evening"),
+            TaskGroup::Project { title, .. } => title.clone(),
+            TaskGroup::Tag { title, .. } => format!("#{title}"),
+            TaskGroup::NoProject => gettext("No Project"),
+            TaskGroup::Untagged => gettext("Untagged"),
+            TaskGroup::Estimate { range } => match range {
+                EstimateRange::UpTo15Minutes => gettext("Up to 15 min"),
+                EstimateRange::UpTo30Minutes => gettext("16–30 min"),
+                EstimateRange::UpTo60Minutes => gettext("31–60 min"),
+                EstimateRange::UpTo2Hours => gettext("1–2 hours"),
+                EstimateRange::Over2Hours => gettext("Over 2 hours"),
+                EstimateRange::NoEstimate => gettext("No estimate"),
+            },
         }
-        let colorful = self.colorful();
-        let projects: Vec<&Project> = idx
-            .projects
-            .iter()
-            .filter(|(_, h)| matches(h))
-            .filter_map(|(id, _)| store.state.project.entities.get(id))
-            .collect();
-        if !projects.is_empty() {
-            self.section_header(&gettext("Projects"), first);
-            first = false;
-            for p in projects {
-                let row = adw::ActionRow::builder()
-                    .title(glib::markup_escape_text(&p.title))
-                    .activatable(true)
-                    .build();
-                let icon = gtk::Image::from_icon_name("folder-symbolic");
-                if let Some(c) = p.color().filter(|_| colorful).and_then(|c| self.color_class(c)) {
-                    icon.add_css_class(&c);
-                }
-                row.add_prefix(&icon);
-                row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
-                self.append_row(&row, &format!("project:{}", p.id));
-            }
-        }
-        let tags: Vec<&Tag> = idx
-            .tags
-            .iter()
-            .filter(|(_, h)| matches(h))
-            .filter_map(|(id, _)| store.state.tag.entities.get(id))
-            .collect();
-        if !tags.is_empty() {
-            self.section_header(&gettext("Tags"), first);
-            first = false;
-            for g in tags {
-                let row = adw::ActionRow::builder()
-                    .title(glib::markup_escape_text(&g.title))
-                    .activatable(true)
-                    .build();
-                let icon = gtk::Image::from_icon_name("tag-symbolic");
-                if let Some(c) = tag_color(g).filter(|_| colorful).and_then(|c| self.color_class(c)) {
-                    icon.add_css_class(&c);
-                }
-                row.add_prefix(&icon);
-                row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
-                self.append_row(&row, &format!("tag:{}", g.id));
-            }
-        }
-        let archived: Vec<&Task> = idx
-            .archived
-            .iter()
-            .filter(|(_, h)| matches(h))
-            .map(|(t, _)| t)
-            .collect();
-        if !archived.is_empty() {
-            self.section_header(&format!("{} ({})", gettext("Archived"), archived.len()), first);
-            for t in archived.iter().take(SEARCH_LIMIT / 2) {
-                self.task_row(t, store, false, true);
-            }
-            if archived.len() > SEARCH_LIMIT / 2 {
-                self.section_note(&format!(
-                    "{} {} {} {}.",
-                    gettext("Showing"),
-                    SEARCH_LIMIT / 2,
-                    gettext("of"),
-                    archived.len()
-                ));
-            }
-        }
-        let none = imp.rows.borrow().is_empty();
-        imp.empty.set_icon_name(Some("edit-find-symbolic"));
-        imp.empty.set_title(&gettext("No Results Found"));
-        imp.empty.set_description(Some(&gettext("Try a different search")));
-        imp.empty.set_visible(none);
-        imp.task_box.set_visible(!none);
-        self.update_sync_button();
     }
 
-    /// The tag (case-insensitive) that marks a slot: "Evening" for Tonight, "Morning".
-    fn slot_tag_id(store: &Store, slot: Slot) -> Option<String> {
-        store
-            .state
-            .tag
-            .iter()
-            .find(|t| t.title.eq_ignore_ascii_case(slot.tag_name()))
-            .map(|t| t.id.clone())
-    }
-    fn ensure_slot_tag(&self, slot: Slot) -> String {
-        if let Some(id) = Self::slot_tag_id(&self.imp().store.borrow(), slot) {
-            return id;
+    /// A project or tag hit in search results: a row that opens that view.
+    fn link_row(&self, title: &str, icon: &str, color: Option<&str>, id: &str) {
+        let row = adw::ActionRow::builder()
+            .title(glib::markup_escape_text(title))
+            .activatable(true)
+            .build();
+        let image = gtk::Image::from_icon_name(icon);
+        if let Some(c) = color.filter(|_| self.colorful()).and_then(|c| self.color_class(c)) {
+            image.add_css_class(&c);
         }
-        let tag = Tag::new(slot.tag_name());
-        let id = tag.id.clone();
-        self.imp().store.borrow_mut().dispatch(Action::AddTag { tag });
-        id
+        row.add_prefix(&image);
+        row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+        self.append_row(&row, id);
     }
-    fn ensure_evening_tag(&self) -> String {
-        self.ensure_slot_tag(Slot::Tonight)
-    }
-    /// Which part of the day a task belongs to; Morning wins if both tags are present.
-    fn slot_of(store: &Store, t: &Task) -> Option<Slot> {
-        [Slot::Morning, Slot::Tonight]
-            .into_iter()
-            .find(|s| Self::slot_tag_id(store, *s).is_some_and(|id| t.tag_ids.contains(&id)))
-    }
-    fn is_tonight(store: &Store, t: &Task) -> bool {
-        Self::slot_of(store, t) == Some(Slot::Tonight)
-    }
-    fn is_morning(store: &Store, t: &Task) -> bool {
-        Self::slot_of(store, t) == Some(Slot::Morning)
-    }
-    /// Section order inside Today: Morning, the plain day, Tonight.
-    fn slot_rank(store: &Store, t: &Task) -> u8 {
-        match Self::slot_of(store, t) {
-            Some(Slot::Morning) => 0,
-            None => 1,
-            Some(Slot::Tonight) => 2,
+
+    /// What the current view is when it has nothing to show.
+    fn empty_state_kind(&self) -> EmptyState {
+        let engine = self.engine();
+        match &*self.imp().view.borrow() {
+            View::Today => EmptyState::Today,
+            View::Morning => EmptyState::Morning,
+            View::Tonight => EmptyState::Tonight,
+            View::Upcoming => EmptyState::Upcoming {
+                days: engine.preferences().upcoming_days,
+            },
+            View::Archive => EmptyState::Archive,
+            View::Search => EmptyState::Search,
+            View::Project { id } => EmptyState::Project {
+                name: engine.project(id.clone()).map(|p| p.title).unwrap_or_default(),
+            },
+            View::Tag { id } => EmptyState::Tag {
+                name: engine.tag(id.clone()).map(|t| t.title).unwrap_or_default(),
+            },
         }
+    }
+
+    /// Icon, title and description for the current view's empty state.
+    pub fn empty_state(&self) -> (String, String, String) {
+        self.empty_state_text(&self.empty_state_kind())
     }
 
     /// Icon, title and description for an empty view, so the empty state says what to do next.
-    fn empty_state(&self, store: &Store) -> (String, String, String) {
+    fn empty_state_text(&self, state: &EmptyState) -> (String, String, String) {
         let synced = self.sync_configured();
         let add = if synced {
             gettext("Add a task above, or press {}.").replace("{}", &crate::modifier::hint("N"))
@@ -2667,8 +2276,8 @@ impl MomentumWindow {
             gettext("Add a task above, press {}, or turn on sync in Preferences to bring in your tasks.")
                 .replace("{}", &crate::modifier::hint("N"))
         };
-        match &*self.imp().view.borrow() {
-            View::Today => (
+        match state {
+            EmptyState::Today => (
                 "starred-symbolic".into(),
                 gettext("Nothing planned for today"),
                 format!(
@@ -2677,181 +2286,100 @@ impl MomentumWindow {
                         .replace("{}", &crate::modifier::hint("T"))
                 ),
             ),
-            View::Morning => (
+            EmptyState::Morning => (
                 "weather-clear-symbolic".into(),
                 gettext("Nothing planned for the morning"),
                 gettext("Tag a task “Morning”, or press {} on a task to move it here.")
                     .replace("{}", &crate::modifier::hint("Shift+M")),
             ),
-            View::Tonight => (
+            EmptyState::Tonight => (
                 "weather-clear-night-symbolic".into(),
                 gettext("Nothing planned for tonight"),
                 gettext("Tag a task “Evening”, or press {} on a task to move it here.")
                     .replace("{}", &crate::modifier::hint("Shift+T")),
             ),
-            View::Upcoming => {
-                let range = self.imp().settings.string("upcoming-range");
-                (
-                    "x-office-calendar-symbolic".into(),
-                    gettext("Nothing coming up"),
-                    format!(
-                        "{} {range} {}",
-                        gettext("Tasks due in the next"),
-                        gettext("days appear here. Set a due day in a task's details.")
-                    ),
-                )
-            }
-            View::Archive => (
+            EmptyState::Upcoming { days } => (
+                "x-office-calendar-symbolic".into(),
+                gettext("Nothing coming up"),
+                format!(
+                    "{} {days} {}",
+                    gettext("Tasks due in the next"),
+                    gettext("days appear here. Set a due day in a task's details.")
+                ),
+            ),
+            EmptyState::Archive => (
                 "archive-symbolic".into(),
                 gettext("No archived tasks"),
                 gettext("Completed tasks land here when you archive them with {}.")
                     .replace("{}", &crate::modifier::hint("E")),
             ),
-            View::Search => (
+            EmptyState::Search => (
                 "edit-find-symbolic".into(),
                 gettext("Search Everything"),
                 gettext("Tasks, notes, subtasks, projects, tags and the archive"),
             ),
-            View::Project(id) => {
-                let name = store
-                    .state
-                    .project
-                    .entities
-                    .get(id)
-                    .map(|p| p.title.clone())
-                    .unwrap_or_default();
-                (
-                    "folder-symbolic".into(),
-                    format!("{} {name}", gettext("No tasks in")),
-                    format!("{add} {}", gettext("Drag tasks here from any other view.")),
-                )
-            }
-            View::Tag(id) => {
-                let name = store
-                    .state
-                    .tag
-                    .entities
-                    .get(id)
-                    .map(|t| t.title.clone())
-                    .unwrap_or_default();
-                (
-                    "tag-symbolic".into(),
-                    format!("{} #{name}", gettext("No tasks tagged")),
-                    format!("{add} {}", gettext("Drag tasks here to tag them.")),
-                )
-            }
+            EmptyState::NoResults => (
+                "edit-find-symbolic".into(),
+                gettext("No Results Found"),
+                gettext("Try a different search"),
+            ),
+            EmptyState::Project { name } => (
+                "folder-symbolic".into(),
+                format!("{} {name}", gettext("No tasks in")),
+                format!("{add} {}", gettext("Drag tasks here from any other view.")),
+            ),
+            EmptyState::Tag { name } => (
+                "tag-symbolic".into(),
+                format!("{} #{name}", gettext("No tasks tagged")),
+                format!("{add} {}", gettext("Drag tasks here to tag them.")),
+            ),
         }
     }
 
-    fn view_task_ids(&self, store: &Store) -> Vec<String> {
-        match &*self.imp().view.borrow() {
-            View::Today => store.state.today_ids(),
-            View::Tonight | View::Morning => {
-                let want = if *self.imp().view.borrow() == View::Morning {
-                    Slot::Morning
-                } else {
-                    Slot::Tonight
-                };
-                store
-                    .state
-                    .today_ids()
-                    .into_iter()
-                    .filter(|id| {
-                        store
-                            .state
-                            .task
-                            .entities
-                            .get(id)
-                            .is_some_and(|t| Self::slot_of(store, t) == Some(want))
-                    })
-                    .collect()
-            }
-            View::Upcoming | View::Archive | View::Search => vec![],
-            View::Project(id) => store
-                .state
-                .project
-                .entities
-                .get(id)
-                .map(|p| p.task_ids.clone())
-                .unwrap_or_default(),
-            View::Tag(id) => store
-                .state
-                .tag
-                .entities
-                .get(id)
-                .map(|t| t.task_ids.clone())
-                .unwrap_or_default(),
-        }
-    }
-
-    fn task_row(&self, t: &Task, store: &Store, indent: bool, archived: bool) {
+    fn task_row(&self, t: &TaskRow) {
         let imp = self.imp();
         let colorful = self.colorful();
+        let indent = t.is_subtask && !t.archived;
         let mut sub = vec![];
         // Outside a project view, lead with the project name in the project's own colour.
-        if !matches!(*imp.view.borrow(), View::Project(_)) {
-            if let Some(p) = store.state.project.entities.get(&t.project_id) {
-                let hex = p.color().filter(|_| colorful).and_then(hex_color);
-                let title = glib::markup_escape_text(&p.title);
-                sub.push(match hex {
-                    Some(h) => format!("<span foreground=\"{h}\">●</span> {title}"),
-                    None => format!("● {title}"),
-                });
-            }
+        if let Some(p) = &t.project {
+            let hex = p.color.as_deref().filter(|_| colorful).and_then(hex_color);
+            let title = glib::markup_escape_text(&p.title);
+            sub.push(match hex {
+                Some(h) => format!("<span foreground=\"{h}\">●</span> {title}"),
+                None => format!("● {title}"),
+            });
         }
-        if t.time_estimate > 0.0 {
-            sub.push(format!("~{}", fmt_ms(t.time_estimate)));
+        if t.estimate_ms > 0.0 {
+            sub.push(format!("~{}", fmt_ms(t.estimate_ms)));
         }
-        let repeat = t
-            .repeat_cfg_id
-            .as_ref()
-            .and_then(|id| store.state.task_repeat_cfg.entities.get(id))
-            .map(repeat_text);
+        let repeat = t.repeat.as_ref().map(repeat_text);
         if let Some(text) = &repeat {
             sub.push(glib::markup_escape_text(text).to_string());
         }
-        if archived {
-            if let Some(done) = t.done_on {
-                let day = glib::DateTime::from_unix_local(done as i64 / 1000)
-                    .and_then(|d| d.format("%Y-%m-%d"))
-                    .map(|g| g.to_string());
-                sub.push(
-                    glib::markup_escape_text(&format!(
-                        "{} {}",
-                        gettext("Done"),
-                        day.as_deref().map(fmt_day).unwrap_or_default()
-                    ))
-                    .to_string(),
-                );
-            }
+        if let Some(done) = &t.done_day {
+            sub.push(glib::markup_escape_text(&format!("{} {}", gettext("Done"), fmt_day(done))).to_string());
         }
-        if let Some(d) = t.plan_day() {
-            // Day views already say which day it is, except for overdue tasks, whose day is the point.
-            let day_known = matches!(
-                *imp.view.borrow(),
-                View::Today | View::Morning | View::Tonight | View::Upcoming
-            ) && d.as_str() >= today_str().as_str();
-            let mut when = if day_known { String::new() } else { fmt_day(&d) };
-            if let Some(ms) = t.due_with_time {
-                when = format!("{when} {}", fmt_time(ms)).trim().to_string();
-            }
-            if !when.is_empty() {
-                sub.push(glib::markup_escape_text(&when).to_string());
-            }
+        // Day views already say which day it is, except for overdue tasks, whose day is the point.
+        let when = [t.day.as_ref().map(fmt_day), t.time.as_ref().map(fmt_clock)]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(" ");
+        if !when.is_empty() {
+            sub.push(glib::markup_escape_text(&when).to_string());
         }
-        for tag in &t.tag_ids {
-            if let Some(g) = store.state.tag.entities.get(tag) {
-                let name = glib::markup_escape_text(&g.title);
-                sub.push(match tag_color(g).filter(|_| colorful).and_then(hex_color) {
-                    Some(h) => format!("<span foreground=\"{h}\">#{name}</span>"),
-                    None => format!("#{name}"),
-                });
-            }
+        for g in &t.tags {
+            let name = glib::markup_escape_text(&g.title);
+            sub.push(match g.color.as_deref().filter(|_| colorful).and_then(hex_color) {
+                Some(h) => format!("<span foreground=\"{h}\">#{name}</span>"),
+                None => format!("#{name}"),
+            });
         }
         let row = adw::ActionRow::builder()
             .title(glib::markup_escape_text(&t.title))
             .subtitle(sub.join("  ·  "))
-            .activatable(!archived)
+            .activatable(!t.archived)
             .build();
         if indent {
             row.set_margin_start(32);
@@ -2859,6 +2387,7 @@ impl MomentumWindow {
         if t.is_done {
             row.add_css_class("dim-label");
         }
+        let archived = t.archived;
         let selecting = imp.selecting.get() && !archived;
         let check = gtk::CheckButton::builder()
             .active(if selecting {
@@ -2911,31 +2440,18 @@ impl MomentumWindow {
             ));
             row.add_controller(click);
         }
-        if t.notes.as_deref().is_some_and(|n| !n.trim().is_empty()) {
+        if let Some(preview) = &t.notes_preview {
             // Notes badge: the first line as tooltip so a hover shows what is there.
-            let first = t
-                .notes
-                .as_deref()
-                .unwrap_or("")
-                .lines()
-                .find(|l| !l.trim().is_empty())
-                .unwrap_or("")
-                .trim();
-            let preview: String = first.chars().take(80).collect();
             let icon = gtk::Image::builder()
                 .icon_name("text-x-generic-symbolic")
-                .tooltip_text(if first.len() > 80 {
-                    format!("{preview}…")
-                } else {
-                    preview
-                })
+                .tooltip_text(preview)
                 .css_classes(["dim-label"])
                 .build();
             icon.update_property(&[gtk::accessible::Property::Label(&gettext("Has notes"))]);
             row.add_suffix(&icon);
         }
-        if let Some(at) = t.remind_at.filter(|_| !t.is_done) {
-            let text = format!("{} {}", gettext("Reminder at"), fmt_time(at));
+        if let Some(at) = &t.reminder {
+            let text = format!("{} {}", gettext("Reminder at"), fmt_clock(at));
             let icon = gtk::Image::builder()
                 .icon_name("alarm-symbolic")
                 .tooltip_text(&text)
@@ -2985,11 +2501,7 @@ impl MomentumWindow {
                 false,
                 move |_, value, _, _| {
                     let Ok(moved) = value.get::<String>() else { return false };
-                    let mut any = false;
-                    for id in moved.split('\n') {
-                        any |= w.reorder(id, &before);
-                    }
-                    any
+                    w.reorder(&moved, &before)
                 }
             ));
             row.add_controller(target);
@@ -3004,237 +2516,51 @@ impl MomentumWindow {
         let imp = self.imp();
         self.update_context_actions();
         self.clear_sections();
-        let store = imp.store.borrow();
-        let title = match &*imp.view.borrow() {
-            View::Today => gettext("Today"),
-            View::Morning => gettext("Morning"),
-            View::Tonight => gettext("Tonight"),
-            View::Upcoming => gettext("Coming Up"),
-            View::Archive => gettext("Archive"),
-            View::Search => gettext("Search"),
-            View::Project(id) => store
-                .state
-                .project
-                .entities
-                .get(id)
-                .map(|p| p.title.clone())
-                .unwrap_or_default(),
-            View::Tag(id) => store
-                .state
-                .tag
-                .entities
-                .get(id)
-                .map(|t| t.title.clone())
-                .unwrap_or_default(),
-        };
-        let searching = *imp.view.borrow() == View::Search;
+        let view = imp.view.borrow().clone();
+        let searching = view == View::Search;
         imp.add_clamp.set_visible(!searching && !imp.selecting.get());
         imp.search_clamp.set_visible(searching);
-        if searching {
-            imp.content_page.set_title(&gettext("Search"));
-            let query = imp.filter.borrow().clone();
-            if query.trim().is_empty() {
-                imp.empty.set_icon_name(Some("edit-find-symbolic"));
-                imp.empty.set_title(&gettext("Search Everything"));
-                imp.empty
-                    .set_description(Some(&gettext("Tasks, notes, subtasks, projects, tags and the archive")));
-                imp.empty.set_visible(true);
-                imp.task_box.set_visible(false);
-                self.update_sync_button();
-            } else {
-                self.render_search(&store, query.trim());
-            }
-            return;
-        }
+        let listing = if searching {
+            imp.engine.search(imp.filter.borrow().clone())
+        } else {
+            imp.engine.listing(view.clone(), imp.archive_shown.get())
+        };
+        let title = match &listing.title {
+            ViewTitle::Today => gettext("Today"),
+            ViewTitle::Morning => gettext("Morning"),
+            ViewTitle::Tonight => gettext("Tonight"),
+            ViewTitle::ComingUp => gettext("Coming Up"),
+            ViewTitle::Archive => gettext("Archive"),
+            ViewTitle::Search => gettext("Search"),
+            ViewTitle::Named { name } => name.clone(),
+        };
         imp.content_page.set_title(&title);
-        if imp.selecting.get() {
+        if imp.selecting.get() && !searching {
             self.update_selection_ui();
         }
-        let (icon, title, desc) = self.empty_state(&store);
+        let empty = listing.empty.clone().unwrap_or_else(|| self.empty_state_kind());
+        let (icon, title, desc) = self.empty_state_text(&empty);
         imp.empty.set_icon_name(Some(&icon));
         imp.empty.set_title(&title);
         imp.empty.set_description(Some(&desc));
-        let filter = String::new();
-        if *imp.view.borrow() == View::Upcoming {
-            let today_n = day_number(&today_str()).unwrap_or(0);
-            let range: i64 = imp.settings.string("upcoming-range").parse().unwrap_or(7);
-            let mut tasks: Vec<&Task> = store
-                .state
-                .task
-                .iter()
-                .filter(|t| !t.is_done && t.parent_id.is_none() && t.title.to_lowercase().contains(&*filter))
-                .filter(|t| {
-                    t.plan_day()
-                        .as_deref()
-                        .and_then(day_number)
-                        .is_some_and(|d| d > today_n && d <= today_n + range)
-                })
-                .collect();
-            tasks.sort_by(|a, b| {
-                a.plan_day()
-                    .cmp(&b.plan_day())
-                    .then_with(|| a.due_with_time.cmp(&b.due_with_time))
-                    .then_with(|| a.title.cmp(&b.title))
-            });
-            let mut current_day = String::new();
-            for t in tasks {
-                let day = t.plan_day().unwrap_or_default();
-                if day != current_day {
-                    current_day = day.clone();
-                    self.new_section(Some(&fmt_day(&day)));
-                }
-                self.task_row(t, &store, false, false);
-            }
-            imp.empty.set_visible(imp.rows.borrow().is_empty());
-            imp.task_box.set_visible(!imp.rows.borrow().is_empty());
-            return;
-        }
-        if *imp.view.borrow() == View::Archive {
-            // Read-only view over archiveYoung + archiveOld, newest completion first.
-            // Uses the cached, pre-sorted index and renders in pages: the archive can hold
-            // thousands of tasks and every row is a real widget.
-            let idx = self.search_index(&store);
-            let limit = imp.archive_shown.get();
-            let parents: Vec<&Task> = idx
-                .archived
-                .iter()
-                .map(|(t, _)| t)
-                .filter(|t| t.parent_id.is_none())
-                .collect();
-            for t in parents.iter().take(limit) {
-                self.task_row(t, &store, false, true);
-            }
-            if parents.len() > limit {
-                let more = gtk::Button::builder()
-                    .label(format!(
-                        "{} ({} {})",
-                        gettext("Show More"),
-                        parents.len() - limit,
-                        gettext("remaining")
-                    ))
-                    .css_classes(["flat"])
-                    .margin_top(6)
-                    .margin_bottom(6)
-                    .build();
-                more.connect_clicked(glib::clone!(
-                    #[weak(rename_to = w)]
-                    self,
-                    move |_| {
-                        w.imp().archive_shown.set(w.imp().archive_shown.get() + 200);
-                        w.refresh_tasks();
-                    }
-                ));
-                self.append_row(
-                    &gtk::ListBoxRow::builder()
-                        .child(&more)
-                        .selectable(false)
-                        .activatable(false)
-                        .build(),
-                    "",
-                );
-            }
-            imp.empty.set_visible(imp.rows.borrow().is_empty());
-            imp.task_box.set_visible(!imp.rows.borrow().is_empty());
-            return;
-        }
-        let ids = self.view_task_ids(&store);
-        let (mut open, mut done) = (vec![], vec![]);
-        for id in ids {
-            if let Some(t) = store.state.task.entities.get(&id) {
-                if !t.title.to_lowercase().contains(&*filter) {
-                    continue;
-                }
-                if t.is_done {
-                    done.push(t)
-                } else {
-                    open.push(t)
-                }
-            }
-        }
-        let sort = imp.settings.string("task-sort");
-        let descending = imp.settings.string("sort-direction") == "descending";
-        for list in [&mut open, &mut done] {
-            match sort.as_str() {
-                "title" => list.sort_by_key(|t| t.title.to_lowercase()),
-                "due" => list.sort_by(|a, b| {
-                    let (x, y) = (a.plan_day(), b.plan_day());
-                    x.is_none()
-                        .cmp(&y.is_none())
-                        .then_with(|| x.cmp(&y))
-                        .then_with(|| a.due_with_time.cmp(&b.due_with_time))
-                }),
-                "estimate" => list.sort_by(|a, b| a.time_estimate.total_cmp(&b.time_estimate)),
-                "created" => list.sort_by_key(|t| t.created),
-                _ => {}
-            }
-            if descending {
-                list.reverse();
-            }
-        }
-        if *imp.view.borrow() == View::Today {
-            for list in [&mut open, &mut done] {
-                list.sort_by_key(|t| Self::slot_rank(&store, t)); // stable: keeps order within each group
-            }
-        }
-        // Today leads with what slipped: open tasks planned for a day that has passed.
-        let overdue_ids = if *imp.view.borrow() == View::Today {
-            store.state.overdue_ids()
-        } else {
-            vec![]
-        };
-        let overdue: Vec<&Task> = overdue_ids
-            .iter()
-            .filter_map(|i| store.state.task.entities.get(i))
-            .collect();
-        if !overdue.is_empty() {
-            self.new_section(Some(&format!("{} ({})", gettext("Overdue"), overdue.len())));
-            for t in &overdue {
-                self.task_row(t, &store, false, false);
-                for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
-                    self.task_row(s, &store, true, false);
-                }
-            }
-        }
-        let open_count = open.len() + overdue.len();
-        let split = *imp.view.borrow() == View::Today
-            && (!overdue.is_empty() || open.iter().any(|t| Self::slot_of(&store, t).is_some()));
-        let mut rendered_section: Option<u8> = None; // slot rank of the current section
-        for t in open {
-            if split {
-                let rank = Self::slot_rank(&store, t);
-                if rendered_section != Some(rank) {
-                    rendered_section = Some(rank);
-                    self.new_section(Some(&match rank {
-                        0 => gettext("Morning"),
-                        2 => gettext("Tonight"),
-                        _ => gettext("Today"),
-                    }));
-                }
-            }
-            self.task_row(t, &store, false, false);
-            for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
-                self.task_row(s, &store, true, false);
-            }
-        }
         // Everything is done: celebrate above the Completed section and offer to archive.
-        if open_count == 0 && !done.is_empty() {
-            let view = imp.view.borrow().clone();
-            let (title, desc) = match view {
-                View::Morning => (gettext("Morning done"), gettext("The rest of the day is yours.")),
-                View::Tonight => (
+        if let Some(all_done) = &listing.all_done {
+            let (title, desc) = match all_done {
+                AllDone::Morning => (gettext("Morning done"), gettext("The rest of the day is yours.")),
+                AllDone::Tonight => (
                     gettext("All done for tonight"),
                     gettext("Enjoy the rest of your evening."),
                 ),
-                View::Today => (
+                AllDone::Today { completed } => (
                     gettext("All done for today"),
                     format!(
                         "{} {} {}",
                         gettext("You completed"),
-                        done.len(),
+                        completed,
                         gettext("tasks. Time to switch off.")
                     ),
                 ),
-                _ => (gettext("All caught up"), gettext("Every task here is complete.")),
+                AllDone::Context => (gettext("All caught up"), gettext("Every task here is complete.")),
             };
             // A hand-built panel: AdwStatusPage collapses inside a vertical box.
             let page = gtk::Box::builder()
@@ -3271,314 +2597,107 @@ impl MomentumWindow {
             imp.task_box.append(&page);
             imp.rows.borrow_mut().push(String::new());
         }
-        // Completed tasks always sit in their own section at the bottom, so the plan above
-        // only ever shows what is still to do.
-        if !done.is_empty() {
-            self.new_section(Some(&format!("{} ({})", gettext("Completed"), done.len())));
-            for t in done {
-                self.task_row(t, &store, false, false);
-                for s in t.sub_task_ids.iter().filter_map(|i| store.state.task.entities.get(i)) {
-                    self.task_row(s, &store, true, false);
+        for section in &listing.sections {
+            let base = self.section_title(&section.kind, section.count);
+            let heading = match &section.group {
+                Some(group) => {
+                    let title = Self::group_title(group);
+                    Some(base.map(|base| format!("{base} · {title}")).unwrap_or(title))
+                }
+                None => base,
+            };
+            self.new_section(heading.as_deref(), section.group.as_ref());
+            for row in &section.rows {
+                match row {
+                    Row::Task { row } => self.task_row(row),
+                    Row::Project { item } => self.link_row(
+                        &item.title,
+                        "folder-symbolic",
+                        item.color.as_deref(),
+                        &format!("project:{}", item.id),
+                    ),
+                    Row::Tag { item } => self.link_row(
+                        &item.title,
+                        "tag-symbolic",
+                        item.color.as_deref(),
+                        &format!("tag:{}", item.id),
+                    ),
                 }
             }
+            if let Some(note) = &section.note {
+                self.section_note(note);
+            }
         }
-        imp.empty.set_visible(imp.rows.borrow().is_empty());
-        imp.task_box.set_visible(!imp.rows.borrow().is_empty());
+        if listing.more_available > 0 {
+            // The archive renders in pages: it can hold thousands of tasks and every row is a widget.
+            let more = gtk::Button::builder()
+                .label(format!(
+                    "{} ({} {})",
+                    gettext("Show More"),
+                    listing.more_available,
+                    gettext("remaining")
+                ))
+                .css_classes(["flat"])
+                .margin_top(6)
+                .margin_bottom(6)
+                .build();
+            more.connect_clicked(glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_| {
+                    w.imp().archive_shown.set(w.imp().archive_shown.get() + 200);
+                    w.refresh_tasks();
+                }
+            ));
+            self.append_row(
+                &gtk::ListBoxRow::builder()
+                    .child(&more)
+                    .selectable(false)
+                    .activatable(false)
+                    .build(),
+                "",
+            );
+        }
+        let none = imp.rows.borrow().is_empty();
+        imp.empty.set_visible(none);
+        imp.task_box.set_visible(!none);
         self.update_sync_button();
     }
 
     // ---- actions ---------------------------------------------------------
 
-    fn current_project(&self, store: &Store) -> String {
-        match &*self.imp().view.borrow() {
-            View::Project(id) => id.clone(),
-            _ => store
-                .state
-                .project
-                .ids
-                .first()
-                .cloned()
-                .unwrap_or(INBOX_PROJECT_ID.into()),
-        }
-    }
-
     /// Short syntax: `#tag` adds/creates tags, a trailing `1h 30m` sets the estimate.
     pub fn add_task(&self, text: &str) {
-        if text.trim().is_empty() {
-            return;
-        }
-        let imp = self.imp();
-        let (mut words, mut tags, mut est) = (vec![], vec![], 0.0);
-        for w in text.split_whitespace() {
-            if let Some(tag) = w.strip_prefix('#') {
-                tags.push(tag.to_string());
-            } else if let Some(ms) = parse_ms(w) {
-                est = ms;
-            } else {
-                words.push(w);
-            }
-        }
-        let project = self.current_project(&imp.store.borrow());
-        let mut task = Task::new(&words.join(" "), &project);
-        task.time_estimate = est;
-        let view = imp.view.borrow().clone();
-        if matches!(view, View::Today | View::Morning | View::Tonight) {
-            task.due_day = Some(today_str());
-        }
-        if view == View::Tonight {
-            task.tag_ids.push(self.ensure_evening_tag());
-        }
-        if view == View::Morning {
-            task.tag_ids.push(self.ensure_slot_tag(Slot::Morning));
-        }
-        if let View::Tag(id) = &view {
-            tags.push(imp.store.borrow().state.tag.entities[id].title.clone());
-        }
-        for name in tags {
-            let existing = imp
-                .store
-                .borrow()
-                .state
-                .tag
-                .iter()
-                .find(|t| t.title.eq_ignore_ascii_case(&name))
-                .map(|t| t.id.clone());
-            let id = existing.unwrap_or_else(|| {
-                let tag = Tag::new(&name);
-                let id = tag.id.clone();
-                imp.store.borrow_mut().dispatch(Action::AddTag { tag });
-                id
-            });
-            if !task.tag_ids.contains(&id) {
-                task.tag_ids.push(id);
-            }
-        }
-        self.dispatch(Action::AddTask { task, bottom: true });
+        let view = self.imp().view.borrow().clone();
+        let out = self.engine().add_task(text.into(), view);
+        self.apply(out);
     }
 
     pub fn add_project(&self, title: &str) {
-        if !title.trim().is_empty() {
-            self.dispatch(Action::AddProject {
-                project: Project::new(title),
-            });
+        if self.engine().add_project(title.into()).is_some() {
+            self.refresh();
         }
     }
 
     /// A task dropped on a sidebar row: move to project, add tag, or plan for today.
     fn drop_task(&self, task_id: &str, dest: &View) -> bool {
-        let store = self.imp().store.borrow();
-        let Some(task) = store.state.task.entities.get(task_id).cloned() else {
-            return false;
-        };
-        let sub_tasks: Vec<Task> = task
-            .sub_task_ids
-            .iter()
-            .filter_map(|i| store.state.task.entities.get(i).cloned())
-            .collect();
-        let today = today_str();
-        drop(store);
-        match dest {
-            View::Tonight | View::Morning => {
-                let slot = if *dest == View::Morning {
-                    Slot::Morning
-                } else {
-                    Slot::Tonight
-                };
-                let evening = self.ensure_slot_tag(slot);
-                if task.plan_day().as_deref() == Some(&today) && task.tag_ids.contains(&evening) {
-                    return false;
-                }
-                let mut ids = task.tag_ids.clone();
-                if !ids.contains(&evening) {
-                    ids.push(evening);
-                }
-                if let Some(o) = Self::slot_tag_id(&self.imp().store.borrow(), slot.other()) {
-                    ids.retain(|i| *i != o);
-                }
-                let mut ch = Map::new();
-                ch.insert("tagIds".into(), json!(ids));
-                if task.plan_day().as_deref() != Some(&today) {
-                    ch.insert("dueDay".into(), json!(today));
-                    ch.insert("dueWithTime".into(), Value::Null);
-                }
-                let mut undo = Map::new();
-                undo.insert("tagIds".into(), json!(task.tag_ids));
-                undo.insert("dueDay".into(), json!(task.due_day));
-                self.update_task(&task.id, ch);
-                self.toast_undo(
-                    &if slot == Slot::Morning {
-                        gettext("Planned for the morning")
-                    } else {
-                        gettext("Planned for tonight")
-                    },
-                    vec![Action::UpdateTask {
-                        id: task.id.clone(),
-                        changes: undo,
-                    }],
-                );
-            }
-            View::Today if task.plan_day().as_deref() != Some(&today) => {
-                self.dispatch(Action::PlanForToday {
-                    task_ids: vec![task.id.clone()],
-                    today,
-                });
-                let undo = match task.due_day.clone() {
-                    Some(day) => Action::PlanForToday {
-                        task_ids: vec![task.id.clone()],
-                        today: day,
-                    },
-                    None => Action::RemoveFromToday {
-                        task_ids: vec![task.id.clone()],
-                    },
-                };
-                self.toast_undo(&gettext("Planned for today"), vec![undo]);
-            }
-            View::Project(pid) if task.parent_id.is_none() && *pid != task.project_id => {
-                let moved = Task {
-                    project_id: pid.clone(),
-                    ..task.clone()
-                };
-                let undo = Action::MoveToProject {
-                    task: moved,
-                    sub_tasks: sub_tasks.clone(),
-                    target_project_id: task.project_id.clone(),
-                };
-                self.dispatch(Action::MoveToProject {
-                    task: task.clone(),
-                    sub_tasks,
-                    target_project_id: pid.clone(),
-                });
-                let name = self
-                    .imp()
-                    .store
-                    .borrow()
-                    .state
-                    .project
-                    .entities
-                    .get(pid)
-                    .map(|p| p.title.clone())
-                    .unwrap_or_default();
-                self.toast_undo(&format!("{} {name}", gettext("Moved to")), vec![undo]);
-            }
-            View::Tag(tid) if !task.tag_ids.contains(tid) => {
-                let mut ids = task.tag_ids.clone();
-                ids.push(tid.clone());
-                let undo = Action::UpdateTask {
-                    id: task.id.clone(),
-                    changes: [("tagIds".to_string(), json!(task.tag_ids))].into_iter().collect(),
-                };
-                self.update_task(&task.id, [("tagIds".to_string(), json!(ids))].into_iter().collect());
-                let name = self
-                    .imp()
-                    .store
-                    .borrow()
-                    .state
-                    .tag
-                    .entities
-                    .get(tid)
-                    .map(|t| t.title.clone())
-                    .unwrap_or_default();
-                self.toast_undo(&format!("{} #{name}", gettext("Tagged")), vec![undo]);
-            }
-            _ => return false,
-        }
-        true
+        let out = self.engine().drop_tasks(vec![task_id.to_string()], dest.clone());
+        let changed = out.changed;
+        self.apply(out);
+        changed
     }
 
     fn set_done(&self, id: &str, done: bool) {
-        self.update_task(id, [("isDone".to_string(), json!(done))].into_iter().collect());
-        if done {
-            if let Some(undo) = self.auto_archive(&[id.to_string()]) {
-                self.toast_undo(&gettext("Task completed and archived"), undo);
-                return;
-            }
-            let undo = Action::UpdateTask {
-                id: id.into(),
-                changes: [("isDone".to_string(), json!(false))].into_iter().collect(),
-            };
-            self.toast_undo(&gettext("Task completed"), vec![undo]);
-        }
-    }
-    /// With the "auto-archive" preference on, moves just-completed top-level tasks (and
-    /// their subtasks) to the archive and syncs, like Archive Completed does. Returns the
-    /// undo batch (restore, which also reopens them) when something was archived.
-    fn auto_archive(&self, ids: &[String]) -> Option<Vec<Action>> {
-        if !self.imp().settings.boolean("auto-archive") {
-            return None;
-        }
-        let (tasks, sub_tasks): (Vec<Task>, Vec<Task>) = {
-            let store = self.imp().store.borrow();
-            let tasks: Vec<Task> = ids
-                .iter()
-                .filter_map(|i| store.state.task.entities.get(i))
-                .filter(|t| t.is_done && t.parent_id.is_none())
-                .cloned()
-                .collect();
-            let subs = tasks
-                .iter()
-                .flat_map(|t| {
-                    t.sub_task_ids
-                        .iter()
-                        .filter_map(|i| store.state.task.entities.get(i).cloned())
-                })
-                .collect();
-            (tasks, subs)
-        };
-        if tasks.is_empty() {
-            return None;
-        }
-        let undo: Vec<Action> = tasks
-            .iter()
-            .map(|t| Action::RestoreTask {
-                task: t.clone(),
-                sub_tasks: sub_tasks
-                    .iter()
-                    .filter(|s| s.parent_id.as_deref() == Some(&t.id))
-                    .cloned()
-                    .collect(),
-            })
-            .collect();
-        self.dispatch(Action::MoveToArchive { tasks, sub_tasks });
-        if self.sync_configured() {
-            self.sync();
-        }
-        Some(undo)
-    }
-    fn update_task(&self, id: &str, changes: Map<String, Value>) {
-        self.dispatch(Action::UpdateTask { id: id.into(), changes });
+        let out = self.engine().set_done(id.into(), done);
+        self.apply(out);
     }
 
+    /// HIG: destructive actions get an undo toast rather than a confirmation dialog.
     fn delete_task(&self, id: &str) {
-        let store = self.imp().store.borrow();
-        let Some(task) = store.state.task.entities.get(id).cloned() else {
-            return;
-        };
-        let sub_tasks: Vec<Task> = task
-            .sub_task_ids
-            .iter()
-            .filter_map(|i| store.state.task.entities.get(i).cloned())
-            .collect();
-        drop(store);
-        self.dispatch(Action::DeleteTask {
-            task: task.clone(),
-            sub_tasks: sub_tasks.clone(),
-        });
-        // HIG: destructive actions get an undo toast rather than a confirmation dialog; the
-        // same batch feeds the global undo stack (Ctrl+Z).
-        let mut parent = task.clone();
-        parent.sub_task_ids.clear(); // AddSubTask re-links each subtask exactly once
-        let mut undo = vec![Action::AddTask {
-            task: parent,
-            bottom: true,
-        }];
-        undo.extend(sub_tasks.iter().map(|st| Action::AddSubTask {
-            task: st.clone(),
-            parent_id: task.id.clone(),
-        }));
-        self.toast_undo(&gettext("Task deleted"), undo);
+        let out = self.engine().delete_task(id.into());
+        self.apply(out);
     }
 
-    /// Drag reorder: put `moved` before `before` in the current context list.
     /// Ctrl+PageDown / Ctrl+PageUp: step through the sidebar entries.
     fn step_view(&self, delta: i32) {
         let imp = self.imp();
@@ -3607,52 +2726,13 @@ impl MomentumWindow {
     /// Ctrl+Up / Ctrl+Down: move the focused task one place in Manual Order.
     fn nudge(&self, delta: i32) {
         let Some(id) = self.focused_task() else { return };
-        let imp = self.imp();
-        if imp.settings.string("task-sort") != "manual" {
-            self.toast(&gettext("Switch to Manual Order to rearrange tasks"));
-            return;
+        let view = self.imp().view.borrow().clone();
+        let out = self.engine().nudge(id.clone(), delta, view);
+        let changed = out.changed;
+        self.apply(out);
+        if changed {
+            self.focus_task(&id);
         }
-        let (context_type, context_id) = match &*imp.view.borrow() {
-            View::Today | View::Morning | View::Tonight => ("TAG", TODAY_TAG_ID.to_string()),
-            View::Project(p) => ("PROJECT", p.clone()),
-            View::Tag(t) => ("TAG", t.clone()),
-            _ => return,
-        };
-        let list: Vec<String> = self
-            .view_task_ids(&imp.store.borrow())
-            .into_iter()
-            .filter(|i| {
-                imp.store
-                    .borrow()
-                    .state
-                    .task
-                    .entities
-                    .get(i)
-                    .is_some_and(|t| !t.is_done)
-            })
-            .collect();
-        let Some(pos) = list.iter().position(|i| *i == id) else {
-            return;
-        };
-        let target = pos as i32 + delta;
-        if target < 0 || target >= list.len() as i32 {
-            return;
-        }
-        // Moving down past X means "after X"; moving up before X means "after X's predecessor".
-        let after_task_id = if delta > 0 {
-            Some(list[target as usize].clone())
-        } else if target == 0 {
-            None
-        } else {
-            Some(list[target as usize - 1].clone())
-        };
-        self.dispatch(Action::MoveInList {
-            task_id: id.clone(),
-            after_task_id,
-            context_type: context_type.into(),
-            context_id,
-        });
-        self.focus_task(&id);
     }
 
     /// Put keyboard focus back on a task row after the list was rebuilt.
@@ -3679,68 +2759,25 @@ impl MomentumWindow {
 
     /// Ctrl+Shift+D: a fresh copy of the task (same project, tags, estimate, notes, due day).
     fn duplicate_task(&self, id: &str) {
-        let Some(t) = self.imp().store.borrow().state.task.entities.get(id).cloned() else {
-            return;
-        };
-        let mut copy = Task::new(&t.title, &t.project_id);
-        copy.tag_ids = t.tag_ids.clone();
-        copy.time_estimate = t.time_estimate;
-        copy.notes = t.notes.clone();
-        copy.due_day = t.due_day.clone();
-        let new_id = copy.id.clone();
-        self.dispatch(Action::AddTask {
-            task: copy.clone(),
-            bottom: true,
-        });
-        self.toast_undo(
-            &gettext("Task duplicated"),
-            vec![Action::DeleteTask {
-                task: copy,
-                sub_tasks: vec![],
-            }],
-        );
-        self.focus_task(&new_id);
+        let out = self.engine().duplicate_task(id.into());
+        let changed = out.changed;
+        self.apply(out);
+        if changed {
+            if let Some(new_id) = self.engine().last_added_id() {
+                self.focus_task(&new_id);
+            }
+        }
     }
 
+    /// Drag reorder: put `moved` before `before` in the current context list.
     fn reorder(&self, moved: &str, before: &str) -> bool {
-        let imp = self.imp();
-        if moved == before {
-            return false;
-        }
-        if imp.settings.string("task-sort") != "manual" {
-            self.toast(&gettext("Switch to Manual Order to rearrange tasks"));
-            return false;
-        }
-        let (context_type, context_id) = match &*imp.view.borrow() {
-            View::Today | View::Morning | View::Tonight => ("TAG", TODAY_TAG_ID.to_string()),
-            View::Project(id) => ("PROJECT", id.clone()),
-            View::Tag(id) => ("TAG", id.clone()),
-            _ => return false,
-        };
-        let full = self.view_task_ids(&imp.store.borrow());
-        let was_after = full
-            .iter()
-            .position(|i| i == moved)
-            .and_then(|p| p.checked_sub(1))
-            .and_then(|p| full.get(p).cloned());
-        let list: Vec<String> = full.into_iter().filter(|i| i != moved).collect();
-        let Some(pos) = list.iter().position(|i| i == before) else {
-            return false;
-        };
-        let after_task_id = if pos == 0 { None } else { list.get(pos - 1).cloned() };
-        self.push_undo(vec![Action::MoveInList {
-            task_id: moved.into(),
-            after_task_id: was_after,
-            context_type: context_type.into(),
-            context_id: context_id.clone(),
-        }]);
-        self.dispatch(Action::MoveInList {
-            task_id: moved.into(),
-            after_task_id,
-            context_type: context_type.into(),
-            context_id,
-        });
-        true
+        let view = self.imp().view.borrow().clone();
+        let out = self
+            .engine()
+            .reorder_tasks(moved.split('\n').map(str::to_string).collect(), before.into(), view);
+        let changed = out.changed;
+        self.apply(out);
+        changed
     }
 
     /// Ctrl+M: pick a project for the focused task.
@@ -3749,29 +2786,20 @@ impl MomentumWindow {
     }
 
     fn move_many_dialog(&self, ids: Vec<String>) {
-        let store = self.imp().store.borrow();
-        let tasks: Vec<Task> = ids
-            .iter()
-            .filter_map(|i| store.state.task.entities.get(i).cloned())
-            .collect();
+        let engine = self.engine();
+        let tasks: Vec<TaskRow> = ids.iter().filter_map(|i| engine.task_row(i.clone())).collect();
         let Some(task) = tasks.first().cloned() else {
             return;
         };
-        let projects: Vec<(String, String)> = store
-            .state
-            .project
-            .iter()
-            .filter(|p| !p.is_archived)
-            .map(|p| (p.id.clone(), p.title.clone()))
-            .collect();
-        drop(store);
         if task.parent_id.is_some() {
             self.toast(&gettext("Subtasks move with their parent task"));
             return;
         }
-        let names: Vec<&str> = projects.iter().map(|(_, t)| t.as_str()).collect();
+        let projects = engine.projects();
+        let names: Vec<&str> = projects.iter().map(|p| p.title.as_str()).collect();
         let drop_down = gtk::DropDown::from_strings(&names);
-        drop_down.set_selected(projects.iter().position(|(id, _)| *id == task.project_id).unwrap_or(0) as u32);
+        let current = task.project.as_ref().map(|p| p.id.as_str()).unwrap_or("");
+        drop_down.set_selected(projects.iter().position(|p| p.id == current).unwrap_or(0) as u32);
         let d = adw::AlertDialog::builder()
             .heading(gettext("Move to Project"))
             .body(if tasks.len() == 1 {
@@ -3784,6 +2812,7 @@ impl MomentumWindow {
             .build();
         d.add_responses(&[("cancel", &gettext("Cancel")), ("move", &gettext("Move"))]);
         d.set_response_appearance("move", adw::ResponseAppearance::Suggested);
+        let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
         d.connect_response(
             None,
             glib::clone!(
@@ -3793,11 +2822,10 @@ impl MomentumWindow {
                 drop_down,
                 move |_, r| {
                     if r == "move" {
-                        if let Some((pid, _)) = projects.get(drop_down.selected() as usize) {
-                            for t in &tasks {
-                                w.drop_task(&t.id, &View::Project(pid.clone()));
-                            }
+                        if let Some(p) = projects.get(drop_down.selected() as usize) {
+                            let out = w.engine().move_to_project(ids.clone(), p.id.clone());
                             w.set_selecting(false);
+                            w.apply(out);
                         }
                     }
                 }
@@ -3812,23 +2840,22 @@ impl MomentumWindow {
         self.edit_context_dialog_for(view);
     }
     fn edit_context_dialog_for(&self, view: View) {
-        let store = self.imp().store.borrow();
+        let engine = self.engine();
         let (heading, title, color) = match &view {
-            View::Project(id) => {
-                let Some(p) = store.state.project.entities.get(id) else {
+            View::Project { id } => {
+                let Some(p) = engine.project(id.clone()) else {
                     return;
                 };
-                (gettext("Edit Project"), p.title.clone(), p.color().map(str::to_string))
+                (gettext("Edit Project"), p.title, p.color)
             }
-            View::Tag(id) => {
-                let Some(t) = store.state.tag.entities.get(id) else {
+            View::Tag { id } => {
+                let Some(t) = engine.tag(id.clone()) else {
                     return;
                 };
-                (gettext("Edit Tag"), t.title.clone(), tag_color(t).map(str::to_string))
+                (gettext("Edit Tag"), t.title, t.color)
             }
             _ => return,
         };
-        drop(store);
         let content = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(["boxed-list"])
@@ -3873,50 +2900,12 @@ impl MomentumWindow {
                         (c.blue() * 255.0) as u8
                     );
                     let new_title = name.text().trim().to_string();
-                    let mut ch = Map::new();
-                    if !new_title.is_empty() {
-                        ch.insert("title".into(), json!(new_title));
-                    }
-                    match &view {
-                        View::Project(id) => {
-                            let mut theme = w
-                                .imp()
-                                .store
-                                .borrow()
-                                .state
-                                .project
-                                .entities
-                                .get(id)
-                                .map(|p| p.theme.clone())
-                                .unwrap_or(json!({}));
-                            theme["primary"] = json!(hex);
-                            ch.insert("theme".into(), theme);
-                            w.dispatch(Action::UpdateProject {
-                                id: id.clone(),
-                                changes: ch,
-                            });
-                        }
-                        View::Tag(id) => {
-                            let mut theme = w
-                                .imp()
-                                .store
-                                .borrow()
-                                .state
-                                .tag
-                                .entities
-                                .get(id)
-                                .map(|t| t.theme.clone())
-                                .unwrap_or(json!({}));
-                            theme["primary"] = json!(hex);
-                            ch.insert("theme".into(), theme);
-                            ch.insert("color".into(), json!(hex));
-                            w.dispatch(Action::UpdateTag {
-                                id: id.clone(),
-                                changes: ch,
-                            });
-                        }
-                        _ => {}
-                    }
+                    let out = match &view {
+                        View::Project { id } => w.engine().update_project(id.clone(), new_title, Some(hex)),
+                        View::Tag { id } => w.engine().update_tag(id.clone(), new_title, Some(hex)),
+                        _ => return,
+                    };
+                    w.apply(out);
                 }
             ),
         );
@@ -3929,46 +2918,32 @@ impl MomentumWindow {
         self.delete_context_dialog_for(view);
     }
     fn delete_context_dialog_for(&self, view: View) {
-        let store = self.imp().store.borrow();
-        let (heading, body, action) = match &view {
-            View::Project(id) if id != INBOX_PROJECT_ID => {
-                let Some(p) = store.state.project.entities.get(id) else {
+        let engine = self.engine();
+        let (heading, body) = match &view {
+            View::Project { id } if id != INBOX_PROJECT_ID => {
+                let Some(p) = engine.project(id.clone()) else {
                     return;
                 };
-                let all: Vec<String> = store
-                    .state
-                    .task
-                    .iter()
-                    .filter(|t| t.project_id == *id)
-                    .map(|t| t.id.clone())
-                    .collect();
                 (
                     format!("{} “{}”?", gettext("Delete"), p.title),
                     format!(
                         "{} {}",
-                        all.len(),
+                        engine.project_task_count(id.clone()),
                         gettext("tasks in this project will be deleted. This cannot be undone.")
                     ),
-                    Action::DeleteProject {
-                        project_id: id.clone(),
-                        note_ids: p.note_ids.clone(),
-                        all_task_ids: all,
-                    },
                 )
             }
-            View::Tag(id) => {
-                let Some(t) = store.state.tag.entities.get(id) else {
+            View::Tag { id } => {
+                let Some(t) = engine.tag(id.clone()) else {
                     return;
                 };
                 (
                     format!("{} “{}”?", gettext("Delete"), t.title),
                     gettext("Tasks keep their other tags."),
-                    Action::DeleteTag { id: id.clone() },
                 )
             }
             _ => return,
         };
-        drop(store);
         let d = adw::AlertDialog::builder()
             .heading(heading)
             .body(body)
@@ -3986,7 +2961,12 @@ impl MomentumWindow {
                         if *w.imp().view.borrow() == view {
                             *w.imp().view.borrow_mut() = View::Today;
                         }
-                        w.dispatch(action.clone());
+                        let out = match &view {
+                            View::Project { id } => w.engine().delete_project(id.clone()),
+                            View::Tag { id } => w.engine().delete_tag(id.clone()),
+                            _ => return,
+                        };
+                        w.apply(out);
                     }
                 }
             ),
@@ -3996,116 +2976,41 @@ impl MomentumWindow {
 
     /// Create today's instances of repeating tasks, like upstream's TaskRepeatCfgService.
     pub fn spawn_repeats(&self) {
-        let today = today_str();
-        // Each config yields at most its newest missed day (upstream getNewestPossibleDueDate):
-        // a weekly task missed on Monday is created on Wednesday, dated Monday, and shows
-        // under Overdue in Today.
-        let due: Vec<(RepeatCfg, String)> = {
-            let store = self.imp().store.borrow();
-            let archived: Vec<Task> = archived_tasks(&store);
-            store
-                .state
-                .task_repeat_cfg
-                .iter()
-                .filter_map(|c| c.newest_due_day(&today).map(|d| (c.clone(), d)))
-                .filter(|(c, day)| {
-                    let id = format!("rpt_{}_{}", c.id, day);
-                    !store.state.task.entities.contains_key(&id) && !archived.iter().any(|t| t.id == id)
-                })
-                .collect()
-        };
-        for (cfg, today) in due {
-            let project = cfg
-                .project_id
-                .clone()
-                .filter(|p| !p.is_empty())
-                .unwrap_or_else(|| self.current_project(&self.imp().store.borrow()));
-            let mut task = Task::new(cfg.title.as_deref().unwrap_or(""), &project);
-            task.id = format!("rpt_{}_{}", cfg.id, today);
-            task.repeat_cfg_id = Some(cfg.id.clone());
-            task.time_estimate = cfg.default_estimate.unwrap_or(0.0);
-            task.notes = cfg.notes.clone().filter(|n| !n.is_empty());
-            task.due_day = Some(today.clone());
-            task.tag_ids = cfg.tag_ids.iter().filter(|t| *t != TODAY_TAG_ID).cloned().collect();
-            self.imp()
-                .store
-                .borrow_mut()
-                .dispatch(Action::AddTask { task, bottom: true });
-            let changes = [
-                ("lastTaskCreationDay".to_string(), json!(today)),
-                ("lastTaskCreation".to_string(), json!(now_ms())),
-            ]
-            .into_iter()
-            .collect();
-            self.imp().store.borrow_mut().dispatch(Action::UpdateRepeatCfg {
-                id: cfg.id.clone(),
-                changes,
-            });
-        }
+        self.engine().spawn_repeats();
     }
 
     fn check_reminders(&self) {
-        let imp = self.imp();
-        let now = now_ms();
-        let due: Vec<Task> = imp
-            .store
-            .borrow()
-            .state
-            .task
-            .iter()
-            .filter(|t| !t.is_done && t.remind_at.is_some_and(|r| r <= now) && !imp.notified.borrow().contains(&t.id))
-            .cloned()
-            .collect();
-        for t in due {
-            imp.notified.borrow_mut().insert(t.id.clone());
-            let n = gio::Notification::new(&t.title);
-            n.set_body(Some(&match t.due_with_time {
-                Some(ms) => format!("{} {}", gettext("Due at"), fmt_time(ms)),
+        for r in self.engine().due_reminders() {
+            let n = gio::Notification::new(&r.title);
+            n.set_body(Some(&match &r.time {
+                Some(t) => format!("{} {}", gettext("Due at"), fmt_clock(t)),
                 None => gettext("Reminder"),
             }));
-            n.set_default_action_and_target_value("app.search", Some(&t.title.to_variant()));
-            n.add_button_with_target_value(&gettext("Done"), "app.notify-done", Some(&t.id.to_variant()));
-            n.add_button_with_target_value(&gettext("Snooze 1 hour"), "app.notify-snooze", Some(&t.id.to_variant()));
+            n.set_default_action_and_target_value("app.search", Some(&r.title.to_variant()));
+            n.add_button_with_target_value(&gettext("Done"), "app.notify-done", Some(&r.task_id.to_variant()));
+            n.add_button_with_target_value(
+                &gettext("Snooze 1 hour"),
+                "app.notify-snooze",
+                Some(&r.task_id.to_variant()),
+            );
             if let Some(app) = self.application() {
-                app.send_notification(Some(&t.id), &n);
+                app.send_notification(Some(&r.task_id), &n);
             }
         }
         self.morning_summary();
     }
 
-    /// Once per day after 05:00: "Today: 5 tasks, 2 tonight". Only when there is something to do.
+    /// Once per day at the configured local time: "Today: 5 tasks, 2 tonight". Only when there is something to do.
     fn morning_summary(&self) {
-        let imp = self.imp();
-        let today = today_str();
-        if imp.settings.string("last-summary-day") == today
-            || glib::DateTime::now_local().map(|d| d.hour() < 5).unwrap_or(true)
-        {
+        let Some(s) = self.engine().morning_summary() else {
             return;
-        }
-        let (n, morning, tonight) = {
-            let store = imp.store.borrow();
-            let ids = store.state.today_ids();
-            let open: Vec<&Task> = ids
-                .iter()
-                .filter_map(|i| store.state.task.entities.get(i))
-                .filter(|t| !t.is_done)
-                .collect();
-            (
-                open.len(),
-                open.iter().filter(|t| Self::is_morning(&store, t)).count(),
-                open.iter().filter(|t| Self::is_tonight(&store, t)).count(),
-            )
         };
-        imp.settings.set_string("last-summary-day", &today).ok();
-        if n == 0 {
-            return;
+        let mut body = format!("{} {}", s.total, gettext("tasks today"));
+        if s.morning > 0 {
+            body.push_str(&format!(", {} {}", s.morning, gettext("this morning")));
         }
-        let mut body = format!("{n} {}", gettext("tasks today"));
-        if morning > 0 {
-            body.push_str(&format!(", {morning} {}", gettext("this morning")));
-        }
-        if tonight > 0 {
-            body.push_str(&format!(", {tonight} {}", gettext("tonight")));
+        if s.tonight > 0 {
+            body.push_str(&format!(", {} {}", s.tonight, gettext("tonight")));
         }
         let note = gio::Notification::new(&gettext("Good morning"));
         note.set_body(Some(&body));
@@ -4121,17 +3026,7 @@ impl MomentumWindow {
         if !imp.settings.boolean("run-in-background") {
             return;
         }
-        let n = {
-            let store = imp.store.borrow();
-            store
-                .state
-                .today_ids()
-                .iter()
-                .filter_map(|i| store.state.task.entities.get(i))
-                .filter(|t| !t.is_done)
-                .count()
-        };
-        let status = match n {
+        let status = match imp.engine.today_open_count() {
             0 => gettext("All done for today"),
             1 => gettext("1 task due today"),
             n => format!("{n} {}", gettext("tasks due today")),
@@ -4169,20 +3064,10 @@ impl MomentumWindow {
     /// HIG "new item" dialog: Cancel / Create in the header, Create enabled once there is a title.
     pub fn new_task_dialog(&self) {
         let imp = self.imp();
-        let (project, due) = {
-            let s = imp.store.borrow();
-            (
-                self.current_project(&s),
-                matches!(*imp.view.borrow(), View::Today | View::Morning | View::Tonight).then(today_str),
-            )
-        };
-        let form = Rc::new(crate::task_form::TaskForm::new(
-            self,
-            &imp.store.borrow(),
-            None,
-            &project,
-            due,
-        ));
+        let view = imp.view.borrow().clone();
+        let project = imp.engine.project_for(&view);
+        let due = view.is_day().then(sp_model::today_str);
+        let form = Rc::new(crate::task_form::TaskForm::new(self, None, &project, due));
         let header = adw::HeaderBar::builder()
             .show_start_title_buttons(false)
             .show_end_title_buttons(false)
@@ -4222,24 +3107,10 @@ impl MomentumWindow {
             #[strong]
             form,
             move |_| {
-                let mut task = form.into_task(&mut w.imp().store.borrow_mut());
-                // Clone the view first: dispatch() refreshes the sidebar, which re-borrows it mutably.
+                // The view adds its slot or tag, like quick-add does.
                 let view = w.imp().view.borrow().clone();
-                if let View::Tag(id) = view {
-                    if !task.tag_ids.contains(&id) {
-                        task.tag_ids.push(id);
-                    }
-                } else if view == View::Tonight || view == View::Morning {
-                    let id = w.ensure_slot_tag(if view == View::Morning {
-                        Slot::Morning
-                    } else {
-                        Slot::Tonight
-                    });
-                    if !task.tag_ids.contains(&id) {
-                        task.tag_ids.push(id);
-                    }
-                }
-                w.dispatch(Action::AddTask { task, bottom: true });
+                let out = w.engine().create_task(form.into_draft(), view);
+                w.apply(out);
                 dialog.close();
             }
         ));
@@ -4249,31 +3120,16 @@ impl MomentumWindow {
 
     /// Edit dialog: changes are applied when the dialog closes.
     pub fn open_task(&self, id: &str) {
-        let imp = self.imp();
-        let Some(t) = imp.store.borrow().state.task.entities.get(id).cloned() else {
+        let Some(t) = self.engine().task_detail(id.to_string()) else {
             return;
         };
-        let form = Rc::new(crate::task_form::TaskForm::new(
-            self,
-            &imp.store.borrow(),
-            Some(&t),
-            &t.project_id,
-            None,
-        ));
+        let form = Rc::new(crate::task_form::TaskForm::new(self, Some(&t), &t.project_id, None));
         let repeat_row = adw::ActionRow::builder()
             .title(gettext("Repeat"))
             .subtitle(
-                t.repeat_cfg_id
+                t.repeat
                     .as_ref()
-                    .and_then(|id| {
-                        imp.store
-                            .borrow()
-                            .state
-                            .task_repeat_cfg
-                            .entities
-                            .get(id)
-                            .map(repeat_text)
-                    })
+                    .map(repeat_text)
                     .unwrap_or_else(|| gettext("Does not repeat")),
             )
             .activatable(true)
@@ -4320,12 +3176,8 @@ impl MomentumWindow {
             id,
             move |e| {
                 if !e.text().trim().is_empty() {
-                    let mut task = Task::new(&e.text(), "");
-                    task.parent_id = Some(id.clone());
-                    w.dispatch(Action::AddSubTask {
-                        task,
-                        parent_id: id.clone(),
-                    });
+                    let out = w.engine().add_subtask(id.clone(), e.text().to_string());
+                    w.apply(out);
                     e.set_text("");
                 }
             }
@@ -4336,49 +3188,17 @@ impl MomentumWindow {
             #[strong]
             form,
             move |_| {
-                let imp = w.imp();
-                if !imp.store.borrow().state.task.entities.contains_key(&id) {
+                let engine = w.engine();
+                if engine.task_detail(id.clone()).is_none() {
                     return;
                 }
-                let mut ch = Map::new();
-                let nt = form.title_text();
-                if !nt.is_empty() && nt != t.title {
-                    ch.insert("title".into(), json!(nt));
-                }
-                let ne = form.estimate_ms();
-                if ne != t.time_estimate {
-                    ch.insert("timeEstimate".into(), json!(ne));
-                }
-                // A time fixes the day too: `dueWithTime` and `dueDay` never coexist upstream.
-                let nw = form.due_with_time();
-                let nd = form.due_day().filter(|_| nw.is_none());
-                if nw != t.due_with_time {
-                    ch.insert("dueWithTime".into(), json!(nw));
-                }
-                if nd != t.due_day {
-                    ch.insert("dueDay".into(), json!(nd));
-                }
-                let nr = form.remind_at();
-                if nr != t.remind_at {
-                    ch.insert("remindAt".into(), json!(nr));
-                    imp.notified.borrow_mut().remove(&id);
-                }
-                let np = form.project_id();
-                if t.parent_id.is_none() && !np.is_empty() && np != t.project_id {
-                    ch.insert("projectId".into(), json!(np));
-                }
-                let nn = form.notes_text();
-                if nn != t.notes.clone().unwrap_or_default() {
-                    ch.insert("notes".into(), json!(nn));
-                }
-                let ids = form.tag_ids(&mut imp.store.borrow_mut());
-                if ids != t.tag_ids {
-                    ch.insert("tagIds".into(), json!(ids));
-                }
-                if ch.is_empty() {
-                    w.refresh();
+                // Only the fields that differ become one update; subtasks added meanwhile
+                // still need the list rebuilt.
+                let out = engine.save_task(id.clone(), form.into_draft());
+                if out.changed {
+                    w.apply(out);
                 } else {
-                    w.update_task(&id, ch);
+                    w.refresh();
                 }
             }
         ));
@@ -4387,15 +3207,16 @@ impl MomentumWindow {
 
     // ---- sync / backup ---------------------------------------------------
 
-    pub fn nextcloud_cfg(&self) -> sp_sync::NextcloudCfg {
+    /// Nextcloud settings without the secrets (those are read on the sync thread).
+    fn nextcloud_settings(&self) -> momentum_core::NextcloudSettings {
         let s = &self.imp().settings;
-        sp_sync::NextcloudCfg {
+        momentum_core::NextcloudSettings {
             server_url: s.string("nextcloud-server").into(),
             user_name: s.string("nextcloud-user").into(),
             folder: s.string("nextcloud-folder").into(),
             compress: s.boolean("compress"),
-            encrypt_key: None,
             password: String::new(),
+            encryption_password: None,
         }
     }
 
@@ -4404,101 +3225,67 @@ impl MomentumWindow {
         if std::env::var_os("MOMENTUM_DEMO").is_some() {
             return;
         }
-        if self.p2p_enabled() {
-            self.p2p_sync_now();
-        }
-        if !imp.settings.boolean("sync-enabled") {
-            if !self.p2p_enabled() {
-                self.toast(&gettext("Sync is turned off. Enable it in Preferences."));
+        match crate::prefs::sync_method(&imp.settings).as_str() {
+            "libresync" => {
+                self.p2p_apply_setting();
+                if !imp.syncing.get() {
+                    self.p2p_sync_now();
+                }
+                return;
             }
-            return;
+            "nextcloud" => self.p2p_apply_setting(),
+            _ => {
+                self.toast(&gettext("Sync is turned off. Enable it in Preferences."));
+                return;
+            }
         }
         if imp.syncing.replace(true) {
             return;
         }
-        // HIG: say what is happening right away, but only animate if it takes a while,
-        // so a one-second sync does not flash a spinner.
-        imp.sync_label.set_text(&gettext("Syncing…"));
-        imp.sync_button.set_sensitive(false);
-        glib::timeout_add_seconds_local_once(
-            1,
-            glib::clone!(
-                #[weak(rename_to = w)]
-                self,
-                move || {
-                    if w.imp().syncing.get() {
-                        w.imp().sync_button.set_child(Some(&adw::Spinner::new()));
-                        w.imp().sync_button.set_tooltip_text(Some(&gettext("Syncing…")));
-                    }
-                }
-            ),
-        );
-        let mut cfg = self.nextcloud_cfg();
-        let snapshot = imp.store.borrow().clone();
-        let n_pending = snapshot.pending.len();
+        self.update_sync_button();
+        let mut settings = self.nextcloud_settings();
+        let engine = self.engine();
         glib::spawn_future_local(glib::clone!(
             #[weak(rename_to = w)]
             self,
             async move {
                 let result = gio::spawn_blocking(move || {
-                    cfg.password = crate::keyring::get("nextcloud").unwrap_or_default();
-                    cfg.encrypt_key = crate::keyring::get("encryption");
-                    if !cfg.is_complete() {
-                        return Err(("Nextcloud sync is not configured".to_string(), true));
-                    }
-                    let mut s = snapshot;
-                    sp_sync::sync(&cfg, &mut s).map(|r| (s, r)).map_err(|e| {
-                        use sp_sync::SyncError::*;
-                        (
-                            e.to_string(),
-                            matches!(e, Encrypted | Decrypt(_) | Schema(_) | Version(_) | FreshState),
-                        )
-                    })
+                    settings.password = crate::keyring::get("nextcloud").unwrap_or_default();
+                    settings.encryption_password = crate::keyring::get("encryption");
+                    engine.sync_nextcloud(settings)
                 })
                 .await
                 .unwrap();
                 let imp = w.imp();
                 imp.syncing.set(false);
-                imp.sync_button.set_icon_name("view-refresh-symbolic");
-                imp.sync_button.set_tooltip_text(Some(&gettext("Sync Now")));
-                imp.sync_button.set_sensitive(true);
-                w.update_sync_button();
+                // Apply a provider switch only after the in-flight Nextcloud cycle has ended.
+                w.p2p_apply_setting();
+                if crate::prefs::sync_method(&imp.settings) != "nextcloud" {
+                    w.refresh();
+                    return;
+                }
+                use momentum_core::CoreError;
                 match result {
-                    Ok((mut synced, r)) => {
-                        // Re-apply anything dispatched while the sync ran, keeping it pending.
-                        let live = imp.store.borrow().pending[n_pending..].to_vec();
-                        for p in &live {
-                            sp_oplog::apply(&mut synced.state, &p.action);
-                        }
-                        synced.pending.extend(live);
-                        synced.save().ok();
-                        *imp.store.borrow_mut() = synced;
-                        imp.settings.set_int64("last-sync-ms", now_ms() as i64).ok();
-                        imp.banner.set_revealed(false);
-                        w.spawn_repeats();
+                    Ok(r) => {
+                        w.set_sync_error(None);
                         w.refresh();
                         w.update_sync_button();
                         tracing::info!(
-                            "sync ok: downloaded={} uploaded={} ops_uploaded={} sync_version={}",
+                            "sync ok: downloaded={} uploaded={} ops_uploaded={}",
                             r.downloaded,
                             r.uploaded,
-                            r.ops_uploaded,
-                            w.imp().store.borrow().meta.last_sync_version
+                            r.ops_uploaded
                         );
                         if r.downloaded || r.uploaded {
-                            w.toast(&format!("{} ({}↑)", gettext("Synced"), r.ops_uploaded));
+                            w.toast(&crate::messages::text(&momentum_core::Message::Synced {
+                                ops_uploaded: r.ops_uploaded,
+                            }));
                         }
                     }
-                    Err((e, actionable)) => {
+                    Err(CoreError::Busy) => w.update_sync_button(),
+                    Err(e) => {
                         tracing::warn!("sync failed: {e}");
-                        if actionable {
-                            // HIG: persistent, fixable problems get a banner with the fix, not a toast.
-                            imp.banner
-                                .set_title(&format!("{}: {e}", gettext("Sync needs attention")));
-                            imp.banner.set_revealed(true);
-                        } else {
-                            w.toast(&format!("{}: {e}", gettext("Sync failed")));
-                        }
+                        w.set_sync_error(Some(e.to_string()));
                     }
                 }
             }
@@ -4518,17 +3305,10 @@ impl MomentumWindow {
                 else {
                     return;
                 };
-                let res = std::fs::read(file.path().unwrap())
-                    .map_err(|e| e.to_string())
-                    .and_then(|b| serde_json::from_slice::<Value>(&b).map_err(|e| e.to_string()))
-                    .and_then(|v| AppData::from_backup(v).map_err(|e| e.to_string()));
-                match res {
-                    Ok(d) => {
-                        w.imp().store.borrow_mut().replace_state(d);
-                        w.refresh();
-                        w.toast(&gettext("Backup imported"));
-                    }
-                    Err(e) => w.toast(&e),
+                let path = file.path().unwrap().to_string_lossy().into_owned();
+                match w.engine().import_backup(path) {
+                    Ok(out) => w.apply(out),
+                    Err(e) => w.toast(&e.to_string()),
                 }
             }
         ));
@@ -4540,15 +3320,14 @@ impl MomentumWindow {
             async move {
                 let dialog = gtk::FileDialog::builder()
                     .title(gettext("Export backup"))
-                    .initial_name(format!("{}.json", today_str()))
+                    .initial_name(format!("{}.json", sp_model::today_str()))
                     .build();
                 let Ok(file) = dialog.save_future(Some(&w)).await else {
                     return;
                 };
-                let body =
-                    json!({"data": w.imp().store.borrow().state, "timestamp": now_ms(), "crossModelVersion": 4.5});
-                match std::fs::write(file.path().unwrap(), serde_json::to_vec_pretty(&body).unwrap()) {
-                    Ok(_) => w.toast(&gettext("Backup exported")),
+                let path = file.path().unwrap().to_string_lossy().into_owned();
+                match w.engine().export_backup(path) {
+                    Ok(out) => w.apply(out),
                     Err(e) => w.toast(&e.to_string()),
                 }
             }

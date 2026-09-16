@@ -5,6 +5,7 @@ mod application;
 mod config;
 mod demo;
 mod keyring;
+mod messages;
 mod modifier;
 mod p2p;
 mod prefs;

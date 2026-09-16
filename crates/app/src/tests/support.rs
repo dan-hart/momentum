@@ -41,7 +41,7 @@ fn gtk_thread() -> &'static Mutex<Sender<Job>> {
                 // The application owns actions and accelerators; NON_UNIQUE keeps it off the
                 // session bus so a running Momentum is never contacted.
                 let dir = tempfile::tempdir().expect("tempdir").keep();
-                crate::demo::store(dir.clone());
+                momentum_core::demo::store(dir.clone());
                 crate::window::set_test_data_dir(Some(dir));
                 let app = MomentumApplication::default();
                 app.set_flags(app.flags() | gio::ApplicationFlags::NON_UNIQUE);
@@ -102,7 +102,7 @@ pub fn pump_ms(ms: u64) {
 /// A window over a fresh copy of the demo data in its own directory (GTK thread only).
 pub fn demo_window() -> (MomentumWindow, PathBuf) {
     let dir = tempfile::tempdir().expect("tempdir").keep();
-    crate::demo::store(dir.clone());
+    momentum_core::demo::store(dir.clone());
     window_in(dir.clone())
 }
 /// A window over an empty store in its own directory (GTK thread only).
@@ -124,6 +124,7 @@ pub fn settings() -> gio::Settings {
 pub fn reset_settings() {
     let s = settings();
     for k in [
+        "group-by",
         "task-sort",
         "sort-direction",
         "upcoming-range",
@@ -131,8 +132,12 @@ pub fn reset_settings() {
         "modifier-key",
         "p2p-enabled",
         "sync-enabled",
+        "sync-method",
         "auto-sync",
         "auto-archive",
+        "morning-summary-enabled",
+        "morning-summary-hour",
+        "morning-summary-minute",
     ] {
         s.reset(k);
     }
@@ -159,7 +164,7 @@ pub fn headings(win: &MomentumWindow) -> Vec<String> {
         .into_iter()
         .filter_map(|w| w.downcast::<gtk::Label>().ok())
         .filter(|l| l.has_css_class("heading"))
-        .map(|l| l.label().to_string())
+        .map(|l| l.text().to_string())
         .collect()
 }
 /// Task ids rendered as rows, top to bottom (section markers excluded).
@@ -174,13 +179,7 @@ pub fn row_ids(win: &MomentumWindow) -> Vec<String> {
 }
 /// The id of the task with this title in the window's store.
 pub fn id_of(win: &MomentumWindow, title: &str) -> String {
-    win.imp()
-        .store
-        .borrow()
-        .state
-        .task
-        .iter()
-        .find(|t| t.title == title)
-        .map(|t| t.id.clone())
+    win.engine()
+        .with_store(|s| s.state.task.iter().find(|t| t.title == title).map(|t| t.id.clone()))
         .unwrap_or_else(|| panic!("no task titled {title:?}"))
 }

@@ -1,0 +1,1963 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ changed its identity. Unlink it and link again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Identität von %@ hat sich geändert. Hebe die Kopplung auf und kopple das Gerät erneut."
+          }
+        }
+      }
+    },
+    "%llu days ago": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Tag"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Tagen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%llu hours ago": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Stunde"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Stunden"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%llu minutes ago": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Minuten"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%llu seconds ago": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Sekunde"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "vor %llu Sekunden"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u completed tasks archived": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u erledigte Aufgabe archiviert"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u erledigte Aufgaben archiviert"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u devices, %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Gerät, %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Geräte, %@"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$u devices, %2$@"
+          }
+        }
+      }
+    },
+    "%u linked devices, not synced yet": {
+      "extractionState": "stale",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u gekoppeltes Gerät, noch nicht synchronisiert"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u gekoppelte Geräte, noch nicht synchronisiert"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks added": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe hinzugefügt"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben hinzugefügt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks completed": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe erledigt"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben erledigt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks completed and archived": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe erledigt und archiviert"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben erledigt und archiviert"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks deleted": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe gelöscht"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben gelöscht"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks moved to next week": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe auf nächste Woche verschoben"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben auf nächste Woche verschoben"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks moved to the morning": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe auf den Morgen verschoben"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben auf den Morgen verschoben"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks moved to today": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe auf heute verschoben"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben auf heute verschoben"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks moved to tomorrow": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe auf morgen verschoben"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben auf morgen verschoben"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks moved to tonight": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe auf heute Abend verschoben"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben auf heute Abend verschoben"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks planned for today": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe für heute geplant"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben für heute geplant"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%u tasks tagged": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgabe mit Schlagwort versehen"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u Aufgaben mit Schlagwort versehen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "A sync is already running": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Synchronisierung läuft bereits"
+          }
+        }
+      }
+    },
+    "A task was deleted or archived. Choose a current task and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Aufgabe wurde gelöscht oder archiviert. Wähle eine aktuelle Aufgabe und versuche es erneut."
+          }
+        }
+      }
+    },
+    "Add a task above, or press %@N.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füge oben eine Aufgabe hinzu oder drücke %@N."
+          }
+        }
+      }
+    },
+    "Add a task above, press %@N, or turn on sync in Settings to bring in your tasks.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füge oben eine Aufgabe hinzu, drücke %@N oder aktiviere die Synchronisierung in den Einstellungen, um deine Aufgaben zu übernehmen."
+          }
+        }
+      }
+    },
+    "All caught up": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles erledigt"
+          }
+        }
+      }
+    },
+    "All done for today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles erledigt für heute"
+          }
+        }
+      }
+    },
+    "All done for tonight": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles für heute Abend erledigt"
+          }
+        }
+      }
+    },
+    "Archive": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiv"
+          }
+        }
+      }
+    },
+    "Archived (%u)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiviert (%u)"
+          }
+        }
+      }
+    },
+    "Backup exported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datensicherung exportiert"
+          }
+        }
+      }
+    },
+    "Backup imported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datensicherung importiert"
+          }
+        }
+      }
+    },
+    "Change": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderung"
+          }
+        }
+      }
+    },
+    "Coming Up": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demnächst"
+          }
+        }
+      }
+    },
+    "Command": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Befehlstaste"
+          }
+        }
+      }
+    },
+    "Complete": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erledigen"
+          }
+        }
+      }
+    },
+    "Completed (%u)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erledigt (%u)"
+          }
+        }
+      }
+    },
+    "Completed tasks land here when you archive them with %@E.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erledigte Aufgaben erscheinen hier, wenn du sie mit %@E archivierst."
+          }
+        }
+      }
+    },
+    "Control": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control"
+          }
+        }
+      }
+    },
+    "Control shortcuts can conflict with text editing and macOS navigation. Shortcuts reserved by macOS may not reach Momentum.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control-Kurzbefehle können mit Textbearbeitung und macOS-Navigation kollidieren. Von macOS reservierte Kurzbefehle erreichen Momentum möglicherweise nicht."
+          }
+        }
+      }
+    },
+    "Could not link. Check the code and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koppeln fehlgeschlagen. Überprüfe den Code und versuche es erneut."
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löschen"
+          }
+        }
+      }
+    },
+    "Done %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erledigt %@"
+          }
+        }
+      }
+    },
+    "Drag tasks here from Coming Up, or press %@T on any task.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehe Aufgaben aus „Demnächst“ hierher oder drücke bei einer Aufgabe %@T."
+          }
+        }
+      }
+    },
+    "Drag tasks here from any other view.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehe Aufgaben aus einer anderen Ansicht hierher."
+          }
+        }
+      }
+    },
+    "Drag tasks here to tag them.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehe Aufgaben hierher, um ihnen dieses Schlagwort zuzuweisen."
+          }
+        }
+      }
+    },
+    "Due or scheduled today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute fällig oder geplant"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplizieren"
+          }
+        }
+      }
+    },
+    "Enjoy the rest of your evening.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genieße den restlichen Abend."
+          }
+        }
+      }
+    },
+    "Enter a task title.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib einen Aufgabentitel ein."
+          }
+        }
+      }
+    },
+    "Every task here is complete.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Aufgaben hier sind erledigt."
+          }
+        }
+      }
+    },
+    "Last synced %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuletzt synchronisiert: %@"
+          }
+        }
+      }
+    },
+    "Linked with %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit %@ gekoppelt"
+          }
+        }
+      }
+    },
+    "Linking…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopplung läuft…"
+          }
+        }
+      }
+    },
+    "Momentum is not ready. Open the app and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum ist noch nicht bereit. Öffne die App und versuche es erneut."
+          }
+        }
+      }
+    },
+    "Morning": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute Morgen"
+          }
+        }
+      }
+    },
+    "Morning done": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für den Morgen ist alles erledigt"
+          }
+        }
+      }
+    },
+    "Move": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verschieben"
+          }
+        }
+      }
+    },
+    "Move to Project": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Projekt verschieben"
+          }
+        }
+      }
+    },
+    "Moved to %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach %@ verschoben"
+          }
+        }
+      }
+    },
+    "Moved to next week": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf nächste Woche verschoben"
+          }
+        }
+      }
+    },
+    "Moved to the morning": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf heute Morgen verschoben"
+          }
+        }
+      }
+    },
+    "Moved to today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf heute verschoben"
+          }
+        }
+      }
+    },
+    "Moved to tomorrow": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf morgen verschoben"
+          }
+        }
+      }
+    },
+    "Moved to tonight": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf heute Abend verschoben"
+          }
+        }
+      }
+    },
+    "Nearby sync could not start: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung mit Geräten in der Nähe konnte nicht starten: %@"
+          }
+        }
+      }
+    },
+    "Nextcloud sync is not configured": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nextcloud-Synchronisierung ist nicht eingerichtet"
+          }
+        }
+      }
+    },
+    "No Results Found": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Ergebnisse"
+          }
+        }
+      }
+    },
+    "No archived tasks": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine archivierten Aufgaben"
+          }
+        }
+      }
+    },
+    "No linked devices": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine gekoppelten Geräte"
+          }
+        }
+      }
+    },
+    "No tasks in %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Aufgaben in %@"
+          }
+        }
+      }
+    },
+    "No tasks tagged #%@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Aufgaben mit dem Schlagwort #%@"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keiner"
+          }
+        }
+      }
+    },
+    "Not synced yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch nicht synchronisiert"
+          }
+        }
+      }
+    },
+    "Nothing coming up": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts steht an"
+          }
+        }
+      }
+    },
+    "Nothing planned for the morning": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts für den Morgen geplant"
+          }
+        }
+      }
+    },
+    "Nothing planned for today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts für heute geplant"
+          }
+        }
+      }
+    },
+    "Nothing planned for tonight": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts für heute Abend geplant"
+          }
+        }
+      }
+    },
+    "Nothing to undo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts zum Rückgängigmachen"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
+          }
+        }
+      }
+    },
+    "Option": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wahltaste"
+          }
+        }
+      }
+    },
+    "Option shortcuts can conflict with accented characters and alternate symbols. Shortcuts reserved by macOS may not reach Momentum. Quick Add uses Control–Option–N to stay distinct from New Task.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wahltasten-Kurzbefehle können mit Akzentzeichen und Sonderzeichen kollidieren. Von macOS reservierte Kurzbefehle erreichen Momentum möglicherweise nicht. Die Schnelleingabe verwendet Control–Wahl–N, damit sie sich von „Neue Aufgabe“ unterscheidet."
+          }
+        }
+      }
+    },
+    "Overdue (%u)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überfällig (%u)"
+          }
+        }
+      }
+    },
+    "Pick at least one weekday": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle mindestens einen Wochentag"
+          }
+        }
+      }
+    },
+    "Planned for the morning": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für den Morgen geplant"
+          }
+        }
+      }
+    },
+    "Planned for today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für heute geplant"
+          }
+        }
+      }
+    },
+    "Planned for tonight": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für heute Abend geplant"
+          }
+        }
+      }
+    },
+    "Preview mode · Sync is off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschaumodus · Synchronisierung ist aus"
+          }
+        }
+      }
+    },
+    "Projects": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projekte"
+          }
+        }
+      }
+    },
+    "Removed from today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Heute entfernt"
+          }
+        }
+      }
+    },
+    "Reorder": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neu anordnen"
+          }
+        }
+      }
+    },
+    "Repeats": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholt sich"
+          }
+        }
+      }
+    },
+    "Repeats daily": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholt sich täglich"
+          }
+        }
+      }
+    },
+    "Repeats every %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholt sich jeden %@"
+          }
+        }
+      }
+    },
+    "Repeats every %u days": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich jeden %u Tag"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich alle %u Tage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Repeats every %u months on %@": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich jeden %u Monat am %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich alle %u Monate am %@"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeats every %1$u months on %2$@"
+          }
+        }
+      }
+    },
+    "Repeats every %u weeks on %@": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich jede %u Woche am %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich alle %u Wochen am %@"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeats every %1$u weeks on %2$@"
+          }
+        }
+      }
+    },
+    "Repeats every %u years on %@": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich jedes %u Jahr am %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wiederholt sich alle %u Jahre am %@"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Repeats every %1$u years on %2$@"
+          }
+        }
+      }
+    },
+    "Repeats monthly on %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholt sich monatlich am %@"
+          }
+        }
+      }
+    },
+    "Repeats weekly on %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholt sich wöchentlich am %@"
+          }
+        }
+      }
+    },
+    "Repeats yearly on %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholt sich jährlich am %@"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche"
+          }
+        }
+      }
+    },
+    "Search Everything": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles durchsuchen"
+          }
+        }
+      }
+    },
+    "Shortcuts reserved by macOS may not reach Momentum.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von macOS reservierte Kurzbefehle erreichen Momentum möglicherweise nicht."
+          }
+        }
+      }
+    },
+    "Showing %u of %u.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%u von %u werden angezeigt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Showing %1$u of %2$u."
+          }
+        }
+      }
+    },
+    "Showing %u of %u. Add another word to narrow it down.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%u von %u werden angezeigt. Ergänze ein weiteres Suchwort, um die Ergebnisse einzugrenzen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Showing %1$u of %2$u. Add another word to narrow it down."
+          }
+        }
+      }
+    },
+    "Snoozed for %u minutes": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Erneute Erinnerung in %u Minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Erneute Erinnerung in %u Minuten"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Switch to Manual Order to rearrange tasks": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wechsle zu „Manuelle Reihenfolge“, um Aufgaben neu anzuordnen"
+          }
+        }
+      }
+    },
+    "Sync failed: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung fehlgeschlagen: %@"
+          }
+        }
+      }
+    },
+    "Sync is turned off. Turn it on in Settings.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung ist ausgeschaltet. Aktiviere sie in den Einstellungen."
+          }
+        }
+      }
+    },
+    "Sync is unavailable in preview mode. Open Momentum normally to sync your tasks.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung ist im Vorschaumodus nicht verfügbar. Öffne Momentum regulär, um deine Aufgaben zu synchronisieren."
+          }
+        }
+      }
+    },
+    "Sync needs attention": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung erfordert Aufmerksamkeit"
+          }
+        }
+      }
+    },
+    "Sync needs attention: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung erfordert Aufmerksamkeit: %@"
+          }
+        }
+      }
+    },
+    "Sync needs attention: Nextcloud sync is not configured": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung erfordert Aufmerksamkeit: Nextcloud-Synchronisierung ist nicht eingerichtet"
+          }
+        }
+      }
+    },
+    "Synced (%u↑)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiert (%u↑)"
+          }
+        }
+      }
+    },
+    "Syncing…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiere…"
+          }
+        }
+      }
+    },
+    "Tag": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlagwort"
+          }
+        }
+      }
+    },
+    "Tag a task “Evening”, or press %@⇧T on a task to move it here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib einer Aufgabe das Schlagwort „Evening“ oder drücke %@⇧T, um sie hierher zu verschieben."
+          }
+        }
+      }
+    },
+    "Tag a task “Morning”, or press %@⇧M on a task to move it here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib einer Aufgabe das Schlagwort „Morning“ oder drücke %@⇧M, um sie hierher zu verschieben."
+          }
+        }
+      }
+    },
+    "Tagged #%@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Schlagwort #%@ versehen"
+          }
+        }
+      }
+    },
+    "Tags": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlagwörter"
+          }
+        }
+      }
+    },
+    "Task added": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe hinzugefügt"
+          }
+        }
+      }
+    },
+    "Task completed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe erledigt"
+          }
+        }
+      }
+    },
+    "Task completed and archived": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe erledigt und archiviert"
+          }
+        }
+      }
+    },
+    "Task deleted": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe gelöscht"
+          }
+        }
+      }
+    },
+    "Task duplicated": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe dupliziert"
+          }
+        }
+      }
+    },
+    "Tasks (%u)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgaben (%u)"
+          }
+        }
+      }
+    },
+    "Tasks due in the next %u days appear here. Set a due day in a task's details.": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Hier erscheinen Aufgaben, die in dem nächsten %u Tag fällig sind. Lege das Fälligkeitsdatum in den Aufgabendetails fest."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Hier erscheinen Aufgaben, die in den nächsten %u Tagen fällig sind. Lege das Fälligkeitsdatum in den Aufgabendetails fest."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Tasks, notes, subtasks, projects, tags and the archive": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgaben, Notizen, Unteraufgaben, Projekte, Schlagwörter und das Archiv"
+          }
+        }
+      }
+    },
+    "The other device declined. Check the code and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das andere Gerät hat abgelehnt. Überprüfe den Code und versuche es erneut."
+          }
+        }
+      }
+    },
+    "The rest of the day is yours.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Rest des Tages gehört dir."
+          }
+        }
+      }
+    },
+    "This project is no longer available. Choose another project.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Projekt ist nicht mehr verfügbar. Wähle ein anderes Projekt."
+          }
+        }
+      }
+    },
+    "Title copied": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titel kopiert"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute"
+          }
+        }
+      }
+    },
+    "Today, including overdue": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute, einschließlich überfälliger Aufgaben"
+          }
+        }
+      }
+    },
+    "Tomorrow": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgen"
+          }
+        }
+      }
+    },
+    "Tonight": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute Abend"
+          }
+        }
+      }
+    },
+    "Try a different search": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versuche eine andere Suche"
+          }
+        }
+      }
+    },
+    "Turn on nearby sync in Settings first.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiviere zuerst die Synchronisierung mit Geräten in der Nähe in den Einstellungen."
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rückgängig"
+          }
+        }
+      }
+    },
+    "Undo %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ rückgängig machen"
+          }
+        }
+      }
+    },
+    "Undone": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rückgängig gemacht"
+          }
+        }
+      }
+    },
+    "Yesterday": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestern"
+          }
+        }
+      }
+    },
+    "You completed %u tasks. Time to switch off.": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Du hast %u Aufgabe erledigt. Zeit zum Abschalten."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Du hast %u Aufgaben erledigt. Zeit zum Abschalten."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "just now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gerade eben"
+          }
+        }
+      }
+    },
+    "the %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
+    },
+    "the first": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ersten"
+          }
+        }
+      }
+    },
+    "the fourth": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vierten"
+          }
+        }
+      }
+    },
+    "the last": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "letzten"
+          }
+        }
+      }
+    },
+    "the last day": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "letzten Tag"
+          }
+        }
+      }
+    },
+    "the same day": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gleichen Tag"
+          }
+        }
+      }
+    },
+    "the second": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zweiten"
+          }
+        }
+      }
+    },
+    "the third": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dritten"
+          }
+        }
+      }
+    },
+    "“%@” no longer repeats": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wird nicht mehr wiederholt"
+          }
+        }
+      }
+    },
+    "No Project": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Projekt"
+          }
+        }
+      }
+    },
+    "Untagged": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ohne Schlagwort"
+          }
+        }
+      }
+    },
+    "Up to 15 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bis zu 15 Min."
+          }
+        }
+      }
+    },
+    "16–30 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "16–30 Min."
+          }
+        }
+      }
+    },
+    "31–60 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "31–60 Min."
+          }
+        }
+      }
+    },
+    "1–2 hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1–2 Stunden"
+          }
+        }
+      }
+    },
+    "Over 2 hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über 2 Stunden"
+          }
+        }
+      }
+    },
+    "No estimate": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Schätzung"
+          }
+        }
+      }
+    },
+    "Evening": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abend"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.1"
+}

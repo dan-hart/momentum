@@ -21,6 +21,15 @@ pub struct Meta {
     /// A peer snapshot was adopted or judged unnecessary; later peer snapshots are ignored.
     #[serde(default)]
     pub p2p_bootstrapped: bool,
+    /// Epoch ms of the last successful Nextcloud cycle (0 = never), for the status caption.
+    #[serde(default)]
+    pub last_nextcloud_ms: u64,
+    /// Epoch ms of the last exchange with a nearby device (0 = never).
+    #[serde(default)]
+    pub last_nearby_ms: u64,
+    /// The day the morning summary notification was last shown.
+    #[serde(default)]
+    pub last_summary_day: String,
 }
 
 #[derive(Debug, Clone)]

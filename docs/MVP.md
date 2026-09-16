@@ -20,7 +20,10 @@ existing sync protocol with conflict handling, and a family of clients on other 
 that Momentum can sit next to. Momentum is not a clone of Super Productivity's interface
 and does not aim for feature parity; it picks the planning features and does them well.
 
-Everything below is implemented and working in the Linux app.
+The original Linux MVP is the established baseline. Current per-platform implementation
+and verification status is tracked in [FEATURES.md](FEATURES.md); approved product and
+agent guidance is in [AGENTS.md](../AGENTS.md). Do not treat this baseline as a blanket
+verification claim for subsequent changes.
 
 ## 2. Feature inventory
 
@@ -28,17 +31,16 @@ Everything below is implemented and working in the Linux app.
 
 | View | Contents | Notes |
 |---|---|---|
-| **Today** | Top-level tasks due today, in the stored Today order, then any other task due today | An "Overdue (N)" section first, listing open top-level tasks planned for a day that has passed (oldest first, with the day spelled out), then open tasks; completed tasks move to a "Completed (N)" section at the bottom (this applies to every list view). The Today membership follows upstream's virtual TODAY tag rule: the local day of `dueWithTime` if set, else `dueDay == today`. |
-| **Morning** | Today's tasks tagged "Morning" (case-insensitive; the tag is created on first use) | Same rules as Tonight; the Morning section leads Today's open tasks. Ctrl+Shift+M, context menu "Move to Morning", drop target. A task is in one slot at most: moving to Morning drops the Evening tag and vice versa. The Morning and Tonight sidebar entries appear only while a task planned for today carries the tag; if the entry disappears while it is the current view, the window falls back to Today. |
-| **Tonight** | Today's tasks that carry the "Evening" tag (case-insensitive) | In the Today view these tasks are split into a second "Tonight" section under the day's tasks. Quick-add and the dialog from this view add today's date and the Evening tag, creating the tag if needed. Dropping a task here does the same. |
-| **Coming Up** | Open top-level tasks due in the next 7 days (default) or 30 days | Grouped into one section per day with a relative heading (Tomorrow, Friday, 14 October). No day label on rows. |
+| **Today** | Top-level tasks due today, in the stored Today order, then any other task due today | Open overdue tasks are included with their due dates visible; the selected Group By is the only grouping layer; completed tasks move to a "Completed (N)" section at the bottom (this applies to every list view). The Today membership follows upstream's virtual TODAY tag rule: the local day of `dueWithTime` if set, else `dueDay == today`. |
+| **Morning** | Today's tasks tagged "Morning" (case-insensitive; the tag is created on first use) | Same rules as Tonight; Morning appears as a group only with Morning & Night grouping. Ctrl+Shift+M, context menu "Move to Morning", drop target. A task is in one slot at most: moving to Morning drops the Evening tag and vice versa. The Morning and Tonight sidebar entries appear only while a task planned for today carries the tag; if the entry disappears while it is the current view, the window falls back to Today. |
+| **Tonight** | Today's tasks that carry the "Evening" tag (case-insensitive) | With Morning & Night grouping these tasks appear under "Evening"; other group modes do not split them by day period. Quick-add and the dialog from this view add today's date and the Evening tag, creating the tag if needed. Dropping a task here does the same. |
+| **Coming Up** | Open top-level tasks due in the next 7 days (default) or 30 days | Uses the selected Group By. Due dates appear on task rows (Tomorrow, Friday, 14 October), with no additional date sections. |
 | **Archive** | Archived tasks from both archive tiers, newest completion first | Read-only rows: no checkbox, no drag, no menu. Paged 100 at a time with a Show More button. |
 | **Search** | Live results across everything | See 2.7. |
 | **Project** | The project's task list in its stored order | One per non-archived, non-hidden project. Subtasks appear indented under their parent. |
 | **Tag** | Tasks carrying the tag, in the tag's stored order | One per tag except the virtual TODAY tag. |
 
-Lists are rendered as **sections**: each group (a day in Coming Up, a result type in
-Search, Today and Tonight in the Today view) is its own inset boxed list with its heading
+Lists are rendered as **sections**: each selected group is its own inset boxed list with its heading
 above the card and empty space between sections, the same structure libadwaita's preference
 groups use. Views without groups are a single card.
 
@@ -105,6 +107,12 @@ HH:MM" while a reminder is pending; the notification body reads "Due at HH:MM".
   and subtasks; upstream `moveToOtherProject`), a tag row (add the tag), the Today row
   (plan for today), or another task row (reorder before it, Manual Order only; upstream
   work-context move op). Rows highlight in the accent color while hovered.
+- **Group By** via View Options: Morning & Night (default), None, Project, Tag, or Time
+  Estimate. Morning & Night shows Today/Morning/Evening from the Morning/Evening tags.
+  Other modes show only their chosen grouping, with no extra day-period/date sections.
+  None is flat; Completed remains separate; subtasks stay with parents and due dates
+  remain visible on rows. Tag/project headings retain their saved colors.
+  Exact rules, estimate intervals and mobile acceptance: [GROUPING.md](GROUPING.md).
 - **Sorting** via the header's View Options menu: Manual Order (upstream's list order),
   Title, Due Day, Estimate, Created; plus Ascending or Descending. Applies to open and done
   tasks separately. Persists.
@@ -164,7 +172,7 @@ monthly on the 5th", "Repeats monthly on the second Tuesday", "Repeats yearly on
 *newest* missed day (upstream `getNewestPossibleDueDate`): scanning back from today to the
 day after `lastTaskCreationDay`, never before `startDate`, and at most one cycle length
 (`repeatEvery` days, weeks, months or years). A weekly Monday task opened on Wednesday is
-created dated Monday and appears under Overdue; a daily task closed for a week yields one
+created dated Monday and appears in Today with its overdue date; a daily task closed for a week yields one
 instance, today. The instance id is `rpt_<cfgId>_<day>` and `lastTaskCreationDay` becomes
 that day, so a client that was offline never duplicates what another client created.
 
@@ -309,6 +317,13 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   file, Sync Now. Rows are
   disabled while the switch is off. Secrets go to the system keyring.
 - Appearance: color-code projects and tags (on by default).
+- macOS › Fonts: choose the app font family and face with the system Fonts panel.
+  Content and interface sizes are independent (10–32 pt; both default to 13 pt).
+  Content includes task titles, subtitles, notes and task entry; interface includes
+  navigation, settings and app controls. Changes apply immediately to open windows and
+  persist locally, outside task sync. The font panel's size changes content size.
+  Reset restores the system font and both default sizes; missing fonts fall back to
+  the system font. macOS-managed menu bars and window titles retain system typography.
 - Backup: import and export Super Productivity backup JSON. Import replaces local state and
   discards pending ops.
 
@@ -332,7 +347,12 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   opens it in Search; the create result adds it to Today.
 - **Notifications with actions.** Reminders carry Done and Snooze 1 hour buttons; the default
   action opens Search on the title. A morning summary ("Good morning: 5 tasks today, 2
-  tonight") fires once per day after 05:00 when something is due.
+  tonight") is **off by default**, including for existing installations. Enable
+  **Morning summary** in Settings/Preferences → Notifications and choose its local time
+  (initially 08:00). While running, Momentum checks at or after that time, including on
+  a later launch, at most once per local day. No open tasks means no notification.
+  Turning it off preserves the chosen time and leaves task reminders unchanged. These
+  preferences stay local to each device. See [NOTIFICATIONS.md](NOTIFICATIONS.md) (F-038).
 - **Background mode** (Preferences → Desktop → Run in the background): requests the Background
   portal with autostart (`momentum --background`); closing the window hides it instead of
   quitting; the Background Apps status line reads "N tasks due today".
@@ -368,15 +388,16 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
 
 ### 2.12 Sync with nearby devices (LibreSync)
 
-A second sync path that needs no server: Preferences › Nearby Devices. Off by default.
+An optional sync provider that needs no server: Preferences → Sync → LibreSync.
+Sync is off by default; exactly one provider is selected at a time.
 
 - **Transport, not merge authority.** LibreSync moves records; Momentum's op log stays the
   source of truth. Every op is one immutable record `Op/<op id>` (fields: `t`, `origin`,
   `op` JSON, `action` JSON) in namespace `io.github.dan_hart.Momentum`, adapter `ops`.
   Distinct ids never conflict, so the transport's last-writer-wins is loss-free. Received
   ops are applied through `sp_oplog::apply` in `t` order, their vector clocks merged, and
-  queued for the device's own Nextcloud upload (skipped there if the server already lists
-  the op id). Ops from this client, or already applied, are ignored.
+  queued for a future Nextcloud upload if the user switches to that provider (skipped
+  there if the server already lists the op id). Ops from this client, or already applied, are ignored.
 - **Bootstrap snapshot.** Record `Snapshot/latest` holds a gzip+base64 JSON of the whole
   `AppData`, republished at most once a minute when the state hash changed. On first
   contact a device with no tasks and nothing pending adopts it whole (and skips ops older
@@ -398,8 +419,9 @@ A second sync path that needs no server: Preferences › Nearby Devices. Off by 
   `p2p/state.bin`; journal at `p2p/journal.json`.
 - **Identity.** `device_id` = the store's client id, `user_id` = host name (shown to
   peers), app id shared by Devel and release. Port 52345, else any free port.
-- **Status.** The caption under the list adds "N devices, synced just now"; the Sync
-  button shows when either backend is on.
+- **Status.** The persistent footer shows the selected provider, progress and last
+  successful exchange, including on empty lists. Failures remain visible with Details
+  and Retry. Only the selected provider runs.
 
 ## 3. Data model (what to reimplement)
 
@@ -519,47 +541,84 @@ preserved untouched.
 - Release procedure: bump `meson.build`, `Cargo.toml` and the metainfo `<release>`, add a
   changelog entry, point the metainfo screenshot URLs at the new tag, commit, tag, push.
 
-## 8. Porting notes for iOS and macOS
+## 8. How the same product runs on two platforms
 
-- **Nearby-device sync on other platforms.** `sp-p2p` is plain Rust on LibreSync, which
-  ships a C ABI (`libresync-ffi`) and a Swift package with an event pump, so an iOS or
-  macOS port can reuse the same record shape (one record per op, `Snapshot/latest` for
-  bootstrap) and link with a Linux Momentum. Keys go to the Keychain through the
-  `KeyStore` trait; discovery is Bonjour, the same `_libresync._tcp` service.
-- **Modifier key.** The setting offers Command, Control and Option on macOS builds;
-  `<Control>` in the accelerator table is rewritten to `<Meta>` for Command.
-- **Reuse the core.** `sp-model`, `sp-oplog`, `sp-store` and `sp-sync` have no GTK
-  dependency. They can be compiled as a Rust library and exposed to Swift via UniFFI or a
-  C ABI, or reimplemented in Swift from sections 3 to 6 of this document. Keep the
-  conformance tests: round-trip a real backup with zero diff, the op payload shapes, the
-  encryption vectors, the two-client convergence test.
-- **Platform services to map.** Keyring → Keychain. GSettings → UserDefaults. XDG data
-  dir → Application Support. GNotification → UserNotifications. GlobalShortcuts portal →
-  none on iOS, `NSEvent` global monitor or Shortcuts on macOS. Background portal →
-  BGTaskScheduler. Accent color → `tintColor` / `NSColor.controlAccentColor`.
-- **UI to re-express, not port.** Sidebar + content → `NavigationSplitView`. Boxed lists
-  → `List` with inset grouped style. Toasts with Undo → a custom overlay or the platform
-  undo manager. Context menus → `contextMenu`. Drag and drop → `draggable`/`dropDestination`.
-  Search → `searchable`. The New Task sheet → a `Form` in a sheet with Cancel/Create in the
-  toolbar. Collapsible sidebar sections → `DisclosureGroup` or `Section` with a header
-  toggle.
-- **Behaviours that must survive the port.** Enter-to-create with Create disabled on an
-  empty title; `#` autocomplete; relative dates; the Today order rule and the Tonight
-  split on the "Evening" tag; the three day moves with batch undo; selection mode with
-  bulk actions and multi-item drag; undo for every destructive action; the fresh-device
-  guard; deterministic repeat instance ids; the search index and result caps; secrets
-  never in plain storage; sync off by default.
-- **The `mo` CLI on macOS.** `crates/mo` already builds there: `keyring` uses the Keychain,
-  `dirs` resolves Application Support, and the D-Bus forwarding is compiled out. A macOS
-  Momentum should expose the same "hand actions to the running app" channel (an XPC service
-  or a URL scheme) so `mo` never writes behind the app's back; until then `mo` and the app
-  coordinate through the store files plus a file watcher, as on Linux without D-Bus.
-- **Getting started checklist.** 1) Read sections 3 to 6. 2) Build the model with
-  unknown-field preservation. 3) Port `apply()` for the ops in section 4 with tests. 4) Port
-  the sync cycle and crypto, test against the in-process WebDAV mock in `crates/sp-sync/src/mock_dav.rs`. 5) Build Today, the
-  New Task form and the quick-add box. 6) Add Coming Up, projects, tags, Search, Archive.
-  7) Undo, context menus, drag and drop, repeats, keyboard. 8) Preferences and the sync
-  switch. 9) Screenshots, metadata, store listing.
+Momentum is one product with two native front ends. Everything that decides *what* the app
+does lives in `crates/momentum-core`, a crate with no toolkit and no locale in it; each
+platform decides only *how* it looks. This is what section 1's "feel native, first" turns
+into once there is more than one platform.
+
+**The core (`crates/momentum-core`).** One `Engine` owns the store and answers every
+question a UI asks — `sidebar()`, `listing(view, archive_limit)`, `search(query)`,
+`task_detail(id)`, `task_menu(id)` — and performs every change the user makes. A change
+returns an `Outcome`: whether anything changed, a structured `Message` for the toast, the
+id of the undo batch to attach to it, and whether to sync at once. The engine also spawns
+repeating tasks, reports due reminders, runs the Nextcloud cycle off the main thread, and
+hosts the nearby-device transport. It is `Send + Sync`, so Swift can call it from any
+thread.
+
+**Nothing in the core is a sentence.** It hands over a `DayLabel` (a day plus its relation
+to today), a `ClockTime`, a `RepeatDescription`, an `EmptyState`, a `Message`. Each UI
+renders those in its own language and date format: `crates/app/src/messages.rs` with
+gettext on Linux, `Strings.swift` with `String(localized:)` on macOS. Both switches are
+exhaustive, so a new case in the core stops the other platform compiling rather than
+quietly showing a blank label.
+
+**Linux** stays GTK 4 and libadwaita: the GNOME HIG, the system accent colour, portals,
+undo toasts, no custom widgets. **macOS** is SwiftUI against the same engine through
+UniFFI (`crates/momentum-ffi` builds the library; `macos/scripts/build-core.sh` generates
+the bindings from it, so they can never drift). The views are the Mac's own: a
+`NavigationSplitView` sidebar, inset lists with native multi-selection, real menus with
+the configured modifier, `searchable`, `draggable`/`dropDestination`, sheets, Settings
+tabs, a menu bar item. See `macos/README.md`.
+
+**Platform services map, they do not port.** Keyring → Keychain (service `momentum`, the
+same items `mo` uses). GSettings → `UserDefaults`, under the same key names. XDG data dir →
+`~/Library/Application Support/momentum`, the directory `mo` already used. `GNotification`
+→ `UNUserNotificationCenter`, same Done and Snooze buttons. GNOME Shell search provider and
+KRunner → Core Spotlight. GlobalShortcuts portal → Carbon hot keys (⌃⌥T, ⌃⌥M). Background
+portal with autostart → `SMAppService` plus an optional menu bar item. Accent colour →
+`.accentColor`.
+
+**Desktop sync selection.** Settings/Preferences → Sync chooses one provider: Off, Nextcloud, or
+LibreSync. Only the selected provider runs, for manual, automatic, and CLI-triggered
+sync. Changing providers preserves tasks, credentials, and linked devices. The main
+window shows the selected service, progress, last successful sync, and persistent
+failure details with Retry, including on empty lists. Demo previews never sync.
+On Linux, legacy dual-enabled settings resolve to LibreSync until the user makes an
+explicit choice, matching macOS. An in-flight Nextcloud cycle finishes before Linux
+starts a newly selected LibreSync service. Linux runtime acceptance is tracked as
+Implemented, not Verified, in the feature ledger.
+
+**Spotlight creation on macOS 26.** Existing open tasks are indexed with Core Spotlight;
+activating one opens Search on its current title. Task creation is a discoverable
+Create Task App Intent: choose the action in Spotlight, supply the title (including
+optional `#tags` and an estimate), and run it to add to Today. This is the native macOS
+equivalent of the GNOME provider's query-dependent create result, not a custom Spotlight
+query provider. An active editor saves before navigation; unfinished creation drafts
+remain until the user finishes or cancels them.
+
+**The `mo` CLI reaches a running app on both.** `momentum_core::ipc` serves a Unix socket
+in the data directory, which the macOS app listens on and the GNOME app offers alongside
+its existing D-Bus channel; `mo` tries the socket first and writes the store directly when
+no app answers.
+
+**Modifier key.** The preference offers Command, Control and Option on macOS and Ctrl, Alt
+and Super on Linux; every one of the app's own shortcuts follows it, while system
+shortcuts (Settings, Quit, Select All) keep their platform keys.
+
+**For a future iOS port**, the same core applies: link `momentum-ffi`, drive the same
+`Engine`, reuse `Strings.swift` almost unchanged, and replace only the platform services
+(Background portal → BGTaskScheduler; no global shortcuts). `sp-p2p` is plain Rust on
+LibreSync, whose Bonjour service (`_libresync._tcp`) and record shape are already shared,
+so an iOS device would link with a Linux or macOS one as they link with each other.
+
+**Behaviours that must survive any port** (the core's tests cover all of them): Enter to
+create with Create disabled on an empty title; `#` autocomplete; relative dates; the Today
+order rule and the Morning/Tonight split on their tags, one slot at a time; the day moves
+with batch undo; multi-selection with bulk actions; undo for every destructive action; the
+fresh-device guard; deterministic repeat instance ids; the search index and its result
+caps; secrets never in plain storage; sync off by default.
 
 ## 8b. Test contract
 
@@ -607,3 +666,9 @@ another platform should have an equivalent for each.
 - **Unreleased** (2026-09-15): "Archive completed tasks immediately" preference (2.9):
   completion moves the task and its subtasks to the archive with one `moveToArchive` op
   and syncs; the toast's undo restores it open.
+- **Unreleased** (2026-09-15): a native macOS app, and the shared core that makes it
+  possible (8). `crates/momentum-core` now owns every behaviour in section 2 — view
+  listings, changes and their undo batches, repeats, reminders, sync orchestration, nearby
+  devices, and a Unix socket for `mo` — with its own test suite; the GTK app renders it
+  instead of holding the logic itself, and `macos/` is a SwiftUI app driving the same
+  engine through UniFFI, with unit tests that need no running app.
