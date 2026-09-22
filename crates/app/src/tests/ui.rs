@@ -1494,7 +1494,6 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
             prefs_imp.reset_typography_row.upcast_ref(),
         ];
         gtk::prelude::GtkWindowExt::set_focus(&win, None::<&gtk::Widget>);
-        let initial_scroll = adjustment.value();
         for (index, control) in controls.into_iter().enumerate() {
             if index == 0 {
                 assert!(focus_list.child_focus(gtk::DirectionType::TabForward));
@@ -1508,11 +1507,16 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
                 "keyboard navigation did not reach {}",
                 control.type_().name(),
             );
+            // What the traversal owes a keyboard user is that the row it lands on is on
+            // screen. Whether the scroller had to move to manage that depends on how the
+            // rows happen to fall at this scale, which is the compositor's business.
+            let bounds = control.compute_bounds(&scroll).expect("control bounds in the scroller");
+            assert!(
+                bounds.y() + bounds.height() > 0.0 && bounds.y() < scroll.height() as f32,
+                "{} was focused while scrolled out of view",
+                control.type_().name(),
+            );
         }
-        assert!(
-            adjustment.value() > initial_scroll || adjustment.upper() == adjustment.page_size(),
-            "keyboard traversal did not scroll the compact preferences page"
-        );
         prefs.close();
         pump();
 
