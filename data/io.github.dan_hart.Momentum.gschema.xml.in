@@ -31,6 +31,9 @@
       <summary>Task list sort order</summary>
     </key>
     <key name="colorful-labels" type="b"><default>true</default><summary>Color-code projects and tags</summary></key>
+    <key name="typography-font" type="s"><default>''</default><summary>Optional application font description without a size</summary></key>
+    <key name="typography-content-scale" type="i"><range min="75" max="250"/><default>100</default><summary>Task content text scale in percent</summary></key>
+    <key name="typography-interface-scale" type="i"><range min="75" max="250"/><default>100</default><summary>Application interface text scale in percent</summary></key>
     <key name="last-sync-ms" type="x"><default>0</default><summary>Time of the last successful sync (ms since epoch)</summary></key>
     <key name="sync-method" type="s">
       <choices><choice value=""/><choice value="off"/><choice value="nextcloud"/><choice value="libresync"/></choices>
@@ -49,6 +52,11 @@
       <summary>Days shown in Coming Up</summary>
     </key>
     <key name="run-in-background" type="b"><default>false</default><summary>Keep running after the window closes</summary></key>
+    <key name="background-count-mode" type="s">
+      <choices><choice value="due-today"/><choice value="today-including-overdue"/><choice value="off"/></choices>
+      <default>'due-today'</default>
+      <summary>Task count shown in the Background Apps status</summary>
+    </key>
     <key name="morning-summary-enabled" type="b"><default>false</default><summary>Show a daily morning summary</summary></key>
     <key name="morning-summary-hour" type="i"><range min="0" max="23"/><default>8</default><summary>Morning summary hour in local time</summary></key>
     <key name="morning-summary-minute" type="i"><range min="0" max="59"/><default>0</default><summary>Morning summary minute</summary></key>

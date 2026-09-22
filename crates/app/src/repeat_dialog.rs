@@ -313,6 +313,7 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         .content_height(560)
         .child(&tv)
         .build();
+    crate::typography::register_interface_root(&dialog);
     dialog.set_default_widget(Some(&save));
     cancel.connect_clicked(glib::clone!(
         #[weak]

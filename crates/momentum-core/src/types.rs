@@ -32,6 +32,15 @@ impl View {
     }
 }
 
+/// Which unfinished top-level tasks a desktop surface counts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
+pub enum TaskCountMode {
+    DueToday,
+    TodayIncludingOverdue,
+    None,
+}
+
 /// A part of the day inside Today: tasks tagged "Morning" or "Evening".
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Enum))]

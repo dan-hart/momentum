@@ -110,7 +110,7 @@ mod imp {
         pub search_debounce: RefCell<Option<glib::SourceId>>,
         pub sync_debounce: RefCell<Option<glib::SourceId>>,
         pub store_monitor: RefCell<Option<gio::FileMonitor>>,
-        pub last_status: RefCell<String>,
+        pub background_status: Rc<RefCell<crate::background_status::BackgroundStatusController>>,
         pub p2p_dialog: RefCell<Option<Rc<dyn Fn()>>>,
     }
 
@@ -173,7 +173,7 @@ mod imp {
                 search_debounce: Default::default(),
                 sync_debounce: Default::default(),
                 store_monitor: Default::default(),
-                last_status: Default::default(),
+                background_status: Default::default(),
                 p2p_dialog: Default::default(),
             }
         }
@@ -196,6 +196,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+            crate::typography::register_interface_root(&*obj);
             let demo = std::env::var_os("MOMENTUM_DEMO").is_some();
             if *PROFILE == "Devel" && !demo {
                 obj.add_css_class("devel");
@@ -221,7 +222,9 @@ mod imp {
         fn drop(&mut self) {
             self.engine.p2p_stop();
             self.engine.stop_cli_server();
-            self.tag_popover.unparent();
+            if self.tag_popover.parent().is_some() {
+                self.tag_popover.unparent();
+            }
         }
     }
     impl WindowImpl for MomentumWindow {
@@ -419,6 +422,42 @@ impl momentum_core::ipc::CliDelegate for CliBridge {
     }
 }
 
+#[cfg(test)]
+fn send_background_status_request(
+    _controller: Rc<RefCell<crate::background_status::BackgroundStatusController>>,
+    _request: crate::background_status::BackgroundStatusRequest,
+) {
+    // Unit/UI tests exercise the controller through an injected sender and never contact
+    // a real desktop portal. Leaving this request in flight also lets refresh-burst tests
+    // inspect the newest desired value while preserving the one-request invariant.
+}
+
+#[cfg(not(test))]
+fn send_background_status_request(
+    controller: Rc<RefCell<crate::background_status::BackgroundStatusController>>,
+    request: crate::background_status::BackgroundStatusRequest,
+) {
+    glib::spawn_future_local(async move {
+        let options = ashpd::desktop::background::SetStatusOptions::default().set_message(&request.message);
+        let result = match ashpd::desktop::background::BackgroundProxy::new().await {
+            Ok(proxy) => proxy.set_status(options).await,
+            Err(error) => Err(error),
+        };
+        match result {
+            Ok(()) => {
+                let retry_controller = controller.clone();
+                controller.borrow_mut().succeeded(request.id, &mut |next| {
+                    send_background_status_request(retry_controller.clone(), next)
+                });
+            }
+            Err(error) => {
+                controller.borrow_mut().failed(request.id);
+                tracing::debug!("background status: {error}");
+            }
+        }
+    });
+}
+
 impl MomentumWindow {
     pub fn new(app: &MomentumApplication) -> Self {
         glib::Object::builder().property("application", app).build()
@@ -431,6 +470,7 @@ impl MomentumWindow {
 
     fn setup(&self) {
         let imp = self.imp();
+        crate::typography::register_content_root(&*imp.add_entry);
         self.apply_preferences();
         self.import_cli_config();
         self.export_cli_config();
@@ -524,6 +564,16 @@ impl MomentumWindow {
                     #[weak(rename_to = w)]
                     self,
                     move |_, _| w.apply_preferences()
+                ),
+            );
+        }
+        for key in ["background-count-mode", "run-in-background"] {
+            imp.settings.connect_changed(
+                Some(key),
+                glib::clone!(
+                    #[weak(rename_to = w)]
+                    self,
+                    move |_, _| w.update_background_status()
                 ),
             );
         }
@@ -1079,6 +1129,7 @@ impl MomentumWindow {
             .heading(gettext("Sync needs attention"))
             .body(error)
             .build();
+        crate::typography::register_interface_root(&dialog);
         dialog.add_responses(&[
             ("close", &gettext("Close")),
             ("preferences", &gettext("Preferences")),
@@ -1338,6 +1389,7 @@ impl MomentumWindow {
             .extra_child(&content)
             .default_response("add")
             .build();
+        crate::typography::register_interface_root(&d);
         d.add_responses(&[("cancel", &gettext("Cancel")), ("add", &gettext("Add"))]);
         d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
         d.connect_response(
@@ -2381,6 +2433,7 @@ impl MomentumWindow {
             .subtitle(sub.join("  ·  "))
             .activatable(!t.archived)
             .build();
+        crate::typography::register_content_root(&row);
         if indent {
             row.set_margin_start(32);
         }
@@ -2810,6 +2863,7 @@ impl MomentumWindow {
             .extra_child(&drop_down)
             .default_response("move")
             .build();
+        crate::typography::register_interface_root(&d);
         d.add_responses(&[("cancel", &gettext("Cancel")), ("move", &gettext("Move"))]);
         d.set_response_appearance("move", adw::ResponseAppearance::Suggested);
         let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
@@ -2877,6 +2931,7 @@ impl MomentumWindow {
             .extra_child(&content)
             .default_response("save")
             .build();
+        crate::typography::register_interface_root(&d);
         d.add_responses(&[("cancel", &gettext("Cancel")), ("save", &gettext("Save"))]);
         d.set_response_appearance("save", adw::ResponseAppearance::Suggested);
         d.connect_response(
@@ -2949,6 +3004,7 @@ impl MomentumWindow {
             .body(body)
             .default_response("cancel")
             .build();
+        crate::typography::register_interface_root(&d);
         d.add_responses(&[("cancel", &gettext("Cancel")), ("delete", &gettext("Delete"))]);
         d.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
         d.connect_response(
@@ -3020,30 +3076,19 @@ impl MomentumWindow {
         }
     }
 
-    /// Background Apps status line ("3 tasks due today") when running in the background.
-    fn update_background_status(&self) {
+    /// Background Apps status line when running in the background.
+    pub(crate) fn update_background_status(&self) {
         let imp = self.imp();
         if !imp.settings.boolean("run-in-background") {
             return;
         }
-        let status = match imp.engine.today_open_count() {
-            0 => gettext("All done for today"),
-            1 => gettext("1 task due today"),
-            n => format!("{n} {}", gettext("tasks due today")),
-        };
-        if *imp.last_status.borrow() == status {
-            return;
-        }
-        *imp.last_status.borrow_mut() = status.clone();
-        glib::spawn_future_local(async move {
-            let opts = ashpd::desktop::background::SetStatusOptions::default().set_message(&status);
-            let result = match ashpd::desktop::background::BackgroundProxy::new().await {
-                Ok(proxy) => proxy.set_status(opts).await,
-                Err(e) => Err(e),
-            };
-            if let Err(e) = result {
-                tracing::debug!("background status: {e}");
-            }
+        let mode =
+            crate::background_status::BackgroundCountMode::from_setting(&imp.settings.string("background-count-mode"));
+        let count = imp.engine.task_count(mode.task_count_mode());
+        let status = crate::background_status::truncate_status(&crate::background_status::format_status(mode, count));
+        let controller = imp.background_status.clone();
+        controller.borrow_mut().refresh(status, &mut |request| {
+            send_background_status_request(controller.clone(), request)
         });
     }
 
@@ -3053,12 +3098,14 @@ impl MomentumWindow {
         let tv = adw::ToolbarView::new();
         tv.add_top_bar(header);
         tv.set_content(Some(&form.page));
-        adw::Dialog::builder()
+        let dialog = adw::Dialog::builder()
             .title(title)
             .content_width(520)
             .content_height(860)
             .child(&tv)
-            .build()
+            .build();
+        crate::typography::register_interface_root(&dialog);
+        dialog
     }
 
     /// HIG "new item" dialog: Cancel / Create in the header, Create enabled once there is a title.
@@ -3145,6 +3192,7 @@ impl MomentumWindow {
         }
         form.group.add(&repeat_row);
         let sub = adw::EntryRow::builder().title(gettext("Add subtask")).build();
+        crate::typography::register_content_root(&sub);
         let del = gtk::Button::builder()
             .label(gettext("Delete Task"))
             .css_classes(["destructive-action"])
@@ -3203,6 +3251,61 @@ impl MomentumWindow {
             }
         ));
         dialog.present(Some(self));
+    }
+
+    /// Reveal one exact current task before opening its editor. Prefer its owning
+    /// project; imported tasks whose project is unavailable fall back to a title
+    /// search, where the stable id still chooses the row.
+    pub fn reveal_and_open_task(&self, id: &str) -> bool {
+        let Some(task) = self.engine().task_detail(id.to_string()) else {
+            return false;
+        };
+        let project = View::project(&task.project_id);
+        let project_available = self
+            .engine()
+            .sidebar()
+            .projects
+            .iter()
+            .any(|entry| entry.view == project);
+        if project_available {
+            self.go_to(project);
+        } else {
+            self.imp().search_entry.set_text(&task.title);
+            *self.imp().filter.borrow_mut() = task.title.clone();
+            self.go_to(View::Search);
+            // Normal Search deliberately caps task matches. Exact external reveal is
+            // window-only behavior: if the requested stable id fell beyond that cap,
+            // render its real row explicitly without changing core search semantics.
+            if !self.imp().rows.borrow().iter().any(|row_id| row_id == id) {
+                let Some(row) = self.engine().task_row(id.to_string()) else {
+                    return false;
+                };
+                self.new_section(None, None);
+                self.task_row(&row);
+            }
+        }
+
+        fn named_descendant(root: &gtk::Widget, id: &str) -> Option<gtk::Widget> {
+            let mut child = root.first_child();
+            while let Some(widget) = child {
+                if widget.widget_name() == id {
+                    return Some(widget);
+                }
+                if let Some(found) = named_descendant(&widget, id) {
+                    return Some(found);
+                }
+                child = widget.next_sibling();
+            }
+            None
+        }
+        let Some(row) = named_descendant(self.imp().task_box.upcast_ref(), id) else {
+            tracing::warn!("task {id} was not present after reveal navigation");
+            return false;
+        };
+        row.set_state_flags(gtk::StateFlags::SELECTED, false);
+        row.grab_focus();
+        self.open_task(id);
+        true
     }
 
     // ---- sync / backup ---------------------------------------------------
@@ -3288,6 +3391,7 @@ impl MomentumWindow {
                         w.set_sync_error(Some(e.to_string()));
                     }
                 }
+                w.update_background_status();
             }
         ));
     }

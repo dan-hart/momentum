@@ -135,6 +135,8 @@ pub fn reset_settings() {
         "sync-method",
         "auto-sync",
         "auto-archive",
+        "run-in-background",
+        "background-count-mode",
         "morning-summary-enabled",
         "morning-summary-hour",
         "morning-summary-minute",

@@ -417,7 +417,8 @@ import Testing
         let h = Harness()
         h.state.refresh()
         let count = try #require(h.notifier.badges.last)
-        #expect(count == h.state.todayOpenCount)
+        #expect(count == h.engine.taskCount(mode: .dueToday))
+        #expect(count == h.state.todayOpenCount, "the menu bar uses the same due-today count")
         #expect(count > 0)
     }
 
@@ -436,6 +437,7 @@ import Testing
         h.defaults.set("todayIncludingOverdue", forKey: "dock-badge-mode")
         h.state.preferencesChanged()
         let allToday = try #require(h.notifier.badges.last)
+        #expect(allToday == h.engine.taskCount(mode: .todayIncludingOverdue))
         #expect(allToday > todayCount)
         h.state.setDone(h.id("Renew library books"), true)
         #expect(h.notifier.badges.last == allToday - 1)

@@ -17,6 +17,62 @@ cargo test --workspace --exclude momentum   # core crates only, on any OS, no GT
 swift test --package-path macos/Packages/MomentumKit   # the macOS app's own tests
 ```
 
+Focused Linux-parity checks use the same isolated harness:
+
+```sh
+cargo test -p momentum-core task_count -- --nocapture
+cargo test -p mo open -- --nocapture
+build-aux/test.sh -p momentum typography -- --nocapture
+build-aux/test.sh -p momentum background_status -- --nocapture
+```
+
+The `mo open` integration tests start a private `dbus-daemon`, create temporary stable
+and Devel profile paths under a temporary home, and never address the normal session bus
+or a personal task store.
+
+When `lychee` is unavailable, audit relative links and Markdown fragments in every
+changed or untracked Markdown file with this read-only fallback:
+
+```sh
+python3 - <<'PY'
+import re
+from pathlib import Path
+import subprocess
+root = Path.cwd()
+tracked = subprocess.run(['git','diff','--name-only','--','*.md'], check=True, text=True, capture_output=True).stdout.splitlines()
+untracked = subprocess.run(['git','ls-files','--others','--exclude-standard','--','*.md'], check=True, text=True, capture_output=True).stdout.splitlines()
+files = sorted(set(tracked + untracked))
+link_re = re.compile(r'(?<!!)\[[^\]]*\]\(([^)]+)\)')
+def slug(text):
+    text = re.sub(r'<[^>]+>', '', text).strip().lower()
+    text = re.sub(r'[^\w\- ]', '', text)
+    return re.sub(r'[ ]+', '-', text)
+def anchors(path):
+    found=set(); seen={}
+    for line in path.read_text(encoding='utf-8').splitlines():
+        m=re.match(r'^#{1,6}\s+(.+?)\s*#*$', line)
+        if not m: continue
+        base=slug(m.group(1)); n=seen.get(base,0); seen[base]=n+1
+        found.add(base if n==0 else f'{base}-{n}')
+    return found
+errors=[]; checked=0
+for rel in files:
+    src=root/rel; in_fence=False
+    for lineno,line in enumerate(src.read_text(encoding='utf-8').splitlines(),1):
+        if line.lstrip().startswith('```'): in_fence=not in_fence; continue
+        if in_fence: continue
+        for raw in link_re.findall(line):
+            target=raw.strip().split()[0].strip('<>')
+            if target.startswith(('http://','https://','mailto:','#')): continue
+            pathpart,_,frag=target.partition('#'); dest=(src.parent/pathpart).resolve() if pathpart else src.resolve(); checked+=1
+            if not dest.exists(): errors.append(f'{rel}:{lineno}: missing {target}')
+            elif frag and dest.suffix.lower()=='.md' and frag not in anchors(dest): errors.append(f'{rel}:{lineno}: missing fragment #{frag} in {dest.relative_to(root)}')
+print(f'checked {checked} relative Markdown links across {len(files)} changed files')
+if errors: print('\n'.join(errors)); raise SystemExit(1)
+print('all relative targets and Markdown fragments resolve')
+PY
+```
+
 `build-aux/test.sh` enters `org.gnome.Sdk//50` and runs `build-aux/run-tests.sh`, which
 compiles the Blueprint UI, the resource bundle and the GSettings schema into
 `target/test-assets`, starts `gtk4-broadwayd` when no display is available, and runs

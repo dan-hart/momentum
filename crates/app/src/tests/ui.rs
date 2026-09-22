@@ -14,6 +14,17 @@ fn today_n() -> i64 {
     day_number(&today_str()).unwrap()
 }
 
+fn reset_typography_settings() {
+    let settings = settings();
+    for key in [
+        "typography-font",
+        "typography-content-scale",
+        "typography-interface-scale",
+    ] {
+        settings.reset(key);
+    }
+}
+
 #[test]
 fn today_view_shows_only_today_morning_evening_groups() {
     on_gtk(|| {
@@ -440,6 +451,197 @@ fn search_finds_tasks_notes_projects_and_tags_after_the_debounce() {
         assert!(row_ids(&win).is_empty());
     });
 }
+
+#[test]
+fn exact_task_reveal_uses_its_project_focuses_the_stable_id_and_opens_the_editor() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        let id = id_of(&win, "Plan weekend hike");
+        let project_id = win.engine().task_detail(id.clone()).expect("current task").project_id;
+
+        assert!(win.reveal_and_open_task(&id));
+        pump();
+
+        assert_eq!(*win.imp().view.borrow(), View::project(&project_id));
+        assert!(row_ids(&win).contains(&id));
+        assert!(descendants(win.imp().task_box.upcast_ref())
+            .into_iter()
+            .any(|widget| widget.widget_name() == id && widget.state_flags().contains(gtk::StateFlags::SELECTED)));
+        let dialog = win.visible_dialog().expect("task editor dialog");
+        assert_eq!(dialog.title().as_str(), "Task", "the task editor is presented");
+    });
+}
+
+#[test]
+fn exact_task_reveal_falls_back_to_title_search_but_focuses_the_stable_id() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        let id = id_of(&win, "Plan weekend hike");
+        let (project_id, title) = win.engine().with_store(|store| {
+            let task = &store.state.task.entities[&id];
+            (task.project_id.clone(), task.title.clone())
+        });
+        win.engine().with_store_mut(|store| {
+            store.state.project.entities.remove(&project_id);
+            store.state.project.ids.retain(|candidate| candidate != &project_id);
+        });
+
+        assert!(win.reveal_and_open_task(&id));
+        pump();
+
+        assert_eq!(*win.imp().view.borrow(), View::Search);
+        assert_eq!(win.imp().filter.borrow().as_str(), title);
+        assert!(row_ids(&win).contains(&id));
+        assert!(descendants(win.imp().task_box.upcast_ref())
+            .into_iter()
+            .any(|widget| widget.widget_name() == id && widget.state_flags().contains(gtk::StateFlags::SELECTED)));
+    });
+}
+
+#[test]
+fn open_task_action_and_uri_are_parameterized_and_invalid_requests_are_non_mutating() {
+    on_gtk(|| {
+        let app = app();
+        let win = app.main_window();
+        let id = win.engine().with_store(|store| store.state.task.ids[0].clone());
+        let before = win
+            .engine()
+            .with_store(|store| serde_json::to_vec(&store.state).unwrap());
+        let action = app.lookup_action("open-task").expect("app.open-task action");
+        assert_eq!(
+            action.parameter_type().as_deref(),
+            Some(String::static_variant_type().as_ref())
+        );
+
+        app.activate_action("open-task", Some(&id.to_variant()));
+        pump();
+        assert!(win.visible_dialog().is_some(), "the action opens the task editor");
+
+        let uri = format!("momentum://open-task?id={}", glib::Uri::escape_string(&id, None, false));
+        app.open(&[gio::File::for_uri(&uri)], "");
+        app.activate_action("open-task", Some(&"missing-task".to_variant()));
+        app.open(&[gio::File::for_uri("momentum://open-task")], "");
+        app.open(&[gio::File::for_uri("momentum://open-task?id=%ZZ")], "");
+        pump();
+
+        let after = win
+            .engine()
+            .with_store(|store| serde_json::to_vec(&store.state).unwrap());
+        assert_eq!(after, before);
+    });
+}
+
+#[test]
+fn invalid_open_task_requests_cover_archived_deleted_and_stale_ids_without_mutation() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        let mut archived = Task::new("Archived target", INBOX_PROJECT_ID);
+        archived.id = "archived-target-id".into();
+        let mut deleted = Task::new("Deleted target", INBOX_PROJECT_ID);
+        deleted.id = "deleted-target-id".into();
+        win.dispatch(Action::AddTask {
+            task: archived.clone(),
+            bottom: true,
+        });
+        win.dispatch(Action::AddTask {
+            task: deleted.clone(),
+            bottom: true,
+        });
+        win.dispatch(Action::MoveToArchive {
+            tasks: vec![archived],
+            sub_tasks: vec![],
+        });
+        win.dispatch(Action::DeleteTask {
+            task: deleted,
+            sub_tasks: vec![],
+        });
+        let before = win
+            .engine()
+            .with_store(|store| serde_json::to_vec(&store.state).unwrap());
+
+        for id in ["archived-target-id", "deleted-target-id", "stale-target-id"] {
+            assert!(!win.reveal_and_open_task(id));
+        }
+
+        let after = win
+            .engine()
+            .with_store(|store| serde_json::to_vec(&store.state).unwrap());
+        assert_eq!(after, before);
+        assert!(win.visible_dialog().is_none());
+    });
+}
+
+#[test]
+fn open_task_uri_decodes_opaque_ids_once_and_preserves_add_uri_forms() {
+    on_gtk(|| {
+        let app = app();
+        let win = app.main_window();
+        for (id, encoded) in [("a&b", "a%26b"), ("a+b", "a%2Bb"), ("a%2Fb", "a%252Fb")] {
+            let mut task = Task::new(&format!("Opaque {id}"), INBOX_PROJECT_ID);
+            task.id = id.into();
+            win.dispatch(Action::AddTask { task, bottom: true });
+            app.open(&[gio::File::for_uri(&format!("momentum://open-task?id={encoded}"))], "");
+            pump();
+            assert!(
+                row_ids(&win).contains(&id.to_string()),
+                "URI failed to reveal opaque id {id:?}"
+            );
+            assert!(win.visible_dialog().is_some(), "URI failed to open opaque id {id:?}");
+            win.visible_dialog().expect("opaque-id task editor").close();
+            pump();
+        }
+
+        app.open(
+            &[gio::File::for_uri(
+                "momentum://add?title=URI+created&notes=Some%20notes&tags=one%2Ctwo",
+            )],
+            "",
+        );
+        pump();
+        let created = win
+            .engine()
+            .with_store(|store| {
+                store
+                    .state
+                    .task
+                    .iter()
+                    .find(|task| task.title == "URI created")
+                    .cloned()
+            })
+            .expect("existing add URI form still creates a task");
+        assert_eq!(created.notes.as_deref(), Some("Some notes"));
+        assert_eq!(created.tag_ids.len(), 2);
+    });
+}
+
+#[test]
+fn missing_project_fallback_reveals_exact_id_beyond_the_normal_search_cap() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        let missing_project = "missing-project";
+        let target_id = "duplicate-64";
+        win.engine().with_store_mut(|store| {
+            for index in 0..65 {
+                let mut task = Task::new("Same duplicate title", missing_project);
+                task.id = format!("duplicate-{index:02}");
+                store.dispatch(Action::AddTask { task, bottom: true });
+            }
+        });
+
+        assert!(win.reveal_and_open_task(target_id));
+        pump();
+
+        assert_eq!(*win.imp().view.borrow(), View::Search);
+        assert!(row_ids(&win).contains(&target_id.to_string()));
+        assert!(descendants(win.imp().task_box.upcast_ref()).into_iter().any(|widget| {
+            widget.widget_name() == target_id && widget.state_flags().contains(gtk::StateFlags::SELECTED)
+        }));
+        assert_eq!(
+            win.visible_dialog().expect("exact capped task editor").title().as_str(),
+            "Task"
+        );
+    });
+}
 #[test]
 fn context_menu_offers_the_right_moves_for_a_task() {
     on_gtk(|| {
@@ -757,6 +959,592 @@ fn preferences_rows_are_bound_to_settings() {
         imp.modifier_row.set_selected(super_idx as u32);
         assert_eq!(settings().string("modifier-key"), "super");
         reset_settings();
+    });
+}
+
+#[test]
+fn background_status_preference_is_accessible_bound_and_retained_while_disabled() {
+    on_gtk(|| {
+        reset_settings();
+        let prefs = crate::prefs::MomentumPrefs::default();
+        let imp = prefs.imp();
+
+        assert_eq!(imp.background_count_row.selected(), 0);
+        assert_eq!(imp.background_count_row.model().expect("count choices").n_items(), 3);
+        assert!(gtk::test_accessible_has_property(
+            imp.background_count_row.upcast_ref::<gtk::Widget>(),
+            gtk::AccessibleProperty::Label
+        ));
+        assert!(gtk::test_accessible_has_property(
+            imp.background_count_row.upcast_ref::<gtk::Widget>(),
+            gtk::AccessibleProperty::Description
+        ));
+
+        imp.background_count_row.set_selected(1);
+        assert_eq!(settings().string("background-count-mode"), "today-including-overdue");
+        assert!(!imp.background_row.is_active());
+        assert_eq!(imp.background_count_row.selected(), 1);
+        assert_eq!(settings().string("background-count-mode"), "today-including-overdue");
+
+        imp.background_count_row.set_selected(2);
+        assert_eq!(settings().string("background-count-mode"), "off");
+        settings().set_string("background-count-mode", "due-today").unwrap();
+        pump();
+        assert_eq!(
+            imp.background_count_row.selected(),
+            0,
+            "an external setting change is reflected by the open preferences dialog"
+        );
+        reset_settings();
+    });
+}
+
+#[test]
+fn background_status_mode_changes_refresh_the_window_immediately_without_a_portal() {
+    on_gtk(|| {
+        use crate::background_status::{format_status, BackgroundCountMode};
+
+        reset_settings();
+        settings().set_boolean("run-in-background", true).unwrap();
+        let (win, _dir) = demo_window();
+        pump();
+        let due_count = win.engine().task_count(BackgroundCountMode::DueToday.task_count_mode());
+        assert_eq!(
+            win.imp().background_status.borrow().desired(),
+            Some(format_status(BackgroundCountMode::DueToday, due_count).as_str())
+        );
+
+        win.add_task("Background refresh task");
+        pump();
+        assert_eq!(
+            win.imp().background_status.borrow().desired(),
+            Some(format_status(BackgroundCountMode::DueToday, due_count + 1).as_str()),
+            "task-affecting operations request a fresh count"
+        );
+
+        settings()
+            .set_string("background-count-mode", "today-including-overdue")
+            .unwrap();
+        pump();
+        let today_count = win
+            .engine()
+            .task_count(BackgroundCountMode::TodayIncludingOverdue.task_count_mode());
+        assert_eq!(
+            win.imp().background_status.borrow().desired(),
+            Some(format_status(BackgroundCountMode::TodayIncludingOverdue, today_count).as_str())
+        );
+
+        settings().set_string("background-count-mode", "off").unwrap();
+        pump();
+        assert_eq!(
+            win.imp().background_status.borrow().desired(),
+            Some("Momentum is running")
+        );
+
+        settings().set_boolean("run-in-background", false).unwrap();
+        settings().set_string("background-count-mode", "due-today").unwrap();
+        pump();
+        assert_eq!(
+            win.imp().background_status.borrow().desired(),
+            Some("Momentum is running"),
+            "disabled background mode retains the choice but performs no refresh"
+        );
+        assert_eq!(settings().string("background-count-mode"), "due-today");
+        reset_settings();
+    });
+}
+
+#[test]
+fn typography_preferences_bind_native_controls_and_reset_in_focus_order() {
+    on_gtk(|| {
+        reset_settings();
+        reset_typography_settings();
+        let (win, _) = demo_window();
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        pump_ms(300);
+        let imp = prefs.imp();
+
+        assert_eq!(imp.content_scale_row.value(), 100.0);
+        assert_eq!(imp.interface_scale_row.value(), 100.0);
+        let adjustment = imp.content_scale_row.adjustment();
+        assert_eq!(
+            (adjustment.lower(), adjustment.upper(), adjustment.step_increment()),
+            (75.0, 250.0, 5.0)
+        );
+
+        imp.content_scale_row.set_value(125.0);
+        imp.interface_scale_row.set_value(150.0);
+        imp.font_button
+            .set_font_desc(&gtk::pango::FontDescription::from_string("Cantarell Bold 19"));
+        pump();
+        assert_eq!(settings().int("typography-content-scale"), 125);
+        assert_eq!(settings().int("typography-interface-scale"), 150);
+        let saved_font = settings().string("typography-font");
+        assert!(
+            saved_font.contains("Cantarell") && saved_font.contains("Bold"),
+            "{saved_font}"
+        );
+        assert!(!gtk::pango::FontDescription::from_string(&saved_font)
+            .set_fields()
+            .contains(gtk::pango::FontMask::SIZE));
+
+        let focus_is_within = |target: &gtk::Widget| {
+            gtk::prelude::RootExt::focus(&win).is_some_and(|focused| focused == *target || focused.is_ancestor(target))
+        };
+        let font_row = imp
+            .font_button
+            .ancestor(adw::ActionRow::static_type())
+            .and_downcast::<adw::ActionRow>()
+            .expect("font action row");
+        let focus_targets = [
+            font_row.upcast_ref::<gtk::Widget>(),
+            imp.content_scale_row.upcast_ref::<gtk::Widget>(),
+            imp.interface_scale_row.upcast_ref(),
+            imp.reset_typography_row.upcast_ref(),
+        ];
+        let mut focus_scope = focus_targets[0].parent().expect("font control parent");
+        let is_within_scope = |target: &gtk::Widget, scope: &gtk::Widget| {
+            let mut current = Some(target.clone());
+            while let Some(widget) = current {
+                if widget == *scope {
+                    return true;
+                }
+                current = widget.parent();
+            }
+            false
+        };
+        while !focus_targets.iter().all(|target| is_within_scope(target, &focus_scope)) {
+            focus_scope = focus_scope.parent().expect("shared typography focus scope");
+        }
+        let focus_list = focus_scope
+            .downcast_ref::<gtk::ListBox>()
+            .expect("typography rows share a list box");
+        gtk::prelude::GtkWindowExt::set_focus(&win, None::<&gtk::Widget>);
+        for (target_index, target) in focus_targets.iter().enumerate() {
+            let mut reached = false;
+            for _ in 0..64 {
+                if target_index == 0 {
+                    assert!(focus_list.child_focus(gtk::DirectionType::TabForward));
+                } else {
+                    focus_list.emit_move_cursor(gtk::MovementStep::DisplayLines, 1, false, false);
+                }
+                pump();
+                if focus_is_within(target) {
+                    reached = true;
+                    break;
+                }
+            }
+            pump();
+            assert!(
+                reached,
+                "forward keyboard traversal did not reach {} in order; got {:?}",
+                target.type_().name(),
+                gtk::prelude::RootExt::focus(&win).map(|focused| focused.type_().name())
+            );
+        }
+        for widget in [
+            imp.font_button.upcast_ref::<gtk::Widget>(),
+            imp.content_scale_row.upcast_ref(),
+            imp.interface_scale_row.upcast_ref(),
+            imp.reset_typography_row.upcast_ref(),
+        ] {
+            assert!(gtk::test_accessible_has_property(
+                widget,
+                gtk::AccessibleProperty::Label
+            ));
+            assert!(gtk::test_accessible_has_property(
+                widget,
+                gtk::AccessibleProperty::Description
+            ));
+        }
+
+        imp.reset_typography_row.emit_by_name::<()>("activated", &[]);
+        pump();
+        assert!(settings().string("typography-font").is_empty());
+        assert_eq!(settings().int("typography-content-scale"), 100);
+        assert_eq!(settings().int("typography-interface-scale"), 100);
+        assert_eq!(imp.content_scale_row.value(), 100.0);
+        assert_eq!(imp.interface_scale_row.value(), 100.0);
+        settings().set_string("typography-font", "Cantarell Italic").unwrap();
+        pump();
+        let external_font = imp.font_button.font_desc().expect("external font reaches chooser");
+        assert_eq!(external_font.family().as_deref(), Some("Cantarell"));
+        assert_eq!(external_font.style(), gtk::pango::Style::Italic);
+        reset_settings();
+        reset_typography_settings();
+    });
+}
+
+#[test]
+fn typography_setting_changes_refresh_the_single_provider_immediately() {
+    on_gtk(|| {
+        reset_settings();
+        reset_typography_settings();
+        let before = crate::typography::current_css();
+        settings().set_int("typography-content-scale", 175).unwrap();
+        settings().set_int("typography-interface-scale", 125).unwrap();
+        pump();
+        let after = crate::typography::current_css();
+        assert_ne!(before, after);
+        assert!(after.contains("font-size: 1.2500em;"), "{after}");
+        assert!(after.contains("font-size: 1.4000em;"), "{after}");
+        reset_settings();
+        reset_typography_settings();
+    });
+}
+
+#[test]
+fn typography_css_provider_accepts_generated_css_at_supported_scales() {
+    on_gtk(|| {
+        let errors = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let provider = gtk::CssProvider::new();
+        provider.connect_parsing_error({
+            let errors = errors.clone();
+            move |_, section, error| {
+                errors.borrow_mut().push(format!("{section:?}: {error}"));
+            }
+        });
+
+        for (content, interface) in [(75, 250), (100, 100), (250, 75)] {
+            errors.borrow_mut().clear();
+            let preferences = crate::typography::TypographyPreferences::from_persisted(
+                "Cantarell Bold Italic",
+                content,
+                interface,
+                |_| true,
+            );
+            provider.load_from_bytes(&glib::Bytes::from_owned(preferences.css()));
+            assert!(
+                errors.borrow().is_empty(),
+                "GTK rejected generated CSS for content={content}, interface={interface}: {:?}",
+                *errors.borrow()
+            );
+        }
+    });
+}
+
+#[test]
+fn typography_nested_interface_roots_do_not_compound_scale() {
+    on_gtk(|| {
+        reset_settings();
+        reset_typography_settings();
+        settings().set_int("typography-content-scale", 250).unwrap();
+        settings().set_int("typography-interface-scale", 250).unwrap();
+        pump();
+
+        let outer = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        crate::typography::register_interface_root(&outer);
+        let outer_label = gtk::Label::new(Some("Typography sample"));
+        outer.append(&outer_label);
+
+        let nested = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        crate::typography::register_interface_root(&nested);
+        let nested_label = gtk::Label::new(Some("Typography sample"));
+        let nested_content_label = gtk::Label::new(Some("Typography sample"));
+        crate::typography::register_content_root(&nested_content_label);
+        nested.append(&nested_label);
+        nested.append(&nested_content_label);
+        outer.append(&nested);
+
+        let fixture = gtk::Window::builder()
+            .application(&app())
+            .default_width(360)
+            .default_height(300)
+            .child(&outer)
+            .build();
+        fixture.present();
+        pump();
+
+        assert!(outer_label.height() > 0);
+        assert_eq!(
+            nested_label.height(),
+            outer_label.height(),
+            "a nested interface root must stay at 250%, not compound to 625%"
+        );
+        assert_eq!(
+            nested_content_label.height(),
+            outer_label.height(),
+            "250% content under a nested interface root must stay at 250%"
+        );
+
+        fixture.close();
+        pump();
+        reset_settings();
+        reset_typography_settings();
+    });
+}
+
+#[test]
+fn typography_classes_cover_main_quick_add_task_and_repeat_surfaces() {
+    on_gtk(|| {
+        reset_settings();
+        reset_typography_settings();
+        let (win, _) = demo_window();
+        pump();
+        assert!(win.has_css_class(crate::typography::INTERFACE_CLASS));
+        assert!(win.imp().add_entry.has_css_class(crate::typography::CONTENT_CLASS));
+        assert!(
+            descendants(win.imp().task_box.upcast_ref())
+                .iter()
+                .any(|widget| widget.has_css_class(crate::typography::CONTENT_CLASS)),
+            "rendered task rows have a content typography root"
+        );
+
+        let app = app();
+        crate::quick_add::open(&app);
+        pump();
+        let quick_add = app
+            .windows()
+            .into_iter()
+            .find(|window| window.title().as_deref() == Some("Add Task"))
+            .expect("quick-add window");
+        assert!(quick_add.has_css_class(crate::typography::INTERFACE_CLASS));
+        assert!(descendants(quick_add.upcast_ref())
+            .iter()
+            .any(|widget| widget.is::<gtk::Entry>() && widget.has_css_class(crate::typography::CONTENT_CLASS)));
+        quick_add.close();
+        pump();
+
+        win.new_task_dialog();
+        pump();
+        let task_dialog = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::Dialog>().ok())
+            .find(|dialog| dialog.title() == "New Task")
+            .expect("task dialog");
+        assert!(task_dialog.has_css_class(crate::typography::INTERFACE_CLASS));
+        let task_widgets = descendants(task_dialog.upcast_ref());
+        assert!(task_widgets.iter().any(|widget| {
+            widget
+                .downcast_ref::<adw::EntryRow>()
+                .is_some_and(|row| row.title() == "Title" && row.has_css_class(crate::typography::CONTENT_CLASS))
+        }));
+        assert!(task_widgets
+            .iter()
+            .any(|widget| { widget.is::<gtk::TextView>() && widget.has_css_class(crate::typography::CONTENT_CLASS) }));
+        task_dialog.close();
+        pump();
+
+        let id = id_of(&win, "Write release notes for 0.1");
+        win.open_task(&id);
+        pump();
+        let edit_dialog = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::Dialog>().ok())
+            .find(|dialog| dialog.title() == "Task")
+            .expect("edit task dialog");
+        let add_subtask = descendants(edit_dialog.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::EntryRow>().ok())
+            .find(|row| row.title() == "Add subtask")
+            .expect("add-subtask entry");
+        assert!(add_subtask.has_css_class(crate::typography::CONTENT_CLASS));
+        edit_dialog.close();
+        pump();
+
+        crate::repeat_dialog::open(&win, &id);
+        pump();
+        let repeat_dialog = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::Dialog>().ok())
+            .find(|dialog| dialog.title() == "Repeat")
+            .expect("repeat dialog");
+        assert!(repeat_dialog.has_css_class(crate::typography::INTERFACE_CLASS));
+        repeat_dialog.close();
+        pump();
+        reset_settings();
+        reset_typography_settings();
+    });
+}
+
+#[test]
+fn typography_classes_cover_preferences_project_tag_and_nearby_dialogs() {
+    on_gtk(|| {
+        reset_settings();
+        reset_typography_settings();
+        let (win, _) = demo_window();
+        pump();
+
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        pump();
+        assert!(prefs.has_css_class(crate::typography::INTERFACE_CLASS));
+        prefs.close();
+        pump();
+
+        let project = win
+            .engine()
+            .projects()
+            .into_iter()
+            .find(|project| project.id != INBOX_PROJECT_ID)
+            .unwrap();
+        win.edit_context_dialog_for(View::project(&project.id));
+        pump();
+        let project_dialog = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::Dialog>().ok())
+            .next()
+            .expect("project dialog");
+        assert!(project_dialog.has_css_class(crate::typography::INTERFACE_CLASS));
+        project_dialog.close();
+        pump();
+
+        let tag = win.engine().tags().into_iter().next().unwrap();
+        win.edit_context_dialog_for(View::tag(&tag.id));
+        pump();
+        let tag_dialog = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::Dialog>().ok())
+            .next()
+            .expect("tag dialog");
+        assert!(tag_dialog.has_css_class(crate::typography::INTERFACE_CLASS));
+        tag_dialog.close();
+        pump();
+
+        let nearby = crate::p2p::nearby_devices_dialog_for_test();
+        assert!(nearby.has_css_class(crate::typography::INTERFACE_CLASS));
+
+        win.set_sync_error(Some("network unavailable".into()));
+        win.show_sync_error();
+        pump();
+        let sync_error = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::AlertDialog>().ok())
+            .find(|dialog| dialog.heading().as_deref() == Some("Sync needs attention"))
+            .expect("sync-error dialog");
+        assert!(sync_error.has_css_class(crate::typography::INTERFACE_CLASS));
+        sync_error.close();
+        pump();
+
+        let app = app();
+        let main = app.main_window();
+        app.activate_action("about", None);
+        pump();
+        let about = descendants(main.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::AboutDialog>().ok())
+            .next()
+            .expect("about dialog");
+        assert!(about.has_css_class(crate::typography::INTERFACE_CLASS));
+        about.close();
+        pump();
+        reset_settings();
+        reset_typography_settings();
+    });
+}
+
+#[test]
+fn typography_at_250_percent_survives_a_360_by_720_window() {
+    on_gtk(|| {
+        reset_settings();
+        reset_typography_settings();
+        settings().set_int("typography-content-scale", 250).unwrap();
+        settings().set_int("typography-interface-scale", 250).unwrap();
+        let (win, _) = demo_window();
+        win.set_default_size(360, 720);
+        win.present();
+        pump();
+
+        assert_eq!((win.default_width(), win.default_height()), (360, 720));
+        assert_eq!((win.width(), win.height()), (360, 720));
+        assert!(win.imp().split_view.is_collapsed());
+        assert!(shown(&*win.imp().add_entry));
+        assert!(win.imp().add_entry.width() > 0);
+        let content_roots: Vec<_> = descendants(win.imp().task_box.upcast_ref())
+            .into_iter()
+            .filter(|widget| widget.has_css_class(crate::typography::CONTENT_CLASS))
+            .collect();
+        assert!(!content_roots.is_empty());
+        assert!(content_roots.iter().all(|widget| widget.width() > 0));
+        assert!(descendants(win.upcast_ref())
+            .iter()
+            .any(|widget| widget.is::<gtk::ScrolledWindow>()));
+
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        pump_ms(1_000);
+        let prefs_imp = prefs.imp();
+        let scroll = prefs_imp
+            .reset_typography_row
+            .ancestor(gtk::ScrolledWindow::static_type())
+            .and_downcast::<gtk::ScrolledWindow>()
+            .expect("typography controls are in the preferences scroller");
+        let adjustment = scroll.vadjustment();
+        assert!(adjustment.upper() >= adjustment.page_size());
+        let font_row = prefs_imp
+            .font_button
+            .ancestor(adw::ActionRow::static_type())
+            .and_downcast::<adw::ActionRow>()
+            .expect("font action row");
+        let focus_list = font_row
+            .ancestor(gtk::ListBox::static_type())
+            .and_downcast::<gtk::ListBox>()
+            .expect("typography rows list box");
+        let controls = [
+            font_row.upcast_ref::<gtk::Widget>(),
+            prefs_imp.content_scale_row.upcast_ref(),
+            prefs_imp.interface_scale_row.upcast_ref(),
+            prefs_imp.reset_typography_row.upcast_ref(),
+        ];
+        gtk::prelude::GtkWindowExt::set_focus(&win, None::<&gtk::Widget>);
+        let initial_scroll = adjustment.value();
+        for (index, control) in controls.into_iter().enumerate() {
+            if index == 0 {
+                assert!(focus_list.child_focus(gtk::DirectionType::TabForward));
+            } else {
+                focus_list.emit_move_cursor(gtk::MovementStep::DisplayLines, 1, false, false);
+            }
+            pump();
+            assert!(
+                gtk::prelude::RootExt::focus(&win)
+                    .is_some_and(|focused| focused == *control || focused.is_ancestor(control)),
+                "keyboard navigation did not reach {}",
+                control.type_().name(),
+            );
+        }
+        assert!(
+            adjustment.value() > initial_scroll || adjustment.upper() == adjustment.page_size(),
+            "keyboard traversal did not scroll the compact preferences page"
+        );
+        prefs.close();
+        pump();
+
+        win.new_task_dialog();
+        pump();
+        let task_dialog = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::Dialog>().ok())
+            .find(|dialog| dialog.title() == "New Task")
+            .expect("task dialog");
+        let task_widgets = descendants(task_dialog.upcast_ref());
+        let title = task_widgets
+            .iter()
+            .find(|widget| {
+                widget
+                    .downcast_ref::<adw::EntryRow>()
+                    .is_some_and(|row| row.title() == "Title")
+            })
+            .expect("task title control");
+        let notes = task_widgets
+            .iter()
+            .find(|widget| widget.is::<gtk::TextView>())
+            .expect("task notes control");
+        for control in [title, notes] {
+            assert!(control.grab_focus());
+            pump();
+            assert!(gtk::prelude::RootExt::focus(&win)
+                .is_some_and(|focused| focused == *control || focused.is_ancestor(control)));
+        }
+        assert!(task_widgets.iter().any(|widget| widget.is::<gtk::ScrolledWindow>()));
+        task_dialog.close();
+        pump();
+
+        win.imp().tag_popover.unparent();
+        win.close();
+        pump();
+        reset_settings();
+        reset_typography_settings();
     });
 }
 #[test]

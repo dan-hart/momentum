@@ -15,19 +15,22 @@ impl Mo {
         }
     }
     fn run(&self, args: &[&str]) -> (bool, String) {
-        let out = Command::new(env!("CARGO_BIN_EXE_mo"))
-            .args(args)
-            .env("MO_DATA_DIR", self.dir.path())
-            .env("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/momentum-test-bus")
-            .env("NO_COLOR", "1")
-            .output()
-            .unwrap();
+        let out = self.output(args);
         let text = format!(
             "{}{}",
             String::from_utf8_lossy(&out.stdout),
             String::from_utf8_lossy(&out.stderr)
         );
         (out.status.success(), text)
+    }
+    fn output(&self, args: &[&str]) -> std::process::Output {
+        Command::new(env!("CARGO_BIN_EXE_mo"))
+            .args(args)
+            .env("MO_DATA_DIR", self.dir.path())
+            .env("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/momentum-test-bus")
+            .env("NO_COLOR", "1")
+            .output()
+            .unwrap()
     }
     fn ok(&self, args: &[&str]) -> String {
         let (ok, text) = self.run(args);
@@ -172,11 +175,151 @@ fn help_lists_every_command() {
     let text = mo.ok(&["--help"]);
     for cmd in [
         "add", "today", "morning", "tonight", "upcoming", "list", "search", "done", "undone", "plan", "rm", "projects",
-        "tags", "sync", "config",
+        "tags", "sync", "config", "open",
     ] {
         assert!(text.contains(cmd), "help lacks {cmd}");
     }
     assert!(!mo.dir.path().join("state.json").exists());
+}
+
+#[test]
+fn help_and_version_use_stdout_without_stderr() {
+    let mo = Mo::new();
+    for args in [["--help"], ["--version"]] {
+        let output = mo.output(&args);
+        assert!(output.status.success(), "mo {args:?} failed");
+        assert!(!output.stdout.is_empty(), "mo {args:?} produced no stdout");
+        assert!(
+            output.stderr.is_empty(),
+            "mo {args:?} unexpectedly wrote stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+#[test]
+fn open_resolves_current_tasks_but_requires_desktop_acceptance_without_mutating() {
+    let mo = Mo::new();
+    let added = mo.json(&["add", "Exact reveal target"]);
+    let id = added[0]["id"].as_str().unwrap().to_string();
+    let state_before = std::fs::read(mo.dir.path().join("state.json")).unwrap();
+    let pending_before = std::fs::read(mo.dir.path().join("pending.json")).unwrap();
+
+    for needle in [&id[..8], "REVEAL TARGET"] {
+        let (ok, text) = mo.run(&["--json", "open", needle]);
+        assert!(!ok, "a missing desktop app must not be reported as accepted: {text}");
+        let error: serde_json::Value = serde_json::from_str(&text).expect("JSON error envelope");
+        assert!(
+            error["error"]
+                .as_str()
+                .is_some_and(|message| message.contains("Momentum") && message.contains("open")),
+            "unexpected open error: {error}"
+        );
+    }
+
+    assert_eq!(std::fs::read(mo.dir.path().join("state.json")).unwrap(), state_before);
+    assert_eq!(
+        std::fs::read(mo.dir.path().join("pending.json")).unwrap(),
+        pending_before
+    );
+}
+
+#[test]
+fn open_refuses_custom_data_dirs_without_writing() {
+    let mo = Mo::new();
+    let added = mo.json(&["add", "Custom store target"]);
+    let id = added[0]["id"].as_str().unwrap().to_string();
+    let state_before = std::fs::read(mo.dir.path().join("state.json")).unwrap();
+    let pending_before = std::fs::read(mo.dir.path().join("pending.json")).unwrap();
+
+    for args in [
+        vec!["--json", "open", id.as_str()],
+        vec![
+            "--json",
+            "--data-dir",
+            mo.dir.path().to_str().unwrap(),
+            "open",
+            id.as_str(),
+        ],
+    ] {
+        let (ok, text) = mo.run(&args);
+        assert!(!ok, "custom store unexpectedly opened: {text}");
+        let error: serde_json::Value = serde_json::from_str(&text).expect("JSON error envelope");
+        assert!(
+            error["error"]
+                .as_str()
+                .is_some_and(|message| message.contains("registered Momentum Flatpak profile")),
+            "unexpected custom-store error: {error}"
+        );
+    }
+
+    assert_eq!(std::fs::read(mo.dir.path().join("state.json")).unwrap(), state_before);
+    assert_eq!(
+        std::fs::read(mo.dir.path().join("pending.json")).unwrap(),
+        pending_before
+    );
+}
+
+#[test]
+fn open_lookup_errors_use_the_existing_json_error_envelope_without_mutating() {
+    let mo = Mo::new();
+    mo.ok(&["add", "Ambiguous alpha"]);
+    mo.ok(&["add", "Ambiguous beta"]);
+    let state_before = std::fs::read(mo.dir.path().join("state.json")).unwrap();
+    let pending_before = std::fs::read(mo.dir.path().join("pending.json")).unwrap();
+
+    for (needle, expected) in [("missing", "no task matches"), ("Ambiguous", "2 tasks match")] {
+        let (ok, text) = mo.run(&["--json", "open", needle]);
+        assert!(!ok, "invalid open request succeeded: {text}");
+        let error: serde_json::Value = serde_json::from_str(&text).expect("JSON error envelope");
+        assert!(error["error"].as_str().unwrap().contains(expected), "{error}");
+    }
+
+    assert_eq!(std::fs::read(mo.dir.path().join("state.json")).unwrap(), state_before);
+    assert_eq!(
+        std::fs::read(mo.dir.path().join("pending.json")).unwrap(),
+        pending_before
+    );
+}
+
+#[test]
+fn open_rejects_archived_deleted_and_stale_ids_without_mutating() {
+    let mo = Mo::new();
+    let mut store = sp_store::Store::load(mo.dir.path().into());
+    let mut archived = sp_model::Task::new("Archived target", sp_model::INBOX_PROJECT_ID);
+    archived.id = "archived-target-id".into();
+    let mut deleted = sp_model::Task::new("Deleted target", sp_model::INBOX_PROJECT_ID);
+    deleted.id = "deleted-target-id".into();
+    store.dispatch(sp_oplog::Action::AddTask {
+        task: archived.clone(),
+        bottom: true,
+    });
+    store.dispatch(sp_oplog::Action::AddTask {
+        task: deleted.clone(),
+        bottom: true,
+    });
+    store.dispatch(sp_oplog::Action::MoveToArchive {
+        tasks: vec![archived],
+        sub_tasks: vec![],
+    });
+    store.dispatch(sp_oplog::Action::DeleteTask {
+        task: deleted,
+        sub_tasks: vec![],
+    });
+    let state_before = std::fs::read(mo.dir.path().join("state.json")).unwrap();
+    let pending_before = std::fs::read(mo.dir.path().join("pending.json")).unwrap();
+
+    for id in ["archived-target-id", "deleted-target-id", "stale-target-id"] {
+        let (ok, text) = mo.run(&["--json", "open", id]);
+        assert!(!ok, "{id} unexpectedly opened: {text}");
+        let error: serde_json::Value = serde_json::from_str(&text).expect("JSON error envelope");
+        assert!(error["error"].as_str().unwrap().contains("no task matches"), "{error}");
+    }
+    assert_eq!(std::fs::read(mo.dir.path().join("state.json")).unwrap(), state_before);
+    assert_eq!(
+        std::fs::read(mo.dir.path().join("pending.json")).unwrap(),
+        pending_before
+    );
 }
 
 #[test]

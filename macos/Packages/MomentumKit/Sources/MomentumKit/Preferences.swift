@@ -62,6 +62,14 @@ public enum DockBadgeMode: String, CaseIterable, Identifiable {
         case .none: String(localized: "None", bundle: .module)
         }
     }
+
+    public var taskCountMode: TaskCountMode {
+        switch self {
+        case .dueToday: .dueToday
+        case .todayIncludingOverdue: .todayIncludingOverdue
+        case .none: .none
+        }
+    }
 }
 
 public enum ModifierKey: String, CaseIterable, Identifiable {

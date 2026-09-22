@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dan Hart
 
 mod application;
+mod background_status;
 mod config;
 mod demo;
 mod keyring;
@@ -14,6 +15,7 @@ mod repeat_dialog;
 mod search_provider;
 mod shortcuts;
 mod task_form;
+mod typography;
 mod window;
 
 #[cfg(test)]

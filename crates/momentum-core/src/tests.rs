@@ -75,6 +75,125 @@ fn sidebar_has(e: &Engine, v: View) -> bool {
     e.sidebar().fixed.iter().any(|x| x.view == v)
 }
 
+fn add_count_task(
+    e: &Engine,
+    title: &str,
+    due_day: Option<String>,
+    due_with_time: Option<u64>,
+    is_done: bool,
+    parent_id: Option<String>,
+) -> String {
+    let mut task = Task::new(title, INBOX_PROJECT_ID);
+    task.due_day = due_day;
+    task.due_with_time = due_with_time;
+    task.is_done = is_done;
+    let id = task.id.clone();
+    match parent_id {
+        Some(parent_id) => e.dispatch(Action::AddSubTask { task, parent_id }),
+        None => e.dispatch(Action::AddTask { task, bottom: true }),
+    }
+    id
+}
+
+#[test]
+fn task_count_is_zero_for_every_mode_in_an_empty_store() {
+    let (e, _d) = empty();
+
+    for mode in [
+        TaskCountMode::DueToday,
+        TaskCountMode::TodayIncludingOverdue,
+        TaskCountMode::None,
+    ] {
+        assert_eq!(e.task_count(mode), 0);
+    }
+}
+
+#[test]
+fn task_count_due_today_includes_plain_today_tasks() {
+    let (e, _d) = empty();
+    add_count_task(&e, "Plain today", Some(today_str()), None, false, None);
+
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 1);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
+}
+
+#[test]
+fn task_count_due_today_includes_timed_today_tasks() {
+    let (e, _d) = empty();
+    add_count_task(
+        &e,
+        "Timed today",
+        Some(day_str(today_n() - 1)),
+        local_ms(&today_str(), 12, 0),
+        false,
+        None,
+    );
+
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 1);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
+}
+
+#[test]
+fn task_count_includes_overdue_only_in_the_today_listing_mode() {
+    let (e, _d) = empty();
+    add_count_task(&e, "Overdue", Some(day_str(today_n() - 1)), None, false, None);
+
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 0);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
+}
+
+#[test]
+fn task_count_excludes_future_tasks() {
+    let (e, _d) = empty();
+    add_count_task(&e, "Future", Some(day_str(today_n() + 1)), None, false, None);
+
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 0);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 0);
+}
+
+#[test]
+fn task_count_excludes_completed_tasks() {
+    let (e, _d) = empty();
+    add_count_task(&e, "Done today", Some(today_str()), None, true, None);
+
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 0);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 0);
+}
+
+#[test]
+fn task_count_never_counts_subtasks_and_counts_the_parent_once() {
+    let (e, _d) = empty();
+    let parent = add_count_task(&e, "Parent", Some(today_str()), None, false, None);
+    add_count_task(
+        &e,
+        "Child due today",
+        Some(today_str()),
+        None,
+        false,
+        Some(parent.clone()),
+    );
+    add_count_task(
+        &e,
+        "Overdue child",
+        Some(day_str(today_n() - 1)),
+        None,
+        false,
+        Some(parent),
+    );
+
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 1);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
+}
+
+#[test]
+fn task_count_none_is_zero_for_a_populated_store() {
+    let (e, _d) = empty();
+    add_count_task(&e, "Today", Some(today_str()), None, false, None);
+    add_count_task(&e, "Overdue", Some(day_str(today_n() - 1)), None, false, None);
+
+    assert_eq!(e.task_count(TaskCountMode::None), 0);
+}
+
 #[test]
 fn today_view_groups_by_day_period_and_keeps_overdue_dates_visible() {
     let (e, _d) = demo();

@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-09-16. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-09-17. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -18,32 +18,27 @@ hook remains enabled. Earlier blocked attempts below are historical, not a new r
 for approval. The outer checkout's temporary routing guide is superseded by the full
 tracked AGENTS.md when main fast-forwards to this integration.
 
+The current uncommitted Linux parity work is on `task/linux-desktop-parity` at
+`/var/home/danhart/.config/superpowers/worktrees/momentum/linux-desktop-parity`, based
+on `7ec82e93271f`. No commit, push, release, dependency change, or data migration was
+performed for this handoff.
+
 ## Platform baseline
 
 | Platform | Current state | Verification limits / next direction |
 |---|---|---|
-| Linux | Established native GTK4/libadwaita MVP using shared Rust engine | Current Mac-hosted pass compiled GTK/tests; Linux runtime/remote CI not rerun. Sync parity implemented; Blueprint/native Linux verification pending. |
+| Linux | Established native GTK4/libadwaita MVP using shared Rust engine | Full SDK/GTK tests and broad isolated GNOME Wayland acceptance ran 2026-09-17. Typography, automation and Background Apps count parity are Implemented; remaining feature-specific native gates are listed below. |
 | macOS | Established SwiftUI/AppKit MVP using UniFFI/shared core | Local build/tests and many native flows recorded; specific deferred/unverified checks below. |
 | iOS | Upcoming; no native app foundation yet | Plan native frontend/platform services around shared Rust core; scope/order to be agreed. |
 | Android | Upcoming; no native app foundation yet | Plan native frontend/platform services and bindings around shared Rust core; scope/order to be agreed. |
 
 ## Current priorities
 
-- **F-038: configurable morning summary.** Linux/macOS implementation and automated
-  checks pass; Mac Settings off/default readback passed. Finish native time-edit/delivery
-  acceptance and Linux Blueprint/runtime checks when those environments are available.
-  iOS/Android carry explicit requirements in [NOTIFICATIONS.md](NOTIFICATIONS.md).
-
-1. **F-037: Group By on Linux/macOS, planned for mobile.** Shared Rust grouping, native
-   View Options controls, independent platform tests and status. The user approved first-tag-only
-   placement and six estimate intervals, plus #tag and project headings in their saved colors. Native Mac
-   grouping now defaults to Morning & Night with one exclusive grouping layer. Revised
-   automated checks pass; native verification limits are recorded below. No
-   data migration is involved.
-2. **F-027 / F-028: verify Linux sync parity.** Implementation is complete; run
-   Blueprint/resource compilation and GTK tests on Linux, then check provider switching,
-   persistent status on empty/populated lists, Details/Retry, and CLI routing. Use isolated
-   settings/data. Physical LibreSync testing remains separately deferred by the user.
+1. Close only the explicit Linux native gaps below: directed keyboard/drag behavior,
+   exact 360×720 observation, GNOME's visual Background Apps surface, successful/progress
+   sync states, notification-denial handling, and a safe user-visible cold automation launch.
+2. Re-run the Apple build and Swift boundary suites on macOS; this Linux host has no
+   `swift`, `xcrun`, or `xcodebuild`.
 3. Establish the next mobile milestone with the user; neither mobile app is implicitly
    scaffolded by desktop feature work. Do not choose a delivery order without a decision.
 4. Preserve open acceptance gaps; resume user-deferred work only when requested.
@@ -84,13 +79,116 @@ tracked AGENTS.md when main fast-forwards to this integration.
 | Spotlight create/open, F-024/F-031 | User deferred testing after automation could not launch Spotlight | Await request to resume native discovery and warm/cold invocation |
 | Spoken VoiceOver, F-020 | Unverified: VoiceOver did not remain enabled; AX/keyboard/contrast checks did pass | Test with a working VoiceOver session; do not claim spoken output from AX evidence |
 | DND edge cases, F-012/F-013 | Shared tests cover tag/day, descending order, archive exclusion; separate native gestures unverified | Complete targeted native cases when environment permits |
-| Linux runtime validation | Needs a Linux desktop or supported Broadway/Flatpak environment | Run Linux checks for affected changes; compilation alone is insufficient |
+| Linux parity native gaps, F-022/F-027/F-028/F-031/F-032/F-037/F-038 | Broad isolated GNOME Wayland acceptance ran; exact compact layout, directed keyboard/drag, successful/progress sync, notification denial, visual Background Apps status and safe registered-profile cold launch remain unverified | Repeat only the named scenarios in an environment that exposes the required compositor/portal/network interaction; retain Implemented until complete |
 | Mac exact minimum width / independent German language review | Not separately verified | Target these when changing affected layouts/copy |
 | Universal/release builds and remote CI | Local arm64 development evidence only; remote workflow not executed in the prior pass | Validate separately when release work is authorized |
 | v2 SP departure, F-033 | Goal approved; implementation choices open | Propose migration/compatibility design before changing formats |
 | Billing/tips, F-034–F-036 | Future intention; pricing and entitlements open | Product decision and current provider/store review before implementation |
 
 ## Dated handoffs
+
+### 2026-09-17 — Linux desktop parity native acceptance (F-022, F-027, F-028, F-031, F-032, F-037, F-038)
+
+- **Scope and isolation:** tested dirty worktree `task/linux-desktop-parity` at
+  `/var/home/danhart/.config/superpowers/worktrees/momentum/linux-desktop-parity` on
+  GNOME Wayland. The one persistent test profile is
+  `/var/tmp/momentum-linux-parity.TlekM6`, with task data in `data`, keyfile settings
+  in `config`, and user-data integration files in `xdg-data`. It contains synthetic
+  tasks only and was preserved for relaunch evidence. No normal Momentum settings or
+  task files were changed.
+- **Build:** `flatpak run org.flatpak.Builder --user --install --force-clean flatpak_app
+  build-aux/io.github.dan_hart.Momentum.Devel.json` exited 0. Its packaged Meson run
+  passed 4/4 targets, including the workspace cargo-test target. The focused compact
+  typography test passed 1/1. The focused private-D-Bus open suite passed 3 tests with
+  its activation helper intentionally ignored (1).
+- **Final automated verification (dirty worktree based on `7ec82e93271f`):** focused
+  checks passed 8 shared count tests, 6 selected `mo open` tests, 18 typography tests,
+  and 7 background-status tests. `./build-aux/test.sh` passed 264 tests with one
+  intentional private-D-Bus helper ignored; portable all-features/all-targets testing
+  excluding GTK passed 186 with the same one ignore. The Rust UniFFI boundary built.
+  The two established Rust warnings remained (`MockDav::gets` unused and one unnecessary
+  `mut`); headless GTK also emitted IBus-unavailable, null test D-Bus connection, and
+  Adwaita width-pressure warnings without test failures.
+- **Final static/localization evidence:** package formatting, strict temporary-schema
+  compilation, POTFILES completeness, `msgfmt --check`, LINGUAS/catalog parity,
+  whitespace checks and changed-document relative links/fragments passed. The rebuilt
+  Devel Flatpak passed all 4 Meson targets, including the complete cargo test target; a
+  fresh isolated launch then exposed 243 objects through AT-SPI with no unnamed controls
+  on the main surface. The runtime lacks a supported German locale and warned that it
+  fell back to C, so this post-catalog audit does not replace the earlier German layout
+  limits. `Cargo.lock` remained unchanged. The host had no `lychee`, so the exact
+  read-only [Python fallback command](TESTING.md#run-it) was used; it checked 33
+  relative links across 9 changed Markdown files with zero missing targets or fragments.
+  `msgfmt` reported 125 translated, 96 fuzzy, and 278 untranslated German messages while
+  validating the catalog successfully.
+- **Apple boundary limit:** `macos/scripts/build-core.sh --debug` could not create the
+  XCFramework because `xcrun` and `xcodebuild` are absent; `swift test`, the accessibility
+  self-test, and the localization checker could not start because `swift` is absent.
+  These are unavailable checks, not inferred passes; the fallback
+  `cargo build -p momentum-ffi --features momentum-core/ffi` succeeded.
+- **Isolation correction:** the first custom-store launch joined the already-running
+  stable app through the intentional shared LibreSync identity and copied its snapshot
+  into the otherwise isolated store. No mutation command had run. Devel alone was
+  stopped; only the copied files under the test directory were removed; the stable
+  snapshot hash was verified unchanged. Every subsequent launch used
+  `--unshare=network`. `XDG_CONFIG_HOME` and `XDG_DATA_HOME` were exported by a shell
+  inside the sandbox because Flatpak replaces those two `--env` values before exec.
+- **F-022:** live AT-SPI extents demonstrated independent scaling: at content/UI
+  100/100 the task-title and View Options heights were 24/34 px; 250/100 produced
+  58/34; 100/250 produced 24/58; and 250/250 produced 58/58. A deliberately missing
+  font still exposed readable named text. Scale/font choices survived relaunch. The
+  250% German pass exposed 270 named main-window objects with zero unnamed controls;
+  Quick Add, New Project, and Nearby Devices also reported zero. The task editor had
+  two unnamed list items, Preferences had three, and libadwaita `AdwSpinRow` scale/time
+  controls did not appear on the live AT-SPI bus despite widget-level accessible
+  properties. Directed keyboard input and screenshots were blocked by Wayland focus
+  policy and GNOME's `ScreenshotWindow` authorization. The display/compositor expanded
+  the requested 360×720 window and libadwaita reported width-pressure warnings, so the
+  exact compact native layout was not observed. New parity strings were still English
+  during this pre-localization build. Linux F-022 therefore remains Implemented.
+- **F-031:** bundled `mo` created, found, completed, reopened, and planned synthetic
+  tasks with the documented JSON shapes; live sync while Off returned the documented
+  machine-readable error. GNOME SearchProvider returned the exact task plus create
+  result and activated the native editor. Exact GAction and URI opening both exposed
+  `Plain today` in the task editor, with identical `state.json` and `pending.json`
+  hashes before/after. Missing, ambiguous, deleted/stale, and archived action requests
+  were also non-mutating. Private-bus tests supplied safe stable/Devel warm, cold,
+  coexistence, and real nonreply-timeout coverage. The injected activation runner
+  covered rejection, disappearance, and malformed acknowledgements. Live `mo open`
+  was not aimed at a custom or personal registered store. Keep Linux F-031 Implemented
+  rather than treating the private bus as a full user-visible cold-launch observation.
+- **F-032:** live portal calls published `9 tasks due today`, then `10 open tasks in
+  Today` after including overdue work, then the neutral `Momentum is running` message.
+  The choice retained `today-including-overdue` while Run in Background was disabled
+  and survived relaunch. GNOME's visual Background Apps surface was not automatable in
+  this session, so F-032 remains Implemented.
+- **F-027 / F-028:** Off exposed neither provider group; Nextcloud exposed only its
+  connection controls; LibreSync exposed only Manage/Sync Devices. Switching back
+  restored the synthetic URL, user, and folder, and `cli-config.json` matched the one
+  selected provider. A Nextcloud failure produced persistent Details/Retry and the
+  native `Nextcloud sync is not configured` dialog. LibreSync CLI handoff returned
+  requested, then Details reported `No linked devices`, with no Nextcloud fallback.
+  A real successful exchange, progress-state timing, and linked-device transfer were
+  unavailable in this networkless profile; retain Implemented.
+- **F-037:** each native stateful action read back its saved value. Morning & Night
+  rendered Today/Morning/Evening and Completed; Project rendered Inbox and Completed
+  with no day-period headings; Tag used only each task's first tag and an Untagged
+  bucket; Time Estimate rendered Up to 15 min, 16–30 min, 31–60 min, 1–2 hours,
+  Over 2 hours, No estimate, then Completed; None left only the Completed division.
+  Overdue row metadata remained visible and the saved `none` choice survived relaunch.
+  Pointer drag, directed keyboard reorder/Undo, cross-group drag rejection, and visual
+  high-contrast/color fallback were not available, so F-037 remains Implemented.
+- **F-038:** default Off/08:00 was read before changes. Enabling and changing the time
+  updated keyfile settings immediately; enabled 09:45 survived app/Preferences relaunch.
+  At an eligible synthetic time the live app made one accepted
+  `org.freedesktop.portal.Notification.AddNotification` call with ID `morning`, title
+  `Good morning`, body `9 tasks today, 1 this morning, 1 tonight`, normal priority,
+  and default action `app.today`; no second call appeared on the next timer interval.
+  The live SpinRows were absent from AT-SPI, denial/failure delivery was not available,
+  and new German strings awaited catalog regeneration, so F-038 remains Implemented.
+- No product defect was changed during acceptance and no BUGS entry was added. Native
+  observations that could not meet the full gate remain explicit rather than being
+  promoted to Verified.
 
 ### 2026-09-16 — Morning & Night default and exclusive grouping (F-037, B-003)
 

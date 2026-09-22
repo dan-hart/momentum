@@ -3,12 +3,178 @@
 //! Pure helpers behind the UI: formatting, parsing, colours, repeat descriptions, the
 //! modifier key. They touch glib and gettext, so they run on the GTK thread too.
 use super::support::{on_gtk, reset_settings, settings};
+use crate::background_status::{
+    format_status, format_status_with, truncate_status, BackgroundCountMode, BackgroundStatusController,
+};
 use crate::modifier;
 use crate::window::{ago_text, fmt_clock, fmt_day, fmt_ms, hex_color, parse_ms, repeat_text};
 use gtk::prelude::*;
 use momentum_core::text::{day_label, describe_repeat, parse_time, tag_color};
 use momentum_core::ClockTime;
 use sp_model::*;
+
+#[test]
+fn background_status_controller_serializes_coalesces_and_acknowledges() {
+    let mut controller = BackgroundStatusController::default();
+    let mut sent = Vec::new();
+
+    assert_eq!(controller.desired(), None);
+    assert_eq!(controller.inflight(), None);
+    assert_eq!(controller.last_acknowledged(), None);
+
+    controller.refresh("one".into(), &mut |request| sent.push(request));
+    assert_eq!(sent.len(), 1);
+    assert_eq!(controller.desired(), Some("one"));
+    assert_eq!(
+        controller.inflight().map(|request| request.message.as_str()),
+        Some("one")
+    );
+
+    controller.refresh("two".into(), &mut |request| sent.push(request));
+    controller.refresh("three".into(), &mut |request| sent.push(request));
+    assert_eq!(sent.len(), 1, "a request stays serialized while one is in flight");
+    assert_eq!(controller.desired(), Some("three"));
+
+    let first = sent[0].clone();
+    controller.succeeded(first.id, &mut |request| sent.push(request));
+    assert_eq!(controller.last_acknowledged(), Some("one"));
+    assert_eq!(sent.len(), 2);
+    assert_eq!(sent[1].message, "three", "the newest desired value is coalesced");
+
+    let second = sent[1].clone();
+    controller.succeeded(first.id, &mut |request| sent.push(request));
+    assert_eq!(
+        controller.inflight(),
+        Some(&second),
+        "a stale completion cannot acknowledge a newer request"
+    );
+    assert_eq!(controller.last_acknowledged(), Some("one"));
+    controller.succeeded(second.id, &mut |request| sent.push(request));
+    assert_eq!(controller.last_acknowledged(), Some("three"));
+    assert_eq!(controller.inflight(), None);
+    controller.refresh("three".into(), &mut |request| sent.push(request));
+    assert_eq!(sent.len(), 2, "an acknowledged message is suppressed");
+}
+
+#[test]
+fn background_status_failure_waits_for_an_explicit_refresh_before_retrying() {
+    let mut controller = BackgroundStatusController::default();
+    let mut sent = Vec::new();
+    controller.refresh("retry me".into(), &mut |request| sent.push(request));
+    let first = sent[0].clone();
+
+    controller.failed(first.id);
+    assert_eq!(sent.len(), 1, "failure must not spin an immediate retry");
+    assert_eq!(controller.desired(), Some("retry me"));
+    assert_eq!(controller.inflight(), None);
+    assert_eq!(controller.last_acknowledged(), None);
+
+    controller.refresh("retry me".into(), &mut |request| sent.push(request));
+    assert_eq!(sent.len(), 2, "the next explicit refresh retries a dirty value");
+    assert_ne!(sent[0].id, sent[1].id);
+}
+
+#[test]
+fn background_status_wording_uses_exact_gettext_and_ngettext_sources() {
+    use std::cell::RefCell;
+    let calls = RefCell::new(Vec::new());
+    let render = |mode, count| {
+        format_status_with(
+            mode,
+            count,
+            |singular| {
+                calls.borrow_mut().push(format!("g:{singular}"));
+                singular.to_string()
+            },
+            |singular, plural, n| {
+                calls.borrow_mut().push(format!("n:{singular}|{plural}|{n}"));
+                if n == 1 {
+                    singular.to_string()
+                } else {
+                    plural.replace("%d", &n.to_string())
+                }
+            },
+        )
+    };
+
+    assert_eq!(render(BackgroundCountMode::DueToday, 0), "All done for today");
+    assert_eq!(render(BackgroundCountMode::DueToday, 1), "1 task due today");
+    assert_eq!(render(BackgroundCountMode::DueToday, 4), "4 tasks due today");
+    assert_eq!(
+        render(BackgroundCountMode::TodayIncludingOverdue, 0),
+        "All done for today"
+    );
+    assert_eq!(
+        render(BackgroundCountMode::TodayIncludingOverdue, 1),
+        "1 open task in Today"
+    );
+    assert_eq!(
+        render(BackgroundCountMode::TodayIncludingOverdue, 4),
+        "4 open tasks in Today"
+    );
+    assert_eq!(render(BackgroundCountMode::Off, 99), "Momentum is running");
+
+    assert_eq!(
+        calls.into_inner(),
+        [
+            "g:All done for today",
+            "n:1 task due today|%d tasks due today|1",
+            "n:1 task due today|%d tasks due today|4",
+            "g:All done for today",
+            "n:1 open task in Today|%d open tasks in Today|1",
+            "n:1 open task in Today|%d open tasks in Today|4",
+            "g:Momentum is running",
+        ]
+    );
+    assert_eq!(format_status(BackgroundCountMode::DueToday, 0), "All done for today");
+    assert_eq!(format_status(BackgroundCountMode::DueToday, 1), "1 task due today");
+    assert_eq!(format_status(BackgroundCountMode::DueToday, 4), "4 tasks due today");
+    assert_eq!(
+        format_status(BackgroundCountMode::TodayIncludingOverdue, 1),
+        "1 open task in Today"
+    );
+    assert_eq!(
+        format_status(BackgroundCountMode::TodayIncludingOverdue, 4),
+        "4 open tasks in Today"
+    );
+    assert_eq!(format_status(BackgroundCountMode::Off, 4), "Momentum is running");
+}
+
+#[test]
+fn background_status_truncation_is_unicode_scalar_safe_and_bounded() {
+    let short = "Momentum is running";
+    assert_eq!(truncate_status(short), short);
+    let long = "🌍".repeat(100);
+    let truncated = truncate_status(&long);
+    assert_eq!(truncated.chars().count(), 96);
+    assert_eq!(truncated.chars().filter(|character| *character == '🌍').count(), 95);
+    assert!(truncated.ends_with('…'));
+    assert!(std::str::from_utf8(truncated.as_bytes()).is_ok());
+}
+
+#[test]
+fn background_status_count_mode_maps_exhaustively_with_default_fallback() {
+    use momentum_core::TaskCountMode;
+    assert_eq!(
+        BackgroundCountMode::from_setting("due-today"),
+        BackgroundCountMode::DueToday
+    );
+    assert_eq!(
+        BackgroundCountMode::from_setting("today-including-overdue"),
+        BackgroundCountMode::TodayIncludingOverdue
+    );
+    assert_eq!(BackgroundCountMode::from_setting("off"), BackgroundCountMode::Off);
+    assert_eq!(
+        BackgroundCountMode::from_setting("future-value"),
+        BackgroundCountMode::DueToday
+    );
+    assert_eq!(BackgroundCountMode::DueToday.task_count_mode(), TaskCountMode::DueToday);
+    assert_eq!(
+        BackgroundCountMode::TodayIncludingOverdue.task_count_mode(),
+        TaskCountMode::TodayIncludingOverdue
+    );
+    assert_eq!(BackgroundCountMode::Off.task_count_mode(), TaskCountMode::None);
+}
 
 #[test]
 fn estimates_parse_and_format_both_ways() {

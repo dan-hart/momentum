@@ -317,6 +317,12 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   file, Sync Now. Rows are
   disabled while the switch is off. Secrets go to the system keyring.
 - Appearance: color-code projects and tags (on by default).
+- Linux › Typography: choose the application font with the native GTK font dialog and
+  scale task content and interface text independently from 75–250% in 5% steps. Content
+  covers task titles, subtitles, notes and task entry; interface covers navigation,
+  preferences and controls. Changes apply immediately across open surfaces and persist
+  locally outside task sync. Reset restores the system font and 100%/100%; a missing font
+  falls back to the system font.
 - macOS › Fonts: choose the app font family and face with the system Fonts panel.
   Content and interface sizes are independent (10–32 pt; both default to 13 pt).
   Content includes task titles, subtitles, notes and task entry; interface includes
@@ -355,7 +361,9 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   preferences stay local to each device. See [NOTIFICATIONS.md](NOTIFICATIONS.md) (F-038).
 - **Background mode** (Preferences → Desktop → Run in the background): requests the Background
   portal with autostart (`momentum --background`); closing the window hides it instead of
-  quitting; the Background Apps status line reads "N tasks due today".
+  quitting. The Background Apps status can show tasks due or scheduled today, all open
+  tasks in Today including overdue, or the neutral "Momentum is running" message. The
+  choice remains saved while background mode is disabled.
 - **Launcher actions** (desktop file `Actions=`): New Task (quick-add), Today, Search; they map
   to app actions through D-Bus activation.
 - **Quick-add window**: a one-line window from the system-wide shortcut, `--quick-add`, or the
@@ -364,6 +372,7 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   box, becomes one task (URL or paragraph, text in notes) or one task per short line.
 - **Command line**: `momentum --add TITLE`, `--quick-add`, `--today`, `--search QUERY`,
   `--background`. **URL schemes**: `momentum://add?title=&notes=&due=&tags=`,
+  `momentum://open-task?id=TASK`,
   `superproductivity://create-task?title=&notes=`, `superproductivity://complete-task?title=`.
 - **Global undo**: Ctrl+Z pops the last batch off an undo stack (50 deep) fed by every undo
   toast, plus quiet changes with no toast (drag reorder). Delete, done, archive, day
@@ -378,6 +387,10 @@ Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move 
   `org.gtk.Actions.Activate("cli")` on the app's bus name; otherwise `mo` writes the store
   directly and the app reloads on file change. Sync from `mo` reads the Flatpak app's
   GSettings keyfile for server/user/folder and the system keychain for passwords.
+  Linux additionally provides `mo open TASK`, which resolves one current task and asks
+  the exact stable or Devel GApplication profile to reveal it without writing the store;
+  custom data directories are refused because they cannot map safely to one registered
+  app. macOS uses the native Open Task Shortcut instead.
 - **Localisation**: gettext pipeline live, German as the first translation (`po/de.po`);
   `po/POTFILES.in` completeness and `.po` compilation are CI checks, the template
   `po/momentum.pot` is committed, and translation happens on Weblate

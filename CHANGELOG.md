@@ -9,6 +9,9 @@ All notable changes to Momentum are documented here. The format follows
 ### Added
 - Preferences › Tasks › "Archive completed tasks immediately": a completed task goes
   straight to the archive and syncs; undo brings it back open
+- Linux desktop parity: a native font chooser with independent content/interface
+  scaling, exact task reveal through `mo open`, GApplication actions and task URLs,
+  plus configurable Background Apps task-count modes
 
 ## [0.3.5] - 2026-09-15
 

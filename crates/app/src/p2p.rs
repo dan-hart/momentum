@@ -15,6 +15,25 @@ use std::sync::Arc;
 
 use crate::window::MomentumWindow;
 
+fn nearby_devices_dialog(page: &adw::PreferencesPage) -> adw::Dialog {
+    let tv = adw::ToolbarView::new();
+    tv.add_top_bar(&adw::HeaderBar::new());
+    tv.set_content(Some(page));
+    let dialog = adw::Dialog::builder()
+        .title(gettext("Nearby Devices"))
+        .content_width(480)
+        .content_height(640)
+        .child(&tv)
+        .build();
+    crate::typography::register_interface_root(&dialog);
+    dialog
+}
+
+#[cfg(test)]
+pub fn nearby_devices_dialog_for_test() -> adw::Dialog {
+    nearby_devices_dialog(&adw::PreferencesPage::new())
+}
+
 /// Engine secrets (app key, device certificate and key) live in the keyring next to the
 /// Nextcloud password. Values are already base64 text; the core encodes and decodes them.
 struct KeyringSecrets;
@@ -48,6 +67,7 @@ impl P2pDelegate for WindowDelegate {
                 P2pEvent::SyncCompleted { error } if win.p2p_enabled() => {
                     win.imp().nearby_syncing.set(false);
                     win.set_sync_error(error);
+                    win.update_background_status();
                 }
                 P2pEvent::SyncStarted | P2pEvent::SyncCompleted { .. } => {}
                 P2pEvent::DevicesChanged | P2pEvent::DiscoveryUpdated => win.p2p_dialog_refresh(),
@@ -263,15 +283,7 @@ impl MomentumWindow {
         rebuild();
         *imp.p2p_dialog.borrow_mut() = Some(rebuild.clone() as Rc<dyn Fn()>);
 
-        let tv = adw::ToolbarView::new();
-        tv.add_top_bar(&adw::HeaderBar::new());
-        tv.set_content(Some(&page));
-        let dialog = adw::Dialog::builder()
-            .title(gettext("Nearby Devices"))
-            .content_width(480)
-            .content_height(640)
-            .child(&tv)
-            .build();
+        let dialog = nearby_devices_dialog(&page);
         // `p2p_begin_pairing` already started discovery on a timer; it stops in `p2p_end_pairing`.
         dialog.connect_closed(glib::clone!(
             #[weak(rename_to = w)]
@@ -298,6 +310,7 @@ impl MomentumWindow {
             .extra_child(&entry)
             .default_response("link")
             .build();
+        crate::typography::register_interface_root(&dlg);
         dlg.add_responses(&[("cancel", &gettext("Cancel")), ("link", &gettext("Link"))]);
         dlg.set_response_appearance("link", adw::ResponseAppearance::Suggested);
         dlg.connect_response(

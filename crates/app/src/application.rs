@@ -80,13 +80,17 @@ mod imp {
             glib::ExitCode::SUCCESS
         }
 
-        /// `momentum://add?title=…` and Super Productivity's `superproductivity://create-task?title=…`.
+        /// `momentum://add?title=…`, `momentum://open-task?id=…`, and Super
+        /// Productivity's `superproductivity://create-task?title=…`.
         fn open(&self, files: &[gio::File], _hint: &str) {
             let app = self.obj();
             let win = app.ensure_window();
             for f in files {
                 let uri = f.uri().to_string();
-                let Ok(parsed) = glib::Uri::parse(&uri, glib::UriFlags::NONE) else {
+                // Keep the query encoded until after parameter boundaries are split.
+                // Stable task ids are opaque and may themselves contain '&', '+', '%',
+                // or '/', so decoding the whole query first would corrupt them.
+                let Ok(parsed) = glib::Uri::parse(&uri, glib::UriFlags::ENCODED_QUERY) else {
                     continue;
                 };
                 let host = parsed.host().map(|h| h.to_string()).unwrap_or_default();
@@ -118,6 +122,15 @@ mod imp {
                             win.complete_by_title(&title);
                         }
                     }
+                    "open-task" => {
+                        let Some(id) = param("id").filter(|id| !id.trim().is_empty()) else {
+                            tracing::warn!("open-task URL lacks an id");
+                            continue;
+                        };
+                        if !win.reveal_and_open_task(&id) {
+                            tracing::warn!("open-task URL references no current task: {id}");
+                        }
+                    }
                     _ => tracing::warn!("unknown URL: {uri}"),
                 }
             }
@@ -135,6 +148,7 @@ mod imp {
             app.setup_gactions();
             app.setup_accels();
             let settings = gio::Settings::new(*APP_ID);
+            app.setup_typography(&settings);
             settings.connect_changed(
                 Some("modifier-key"),
                 glib::clone!(
@@ -216,6 +230,24 @@ impl MomentumApplication {
                 }
             })
             .build();
+        let open_task = gio::ActionEntry::builder("open-task")
+            .parameter_type(Some(&String::static_variant_type()))
+            .activate(|app: &Self, _, p: Option<&glib::Variant>| {
+                let Some(id) = p
+                    .and_then(|value| value.get::<String>())
+                    .filter(|id| !id.trim().is_empty())
+                else {
+                    tracing::warn!("app.open-task requires a non-empty string id");
+                    return;
+                };
+                let window = app.main_window();
+                if window.reveal_and_open_task(&id) {
+                    window.present();
+                } else {
+                    tracing::warn!("app.open-task references no current task: {id}");
+                }
+            })
+            .build();
         // Notification buttons (Done / Snooze) carry the task id.
         let notify_done = gio::ActionEntry::builder("notify-done")
             .parameter_type(Some(&String::static_variant_type()))
@@ -233,7 +265,7 @@ impl MomentumApplication {
                 }
             })
             .build();
-        self.add_action_entries([cli, notify_done, notify_snooze]);
+        self.add_action_entries([cli, open_task, notify_done, notify_snooze]);
         let simple = [
             gio::ActionEntry::builder("preferences")
                 .activate(win(|w| crate::prefs::MomentumPrefs::default().present(Some(w))))
@@ -280,6 +312,7 @@ impl MomentumApplication {
                         .extra_child(&entry)
                         .default_response("add")
                         .build();
+                    crate::typography::register_interface_root(&d);
                     d.add_responses(&[("cancel", &gettext("Cancel")), ("add", &gettext("Add"))]);
                     d.set_response_appearance("add", adw::ResponseAppearance::Suggested);
                     d.connect_response(
@@ -350,6 +383,28 @@ impl MomentumApplication {
         }
     }
 
+    fn setup_typography(&self, settings: &gio::Settings) {
+        let apply = |settings: &gio::Settings| {
+            let preferences = crate::typography::TypographyPreferences::from_persisted(
+                &settings.string("typography-font"),
+                settings.int("typography-content-scale"),
+                settings.int("typography-interface-scale"),
+                crate::typography::system_has_font,
+            );
+            if let Some(display) = gdk::Display::default() {
+                crate::typography::install(&display, &preferences);
+            }
+        };
+        apply(settings);
+        for key in [
+            "typography-font",
+            "typography-content-scale",
+            "typography-interface-scale",
+        ] {
+            settings.connect_changed(Some(key), move |settings, _| apply(settings));
+        }
+    }
+
     fn authors() -> Vec<&'static str> {
         env!("CARGO_PKG_AUTHORS").split(':').collect()
     }
@@ -366,6 +421,7 @@ impl MomentumApplication {
             .translator_credits(gettext("translator-credits"))
             .developers(Self::authors())
             .build();
+        crate::typography::register_interface_root(&dialog);
 
         dialog.present(Some(&self.main_window()));
     }

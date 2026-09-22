@@ -287,26 +287,7 @@ public final class AppState {
     }
 
     private func updateDockBadge() {
-        let count: UInt32
-        switch prefs.dockBadgeMode {
-        case .none:
-            count = 0
-        case .dueToday:
-            count = todayOpenCount
-        case .todayIncludingOverdue:
-            // Use the core's Today membership, regardless of the selected view.
-            // A parent represents its subtasks once, just as in todayOpenCount.
-            let todayListing = view == .today ? listing : engine.listing(view: .today, archiveLimit: 0)
-            let ids = todayListing.sections.flatMap { section in
-                section.rows.compactMap { row -> String? in
-                    guard case .task(let task) = row,
-                          !task.isSubtask, !task.isDone, !task.archived else { return nil }
-                    return task.id
-                }
-            }
-            count = UInt32(Set(ids).count)
-        }
-        notifier?.updateBadge(count)
+        notifier?.updateBadge(engine.taskCount(mode: prefs.dockBadgeMode.taskCountMode))
     }
 
     /// After a local change: refresh, keep the system search index fresh, upload later.

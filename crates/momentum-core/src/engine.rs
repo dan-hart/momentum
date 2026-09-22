@@ -672,16 +672,33 @@ impl Engine {
             .take(8)
             .collect()
     }
-    /// Open tasks planned for today, for a badge or status line.
-    pub fn today_open_count(&self) -> u32 {
+    /// Unfinished top-level tasks for a desktop badge or background status.
+    pub fn task_count(&self, mode: TaskCountMode) -> u32 {
         let g = self.lock();
-        g.store
-            .state
-            .today_ids()
-            .iter()
-            .filter_map(|i| g.store.state.task.entities.get(i))
-            .filter(|t| !t.is_done)
-            .count() as u32
+        let ids = match mode {
+            TaskCountMode::DueToday => g.store.state.today_ids(),
+            TaskCountMode::TodayIncludingOverdue => {
+                let mut ids = g.store.state.today_ids();
+                ids.extend(g.store.state.overdue_ids());
+                ids
+            }
+            TaskCountMode::None => return 0,
+        };
+        ids.into_iter()
+            .filter(|id| {
+                g.store
+                    .state
+                    .task
+                    .entities
+                    .get(id)
+                    .is_some_and(|task| !task.is_done && task.parent_id.is_none())
+            })
+            .collect::<HashSet<_>>()
+            .len() as u32
+    }
+    /// Open tasks planned for today, kept while existing clients migrate to `task_count`.
+    pub fn today_open_count(&self) -> u32 {
+        self.task_count(TaskCountMode::DueToday)
     }
     pub fn pending_count(&self) -> u32 {
         self.lock().store.pending.len() as u32

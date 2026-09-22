@@ -114,6 +114,11 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         subtitle: _("Keep reminders and sync running after the window closes, and start at login");
       }
 
+      Adw.ComboRow background_count_row {
+        title: _("Background task count");
+        subtitle: _("Choose which tasks appear in the Background Apps status");
+      }
+
       Adw.ComboRow modifier_row {
         title: _("Modifier key");
         subtitle: _("The key in every shortcut, so Ctrl+E becomes Super+E. Combinations the desktop uses itself, such as Super+A on GNOME, do not reach Momentum.");
@@ -126,6 +131,49 @@ template $MomentumPrefs: Adw.PreferencesDialog {
       Adw.SwitchRow colorful_row {
         title: _("Color-code projects and tags");
         subtitle: _("Use the colors from your Super Productivity data");
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Typography");
+      description: _("Use the system font by default, or choose an app font and independent relative sizes.");
+
+      Adw.ActionRow {
+        title: _("Font");
+        subtitle: _("Applies to Momentum only; Reset Typography restores the system font");
+
+        [suffix]
+        Gtk.FontDialogButton font_button {
+          valign: center;
+          use-font: true;
+          use-size: false;
+          dialog: Gtk.FontDialog {
+            title: _("Choose Font");
+          };
+        }
+      }
+
+      Adw.SpinRow content_scale_row {
+        title: _("Content size");
+        subtitle: _("Task titles, notes, and task entry, as a percentage of the system text size");
+        numeric: true;
+        snap-to-ticks: true;
+        digits: 0;
+        adjustment: Gtk.Adjustment { lower: 75; upper: 250; step-increment: 5; page-increment: 25; };
+      }
+
+      Adw.SpinRow interface_scale_row {
+        title: _("Interface size");
+        subtitle: _("Navigation, settings, headings, and controls, as a percentage of the system text size");
+        numeric: true;
+        snap-to-ticks: true;
+        digits: 0;
+        adjustment: Gtk.Adjustment { lower: 75; upper: 250; step-increment: 5; page-increment: 25; };
+      }
+
+      Adw.ButtonRow reset_typography_row {
+        title: _("Reset Typography");
+        start-icon-name: "edit-undo-symbolic";
       }
     }
 

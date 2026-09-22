@@ -49,6 +49,7 @@ impl TaskForm {
             .title(gettext("Title"))
             .text(task.map(|t| t.title.as_str()).unwrap_or(""))
             .build();
+        crate::typography::register_content_root(&title);
         group.add(&title);
 
         // Project
@@ -299,6 +300,7 @@ impl TaskForm {
             .right_margin(12)
             .height_request(420)
             .build();
+        crate::typography::register_content_root(&notes);
         copy.connect_clicked(glib::clone!(
             #[weak]
             notes,

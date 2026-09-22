@@ -96,6 +96,17 @@ import Testing
         #expect(ModifierKey.option.symbol == "⌥")
     }
 
+    @Test func everyDockBadgeChoiceMapsToTheSharedTaskCountMode() {
+        let expected: [(DockBadgeMode, TaskCountMode)] = [
+            (.dueToday, .dueToday),
+            (.todayIncludingOverdue, .todayIncludingOverdue),
+            (.none, .none),
+        ]
+        for (badgeMode, taskCountMode) in expected {
+            #expect(badgeMode.taskCountMode == taskCountMode)
+        }
+    }
+
     @Test func anIncompleteNextcloudConnectionIsNotHandedOver() {
         let (d, name) = freshDefaults()
         defer { d.removePersistentDomain(forName: name) }

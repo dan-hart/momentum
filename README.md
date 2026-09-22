@@ -63,7 +63,8 @@ Momentum whenever you are on your Linux machine.
   toast. Prefer a clean list? Turn on "Archive completed tasks immediately" in
   Preferences and completed tasks go straight to the archive.
 - **Native, adaptive, accessible.** Sidebar collapses on narrow windows, light and dark
-  follow the system, accent color follows your setting, controls carry accessible labels.
+  follow the system, accent color follows your setting, controls carry accessible labels,
+  and Preferences offers a native font chooser with separate content and interface sizes.
 
 <p align="center">
   <img src="data/resources/screenshots/new-task.png" width="360" alt="New Task dialog">
@@ -124,8 +125,9 @@ changes and saved connections. Details in
 - **Notifications you can act on.** Reminders have Done and Snooze buttons, and a morning
   summary tells you what the day holds.
 - **Runs in the background.** Turn it on in Preferences: reminders and sync keep going when
-  the window closes, Momentum starts at login, and GNOME's Background Apps menu shows what is
-  due today. All through the Background portal, so you stay in control.
+  the window closes, Momentum starts at login, and GNOME's Background Apps menu can show tasks
+  due today, all open tasks in Today (including overdue), or a neutral running status. All
+  through the Background portal, so you stay in control.
 - **Launcher actions.** Right-click the app icon for New Task, Today and Search.
 - **Quick-add window.** Ctrl+Alt+T from anywhere opens a one-line window; type, Enter, done.
 - **Drop and paste.** Drag a link or some text from another app onto the list to make a task;
@@ -139,6 +141,7 @@ changes and saved connections. Details in
 
 `mo` works on Linux and macOS and reads the same data as the app. On Linux, while the app
 is running, changes are handed to it over D-Bus so nothing is written behind its back.
+`mo open` is Linux-only; on macOS, use the Momentum **Open Task** Shortcut instead.
 
 ```sh
 cargo install --path crates/mo        # or: flatpak run --command=mo io.github.dan_hart.Momentum …
@@ -148,11 +151,16 @@ mo add "Prep slides" --project Work --tomorrow
 mo today            mo tonight            mo upcoming --days 14
 mo list Work        mo list "#admin"       mo search bank
 mo done bank        mo plan slides         mo rm 01a0835a
+mo open bank
 mo projects         mo tags               mo sync
 mo config --server https://cloud.example.com --user dan --folder super-productivity --password
 ```
 
 Add `--json` for machine-readable output. Set `MO_DATA_DIR` to point at another store.
+For safety, Linux `mo open` accepts only the exact stable or Devel Flatpak store path;
+it refuses custom data directories because they cannot be mapped to one app instance.
+See [Linux automation](docs/LINUX-AUTOMATION.md) for exact task opening, JSON contracts,
+offline/live-app safety rules, native entry points, and their regression-test audit.
 
 ## Keyboard shortcuts
 

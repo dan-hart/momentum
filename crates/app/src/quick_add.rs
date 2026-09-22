@@ -14,6 +14,7 @@ pub fn open(app: &MomentumApplication) {
         .primary_icon_name("list-add-symbolic")
         .width_chars(48)
         .build();
+    crate::typography::register_content_root(&entry);
     entry.update_property(&[gtk::accessible::Property::Label(&gettext("Add a task"))]);
     let hint = gtk::Label::builder()
         .label(gettext("Added to Today"))
@@ -40,6 +41,7 @@ pub fn open(app: &MomentumApplication) {
         .resizable(false)
         .content(&tv)
         .build();
+    crate::typography::register_interface_root(&win);
     entry.connect_activate(glib::clone!(
         #[weak]
         win,
