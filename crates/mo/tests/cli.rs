@@ -197,6 +197,8 @@ fn help_and_version_use_stdout_without_stderr() {
     }
 }
 
+// `mo open` hands the task to the desktop app over D-Bus, which only exists on Linux.
+#[cfg(target_os = "linux")]
 #[test]
 fn open_resolves_current_tasks_but_requires_desktop_acceptance_without_mutating() {
     let mo = Mo::new();
@@ -224,6 +226,8 @@ fn open_resolves_current_tasks_but_requires_desktop_acceptance_without_mutating(
     );
 }
 
+// `mo open` hands the task to the desktop app over D-Bus, which only exists on Linux.
+#[cfg(target_os = "linux")]
 #[test]
 fn open_refuses_custom_data_dirs_without_writing() {
     let mo = Mo::new();
@@ -250,6 +254,44 @@ fn open_refuses_custom_data_dirs_without_writing() {
                 .as_str()
                 .is_some_and(|message| message.contains("registered Momentum Flatpak profile")),
             "unexpected custom-store error: {error}"
+        );
+    }
+
+    assert_eq!(std::fs::read(mo.dir.path().join("state.json")).unwrap(), state_before);
+    assert_eq!(
+        std::fs::read(mo.dir.path().join("pending.json")).unwrap(),
+        pending_before
+    );
+}
+
+// Off Linux there is no desktop app to hand the task to. `open` must still resolve the
+// task, then refuse through the same JSON envelope and leave the store untouched.
+#[cfg(not(target_os = "linux"))]
+#[test]
+fn open_is_unavailable_off_linux_and_never_writes() {
+    let mo = Mo::new();
+    let added = mo.json(&["add", "Exact reveal target"]);
+    let id = added[0]["id"].as_str().unwrap().to_string();
+    let state_before = std::fs::read(mo.dir.path().join("state.json")).unwrap();
+    let pending_before = std::fs::read(mo.dir.path().join("pending.json")).unwrap();
+
+    for args in [
+        vec!["--json", "open", &id[..8]],
+        vec!["--json", "open", "REVEAL TARGET"],
+        vec![
+            "--json",
+            "--data-dir",
+            mo.dir.path().to_str().unwrap(),
+            "open",
+            id.as_str(),
+        ],
+    ] {
+        let (ok, text) = mo.run(&args);
+        assert!(!ok, "open unexpectedly succeeded without a desktop app: {text}");
+        let error: serde_json::Value = serde_json::from_str(&text).expect("JSON error envelope");
+        assert!(
+            error["error"].as_str().is_some_and(|message| message.contains("Linux")),
+            "unexpected off-Linux open error: {error}"
         );
     }
 
