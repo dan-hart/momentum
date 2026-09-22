@@ -65,6 +65,10 @@ if [ "$STATUS" -ne 0 ]; then
   # this stream is in step with cargo, so repeat the failures last where they cannot be
   # pushed out of that window.
   echo "======== cargo test failed (status $STATUS); full log: $LOG ========" >&2
-  grep -vE "$NOISE" "$LOG" | tail -n 60 >&2
+  # UI tests run their body on a dedicated GTK thread, so libtest never captures the
+  # panic into the test's own stdout: it is printed where it happens, thousands of lines
+  # before the summary. Pull those out by name instead of trusting the tail.
+  grep -B 2 -A 12 "panicked at" "$LOG" >&2 || true
+  grep -vE "$NOISE" "$LOG" | tail -n 40 >&2
 fi
 exit "$STATUS"
