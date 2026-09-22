@@ -18,7 +18,12 @@ cd "$(dirname "$0")/.."
 OUT=${MOMENTUM_TEST_ASSETS:-$PWD/target/test-assets}
 mkdir -p "$OUT/ui" "$OUT/schemas"
 
-blueprint-compiler batch-compile "$OUT" "$PWD/data/resources" data/resources/ui/*.blp >/dev/null
+# Blueprint warns about every deprecated Shortcuts* widget, ~100 lines of it. Keep the
+# output only when it actually fails, so it cannot bury a test failure below.
+if ! BLUEPRINT=$(blueprint-compiler batch-compile "$OUT" "$PWD/data/resources" data/resources/ui/*.blp 2>&1); then
+  printf '%s\n' "$BLUEPRINT" >&2
+  exit 1
+fi
 glib-compile-resources --sourcedir="$OUT" --sourcedir="$PWD/data/resources" \
   --target="$OUT/resources.gresource" data/resources/resources.gresource.xml
 sed 's/@app-id@/io.github.dan_hart.Momentum.Devel/g; s/@gettext-package@/momentum/g' \
@@ -55,5 +60,11 @@ rm -f "$STATUS_FILE"
 { CODE=0; cargo test --workspace "$@" 2>&1 || CODE=$?; echo "$CODE" >"$STATUS_FILE"; } |
   tee "$LOG" | { grep -vE "$NOISE" || true; }
 STATUS=$(cat "$STATUS_FILE")
-[ "$STATUS" -eq 0 ] || echo "Filtered GTK warnings; full test log: $LOG" >&2
+if [ "$STATUS" -ne 0 ]; then
+  # Meson echoes only the last 100 lines of a failing test, and not everything writing to
+  # this stream is in step with cargo, so repeat the failures last where they cannot be
+  # pushed out of that window.
+  echo "======== cargo test failed (status $STATUS); full log: $LOG ========" >&2
+  grep -vE "$NOISE" "$LOG" | tail -n 60 >&2
+fi
 exit "$STATUS"
