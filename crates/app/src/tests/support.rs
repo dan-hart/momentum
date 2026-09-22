@@ -19,6 +19,8 @@ use crate::window::MomentumWindow;
 
 type Job = Box<dyn FnOnce() + Send>;
 static GTK: OnceLock<Mutex<Sender<Job>>> = OnceLock::new();
+/// The last panic raised on the GTK thread, formatted with its location.
+static GTK_PANIC: Mutex<Option<String>> = Mutex::new(None);
 thread_local! {
     static APP: RefCell<Option<MomentumApplication>> = const { RefCell::new(None) };
 }
@@ -56,8 +58,27 @@ fn gtk_thread() -> &'static Mutex<Sender<Job>> {
     })
 }
 
+/// libtest captures output per thread, and a spawned thread inherits the capture of
+/// whichever test happened to create it. The GTK thread is created once and shared, so a
+/// panic printed there lands in that first test's buffer and is discarded when it passes:
+/// the failing test reports no message at all. Record the panic instead, so `on_gtk` can
+/// re-raise it on the waiting test's own thread.
+fn relay_gtk_panics() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            if std::thread::current().name() == Some("gtk") {
+                *GTK_PANIC.lock().unwrap_or_else(|e| e.into_inner()) = Some(info.to_string());
+            }
+            previous(info);
+        }));
+    });
+}
+
 /// Runs `f` on the GTK thread and returns its result; a panic inside is re-raised here.
 pub fn on_gtk<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
+    relay_gtk_panics();
     let (tx, rx) = channel();
     let job: Job = Box::new(move || {
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
@@ -70,7 +91,10 @@ pub fn on_gtk<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
         .expect("gtk thread alive");
     match rx.recv().expect("gtk thread answered") {
         Ok(v) => v,
-        Err(p) => std::panic::resume_unwind(p),
+        Err(p) => match GTK_PANIC.lock().unwrap_or_else(|e| e.into_inner()).take() {
+            Some(detail) => panic!("on the GTK thread: {detail}"),
+            None => std::panic::resume_unwind(p),
+        },
     }
 }
 
