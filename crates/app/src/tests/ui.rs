@@ -1447,7 +1447,13 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
         pump();
 
         assert_eq!((win.default_width(), win.default_height()), (360, 720));
-        assert_eq!((win.width(), win.height()), (360, 720));
+        // The request is ours; the final allocation is the compositor's. Broadway, which
+        // build-aux/run-tests.sh starts when there is no display, trims its client-side
+        // decorations off the toplevel and hands back 350x710. What this test needs is a
+        // window that really is this small, not one matching the request to the pixel.
+        let (width, height) = (win.width(), win.height());
+        assert!((320..=360).contains(&width), "unexpected window width: {width}");
+        assert!((680..=720).contains(&height), "unexpected window height: {height}");
         assert!(win.imp().split_view.is_collapsed());
         assert!(shown(&*win.imp().add_entry));
         assert!(win.imp().add_entry.width() > 0);
