@@ -43,4 +43,17 @@ if [ "${MOMENTUM_TEST_BROADWAY:-}" = 1 ] || { [ -z "${WAYLAND_DISPLAY:-}" ] && [
   sleep 0.3
 fi
 
-cargo test --workspace "$@"
+# GTK, libadwaita and GLib warn on every frame on a headless display and in the narrow
+# windows the UI tests open. Meson echoes only the last 100 lines of a failing test, so
+# that noise buries the failure itself. Print everything else, keep the whole log on disk,
+# and report cargo's own exit status rather than the filter's.
+NOISE='Adwaita-WARNING|Gtk-WARNING|GLib-GIO-CRITICAL|IBUS-WARNING|MESA-EGL|Unable to acquire session bus'
+LOG="$OUT/cargo-test.log"
+STATUS_FILE="$OUT/cargo-test.status"
+rm -f "$STATUS_FILE"
+# `|| CODE=$?` keeps set -e from killing this subshell before the status is recorded.
+{ CODE=0; cargo test --workspace "$@" 2>&1 || CODE=$?; echo "$CODE" >"$STATUS_FILE"; } |
+  tee "$LOG" | { grep -vE "$NOISE" || true; }
+STATUS=$(cat "$STATUS_FILE")
+[ "$STATUS" -eq 0 ] || echo "Filtered GTK warnings; full test log: $LOG" >&2
+exit "$STATUS"
