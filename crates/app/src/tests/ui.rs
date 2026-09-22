@@ -1447,7 +1447,13 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
         pump();
 
         assert_eq!((win.default_width(), win.default_height()), (360, 720));
-        assert_eq!((win.width(), win.height()), (360, 720));
+        // The request is ours; the final allocation is the compositor's. Broadway, which
+        // build-aux/run-tests.sh starts when there is no display, trims its client-side
+        // decorations off the toplevel and hands back 350x710. What this test needs is a
+        // window that really is this small, not one matching the request to the pixel.
+        let (width, height) = (win.width(), win.height());
+        assert!((320..=360).contains(&width), "unexpected window width: {width}");
+        assert!((680..=720).contains(&height), "unexpected window height: {height}");
         assert!(win.imp().split_view.is_collapsed());
         assert!(shown(&*win.imp().add_entry));
         assert!(win.imp().add_entry.width() > 0);
@@ -1488,7 +1494,6 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
             prefs_imp.reset_typography_row.upcast_ref(),
         ];
         gtk::prelude::GtkWindowExt::set_focus(&win, None::<&gtk::Widget>);
-        let initial_scroll = adjustment.value();
         for (index, control) in controls.into_iter().enumerate() {
             if index == 0 {
                 assert!(focus_list.child_focus(gtk::DirectionType::TabForward));
@@ -1502,11 +1507,28 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
                 "keyboard navigation did not reach {}",
                 control.type_().name(),
             );
+            // What the traversal owes a keyboard user is that the row it lands on is on
+            // screen. Whether the scroller had to move to manage that depends on how the
+            // rows happen to fall at this scale, which is the compositor's business.
+            // Scrolling to the focused row is animated, so let the frame clock deliver it
+            // rather than reading the adjustment on the same turn as the focus change.
+            let on_screen = || {
+                control
+                    .compute_bounds(&scroll)
+                    .is_some_and(|bounds| bounds.y() + bounds.height() > 0.0 && bounds.y() < scroll.height() as f32)
+            };
+            for _ in 0..20 {
+                if on_screen() {
+                    break;
+                }
+                pump_ms(50);
+            }
+            assert!(
+                on_screen(),
+                "{} was focused while scrolled out of view",
+                control.type_().name(),
+            );
         }
-        assert!(
-            adjustment.value() > initial_scroll || adjustment.upper() == adjustment.page_size(),
-            "keyboard traversal did not scroll the compact preferences page"
-        );
         prefs.close();
         pump();
 

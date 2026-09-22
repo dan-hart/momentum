@@ -18,7 +18,12 @@ cd "$(dirname "$0")/.."
 OUT=${MOMENTUM_TEST_ASSETS:-$PWD/target/test-assets}
 mkdir -p "$OUT/ui" "$OUT/schemas"
 
-blueprint-compiler batch-compile "$OUT" "$PWD/data/resources" data/resources/ui/*.blp >/dev/null
+# Blueprint warns about every deprecated Shortcuts* widget, ~100 lines of it. Keep the
+# output only when it actually fails, so it cannot bury a test failure below.
+if ! BLUEPRINT=$(blueprint-compiler batch-compile "$OUT" "$PWD/data/resources" data/resources/ui/*.blp 2>&1); then
+  printf '%s\n' "$BLUEPRINT" >&2
+  exit 1
+fi
 glib-compile-resources --sourcedir="$OUT" --sourcedir="$PWD/data/resources" \
   --target="$OUT/resources.gresource" data/resources/resources.gresource.xml
 sed 's/@app-id@/io.github.dan_hart.Momentum.Devel/g; s/@gettext-package@/momentum/g' \
@@ -43,4 +48,27 @@ if [ "${MOMENTUM_TEST_BROADWAY:-}" = 1 ] || { [ -z "${WAYLAND_DISPLAY:-}" ] && [
   sleep 0.3
 fi
 
-cargo test --workspace "$@"
+# GTK, libadwaita and GLib warn on every frame on a headless display and in the narrow
+# windows the UI tests open. Meson echoes only the last 100 lines of a failing test, so
+# that noise buries the failure itself. Print everything else, keep the whole log on disk,
+# and report cargo's own exit status rather than the filter's.
+NOISE='Adwaita-WARNING|Gtk-WARNING|GLib-GIO-CRITICAL|IBUS-WARNING|MESA-EGL|Unable to acquire session bus'
+LOG="$OUT/cargo-test.log"
+STATUS_FILE="$OUT/cargo-test.status"
+rm -f "$STATUS_FILE"
+# `|| CODE=$?` keeps set -e from killing this subshell before the status is recorded.
+{ CODE=0; cargo test --workspace "$@" 2>&1 || CODE=$?; echo "$CODE" >"$STATUS_FILE"; } |
+  tee "$LOG" | { grep -vE "$NOISE" || true; }
+STATUS=$(cat "$STATUS_FILE")
+if [ "$STATUS" -ne 0 ]; then
+  # Meson echoes only the last 100 lines of a failing test, and not everything writing to
+  # this stream is in step with cargo, so repeat the failures last where they cannot be
+  # pushed out of that window.
+  echo "======== cargo test failed (status $STATUS); full log: $LOG ========" >&2
+  # UI tests run their body on a dedicated GTK thread, so libtest never captures the
+  # panic into the test's own stdout: it is printed where it happens, thousands of lines
+  # before the summary. Pull those out by name instead of trusting the tail.
+  grep -B 2 -A 12 "panicked at" "$LOG" >&2 || true
+  grep -vE "$NOISE" "$LOG" | tail -n 40 >&2
+fi
+exit "$STATUS"

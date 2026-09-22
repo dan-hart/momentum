@@ -144,16 +144,19 @@ preferences or Keychain.
 An opt-in socket integration test verifies the real Swift → UniFFI → LibreSync path:
 
 ```sh
-MOMENTUM_TEST_NEARBY=1 swift test --package-path macos/Packages/MomentumKit --filter NearbySyncTests
+MOMENTUM_TEST_NEARBY=1 swift test --package-path macos/Packages/MomentumKit \
+  --build-system swiftbuild --filter NearbySyncTests
 ```
 
 It starts two temporary nodes with file-backed keys, pairs over loopback, sends a task,
 receives completion in the opposite direction, and unlinks. Assertions inspect the
 Swift `AppState` and its recording search index after the native `P2pBridge` callbacks.
-The normal test run skips this test; the macOS workflow runs it separately. It uses
-local sockets (and the transport's discovery service), needs no app host, and does not
-touch personal tasks or Keychain entries. This does not substitute for physical-device
-discovery or macOS-to-Linux acceptance.
+The normal test run skips this test, and **CI does not run it at all**: it uses local
+sockets *and the transport's discovery service*, and the exchange after pairing never
+lands on a hosted runner, though `sp-p2p`'s own two-device test passes there in under a
+second. Run it yourself before a release. It needs no app host and does not touch personal
+tasks or Keychain entries. This does not substitute for physical-device discovery or
+macOS-to-Linux acceptance.
 
 
 ## macOS MVP acceptance
