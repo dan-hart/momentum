@@ -40,13 +40,18 @@ jobs:
 
       # The bindings are generated from the compiled library, so a core API change that
       # the Swift side has not caught up with fails here.
+      #
+      # --build-system swiftbuild: only that build system runs the string catalog through
+      # xcstringstool, the way Xcode builds the app. The legacy "native" one copies
+      # Localizable.xcstrings into the bundle verbatim, so no de.lproj exists and
+      # LocalizationTests fails on a packaging difference rather than a real defect.
       - name: macOS unit tests
-        run: swift test --package-path macos/Packages/MomentumKit
+        run: swift test --package-path macos/Packages/MomentumKit --build-system swiftbuild
 
       - name: Native nearby-sync integration
         env:
           MOMENTUM_TEST_NEARBY: "1"
-        run: swift test --package-path macos/Packages/MomentumKit --filter NearbySyncTests
+        run: swift test --package-path macos/Packages/MomentumKit --build-system swiftbuild --filter NearbySyncTests
 
       - name: Localization tooling and accessibility audit self-test
         run: |
