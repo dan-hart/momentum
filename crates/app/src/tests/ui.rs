@@ -1510,9 +1510,21 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
             // What the traversal owes a keyboard user is that the row it lands on is on
             // screen. Whether the scroller had to move to manage that depends on how the
             // rows happen to fall at this scale, which is the compositor's business.
-            let bounds = control.compute_bounds(&scroll).expect("control bounds in the scroller");
+            // Scrolling to the focused row is animated, so let the frame clock deliver it
+            // rather than reading the adjustment on the same turn as the focus change.
+            let on_screen = || {
+                control
+                    .compute_bounds(&scroll)
+                    .is_some_and(|bounds| bounds.y() + bounds.height() > 0.0 && bounds.y() < scroll.height() as f32)
+            };
+            for _ in 0..20 {
+                if on_screen() {
+                    break;
+                }
+                pump_ms(50);
+            }
             assert!(
-                bounds.y() + bounds.height() > 0.0 && bounds.y() < scroll.height() as f32,
+                on_screen(),
                 "{} was focused while scrolled out of view",
                 control.type_().name(),
             );
