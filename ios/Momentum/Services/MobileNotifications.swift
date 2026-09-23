@@ -43,6 +43,12 @@ import Observation
         }
     }
 
+    /// Background-task expiry: stop the shared drain so completion can be reported in time.
+    func cancelPendingRefresh() {
+        guard let coordinator else { return }
+        Task { await coordinator.cancelPendingRefresh() }
+    }
+
     func refresh() async {
         guard let coordinator else { return }
         refreshes += 1

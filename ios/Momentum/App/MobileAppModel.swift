@@ -277,7 +277,13 @@ struct FeedbackToast: Identifiable, Equatable {
         guard allowsBackgroundNotificationRefresh, !lowPowerMode, !Task.isCancelled else { return false }
         await start()
         guard worker != nil, !Task.isCancelled else { return false }
-        await notifications.refresh()
+        // The drain itself ignores a cancelled waiter; expiry must stop it explicitly.
+        let notifications = self.notifications
+        await withTaskCancellationHandler {
+            await notifications.refresh()
+        } onCancel: {
+            Task { @MainActor in notifications.cancelPendingRefresh() }
+        }
         guard !Task.isCancelled else { return false }
         return NotificationBackgroundRefreshPolicy.completedSuccessfully(status: notifications.status)
     }
@@ -472,6 +478,9 @@ struct FeedbackToast: Identifiable, Equatable {
 
     /// Resolve the current title so a stale system-search result never routes to
     /// deleted content or relies on metadata cached outside the task store.
+    /// The Search tab applied the request; a later appearance must not re-apply it.
+    func consumeSystemSearchRequest() { systemSearchRequest = nil }
+
     @discardableResult func openSpotlightTask(_ id: String) async -> Bool {
         await start()
         guard let title = await worker?.taskTitle(id) else { return false }

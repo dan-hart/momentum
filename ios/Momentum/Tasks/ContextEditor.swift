@@ -15,12 +15,14 @@ struct ContextEditor: View {
     @State private var saving = false
     @State private var confirmingDelete = false
     @State private var taskCount: UInt32 = 0
+    @State private var error: String?
     @FocusState private var nameFocused: Bool
     var savedColor: String?
 
     var body: some View {
         NavigationStack {
             Form {
+                if let error { AccessibleErrorMessage(error) }
                 TextField("Name", text: $name).focused($nameFocused)
                 Toggle("Custom color", isOn: $useColor)
                 if useColor { ColorPicker("Color", selection: $color, supportsOpacity: false) }
@@ -37,6 +39,7 @@ struct ContextEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", systemImage: "checkmark") {
                         saving = true
+                        error = nil
                         Task {
                             guard let worker = model.worker else { saving = false; return }
                             let savedID: String?
@@ -60,6 +63,9 @@ struct ContextEditor: View {
                                 }
                                 model.refreshAfterEdit()
                                 dismiss()
+                            } else {
+                                error = String(localized: kind == .project
+                                    ? "The project could not be saved." : "The tag could not be saved.")
                             }
                             saving = false
                         }
