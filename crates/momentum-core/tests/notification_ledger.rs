@@ -324,12 +324,10 @@ fn timezone_change_invalidates_future_revision_in_isolated_process() {
     let r = first(&e, now);
     e.accept_notification(r.clone(), now).unwrap();
     std::fs::write(dir.path().join("request.json"), serde_json::to_vec(&r).unwrap()).unwrap();
-    // Pick a timezone guaranteed to differ from the parent at this timestamp.
-    let zone = if momentum_core::sp_model::time_of_ms(now).0 == 0 {
-        "Pacific/Honolulu"
-    } else {
-        "UTC"
-    };
+    // Pick a timezone guaranteed to differ from the parent's: `now` is 07:00 local, so it
+    // equals 2026-09-16T07:00:00Z exactly when the parent already runs in UTC (as CI does).
+    const UTC_0700_MS: u64 = 1_789_542_000_000;
+    let zone = if now == UTC_0700_MS { "Pacific/Honolulu" } else { "UTC" };
     let result = std::process::Command::new(std::env::current_exe().unwrap())
         .args([
             "--exact",

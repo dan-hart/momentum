@@ -264,7 +264,9 @@ struct MobileKeyboardCommands: Commands {
         guard available else { return }
         switch action {
         case .newTask:
-            model.add(in: model.selectedTab < 3 ? taskView ?? .today : .today)
+            // A new task never belongs to the archive; create it in Today instead.
+            let target = model.selectedTab < 3 ? taskView ?? .today : .today
+            model.add(in: target == .archive ? .today : target)
         case .newProject: model.showingNewProject = true
         case .search:
             model.selectedTab = 2

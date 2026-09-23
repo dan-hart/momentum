@@ -41,7 +41,8 @@ import UIKit
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
                     clockRevision += 1
                 }
-                .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+                .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)
+                    .receive(on: RunLoop.main)) { _ in
                     model.setLowPowerMode(ProcessInfo.processInfo.isLowPowerModeEnabled)
                     Task {
                         await NotificationBackgroundRefresh.updateSchedule(

@@ -3405,6 +3405,16 @@
         }
       }
     },
+    "The project could not be saved.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Projekt konnte nicht gespeichert werden."
+          }
+        }
+      }
+    },
     "The same date": {
       "localizations": {
         "de": {
@@ -3431,6 +3441,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Die Wiederholung konnte nicht geändert werden."
+          }
+        }
+      }
+    },
+    "The tag could not be saved.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Tag konnte nicht gespeichert werden."
           }
         }
       }

@@ -171,6 +171,39 @@ fn startup_removes_only_reserved_orphan_directories() {
     assert_eq!(fs::read(file).unwrap(), b"keep");
     #[cfg(unix)]
     assert!(fs::symlink_metadata(link).unwrap().file_type().is_symlink());
-    let expected = if cfg!(unix) { 3 } else { 2 };
+    // The kept entries plus the directory lock that loading creates.
+    let expected = if cfg!(unix) { 4 } else { 3 };
     assert_eq!(fs::read_dir(dir.path()).unwrap().count(), expected);
+}
+
+#[test]
+fn a_loader_waits_for_an_in_flight_save_instead_of_rolling_it_back() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::try_load(dir.path().to_path_buf()).unwrap();
+    add(&mut store, "Before");
+    store.save().unwrap();
+    // Hold the directory lock as a saving process would, mid-save: a journal is
+    // published and the live files are half replaced.
+    let held = lock_dir(dir.path()).unwrap();
+    add(&mut store, "After");
+    let journal = prepare(dir.path()).unwrap();
+    let images = image(&store);
+    write_synced(&dir.path().join("state.json.tmp"), &images[0]).unwrap();
+    fs::rename(dir.path().join("state.json.tmp"), dir.path().join("state.json")).unwrap();
+    let path = dir.path().to_path_buf();
+    let loader = std::thread::spawn(move || Store::try_load(path).unwrap());
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    assert!(!loader.is_finished(), "load must block while another process saves");
+    // The writer finishes its save and releases the lock; only then does the loader
+    // run, and it sees the committed image rather than rolling the journal back.
+    write_synced(&dir.path().join("pending.json.tmp"), &images[1]).unwrap();
+    fs::rename(dir.path().join("pending.json.tmp"), dir.path().join("pending.json")).unwrap();
+    write_synced(&dir.path().join("meta.json.tmp"), &images[2]).unwrap();
+    fs::rename(dir.path().join("meta.json.tmp"), dir.path().join("meta.json")).unwrap();
+    let retired = retire(dir.path(), &journal).unwrap();
+    let _ = fs::remove_dir_all(retired);
+    drop(held);
+    let loaded = loader.join().unwrap();
+    assert_eq!(loaded.pending.len(), 2);
+    assert_eq!(on_disk(dir.path()), images);
 }

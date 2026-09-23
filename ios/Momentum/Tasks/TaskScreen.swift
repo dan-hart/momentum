@@ -181,10 +181,16 @@ struct TaskScreen: SwiftUI.View {
                 .contentMargins(.bottom, 76, for: .scrollContent)
                 .dropDestination(for: ExternalTaskText.self) { items, _ in
                     guard view != .archive else { return false }
-                    Task {
-                        for item in items { await model.organize(.importText(item.text, view)) }
+                    // A task row also exports its ids as plain text for other apps; a row
+                    // released on the list background must not become a task named by its id.
+                    let known = Set(snapshot.tasks.map(\.id))
+                    let external = items.filter { item in
+                        !item.text.split(separator: "\n").allSatisfy { known.contains(String($0)) }
                     }
-                    return !items.isEmpty
+                    Task {
+                        for item in external { await model.organize(.importText(item.text, view)) }
+                    }
+                    return !external.isEmpty
                 }
                 .environment(\.editMode, $editMode)
             } else {
@@ -353,13 +359,13 @@ struct TaskScreen: SwiftUI.View {
                     if !selection.isEmpty {
                         selectionActions.frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    addTaskButton
+                    if view != .archive { addTaskButton }
                 }
             } else {
                 HStack(spacing: 12) {
                     if !selection.isEmpty { selectionActions }
                     Spacer(minLength: 0)
-                    addTaskButton
+                    if view != .archive { addTaskButton }
                 }
             }
         }
@@ -728,6 +734,7 @@ private struct SearchPresentation: ViewModifier {
                     guard let request = model.systemSearchRequest else { return }
                     query = request.title
                     focused.wrappedValue = true
+                    model.consumeSystemSearchRequest()
                 }
         } else { content }
     }

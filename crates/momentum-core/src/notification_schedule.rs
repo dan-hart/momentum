@@ -51,8 +51,12 @@ impl Ledger {
     fn save(&self, dir: &Path) -> Result<(), CoreError> {
         let bytes = serde_json::to_vec(self).map_err(|_| invalid_ledger())?;
         let temporary = dir.join(format!("{FILE}.tmp"));
-        // Never truncate an existing temporary file or follow a symlink. A leftover
-        // file is an actionable failure rather than silent loss of a prior claim.
+        // A regular file left by a crash between write and rename is junk: clear it,
+        // or every later claim fails forever. Never truncate in place or follow a
+        // symlink, and leave anything that is not a regular file as an error.
+        if std::fs::symlink_metadata(&temporary).is_ok_and(|m| m.file_type().is_file()) {
+            std::fs::remove_file(&temporary)?;
+        }
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)

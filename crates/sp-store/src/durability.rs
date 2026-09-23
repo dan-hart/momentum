@@ -9,6 +9,42 @@ use std::path::{Path, PathBuf};
 
 pub(super) const FILES: [&str; 3] = ["state.json", "pending.json", "meta.json"];
 const JOURNAL: &str = ".momentum-transaction";
+const LOCK: &str = ".momentum-store.lock";
+
+/// Advisory whole-directory lock. `mo`, a second app instance and the app's file
+/// monitor all load (and therefore recover and clean up) the same directory while the
+/// owning process may be mid-save; without this a loader can roll a live save back or
+/// delete its scratch. Released when dropped, and by the OS if the process dies.
+pub(super) struct DirLock(#[allow(dead_code)] File);
+#[cfg(unix)]
+extern "C" {
+    fn flock(fd: i32, operation: i32) -> i32;
+}
+pub(super) fn lock_dir(dir: &Path) -> io::Result<DirLock> {
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let file = options.open(dir.join(LOCK))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::io::AsRawFd;
+        const LOCK_EX: i32 = 2;
+        loop {
+            if unsafe { flock(file.as_raw_fd(), LOCK_EX) } == 0 {
+                break;
+            }
+            let error = io::Error::last_os_error();
+            if error.kind() != io::ErrorKind::Interrupted {
+                return Err(error);
+            }
+        }
+    }
+    Ok(DirLock(file))
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -199,6 +235,7 @@ pub(super) fn save(dir: &Path, images: [Vec<u8>; 3]) -> io::Result<()> {
     save_with_hook(dir, images, |_| {})
 }
 fn save_with_hook(dir: &Path, images: [Vec<u8>; 3], checkpoint: impl Fn(Step)) -> io::Result<()> {
+    let _lock = lock_dir(dir)?;
     recover(dir)?;
     let journal = prepare(dir)?;
     let result = (|| {

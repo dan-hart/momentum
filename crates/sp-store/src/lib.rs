@@ -61,11 +61,15 @@ impl Store {
     }
     pub fn try_load(dir: PathBuf) -> std::io::Result<Self> {
         std::fs::create_dir_all(&dir)?;
+        // Another process may be saving: recovery, cleanup and the reads happen under
+        // the same lock that `save` takes, so a load never sees or disturbs a half-save.
+        let lock = durability::lock_dir(&dir)?;
         durability::recover(&dir)?;
         durability::cleanup(&dir);
         let state = read(&dir.join("state.json")).unwrap_or_else(AppData::fresh);
         let pending = read(&dir.join("pending.json")).unwrap_or_default();
         let mut meta: Meta = read(&dir.join("meta.json")).unwrap_or_default();
+        drop(lock);
         if meta.client_id.is_empty() {
             meta.client_id = format!("momentum_{}", &sp_model::new_id()[24..]);
         } // random tail of a v7 uuid

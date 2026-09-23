@@ -290,9 +290,12 @@ struct TaskEditor: SwiftUI.View {
             if let detail { form = TaskFormModel(detail: detail) }
         } else {
             form = TaskFormModel(view: view, projects: projects)
-            focusedField = .title
         }
         loaded = true
+        if taskID == nil {
+            // The form is only in the hierarchy after `loaded`; focus on the next turn.
+            Task { @MainActor in focusedField = .title }
+        }
     }
 
     private func save() {
@@ -349,7 +352,13 @@ struct TaskEditor: SwiftUI.View {
             let outcome = await operation()
             busy = false
             if outcome.changed {
-                onChange()
+                // Delete and Duplicate return a message and an undo batch like the row
+                // actions do; show them the same way instead of dropping the outcome.
+                if outcome.message != nil || outcome.undo != nil {
+                    model.accept(outcome)
+                } else {
+                    onChange()
+                }
                 if closes { dismiss() } else if let taskID {
                     detail = await worker.taskDetail(taskID)
                     subtaskTitle = ""
