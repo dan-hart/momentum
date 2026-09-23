@@ -7,6 +7,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The release workflow runs this same suite against the tag before it packages the app.
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to test (default: the commit that triggered the caller)"
+        type: string
+        required: false
+        default: ""
 
 jobs:
   core-and-app:
@@ -15,6 +23,8 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - name: Check out LibreSync (path dependency of crates/sp-p2p)
         uses: actions/checkout@v4
         with:

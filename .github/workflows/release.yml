@@ -1,16 +1,115 @@
-# Builds Flatpak bundles for a tagged release and attaches them to the GitHub Release.
+# One release for every platform. Pushing a vX.Y.Z tag (or dispatching with an existing
+# tag) runs the full CI and macOS suites against that tag, then builds every binary,
+# publishes the GitHub Release with all of them attached, updates the Homebrew tap,
+# publishes the signed Flatpak repository, and opens the Flathub update.
+#
+# Cut a release with:  build-aux/release.py bump X.Y.Z && git commit -a && git tag ...
+# Details, required secrets and what happens when one is missing: docs/RELEASING.md.
 name: Release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release (e.g. v0.4.0)"
+        required: true
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+  APP_ID: io.github.dan_hart.Momentum
+  # Keep in step with the LibreSync checkouts in ci.yml and macos.yml.
+  LIBRESYNC_REF: v0.6.0
+
 jobs:
-  bundle:
+  # ---------------------------------------------------------------- 1. the tag is sound
+  verify:
+    name: Verify tag and versions
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish_flatpak_repo: ${{ steps.gates.outputs.publish_flatpak_repo }}
+      update_homebrew: ${{ steps.gates.outputs.update_homebrew }}
+      sign_macos: ${{ steps.gates.outputs.sign_macos }}
+      notarize_macos: ${{ steps.gates.outputs.notarize_macos }}
+      open_flathub_pr: ${{ steps.gates.outputs.open_flathub_pr }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Every copy of the version equals the tag
+        run: build-aux/release.py check --tag "$TAG"
+      - id: version
+        run: echo "version=$(build-aux/release.py version)" >> "$GITHUB_OUTPUT"
+      - name: Release notes from CHANGELOG.md
+        run: |
+          VERSION=$(build-aux/release.py version)
+          {
+            build-aux/release.py notes "$VERSION"
+            cat <<EOF
+
+          ## Install
+
+          | Platform | |
+          |---|---|
+          | macOS app | \`brew install --cask dan-hart/tap/momentum\`, or open \`Momentum-v$VERSION-macos.zip\` below |
+          | Linux app | \`flatpak install --user https://dan-hart.github.io/momentum/momentum.flatpakref\`, or the \`.flatpak\` bundle below |
+          | \`mo\` command line | \`brew install dan-hart/tap/momentum-cli\` on macOS or Linux, or a \`mo-*\` archive below |
+
+          Every file is listed with its digest in \`SHA256SUMS.txt\`.
+          EOF
+          } > release-notes.md
+          cat release-notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+      # Job-level `if:` cannot read secrets, so decide here which optional steps run.
+      - id: gates
+        env:
+          FLATPAK_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          NOTARY: ${{ secrets.APPLE_APP_PASSWORD }}
+          FLATHUB: ${{ secrets.FLATHUB_TOKEN }}
+        run: |
+          gate() { echo "$1=$([ -n "$2" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"; }
+          gate publish_flatpak_repo "$FLATPAK_KEY"
+          gate update_homebrew "$TAP_TOKEN"
+          gate sign_macos "$P12"
+          gate notarize_macos "$NOTARY"
+          gate open_flathub_pr "$FLATHUB"
+          cat "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------- 2. every test passes
+  tests:
+    name: CI
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+    secrets: inherit
+
+  macos-tests:
+    name: macOS
+    needs: verify
+    uses: ./.github/workflows/macos.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+    secrets: inherit
+
+  # ---------------------------------------------------------------- 3. build the binaries
+  flatpak:
     name: Flatpak bundle (${{ matrix.arch }})
+    needs: [verify, tests, macos-tests]
     strategy:
       matrix:
         arch: [x86_64, aarch64]
@@ -20,21 +119,298 @@ jobs:
       options: --privileged
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
       - name: Check out LibreSync (path dependency of crates/sp-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync
-          ref: v0.6.0
+          ref: ${{ env.LIBRESYNC_REF }}
           path: libresync-src
           token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
       - uses: flathub-infra/flatpak-github-actions/flatpak-builder@933e9e8ca36e85046ebca8e211f0785c6becac40
         with:
-          bundle: momentum-${{ github.ref_name }}-${{ matrix.arch }}.flatpak
+          bundle: momentum-${{ env.TAG }}-${{ matrix.arch }}.flatpak
           manifest-path: build-aux/io.github.dan_hart.Momentum.json
           run-tests: true
           arch: ${{ matrix.arch }}
           cache-key: flatpak-release-${{ matrix.arch }}-${{ github.sha }}
+          upload-artifact: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-${{ matrix.arch }}
+          path: momentum-${{ env.TAG }}-${{ matrix.arch }}.flatpak
+          if-no-files-found: error
+
+  macos:
+    name: macOS app and mo
+    needs: [verify, tests, macos-tests]
+    # MomentumKit links macOS 26 APIs; the app targets macOS 26.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: ${{ env.LIBRESYNC_REF }}
+          path: libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: brew install xcodegen
+      - name: Import the Developer ID certificate
+        if: needs.verify.outputs.sign_macos == 'true'
+        env:
+          P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/release.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          echo "MACOS_SIGN_IDENTITY=Developer ID Application" >> "$GITHUB_ENV"
+      - name: Build, sign, notarize and package
+        env:
+          REQUIRE_UNIVERSAL: "1"
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Notarization only when the app password is present; the script checks all three.
+          APPLE_ID: ${{ needs.verify.outputs.notarize_macos == 'true' && secrets.APPLE_ID || '' }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: macos/scripts/package-app.sh dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+
+  cli-linux:
+    name: mo for Linux (${{ matrix.arch }})
+    needs: [verify, tests, macos-tests]
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    # Ubuntu 22.04's glibc 2.35 is what Homebrew on Linux and most desktop distributions
+    # of the last few years can load; a binary built on a newer image would not be.
+    container: ubuntu:22.04
+    steps:
+      - name: Build dependencies
+        run: |
+          apt-get update -q
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
+            build-essential curl ca-certificates git pkg-config libdbus-1-dev
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: ${{ env.LIBRESYNC_REF }}
+          path: libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build and package mo
+        run: |
+          cargo build -p mo --release --locked
+          VERSION=${{ needs.verify.outputs.version }}
+          SAYS=$(target/release/mo --version | awk '{print $2}')
+          [ "$SAYS" = "$VERSION" ] || { echo "mo says $SAYS, tag says $VERSION" >&2; exit 1; }
+          mkdir -p dist
+          tar -czf "dist/mo-v$VERSION-linux-${{ matrix.arch }}.tar.gz" -C target/release mo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-linux-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  # ------------------------------------------------- 4. the signed Flatpak repository
+  flatpak-repo:
+    name: Publish Flatpak repository (${{ matrix.arch }})
+    needs: [verify, tests, macos-tests]
+    if: needs.verify.outputs.publish_flatpak_repo == 'true'
+    # Architectures run one after the other so both export into the same OSTree repo.
+    strategy:
+      max-parallel: 1
+      matrix:
+        arch: [x86_64, aarch64]
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
+      options: --privileged
+    steps:
+      - name: Check out the tag to build
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          path: src
+      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: ${{ env.LIBRESYNC_REF }}
+          path: src/libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
+      - name: Check out the repository branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Import signing key
+        run: |
+          echo "${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "KEY_ID=${{ secrets.FLATPAK_GPG_KEY_ID }}" >> "$GITHUB_ENV"
+      - name: Build and export
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          [ -f repo/config ] || ostree init --repo=repo --mode=archive
+          # git does not keep empty directories; OSTree expects these to exist.
+          mkdir -p repo/refs/heads repo/refs/remotes repo/refs/mirrors repo/objects repo/tmp repo/state
+          flatpak-builder --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub \
+            --arch=${{ matrix.arch }} --default-branch=stable \
+            --repo=repo --gpg-sign="$KEY_ID" build-dir src/build-aux/$APP_ID.json
+          flatpak build-update-repo --generate-static-deltas --prune --prune-depth=3 \
+            --gpg-sign="$KEY_ID" repo
+          # Site files must survive the OSTree metadata regeneration.
+          rm -rf repo/tmp
+      - name: Publish
+        working-directory: repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish $TAG (${{ matrix.arch }})" || echo "nothing to publish"
+          git push
+
+  # ----------------------------------------------------------- 5. the GitHub Release
+  release:
+    name: GitHub Release
+    needs: [verify, flatpak, macos, cli-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Flathub manifest pinned to this tag
+        run: |
+          COMMIT=$(git rev-parse "$TAG^{commit}")
+          # An annotated tag lists twice; the "^{}" line is the commit it points at.
+          REFS=$(git ls-remote https://github.com/dan-hart/LibreSync.git "refs/tags/$LIBRESYNC_REF*")
+          LIBRESYNC_COMMIT=$(echo "$REFS" | grep "$LIBRESYNC_REF^{}\$" | cut -f1)
+          [ -n "$LIBRESYNC_COMMIT" ] || LIBRESYNC_COMMIT=$(echo "$REFS" | head -n1 | cut -f1)
+          mkdir -p dist/flathub
+          build-aux/release.py flathub --tag "$TAG" --commit "$COMMIT" \
+            --libresync-ref "$LIBRESYNC_REF" --libresync-commit "$LIBRESYNC_COMMIT" \
+            --out "dist/flathub/$APP_ID.json"
+          python3 -m venv .venv && .venv/bin/pip -q install aiohttp toml tomlkit
+          curl -fsSLO https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py
+          .venv/bin/python flatpak-cargo-generator.py Cargo.lock -o dist/flathub/cargo-sources.json
+          (cd dist/flathub && tar -czf "../flathub-$TAG.tar.gz" "$APP_ID.json" cargo-sources.json)
+      - name: Digests
+        working-directory: dist
+        run: |
+          rm -f release-notes.md
+          sha256sum *.flatpak *.zip *.tar.gz | tee SHA256SUMS.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
       - uses: softprops/action-gh-release@v2
         with:
-          files: momentum-${{ github.ref_name }}-${{ matrix.arch }}.flatpak
-          generate_release_notes: true
+          tag_name: ${{ env.TAG }}
+          name: Momentum ${{ needs.verify.outputs.version }}
+          body_path: release-notes.md
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.flatpak
+            dist/*.zip
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
+
+  # ------------------------------------------------------------ 6. the Homebrew tap
+  homebrew:
+    name: Update Homebrew tap
+    needs: [verify, release]
+    if: needs.verify.outputs.update_homebrew == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: actions/checkout@v4
+        with:
+          repository: dan-hart/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+      - name: Render the formula and cask
+        run: |
+          NOTARIZED=""
+          [ "${{ needs.verify.outputs.notarize_macos }}" = true ] && NOTARIZED=--notarized
+          build-aux/release.py homebrew --assets dist --out tap $NOTARIZED
+          cat tap/Formula/momentum-cli.rb tap/Casks/momentum.rb
+      - name: Push
+        working-directory: tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/momentum-cli.rb Casks/momentum.rb
+          git commit -m "momentum ${{ needs.verify.outputs.version }}"
+          git push
+
+  # ----------------------------------------------------------------- 7. Flathub
+  flathub:
+    name: Open the Flathub update
+    needs: [verify, release]
+    if: needs.verify.outputs.open_flathub_pr == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Push a branch and open the pull request
+        run: |
+          if ! gh repo view "flathub/$APP_ID" >/dev/null 2>&1; then
+            echo "::notice::flathub/$APP_ID does not exist yet. Submit the app once with the manifest attached to the release (flathub-$TAG.tar.gz); later releases open the update automatically."
+            exit 0
+          fi
+          gh repo clone "flathub/$APP_ID" flathub
+          cd flathub
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "release-$TAG"
+          tar -xzf "../dist/flathub-$TAG.tar.gz"
+          git add "$APP_ID.json" cargo-sources.json
+          git commit -m "Update to $TAG"
+          git push -u origin "release-$TAG"
+          gh pr create --fill --title "Update to $TAG" \
+            --body "Momentum $TAG: https://github.com/dan-hart/momentum/releases/tag/$TAG"

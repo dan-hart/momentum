@@ -19,7 +19,8 @@ this commitment.
 2. Read [FEATURES.md](docs/FEATURES.md), [BUGS.md](docs/BUGS.md), and
    [PROGRESS.md](docs/PROGRESS.md), then the specifications relevant to the task.
 3. Use [MVP.md](docs/MVP.md) for existing task behavior,
-   [TESTING.md](docs/TESTING.md) for verification, and
+   [TESTING.md](docs/TESTING.md) for verification, [RELEASING.md](docs/RELEASING.md)
+   for how a tag becomes a release on every platform, and
    [macos/README.md](macos/README.md) for the Apple desktop build.
    [MACOS-MVP-CHECKLIST.md](docs/MACOS-MVP-CHECKLIST.md) and
    [MACOS-AUTOMATION.md](docs/MACOS-AUTOMATION.md) contain historical acceptance evidence.

@@ -33,6 +33,11 @@ unset IPHONEOS_DEPLOYMENT_TARGET LIBRARY_PATH
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.cargo/bin"
 export MACOSX_DEPLOYMENT_TARGET=26.0
+# Release builds strip debuginfo by running Xcode's `strip`; Xcode 27's leaves the
+# proc-macro dylibs with a mis-aligned LINKEDIT string pool that macOS 27's dyld refuses
+# to load, and cargo then reports "can't find crate for `serde_derive`". Keep the symbols;
+# Xcode strips the app and mo is small either way.
+export CARGO_PROFILE_RELEASE_STRIP="${CARGO_PROFILE_RELEASE_STRIP:-none}"
 
 HOST=$(rustc -vV | sed -n 's/^host: //p')
 TARGETS="$HOST"

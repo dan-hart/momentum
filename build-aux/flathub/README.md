@@ -1,9 +1,12 @@
 # Flathub submission files
 
-- `io.github.dan_hart.Momentum.json`: offline manifest. Replace `REPLACE_WITH_TAG_COMMIT`
-  with the commit hash of the release tag before submitting.
-- `cargo-sources.json`: vendored crate sources for that tag's `Cargo.lock`. Regenerate
-  after any dependency change:
+- `io.github.dan_hart.Momentum.json`: offline manifest pinned to the last released tag,
+  with LibreSync as a second pinned source. The Release workflow renders the copy for a new
+  tag (`build-aux/release.py flathub --tag … --commit …`) and attaches it to the GitHub
+  Release as `flathub-vX.Y.Z.tar.gz`, then opens the Flathub pull request once the app
+  is on Flathub and `FLATHUB_TOKEN` is set. See `docs/RELEASING.md`.
+- `cargo-sources.json`: vendored crate sources for that tag's `Cargo.lock`, LibreSync's
+  included. The workflow regenerates it for every release; to do it by hand:
 
   ```sh
   python3 -m venv .venv && .venv/bin/pip install aiohttp toml tomlkit

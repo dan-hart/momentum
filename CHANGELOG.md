@@ -12,6 +12,15 @@ All notable changes to Momentum are documented here. The format follows
 - Linux desktop parity: a native font chooser with independent content/interface
   scaling, exact task reveal through `mo open`, GApplication actions and task URLs,
   plus configurable Background Apps task-count modes
+- One release process for every platform: `build-aux/release.py` keeps one version across
+  the Rust workspace, the GTK app, the macOS app, the metainfo and this changelog, and a
+  single Release workflow runs every test against the tag, then publishes the GitHub
+  Release with the Flatpak bundles, the macOS app and `mo` for macOS and Linux, updates
+  the Homebrew tap (`momentum` cask, `momentum-cli` formula), the signed Flatpak
+  repository, and the Flathub manifest
+
+### Changed
+- The macOS app's version now follows the workspace (0.3.5) instead of its own number
 
 ## [0.3.5] - 2026-09-15
 

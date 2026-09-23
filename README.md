@@ -75,7 +75,14 @@ Momentum whenever you are on your Linux machine.
 
 ### macOS
 
-Build it from source for now (Xcode 27 and a Rust toolchain):
+```sh
+brew install --cask dan-hart/tap/momentum
+```
+
+The cask installs the app and puts its `mo` command line on your PATH. The same
+`Momentum-vX.Y.Z-macos.zip` is attached to every
+[release](https://github.com/dan-hart/momentum/releases/latest). Momentum needs macOS 26.
+To build it yourself instead (Xcode 27 and a Rust toolchain):
 
 ```sh
 brew install xcodegen
@@ -97,6 +104,15 @@ Momentum publishes to its own signed Flatpak repository for x86_64 and aarch64, 
 works on any distribution with Flatpak: GNOME, KDE Plasma, Sway and the rest. Standalone
 `.flatpak` bundles are also attached to each
 [release](https://github.com/dan-hart/momentum/releases/latest) for offline installs.
+
+### The `mo` command line on its own
+
+```sh
+brew install dan-hart/tap/momentum-cli       # macOS or Linux; prebuilt, no toolchain needed
+```
+
+On macOS the app already includes `mo`, so install one or the other. Every release also
+attaches `mo-vX.Y.Z-{macos-universal,linux-x86_64,linux-aarch64}.tar.gz`.
 
 ### Set up sync
 
@@ -144,7 +160,7 @@ is running, changes are handed to it over D-Bus so nothing is written behind its
 `mo open` is Linux-only; on macOS, use the Momentum **Open Task** Shortcut instead.
 
 ```sh
-cargo install --path crates/mo        # or: flatpak run --command=mo io.github.dan_hart.Momentum …
+brew install dan-hart/tap/momentum-cli   # or: cargo install --path crates/mo, or flatpak run --command=mo io.github.dan_hart.Momentum …
 
 mo add "Call the bank #admin 15m" --today
 mo add "Prep slides" --project Work --tomorrow
@@ -234,10 +250,11 @@ Or open the folder in GNOME Builder and press Run.
 | `crates/sp-sync` | Nextcloud WebDAV sync, gzip, Argon2id + AES-GCM encryption |
 | `crates/sp-p2p` | Sync with nearby devices over LibreSync (ops as records, bootstrap snapshot) |
 | `data/` | Desktop file, metainfo, GSettings schema, icons, Blueprint UI |
-| `build-aux/` | Flatpak manifests, Flathub files, mock WebDAV server |
+| `build-aux/` | Flatpak manifests, Flathub files, Homebrew templates, `release.py` (one version everywhere) |
 | `docs/PLAN.md` | Architecture and roadmap |
 | `docs/MVP.md` | Feature and data-model spec, kept platform-neutral for ports |
 | `docs/TRANSLATING.md`, `docs/ACCESSIBILITY.md` | Translator and accessibility guides |
+| `docs/RELEASING.md` | How a tag becomes a release on every platform |
 
 ### Run the tests
 
