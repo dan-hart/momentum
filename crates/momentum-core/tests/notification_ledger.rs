@@ -370,6 +370,15 @@ fn a_stale_delivered_revision_does_not_consume_replacement() {
 #[test]
 fn read_only_schedule_directory_propagates_acceptance_error() {
     use std::os::unix::fs::PermissionsExt;
+    extern "C" {
+        fn geteuid() -> u32;
+    }
+    // Directory permissions do not restrict root (the Flatpak builder), so the
+    // failure this test injects cannot happen there.
+    if unsafe { geteuid() } == 0 {
+        eprintln!("skipped: running as root, read-only directories are writable");
+        return;
+    }
     let (e, dir, now) = setup();
     let request = first(&e, now);
     let original = std::fs::metadata(dir.path()).unwrap().permissions();
