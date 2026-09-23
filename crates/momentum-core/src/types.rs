@@ -409,6 +409,8 @@ pub struct SidebarEntry {
     /// A project's or tag's name; built-in views are named by the UI.
     pub title: String,
     pub color: Option<String>,
+    /// Unique unfinished live root-task families assigned to this context.
+    pub task_count: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -527,6 +529,7 @@ pub struct RepeatDraft {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
 pub enum Message {
+    SaveFailed { error: String },
     TaskCompleted,
     TaskCompletedArchived,
     TasksCompleted { n: u32 },
@@ -624,7 +627,7 @@ pub struct ReminderDue {
     pub time: Option<ClockTime>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Record))]
 pub struct MorningSummary {
     pub total: u32,

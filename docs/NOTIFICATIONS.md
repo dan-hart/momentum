@@ -31,11 +31,15 @@ morning notification in Settings instead of sending it automatically.
 |---|---|
 | Linux | Preferences → Notifications: libadwaita SwitchRow and labeled hour/minute SpinRows (24-hour clock). Time controls are disabled while off. GSettings changes update the running engine. |
 | macOS | Settings → General → Notifications: switch and system time picker, respecting locale. UserDefaults changes update the running engine. Time control is disabled while off. |
-| iOS | Planned: native Settings switch and locale-aware time picker, off by default. Reuse Rust summary rules with native notification permissions and scheduling appropriate to suspended apps. Disable/reschedule pending summaries when the preference changes. |
+| iOS | Implemented in progress: Settings → Notifications separates permission, Morning Summary (off by default, staged locale-aware time sheet) and schedule status/retry. Save commits the final hour/minute together so an intermediate wheel value cannot consume the daily claim (B-058). Shared Rust planning/ledger drives one-shot OS requests on foreground, task edits and preference changes. A short discretionary app-refresh task requests local plan replenishment no more than daily while notification authorization permits it; expiration/failure is reported to iOS, the next request is retained, and this path never starts sync. Native delegate registers Done and Snooze 1 hour; body routing opens the task or Today. Real SpringBoard summary delivery with exact counts, Today routing and relaunch persistence passes on iOS 26.5/27, along with cold task-body activation and cold/resident actions. Real authorization denial and independent clean grant acceptance also pass on both runtimes, covering disabled recovery UI and authorized planning readback. Background policy/build/launch checks pass, but Simulator cannot launch the system refresh task or automate the uninterrupted denied-to-enabled Settings transition; physical delivery, locked-device and system-triggered background execution remain outstanding. |
 | Android | Planned: native Settings switch and local time picker, off by default. Reuse Rust summary rules with native notification channels/permissions and scheduling within OS background limits. Disable/reschedule pending summaries when the preference changes. |
 
-Mobile scheduling, permission denial, restart, DST, background delivery and cancellation
-require implementation and device acceptance once each app exists. Desktop tick behavior
+The direct mobile denied-to-enabled Settings transition, system-triggered background
+execution and physical cancellation still require additional platform acceptance.
+iOS denial and clean grant boundaries, restart/time persistence, real summary delivery,
+planning/reconciliation, background scheduling policy, expiration and callback
+deduplication have core/package coverage, and simulator delivery/actions have native
+acceptance; none of these establish physical-device or locked-device behavior. Desktop tick behavior
 must not be copied as if a mobile process can stay running indefinitely.
 
 Controls and explanatory text have English/German coverage. Native controls provide

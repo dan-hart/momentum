@@ -100,8 +100,10 @@ impl Snapshot {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct Journal {
+    #[serde(default)]
+    restore_epoch: u64,
     /// Ops produced here, still to be published or tombstoned.
     own: Vec<OpRecord>,
     /// Ids already handed to the engine (own) or received (inbound).
@@ -121,14 +123,33 @@ struct Journal {
     snapshot_in: Option<Snapshot>,
 }
 impl Journal {
-    fn load(path: &Path) -> Self {
-        std::fs::read(path)
-            .ok()
-            .and_then(|b| serde_json::from_slice(&b).ok())
-            .unwrap_or_default()
+    fn load(path: &Path) -> std::io::Result<Self> {
+        match std::fs::read(path) {
+            Ok(bytes) => serde_json::from_slice(&bytes).map_err(std::io::Error::other),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(error) => Err(error),
+        }
     }
     fn save(&self, path: &Path) -> std::io::Result<()> {
         write_atomic(path, &serde_json::to_vec(self)?)
+    }
+    fn inbox(&self) -> (Vec<OpRecord>, Option<Snapshot>) {
+        let mut ops = self.inbox.clone();
+        ops.sort_by_key(|r| r.t);
+        (ops, self.snapshot_in.clone())
+    }
+    fn acknowledge(&mut self, path: &Path, ops: &[OpRecord], snapshot: Option<&Snapshot>) -> std::io::Result<()> {
+        let ids: BTreeSet<_> = ops.iter().map(|r| &r.id).collect();
+        let mut candidate = self.clone();
+        candidate.inbox.retain(|r| !ids.contains(&r.id));
+        if snapshot.is_some() && candidate.snapshot_in.as_ref() == snapshot {
+            candidate.snapshot_in = None;
+        }
+        if candidate.inbox.len() != self.inbox.len() || candidate.snapshot_in != self.snapshot_in {
+            candidate.save(path)?;
+            *self = candidate;
+        }
+        Ok(())
     }
 }
 
@@ -439,6 +460,9 @@ impl DeviceHandler for Handler {
 /// A running peer-to-peer node: listener, journal, and linked devices.
 pub struct P2p {
     engine: BackgroundEngine,
+    /// `BackgroundEngine::run` does not receive its command's cancellation token.
+    /// Sync-all supplies its own token to every request so shutdown closes live I/O.
+    cancel: libresync::CancelToken,
     journal: Arc<Mutex<Journal>>,
     journal_path: PathBuf,
     handler: Arc<Handler>,
@@ -451,13 +475,56 @@ impl P2p {
     /// Starts listening. `dir` holds the journal, device list and encrypted engine state;
     /// `device_id` must be stable (the store's client id); `device_name` is shown to peers.
     pub fn start(dir: PathBuf, device_id: &str, device_name: &str, keys: Box<dyn KeyStore>, port: u16) -> Result<P2p> {
+        Self::start_inner(dir, device_id, device_name, keys, port, None)
+    }
+    /// Reconcile the persisted restore boundary before starting the listener. Trust,
+    /// identities and seen operation IDs survive; queued pre-restore data does not.
+    pub fn start_with_store(
+        dir: PathBuf,
+        device_id: &str,
+        device_name: &str,
+        keys: Box<dyn KeyStore>,
+        port: u16,
+        restore_epoch: u64,
+        state_json: &[u8],
+    ) -> Result<P2p> {
+        Self::start_inner(
+            dir,
+            device_id,
+            device_name,
+            keys,
+            port,
+            Some((restore_epoch, state_json)),
+        )
+    }
+    fn start_inner(
+        dir: PathBuf,
+        device_id: &str,
+        device_name: &str,
+        keys: Box<dyn KeyStore>,
+        port: u16,
+        store: Option<(u64, &[u8])>,
+    ) -> Result<P2p> {
         std::fs::create_dir_all(&dir).map_err(io)?;
         let identity = Identity::new(device_id, APP_ID, device_name);
         let handler = Arc::new(Handler::new(identity.clone(), keys, &dir));
         let app_key = handler.app_key()?;
         let state_path = dir.join("state.bin");
         let journal_path = dir.join("journal.json");
-        let journal = Arc::new(Mutex::new(Journal::load(&journal_path)));
+        let mut journal = Journal::load(&journal_path).map_err(io)?;
+        if let Some((epoch, state)) = store {
+            if journal.restore_epoch != epoch {
+                journal.inbox.clear();
+                journal.snapshot_in = None;
+                journal.own.clear();
+                journal.restore_epoch = epoch;
+            }
+            journal.snapshot_out = Some(Snapshot::new(device_id, state));
+            journal.snapshot_dirty = true;
+            // Fail startup before opening sockets if the boundary cannot persist.
+            journal.save(&journal_path).map_err(io)?;
+        }
+        let journal = Arc::new(Mutex::new(journal));
         // Prefer the documented port (firewall rules); if it is taken (a Devel build next to
         // the release, or a socket still closing) fall back to any free port. The listener is
         // started synchronously so the real port is known before advertising it.
@@ -474,22 +541,54 @@ impl P2p {
             }))?;
             Ok(engine)
         };
-        let mut engine = build(([0, 0, 0, 0], port).into())?;
-        let listen_addr = match engine.start_listening() {
-            Ok(addr) => addr,
+        let listen = |address| -> Result<(BackgroundEngine, SocketAddr)> {
+            // Spawn installs the event sink. Starting the listener before this
+            // point permanently loses inbound notifications in its captured options.
+            let engine = build(address)?.spawn()?;
+            let ticket = engine.try_start_listening()?;
+            let (sender, receiver) = std::sync::mpsc::channel();
+            engine.run(move |engine| {
+                let _ = sender.send(engine.listener_addr());
+                Ok(())
+            })?;
+            let address = receiver
+                .recv_timeout(Duration::from_secs(5))
+                .map_err(|_| Error::Protocol("nearby listener startup did not finish".into()))?;
+            match address {
+                Some(address) => Ok((engine, address)),
+                None => {
+                    // The serial barrier above leaves the failed start result queued.
+                    // Successful starts never consume events needed by the app.
+                    let events = engine.events();
+                    while let Some(event) = events.try_recv()? {
+                        if let Event::TaskFinished {
+                            ticket: finished,
+                            result: SyncResult::Failed(message),
+                        } = event
+                        {
+                            if finished == ticket.0 {
+                                return Err(Error::Protocol(message));
+                            }
+                        }
+                    }
+                    Err(Error::Protocol("nearby listener could not start".into()))
+                }
+            }
+        };
+        let (engine, listen_addr) = match listen(([0, 0, 0, 0], port).into()) {
+            Ok(started) => started,
             Err(e) if port != 0 => {
                 log::info!("libresync: port {port} unavailable ({e}); using a free port");
-                engine = build(([0, 0, 0, 0], 0).into())?;
-                engine.start_listening()?
+                listen(([0, 0, 0, 0], 0).into())?
             }
             Err(e) => return Err(e),
         };
-        let engine = engine.spawn()?;
         // The engine listens but does not announce itself; without this nobody finds us.
         let advertiser = libresync::register_mdns(&identity, listen_addr)?;
         log::info!("libresync: advertising {} on {listen_addr}", identity.device_id);
         Ok(Self {
             engine,
+            cancel: libresync::CancelToken::new(),
             journal,
             journal_path,
             handler,
@@ -542,7 +641,16 @@ impl P2p {
         j.snapshot_dirty = true;
         j.save(&self.journal_path).ok();
     }
-    /// Received ops in time order, plus the newest snapshot from a peer (returned once).
+    /// Read a stable batch without removing it. Acknowledge only after the app store
+    /// has committed it; newly arrived operations remain queued during acknowledgement.
+    pub fn inbox(&self) -> (Vec<OpRecord>, Option<Snapshot>) {
+        self.journal().inbox()
+    }
+    pub fn acknowledge_inbox(&self, ops: &[OpRecord], snapshot: Option<&Snapshot>) -> std::io::Result<()> {
+        self.journal().acknowledge(&self.journal_path, ops, snapshot)
+    }
+    /// Legacy destructive read for simple consumers. Durable clients use `inbox`
+    /// followed by `acknowledge_inbox` after committing their store.
     pub fn take_inbox(&self) -> (Vec<OpRecord>, Option<Snapshot>) {
         let mut j = self.journal();
         let mut ops = std::mem::take(&mut j.inbox);
@@ -557,33 +665,40 @@ impl P2p {
     /// known address of linked devices that did not answer discovery).
     pub fn sync_all(&self) -> Result<Ticket> {
         let handler = self.handler.clone();
+        let cancel = self.cancel.clone();
         self.engine.run(move |engine| {
+            cancel.check()?;
             let discovered = engine
                 .discover_devices_with_timeout(Duration::from_secs(2))
                 .unwrap_or_default();
+            cancel.check()?;
             let mut done = BTreeSet::new();
             for d in discovered.iter().filter(|d| d.linked) {
+                cancel.check()?;
                 let known = handler
                     .linked()
                     .into_iter()
                     .find(|x| x.device_id == d.identity.device_id);
                 let mut info = d.clone();
                 info.fingerprint = known.as_ref().map(|k| k.fingerprint.clone());
-                if engine.sync_with_device_info(&info, ADAPTER_ID).is_ok() {
+                let request = SyncRequest::for_device(&info, ADAPTER_ID)?.with_cancel(cancel.clone());
+                if engine.sync(&request).is_ok() {
                     handler.touch(&d.identity.device_id, d.address);
                 }
                 done.insert(d.identity.device_id.clone());
             }
             for d in handler.linked().into_iter().filter(|d| !done.contains(&d.device_id)) {
+                cancel.check()?;
                 let Some(addr) = d.address else { continue };
                 let req = SyncRequest::new(addr, ADAPTER_ID)
                     .with_expected_fingerprint(d.fingerprint.clone())
-                    .with_expected_device_id(d.device_id.clone());
+                    .with_expected_device_id(d.device_id.clone())
+                    .with_cancel(cancel.clone());
                 if engine.sync(&req).is_ok() {
                     handler.touch(&d.device_id, Some(addr));
                 }
             }
-            Ok(())
+            cancel.check()
         })
     }
     /// Syncs with one linked device at a known address (tests, manual addresses).
@@ -655,6 +770,7 @@ impl P2p {
         self.engine.try_save_state(&self.state_path)
     }
     pub fn shutdown(&self) {
+        self.cancel.cancel();
         let _ = self.engine.shutdown();
     }
 }

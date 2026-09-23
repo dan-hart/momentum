@@ -402,7 +402,7 @@ fn apply(store: &mut Store, dir: &Path, action: Action) -> Result<(), String> {
     }
     // A previous action may have been forwarded before the app exited. Refresh its
     // persisted metadata so an offline continuation retains that action and its op.
-    *store = Store::load(dir.to_path_buf());
+    *store = Store::try_load(dir.to_path_buf()).map_err(|e| e.to_string())?;
     sp_oplog::apply(&mut store.state, &action);
     let op = action.to_op(&store.meta.client_id, &mut store.meta.vector_clock);
     store.pending.push(sp_store::Pending { op, action });
@@ -577,9 +577,9 @@ where
         }
     };
     let dir = data_dir(cli.data_dir.clone());
-    let mut store = Store::load(dir.clone());
     let json = cli.json;
     let result: Result<(), String> = (|| {
+        let mut store = Store::try_load(dir.clone()).map_err(|e| e.to_string())?;
         match cli.cmd {
             Cmd::Add {
                 title,

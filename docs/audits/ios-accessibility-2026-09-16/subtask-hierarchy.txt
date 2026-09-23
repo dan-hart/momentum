@@ -1,0 +1,107 @@
+Attributes: Application, 0x114ef9cc0, pid: 2927, label: 'Momentum'
+Element subtree:
+ →Application, 0x114ef9cc0, pid: 2927, label: 'Momentum'
+    Window (Main), 0x114ef9e00, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x114ef9f40, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x114ef9a40, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x114ef9b80, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x114ef97c0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x114ef9900, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x114ef9540, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x114ef9680, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x114ef8dc0, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x114ef9040, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x114ef9180, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x114ef92c0, {{0.0, 0.0}, {402.0, 874.0}}
+                          Other, 0x114ef9400, {{0.0, 0.0}, {402.0, 874.0}}
+                            NavigationBar, 0x114ef8f00, {{0.0, 62.0}, {402.0, 106.0}}, identifier: 'Today'
+                              Button, 0x114ef8c80, {{20.0, 66.0}, {36.0, 36.0}}, label: 'Lists'
+                              Button, 0x114ef8140, {{290.7, 66.0}, {38.0, 36.0}}, label: 'List options'
+                              Button, 0x114ef8500, {{344.7, 66.0}, {37.3, 36.0}}, label: 'Add task'
+                              StaticText, 0x114ef8640, {{16.0, 119.7}, {95.3, 40.7}}, label: 'Today'
+                            Other, 0x114ef8780, {{0.0, 0.0}, {402.0, 874.0}}
+                              Other, 0x114ef88c0, {{0.0, 0.0}, {402.0, 874.0}}
+                                Other, 0x114ef8b40, {{0.0, 0.0}, {402.0, 874.0}}
+                                  Other, 0x114ef8a00, {{0.0, 0.0}, {402.0, 874.0}}
+                                    CollectionView, 0x114ef8280, {{0.0, 0.0}, {402.0, 874.0}}
+                                      Other, 0x114ef83c0, {{-16.0, -1580.0}, {434.0, 3716.3}}
+                                      Other, 0x114ef8000, {{0.0, 0.0}, {402.0, 874.0}}
+                                        Other, 0x114efbe80, {{0.0, 0.0}, {402.0, 156.0}}
+                                        Other, 0x114efa300, {{0.0, 741.0}, {402.0, 133.0}}
+                                      Other, 0x114efae40, {{0.0, 0.0}, {402.0, 874.0}}
+                                        Other, 0x114efaf80, {{0.0, 0.0}, {402.0, 156.0}}
+                                        Other, 0x114efb840, {{0.0, 741.0}, {402.0, 133.0}}
+                                      Cell, 0x114efa800, {{16.0, 168.0}, {370.0, 40.3}}
+                                        Other, 0x114efb980, {{16.0, 168.0}, {370.0, 40.3}}
+                                        Other, 0x114efbac0, {{16.0, 168.0}, {370.0, 40.3}}
+                                          Other, 0x114efbc00, {{16.0, 168.0}, {370.0, 40.3}}
+                                            Other, 0x114efad00, {{16.0, 168.0}, {370.0, 40.3}}
+                                              StaticText, 0x114efabc0, {{16.0, 168.0}, {370.0, 40.3}}, label: 'Today'
+                                      Cell, 0x114efb340, {{16.0, 208.3}, {370.0, 80.0}}
+                                        Other, 0x114efb700, {{16.0, 208.3}, {370.0, 80.0}}
+                                          Other, 0x114efb200, {{16.0, 208.3}, {370.0, 80.0}}
+                                        Other, 0x114efb5c0, {{16.0, 208.3}, {370.0, 80.0}}
+                                          Other, 0x114efb480, {{16.0, 208.3}, {370.0, 80.0}}
+                                            Other, 0x114efaa80, {{16.0, 208.3}, {370.0, 80.0}}
+                                              Button, 0x114efa6c0, {{32.0, 226.3}, {44.0, 44.0}}, identifier: 'circle', label: 'Complete Parent audit task'
+                                              Button, 0x114efa080, {{86.0, 229.0}, {128.0, 20.3}}, label: 'Open Parent audit task'
+                                              StaticText, 0x114efbd40, {{86.0, 253.3}, {31.0, 14.3}}, label: 'Inbox'
+                                      Cell, 0x114efa440, {{16.0, 288.3}, {370.0, 80.0}}
+                                        Other, 0x114efa1c0, {{16.0, 288.3}, {370.0, 80.0}}
+                                          Other, 0x114efb0c0, {{16.0, 288.3}, {370.0, 80.0}}
+                                        Other, 0x114efa580, {{16.0, 288.3}, {370.0, 80.0}}
+                                          Other, 0x107267340, {{16.0, 288.3}, {370.0, 80.0}}
+                                            Other, 0x107264780, {{16.0, 288.3}, {370.0, 80.0}}
+                                              Button, 0x10af31a40, {{52.0, 306.3}, {44.0, 44.0}}, identifier: 'circle', label: 'Complete Child audit task'
+                                              Button, 0x10af31b80, {{106.0, 309.0}, {117.7, 20.3}}, label: 'Open Child audit task'
+                                              StaticText, 0x10af31cc0, {{106.0, 333.3}, {31.0, 14.3}}, label: 'Inbox'
+                                      Other, 0x10af31e00, {{86.0, 287.3}, {284.0, 1.0}}
+                                      Other, 0x10af31f40, {{369.0, 116.0}, {30.0, 675.0}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                                        Other, 0x10af32940, {{396.0, 521.7}, {3.0, 266.3}}
+                                      Other, 0x10af32bc0, {{369.0, 116.0}, {30.0, 675.0}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                                        Other, 0x10af32a80, {{396.0, 521.7}, {3.0, 266.3}}
+                            Toolbar, 0x10af32580, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'Toolbar', label: 'Toolbar'
+                              Other, 0x10af32800, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x10af326c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x10af321c0, {{0.0, 791.0}, {402.0, 83.0}}
+                    Other, 0x10af32440, {{0.0, 0.0}, {402.0, 874.0}}
+                      TabBar, 0x10af32300, {{0.0, 791.0}, {402.0, 83.0}}, label: 'Tab Bar'
+                        Other, 0x10af32080, {{21.0, 791.0}, {360.0, 62.0}}
+                          Other, 0x10af31900, {{21.0, 791.0}, {95.0, 54.0}}
+                          Other, 0x10af317c0, {{21.0, 791.0}, {360.0, 62.0}}
+                            Button, 0x10af31680, {{25.0, 795.0}, {95.0, 54.0}}, identifier: 'star.fill', label: 'Today', Selected
+                              Image, 0x1073b6300, {{57.3, 800.0}, {30.3, 28.3}}, identifier: 'star.fill', label: 'favorite'
+                            Button, 0x1073b6940, {{110.7, 795.0}, {95.0, 54.0}}, identifier: 'calendar', label: 'Upcoming'
+                              Image, 0x1073b43c0, {{143.7, 802.3}, {29.0, 25.0}}, identifier: 'calendar', label: 'calendar'
+                            Button, 0x1073b7980, {{196.3, 795.0}, {95.0, 54.0}}, identifier: 'magnifyingglass', label: 'Search'
+                              Image, 0x1073b66c0, {{230.0, 801.7}, {27.7, 26.7}}, identifier: 'magnifyingglass', label: 'Search'
+                            Button, 0x1073b70c0, {{282.0, 795.0}, {95.0, 54.0}}, identifier: 'gearshape.fill', label: 'Settings'
+                              Image, 0x1073b6080, {{315.7, 801.0}, {28.0, 28.0}}, identifier: 'gearshape.fill', label: 'Gear shape, filled'
+                          Other, 0x1073b7200, {{21.0, 791.0}, {360.0, 62.0}}
+                          Other, 0x1073b7700, {{25.0, 795.0}, {95.0, 54.0}}
+                            Other, 0x1073b5cc0, {{25.0, 795.0}, {95.0, 54.0}}
+                              Other, 0x1073b7840, {{25.0, 795.0}, {95.0, 54.0}}
+                              Other, 0x1073b61c0, {{25.0, 795.0}, {95.0, 54.0}}
+                                Other, 0x1073b57c0, {{25.0, 795.0}, {95.0, 54.0}}
+                                  Other, 0x1073b5f40, {{25.0, 795.0}, {95.0, 54.0}}
+                                    Other, 0x1073b5680, {{25.0, 795.0}, {95.0, 54.0}}
+                                  Other, 0x1073b75c0, {{25.0, 795.0}, {95.0, 54.0}}
+                                Other, 0x1073b7ac0, {{25.0, 795.0}, {95.0, 54.0}}
+                    Other, 0x1073b5180, {{0.0, 791.0}, {402.0, 83.0}}
+                      Other, 0x10ada8000, {{0.0, 791.0}, {402.0, 83.0}}
+                        Other, 0x10ada8140, {{0.0, 791.0}, {402.0, 83.0}}
+                          Other, 0x10ada8280, {{0.0, 791.0}, {402.0, 83.0}}
+                            Other, 0x10ada83c0, {{0.0, 791.0}, {402.0, 83.0}}
+                              Other, 0x10ada8500, {{0.0, 791.0}, {402.0, 83.0}}
+                          Other, 0x10ada8640, {{0.0, 791.0}, {402.0, 83.0}}
+                            Other, 0x10ada8780, {{0.0, 791.0}, {402.0, 83.0}}
+    Window, 0x10ada88c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x10ada8a00, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x10ada8b40, {{0.0, 0.0}, {402.0, 874.0}}
+Path to element:
+ →Application, 0x114ef9cc0, pid: 2927, label: 'Momentum'
+Query chain:
+ →Find: Target Application 'com.codedbydan.Momentum.ios'
+  Output: {
+    Application, 0x10ada8c80, pid: 2927, label: 'Momentum'
+  }

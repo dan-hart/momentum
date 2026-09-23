@@ -1,0 +1,198 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Momentum
+options:
+  developmentLanguage: en
+  knownRegions: [en, de]
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "27.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_EMIT_LOC_STRINGS: true
+    LOCALIZATION_PREFERS_STRING_CATALOGS: true
+    MARKETING_VERSION: "0.4.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: false
+    TARGETED_DEVICE_FAMILY: "1,2"
+packages:
+  MomentumCore:
+    path: ../macos/Packages/MomentumCore
+  MomentumKit:
+    path: ../macos/Packages/MomentumKit
+  MomentumMobile:
+    path: Packages/MomentumMobile
+targets:
+  Momentum:
+    type: application
+    platform: iOS
+    sources:
+      - Momentum
+      - ../macos/Momentum/Services/TaskEntities.swift
+      - ../macos/Momentum/Services/TaskIntents.swift
+      - ../macos/Momentum/Services/CreateTaskIntent.swift
+      - ../macos/Momentum/Resources/AppShortcuts.xcstrings
+    preBuildScripts:
+      - name: Verify Rust core build
+        script: |
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            "$SRCROOT/scripts/build-core.sh" --debug
+          else
+            "$SRCROOT/scripts/build-core.sh"
+          fi
+        basedOnDependencyAnalysis: false
+    dependencies:
+      - package: MomentumCore
+      - package: MomentumKit
+      - package: MomentumMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codedbydan.Momentum.ios
+        ASSETCATALOG_COMPILER_APPICON_NAME: MomentumIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        OTHER_LDFLAGS: "$(inherited) -lresolv"
+    info:
+      path: Momentum/Info.plist
+      properties:
+        CFBundleDisplayName: Momentum
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        CFBundleURLTypes:
+          - CFBundleURLName: com.codedbydan.Momentum.tasks
+            CFBundleURLSchemes: [momentum, superproductivity]
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.codedbydan.momentum.tasks
+            UTTypeDescription: Momentum Tasks
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.codedbydan.Momentum.ios.notifications.refresh
+        UIBackgroundModes:
+          - fetch
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSHumanReadableCopyright: "© 2026 Dan Hart. GPL-3.0-or-later."
+  MomentumTestHost:
+    type: application
+    platform: iOS
+    sources:
+      - path: MomentumTestHost
+      # SwiftUI resolves default strings from the host's main bundle during rendering.
+      - path: Momentum/Resources/Localizable.xcstrings
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codedbydan.Momentum.TestHost
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
+  MomentumViewTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MomentumViewTests
+      # Compile the real views, not copies. Exclude all production entry points:
+      # the test host never opens stores, starts clocks or requests permissions.
+      - path: Momentum
+        excludes: [App/MomentumApp.swift, App/MobileAppDelegate.swift, Info.plist, Resources/MomentumIcon.icon]
+    dependencies:
+      - target: MomentumTestHost
+      - package: MomentumCore
+      - package: MomentumKit
+      - package: MomentumMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codedbydan.Momentum.ViewTests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MomentumTestHost.app/MomentumTestHost"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        OTHER_LDFLAGS: "$(inherited) -lresolv"
+  MomentumTransportTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [MomentumTransportTests]
+    dependencies:
+      - target: MomentumTestHost
+      - package: MomentumCore
+      - package: MomentumKit
+      - package: MomentumMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codedbydan.Momentum.TransportTests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MomentumTestHost.app/MomentumTestHost"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        OTHER_LDFLAGS: "$(inherited) -lresolv"
+schemes:
+  MomentumTransportTests:
+    build:
+      targets:
+        MomentumTestHost: all
+        MomentumTransportTests: [test]
+    test:
+      targets:
+        - name: MomentumTransportTests
+          parallelizable: false
+      gatherCoverageData: false
+  MomentumPerformanceTests:
+    build:
+      targets:
+        MomentumTestHost: all
+        MomentumViewTests: [test]
+    test:
+      config: Release
+      targets:
+        - name: MomentumViewTests
+          parallelizable: false
+          selectedTests: [SnapshotPerformanceTests]
+      environmentVariables:
+        MOMENTUM_PERFORMANCE_TESTS: "1"
+      gatherCoverageData: false
+  MomentumSpotlightTests:
+    build:
+      targets:
+        MomentumTestHost: all
+        MomentumViewTests: [test]
+    test:
+      targets:
+        - name: MomentumViewTests
+          parallelizable: false
+          selectedTests: [SpotlightSystemTests]
+      environmentVariables:
+        MOMENTUM_SPOTLIGHT_NATIVE: "1"
+      gatherCoverageData: false
+  MomentumFastTests:
+    build:
+      targets:
+        MomentumTestHost: all
+        MomentumViewTests: [test]
+    test:
+      targets:
+        - name: MomentumViewTests
+          parallelizable: false
+      gatherCoverageData: false
+  Momentum:
+    build:
+      targets:
+        Momentum: all
+      preActions:
+        - name: Prepare Apple core
+          settingsTarget: Momentum
+          script: |
+            if [ "$CONFIGURATION" = "Debug" ]; then
+              "$SRCROOT/scripts/build-core.sh" --debug
+            else
+              "$SRCROOT/scripts/build-core.sh"
+            fi

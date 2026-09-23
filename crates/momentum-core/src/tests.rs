@@ -195,6 +195,25 @@ fn task_count_none_is_zero_for_a_populated_store() {
 }
 
 #[test]
+fn ordinary_task_lists_do_not_build_the_global_search_index() {
+    let (e, _d) = demo();
+    assert!(!e.has_search_index());
+
+    let today = e.listing(View::Today, 100);
+    assert!(!today.sections.is_empty());
+    assert!(
+        !e.has_search_index(),
+        "Today should not parse and lowercase every live and archived task"
+    );
+
+    let _ = e.listing(View::Archive, 100);
+    assert!(
+        e.has_search_index(),
+        "Archive still needs the cached archived projection"
+    );
+}
+
+#[test]
 fn today_view_groups_by_day_period_and_keeps_overdue_dates_visible() {
     let (e, _d) = demo();
     let l = e.listing(View::Today, 100);
@@ -344,6 +363,57 @@ fn archive_completed_moves_tasks_and_archive_view_lists_them() {
 }
 
 #[test]
+fn reference_titles_cover_live_and_both_archive_tiers_without_enabling_edits() {
+    let (e, _d) = empty();
+    e.add_task("Live parent".into(), View::Today);
+    let live = id_of(&e, "Live parent");
+    let young = Task::new("Young parent", INBOX_PROJECT_ID);
+    let old = Task::new("Old parent", INBOX_PROJECT_ID);
+    let mut duplicate = young.clone();
+    duplicate.title = "Older duplicate".into();
+    let mut stale_live = task(&e, &live);
+    stale_live.title = "Stale live title".into();
+    e.with_store_mut(|s| {
+        s.state.rest.insert(
+            "archiveYoung".into(),
+            serde_json::json!({"task": {"entities": {
+                &young.id: &young, &live: stale_live, "invalid": {"title": 42}
+            }}}),
+        );
+        s.state.rest.insert(
+            "archiveOld".into(),
+            serde_json::json!({"task": {"entities": {
+                &old.id: &old, &young.id: duplicate
+            }}}),
+        );
+    });
+    let before = e.with_store(|s| serde_json::to_value(&s.state).unwrap());
+    let can_undo = e.can_undo();
+    let titles = e.task_reference_titles(vec![
+        live.clone(),
+        young.id.clone(),
+        old.id.clone(),
+        young.id.clone(),
+        "missing".into(),
+        "invalid".into(),
+    ]);
+    assert_eq!(titles.len(), 3);
+    assert_eq!(titles.get(&live).map(String::as_str), Some("Live parent"));
+    assert_eq!(titles.get(&young.id).map(String::as_str), Some("Young parent"));
+    assert_eq!(titles.get(&old.id).map(String::as_str), Some("Old parent"));
+    assert!(e.task_reference_titles(vec![]).is_empty());
+    assert_eq!(
+        e.task_title(young.id.clone()),
+        None,
+        "existing live-only API is unchanged"
+    );
+    assert!(e.task_detail(old.id.clone()).is_none(), "archive stays read-only");
+    assert!(!e.set_done(old.id, false).changed);
+    assert_eq!(e.with_store(|s| serde_json::to_value(&s.state).unwrap()), before);
+    assert_eq!(e.can_undo(), can_undo);
+}
+
+#[test]
 fn archive_view_pages_in_batches() {
     let (e, _d) = empty();
     let mut tasks = vec![];
@@ -370,6 +440,37 @@ fn archive_view_pages_in_batches() {
             .to_string()
     });
     assert_eq!(row_ids(&l)[0], newest, "newest completion first");
+}
+
+#[test]
+fn archive_view_combines_both_tiers_in_completion_order() {
+    let (e, _d) = empty();
+    let mut young = Task::new("Young archive task", INBOX_PROJECT_ID);
+    young.is_done = true;
+    young.done_on = Some(200);
+    let mut old = Task::new("Old archive task", INBOX_PROJECT_ID);
+    old.is_done = true;
+    old.done_on = Some(100);
+    e.with_store_mut(|s| {
+        s.state.rest.insert(
+            "archiveYoung".into(),
+            serde_json::json!({"task": {"entities": {&young.id: &young}}}),
+        );
+        s.state.rest.insert(
+            "archiveOld".into(),
+            serde_json::json!({"task": {"entities": {&old.id: &old}}}),
+        );
+    });
+
+    let archive = e.listing(View::Archive, 100);
+    assert_eq!(row_ids(&archive), [young.id.clone(), old.id.clone()]);
+    assert!(archive
+        .sections
+        .iter()
+        .flat_map(|section| &section.rows)
+        .all(|row| matches!(row, Row::Task { row } if row.archived)));
+    assert!(e.task_detail(young.id).is_none());
+    assert!(e.task_detail(old.id).is_none());
 }
 
 #[test]
@@ -439,15 +540,17 @@ fn day_moves_tomorrow_next_week_tonight_and_plan_today() {
         !e.move_to_tomorrow(vec![id.clone()]).changed,
         "already tomorrow: skipped"
     );
-    e.move_to_next_week(vec![id.clone()]);
+    let next_week = e.move_to_next_week(vec![id.clone()]);
     let monday = day_number(&due(&e).unwrap()).unwrap();
     assert_eq!(weekday(monday), 1);
     assert!(monday > today_n() && monday <= today_n() + 7);
-    e.undo();
+    if next_week.changed {
+        e.undo();
+    }
     assert_eq!(
         due(&e).as_deref(),
         Some(day_str(today_n() + 1).as_str()),
-        "undo restores the previous day"
+        "undo restores the previous day; on Sunday both actions already mean Monday"
     );
     e.plan_for_today(vec![id.clone()]);
     assert!(row_ids(&e.listing(View::Today, 100)).contains(&id));
@@ -974,6 +1077,26 @@ fn editing_an_existing_task_prefills_and_saves_only_differences() {
 }
 
 #[test]
+fn moving_a_parent_to_another_project_moves_its_subtasks_and_undo_restores_the_family() {
+    let (e, _d) = demo();
+    let parent = id_of(&e, "Dentist appointment");
+    let original_project = task(&e, &parent).project_id.clone();
+    assert!(e.add_subtask(parent.clone(), "Bring insurance card".into()).changed);
+    let child = e.task_detail(parent.clone()).unwrap().sub_tasks[0].id.clone();
+    assert_eq!(task(&e, &child).project_id, original_project);
+
+    let destination = project_id(&e, "Momentum");
+    let outcome = e.move_to_project(vec![parent.clone()], destination.clone());
+    assert!(outcome.changed);
+    assert_eq!(task(&e, &parent).project_id, destination);
+    assert_eq!(task(&e, &child).project_id, destination);
+
+    assert!(e.undo().changed);
+    assert_eq!(task(&e, &parent).project_id, original_project);
+    assert_eq!(task(&e, &child).project_id, original_project);
+}
+
+#[test]
 fn repeat_instances_are_spawned_once_per_day() {
     let (e, _d) = demo();
     let today = today_str();
@@ -998,6 +1121,28 @@ fn repeat_instances_are_spawned_once_per_day() {
         }
         None => assert_eq!(s.state.task.ids.len(), before),
     });
+}
+
+#[test]
+fn archived_repeat_entity_is_not_deserialized_or_respawned() {
+    let (e, _d) = empty();
+    let today = today_str();
+    let repeat_id = "archived-repeat";
+    let task_id = format!("rpt_{repeat_id}_{today}");
+    let mut cfg = RepeatCfg::for_task(&Task::new("Archived repeat", INBOX_PROJECT_ID));
+    cfg.id = repeat_id.into();
+    cfg.repeat_cycle = "DAILY".into();
+    cfg.start_date = Some(today);
+    e.with_store_mut(|store| {
+        store.state.task_repeat_cfg.insert(repeat_id, cfg);
+        store.state.rest.insert(
+            "archiveYoung".into(),
+            serde_json::json!({"task": {"entities": {task_id.clone(): {"id": task_id.clone()}}}}),
+        );
+    });
+
+    assert_eq!(e.spawn_repeats(), 0);
+    assert!(!has_task(&e, &task_id));
 }
 
 #[test]
@@ -1186,6 +1331,48 @@ fn sidebar_lists_views_and_titles_follow() {
 }
 
 #[test]
+fn sidebar_context_counts_unique_unfinished_live_task_families() {
+    let (e, _d) = empty();
+    let project = e.add_project("Garden".into()).unwrap();
+    let tag = e.add_tag("outside".into()).unwrap();
+    let project_view = View::project(&project);
+    let tag_view = View::tag(&tag);
+    let count = |view: &View| {
+        let sidebar = e.sidebar();
+        sidebar
+            .projects
+            .iter()
+            .chain(sidebar.tags.iter())
+            .find(|entry| &entry.view == view)
+            .unwrap()
+            .task_count
+    };
+    assert_eq!(count(&project_view), 0);
+    assert_eq!(count(&tag_view), 0);
+
+    e.add_task("Family".into(), project_view.clone());
+    let parent = id_of(&e, "Family");
+    e.add_subtask(parent.clone(), "Child".into());
+    let child = id_of(&e, "Child");
+    e.add_tag_to(vec![child.clone()], tag.clone());
+    assert_eq!(count(&project_view), 1);
+    assert_eq!(count(&tag_view), 1, "a child-only tag counts its root family");
+
+    e.add_tag_to(vec![parent.clone()], tag.clone());
+    assert_eq!(count(&tag_view), 1, "parent and child membership do not double count");
+    e.set_done(parent.clone(), true);
+    assert_eq!(count(&project_view), 0);
+    assert_eq!(count(&tag_view), 0, "a completed root excludes its family");
+
+    // Even an inconsistent unfinished child cannot revive a completed root's family count.
+    e.set_done(child, false);
+    assert_eq!(count(&tag_view), 0);
+    e.archive_done();
+    assert_eq!(count(&project_view), 0);
+    assert_eq!(count(&tag_view), 0, "archived roots never count");
+}
+
+#[test]
 fn empty_states_name_the_view() {
     let (e, _d) = empty();
     assert_eq!(e.listing(View::Today, 100).empty, Some(EmptyState::Today));
@@ -1215,12 +1402,22 @@ fn paste_and_drop_text_become_tasks() {
     );
     let link = task(&e, &id_of(&e, "example.org/page"));
     assert_eq!(link.notes.as_deref(), Some("https://example.org/page/"));
+    assert_eq!(
+        link.due_day.as_deref(),
+        Some(today_str().as_str()),
+        "a URL import keeps the destination view"
+    );
     let long = "A rather long paragraph ".repeat(10);
     e.add_from_text(long, View::Today);
     let t = e.with_store(|s| s.state.task.iter().last().cloned().unwrap());
     assert!(
         t.title.chars().count() <= 120 && t.notes.is_some(),
         "long text is title + notes"
+    );
+    assert_eq!(
+        t.due_day.as_deref(),
+        Some(today_str().as_str()),
+        "a paragraph import keeps the destination view"
     );
     assert!(!e.add_from_text("  \n".into(), View::Today).changed);
     let ids = format!("{}\n{}", id_of(&e, "first thing"), id_of(&e, "second thing"));
@@ -1250,6 +1447,61 @@ fn reminders_fire_once_for_due_tasks() {
     assert!(e.complete_by_title("ping".into()).changed);
     assert!(task(&e, &id).is_done);
     assert!(!e.complete_by_title("ping".into()).changed, "already done");
+}
+
+#[test]
+fn task_counts_share_today_membership_and_count_families_once() {
+    let (e, _d) = empty();
+    e.add_task("Today parent".into(), View::Today);
+    let parent = id_of(&e, "Today parent");
+    e.add_subtask(parent.clone(), "Child".into());
+    let mut overdue = Task::new("Overdue", INBOX_PROJECT_ID);
+    overdue.due_day = Some(day_str(today_n() - 1));
+    let overdue_id = overdue.id.clone();
+    e.dispatch(Action::AddTask {
+        task: overdue,
+        bottom: true,
+    });
+    let mut future = Task::new("Future", INBOX_PROJECT_ID);
+    future.due_day = Some(day_str(today_n() + 1));
+    e.dispatch(Action::AddTask {
+        task: future,
+        bottom: true,
+    });
+    let mut timed = Task::new("Timed today", INBOX_PROJECT_ID);
+    timed.due_day = Some(day_str(today_n() + 1));
+    timed.due_with_time = local_ms(&today_str(), 23, 0);
+    e.dispatch(Action::AddTask {
+        task: timed,
+        bottom: true,
+    });
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 2);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 3);
+    assert_eq!(e.today_open_count(), e.task_count(TaskCountMode::DueToday));
+    e.bulk_done(vec![parent, overdue_id]);
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
+    e.archive_done();
+    assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
+    assert_eq!(e.task_count(TaskCountMode::DueToday), 1);
+}
+
+#[test]
+fn stale_notification_cannot_snooze_completed_archived_or_deleted_tasks() {
+    let (e, _d) = empty();
+    e.add_task("Finish notification task".into(), View::Today);
+    let id = id_of(&e, "Finish notification task");
+    assert!(e.snooze(id.clone(), 10).changed);
+    let reminder = task(&e, &id).remind_at;
+    e.bulk_done(vec![id.clone()]);
+    assert!(!e.snooze(id.clone(), 10).changed);
+    assert_eq!(task(&e, &id).remind_at, reminder);
+    e.archive_done();
+    assert!(!e.snooze(id.clone(), 10).changed);
+    e.add_task("Deleted notification task".into(), View::Today);
+    let deleted = id_of(&e, "Deleted notification task");
+    e.bulk_delete(vec![deleted.clone()]);
+    assert!(!e.snooze(deleted, 10).changed);
+    assert!(!e.snooze("missing-task".into(), 10).changed);
 }
 
 #[test]
@@ -1993,6 +2245,43 @@ fn morning_night_is_the_default_and_retains_every_task_without_writing() {
     assert!(l.sections.iter().all(|s| s.kind == SectionKind::Plain));
     assert_eq!(row_ids(&l).len(), 8);
     assert_eq!(e.pending_count(), pending);
+}
+
+#[test]
+fn morning_night_is_plain_outside_day_views() {
+    let (e, _dir) = empty();
+    let project = e.add_project("Plain context project".into()).unwrap();
+    let tag = e.add_tag("Plain context tag".into()).unwrap();
+    let due_day = day_str(today_n() + 1);
+    let mut task = Task::new("Future plain context sentinel", &project);
+    task.due_day = Some(due_day.clone());
+    task.tag_ids = vec![tag.clone()];
+    e.dispatch(Action::AddTask { task, bottom: true });
+
+    for (context, listing, expected_kind) in [
+        ("Upcoming", e.listing(View::Upcoming, 100), SectionKind::Plain),
+        ("project", e.listing(View::project(&project), 100), SectionKind::Plain),
+        ("tag", e.listing(View::tag(&tag), 100), SectionKind::Plain),
+        (
+            "search",
+            e.search("Future plain context sentinel".into()),
+            SectionKind::SearchTasks,
+        ),
+    ] {
+        assert_eq!(listing.sections.len(), 1, "{context} keeps one section");
+        let section = &listing.sections[0];
+        assert_eq!(section.kind, expected_kind, "{context} keeps its section kind");
+        assert_eq!(section.group, None, "{context} stays ungrouped");
+        assert_eq!(section.rows.len(), 1, "{context} keeps the task once");
+        assert!(
+            matches!(
+                &section.rows[0],
+                Row::Task { row }
+                    if row.day.is_some() && row.due_day.as_deref() == Some(due_day.as_str())
+            ),
+            "{context} retains visible and raw due-day metadata"
+        );
+    }
 }
 
 #[test]

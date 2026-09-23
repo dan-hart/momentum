@@ -57,7 +57,7 @@ fn replace_state_drops_pending_ops() {
     let mut fresh = AppData::fresh();
     let t = Task::new("imported", INBOX_PROJECT_ID);
     fresh.task.insert(&t.id.clone(), t);
-    s.replace_state(fresh);
+    s.replace_state(fresh).unwrap();
     assert!(s.pending.is_empty());
     assert_eq!(s.state.task.ids.len(), 1);
 }
@@ -123,4 +123,51 @@ fn adopt_snapshot_replaces_a_fresh_store_and_unions_into_a_used_one() {
         !used.state.rest.contains_key("globalConfig"),
         "unions never overwrite local slices"
     );
+}
+
+#[test]
+fn failed_save_preserves_all_three_previous_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::load(dir.path().to_path_buf());
+    add(&mut store, "Original");
+    let files = ["state.json", "pending.json", "meta.json"];
+    let original: Vec<_> = files
+        .iter()
+        .map(|f| std::fs::read(dir.path().join(f)).unwrap())
+        .collect();
+    let replacement = Task::new("Replacement", INBOX_PROJECT_ID);
+    store.state.task.insert(&replacement.id.clone(), replacement);
+    store.pending.clear();
+    store.meta.last_nextcloud_ms = 42;
+    // Fail after the old implementation had already overwritten state.json.
+    std::fs::create_dir(dir.path().join("pending.json.tmp")).unwrap();
+    assert!(store.save().is_err());
+    for (file, bytes) in files.iter().zip(original) {
+        assert_eq!(
+            std::fs::read(dir.path().join(file)).unwrap(),
+            bytes,
+            "partial write changed {file}"
+        );
+    }
+}
+
+#[test]
+fn batch_persists_ordered_actions_and_clock_as_one_complete_image() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::load(dir.path().to_path_buf());
+    let task = sp_model::Task::new("Before", sp_model::INBOX_PROJECT_ID);
+    let id = task.id.clone();
+    store.dispatch_batch([
+        sp_oplog::Action::AddTask { task, bottom: true },
+        sp_oplog::Action::UpdateTask {
+            id: id.clone(),
+            changes: serde_json::json!({ "title": "After" }).as_object().unwrap().clone(),
+        },
+    ]);
+    let reopened = Store::try_load(dir.path().to_path_buf()).unwrap();
+    assert_eq!(reopened.state.task.entities[&id].title, "After");
+    assert_eq!(reopened.pending.len(), 2);
+    assert_eq!(reopened.meta.vector_clock[&reopened.meta.client_id], 2);
+    assert_eq!(reopened.pending[0].op.v[&reopened.meta.client_id], 1);
+    assert_eq!(reopened.pending[1].op.v[&reopened.meta.client_id], 2);
 }

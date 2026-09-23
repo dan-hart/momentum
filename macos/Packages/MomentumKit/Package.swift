@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
 //
-// Everything the macOS app does that is not a view: the state object that drives every
-// window, the wording of what the core reports, preferences and the Keychain.
+// Shared Apple presentation support: wording, task forms, preferences and Keychain.
+// The macOS state object and desktop services are available only on macOS.
 //
 // It lives in a package so the unit tests run against it directly — no app to launch, no
 // window to drive, no UI automation. `swift test` here finishes in about a second, and
@@ -13,7 +13,7 @@ import PackageDescription
 let package = Package(
     name: "MomentumKit",
     defaultLocalization: "en",
-    platforms: [.macOS("26.0")],
+    platforms: [.macOS("26.0"), .iOS("26.0")],
     products: [
         .library(name: "MomentumKit", targets: ["MomentumKit"])
     ],

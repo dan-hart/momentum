@@ -285,3 +285,110 @@ fn project_color_comes_from_theme_primary() {
     p.theme = json!(null);
     assert!(p.color().is_none());
 }
+
+#[test]
+fn planned_ids_preserves_today_order_and_filters_by_requested_day() {
+    let mut d = AppData::fresh();
+    for (id, day) in [
+        ("a", "2026-09-17"),
+        ("b", "2026-09-17"),
+        ("c", "2026-09-17"),
+        ("other", "2026-09-18"),
+        ("child", "2026-09-17"),
+    ] {
+        d.task.insert(
+            id,
+            Task {
+                id: id.into(),
+                due_day: Some(day.into()),
+                ..Default::default()
+            },
+        );
+    }
+    d.task.entities.get_mut("child").unwrap().parent_id = Some("a".into());
+    d.tag.entities.get_mut(TODAY_TAG_ID).unwrap().task_ids =
+        vec!["b".into(), "a".into(), "other".into(), "child".into()];
+    assert_eq!(d.planned_ids("2026-09-17"), vec!["b", "a", "c"]);
+    assert_eq!(d.planned_ids("2026-09-18"), vec!["other"]);
+    assert_eq!(d.today_ids(), d.planned_ids(&today_str()));
+}
+
+#[test]
+fn repeat_task_for_day_is_pure_and_preserves_existing_constructor_semantics() {
+    let mut c = cfg("DAILY", 1, "2026-09-16");
+    c.id = "repeat".into();
+    c.title = Some("  Recurring title\n".into());
+    c.tag_ids = vec![TODAY_TAG_ID.into(), "morning".into()];
+    c.default_estimate = Some(15_000.0);
+    c.notes = Some("  notes retained  ".into());
+    c.extra.insert("dueWithTime".into(), json!(123));
+    c.extra.insert("remindAt".into(), json!(100));
+    for (project, expected_project) in [(None, "fallback"), (Some(""), "fallback"), (Some("chosen"), "chosen")] {
+        c.project_id = project.map(String::from);
+        let task = c.task_for_day("2026-09-17", "fallback", 1234);
+        assert_eq!(
+            task,
+            Task {
+                id: "rpt_repeat_2026-09-17".into(),
+                title: "Recurring title".into(),
+                project_id: expected_project.into(),
+                created: 1234,
+                repeat_cfg_id: Some("repeat".into()),
+                due_day: Some("2026-09-17".into()),
+                time_estimate: 15_000.0,
+                notes: Some("  notes retained  ".into()),
+                tag_ids: vec!["morning".into()],
+                ..Default::default()
+            }
+        );
+        assert_eq!(task, c.task_for_day("2026-09-17", "fallback", 1234));
+    }
+    c.title = None;
+    c.notes = Some(String::new());
+    c.default_estimate = None;
+    let task = c.task_for_day("2026-09-17", "fallback", 1234);
+    assert!(task.title.is_empty());
+    assert!(task.notes.is_none());
+    assert_eq!(task.time_estimate, 0.0);
+}
+
+#[test]
+fn planned_ids_retains_stored_duplicates_and_appends_each_straggler_once() {
+    let mut d = AppData::fresh();
+    for id in ["a", "b", "c", "done", "child"] {
+        d.task.insert(
+            id,
+            Task {
+                id: id.into(),
+                due_day: Some("2026-09-16".into()),
+                ..Default::default()
+            },
+        );
+    }
+    d.task.entities.get_mut("done").unwrap().is_done = true;
+    d.task.entities.get_mut("child").unwrap().parent_id = Some("a".into());
+    d.task.ids = ["c", "a", "c", "done", "b", "child"].map(String::from).into();
+    d.tag.entities.get_mut(TODAY_TAG_ID).unwrap().task_ids = ["b", "b", "ghost", "a", "child"].map(String::from).into();
+    assert_eq!(d.planned_ids("2026-09-16"), vec!["b", "b", "a", "c", "done"]);
+}
+
+#[test]
+fn backup_rejects_unrelated_json_and_incomplete_task_slices() {
+    for invalid in [
+        json!({}),
+        json!({"settings": {}}),
+        json!({"data": {}}),
+        json!({"task": {}}),
+        json!({"task": {"ids": []}}),
+        json!({"task": {"entities": {}}}),
+    ] {
+        assert!(
+            AppData::from_backup(invalid.clone()).is_err(),
+            "must not treat {invalid} as an empty backup"
+        );
+    }
+    assert!(
+        AppData::from_backup(json!({"task": {"ids": [], "entities": {}}})).is_ok(),
+        "an explicitly empty task collection is a valid backup"
+    );
+}

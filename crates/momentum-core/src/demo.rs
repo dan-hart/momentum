@@ -10,6 +10,7 @@ use sp_store::Store;
 pub fn store(dir: std::path::PathBuf) -> Store {
     let _ = std::fs::remove_dir_all(&dir);
     let mut s = Store::load(dir);
+    let mut actions = Vec::new();
     let (work, home) = (Project::new("Momentum"), Project::new("Home"));
     let (urgent, gnome, evening, morning) = (
         Tag::new("urgent"),
@@ -33,7 +34,7 @@ pub fn store(dir: std::path::PathBuf) -> Store {
         Action::AddTag { tag: evening },
         Action::AddTag { tag: morning },
     ] {
-        s.dispatch(a);
+        actions.push(a);
     }
     let today = today_str();
     let mk = |title: &str, project: &str, est: f64, tags: &[&str], due: bool| {
@@ -67,7 +68,7 @@ pub fn store(dir: std::path::PathBuf) -> Store {
         mk("Plan weekend hike", &hid, 0.0, &[], false),
         mk("Submit Flathub verification", &wid, 900_000.0, &[&gid], false),
     ] {
-        s.dispatch(a);
+        actions.push(a);
     }
     // Upcoming tasks and a weekly repeat, so Coming Up and the repeat badge have something to show.
     let plus = |n: i64| day_str(day_number(&today).unwrap() + n);
@@ -76,10 +77,11 @@ pub fn store(dir: std::path::PathBuf) -> Store {
         ("Team retrospective", 1),
         ("Water the plants", 3),
         ("Pay rent", 6),
+        ("Review autumn goals", 21),
     ] {
         let mut t = Task::new(title, &hid);
         t.due_day = Some(plus(days));
-        s.dispatch(Action::AddTask { task: t, bottom: true });
+        actions.push(Action::AddTask { task: t, bottom: true });
     }
     let mut cfg = RepeatCfg {
         id: "demo-weekly".into(),
@@ -103,6 +105,7 @@ pub fn store(dir: std::path::PathBuf) -> Store {
     ];
     *flags[wd] = true;
     s.state.task_repeat_cfg.insert("demo-weekly", cfg);
-    s.save().ok();
+    // A demo is one complete seed, not twenty separately committed user actions.
+    s.dispatch_batch(actions);
     s
 }

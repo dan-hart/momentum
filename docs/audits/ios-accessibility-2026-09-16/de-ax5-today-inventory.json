@@ -1,0 +1,195 @@
+{
+  "automatedFindingsEmpty" : false,
+  "findings" : [
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(115.66666666666667, 693.6666666666666, 197.66666666666663, 156.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Akzentfarbe, Text und Feedback",
+      "screen" : "de-ax5-settings",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 693.6666666666666, 197.66666666666663, 156.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Akzentfarbe, Text und Feedback",
+      "screen" : "de-ax5-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 576.0, 176.33333333333331, 114.66666666666663)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Erscheinungsbild",
+      "screen" : "de-ax5-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(115.66666666666667, 829.0, 235.0, 57.33333333333337)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Demnächst",
+      "screen" : "de-ax5-list-settings",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 434.3333333333333, 195.99999999999994, 114.66666666666669)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Sortieren nach",
+      "screen" : "de-ax5-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UILabel may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(44.0, 560.0, 284.0, 63.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Manuelle Reihenfolge",
+      "screen" : "de-ax5-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UILabel may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(44.0, 334.0, 284.0, 63.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Morgen & Abend",
+      "screen" : "de-ax5-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 660.3333333333334, 241.33333333333331, 57.33333333333326)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Reihenfolge",
+      "screen" : "de-ax5-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(115.66666666666667, 37.33333333333337, 241.33333333333331, 57.33333333333333)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Reihenfolge",
+      "screen" : "de-ax5-list-settings-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 206.0, 235.0, 57.333333333333314)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Demnächst",
+      "screen" : "de-ax5-list-settings-bottom",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UILabel may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(44.0, 274.33333333333337, 284.0, 63.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Nächste 7 Tage",
+      "screen" : "de-ax5-list-settings-bottom",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "de-ax5-appearance",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 353.0, 175.99999999999994, 344.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Projekte und Schlagwörter farbig kennzeichnen",
+      "screen" : "de-ax5-appearance",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(78.0, 296.0, 718.0, 300.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Momentum Standard bleibt in jeder Darstellung orange. Eigene Farben werden für gut lesbare Texte und Bedienelemente angepasst.",
+      "screen" : "de-ax5-landscape-accent",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(23.36318407960199, 784.7031509121061, 355.27363184079604, 229.16749585406296)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Füge #Tags und eine Schätzung hinzu, etwa 30m oder 1h.",
+      "screen" : "de-ax5-capture",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "de-ax5-capture",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this element",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "de-ax5-capture",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this element may be clipped at larger Dynamic Type sizes.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "de-ax5-capture",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    }
+  ],
+  "screens" : [
+    "de-ax5-today",
+    "de-ax5-settings",
+    "de-ax5-list-settings",
+    "de-ax5-list-settings-bottom",
+    "de-ax5-appearance",
+    "de-ax5-accent",
+    "de-ax5-landscape-accent",
+    "de-ax5-capture"
+  ]
+}

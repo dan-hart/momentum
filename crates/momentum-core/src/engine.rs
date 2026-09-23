@@ -8,13 +8,14 @@
 //! mutation returns an [`Outcome`]: whether anything changed, a structured [`Message`]
 //! for a toast, and the id of the undo batch it pushed.
 use crate::listing::{self, SearchIndex};
+use crate::sync_cancellation::{SyncCancellation, SyncOperation};
 use crate::text::*;
 use crate::types::*;
 use serde_json::{json, Map, Value};
 use sp_model::*;
 use sp_oplog::Action;
 use sp_store::Store;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -23,11 +24,16 @@ const UNDO_DEPTH: usize = 50;
 /// Search-provider results: up to this many open tasks.
 pub const QUICK_MATCHES: usize = 8;
 
+#[derive(Clone)]
 pub(crate) struct Inner {
+    staged: bool,
+    pub(crate) dirty: bool,
     pub(crate) store: Store,
     pub(crate) prefs: Preferences,
     undo: Vec<(u64, Vec<Action>)>,
     next_undo: u64,
+    /// Invalidates exchanges superseded by cancellation or explicit replacement.
+    sync_generation: u64,
     index: Option<Arc<SearchIndex>>,
     /// Reminders already shown this session (a snooze or a new time re-arms them).
     notified: HashSet<String>,
@@ -51,8 +57,200 @@ impl Inner {
         self.index = Some(idx.clone());
         idx
     }
+    fn add_task(&mut self, text: String, view: View) -> Outcome {
+        let q = parse_quick_add(&text);
+        if q.title.is_empty() {
+            return Outcome::none();
+        }
+        let g = self;
+        let project = g.project_for(&view);
+        let mut task = Task::new(&q.title, &project);
+        task.time_estimate = q.estimate_ms;
+        if view.is_day() {
+            task.due_day = Some(today_str());
+        }
+        let mut names = q.tags;
+        if let View::Tag { id } = &view {
+            if let Some(t) = g.store.state.tag.entities.get(id) {
+                names.push(t.title.clone());
+            }
+        }
+        for slot in [Slot::Morning, Slot::Tonight] {
+            if view == slot.view() {
+                let id = g.ensure_slot_tag(slot);
+                task.tag_ids.push(id);
+            }
+        }
+        for name in names {
+            let id = g.ensure_tag(&name);
+            if !task.tag_ids.contains(&id) {
+                task.tag_ids.push(id);
+            }
+        }
+        if task.title.is_empty() {
+            return Outcome::none();
+        }
+        g.dispatch(Action::AddTask { task, bottom: true });
+        Outcome::changed()
+    }
+    fn add_task_with_notes(&mut self, text: String, notes: Option<String>, due: Option<String>) -> Outcome {
+        self.add_task_with_notes_in_view(text, notes, due, View::Search)
+    }
+    fn add_task_with_notes_in_view(
+        &mut self,
+        text: String,
+        notes: Option<String>,
+        due: Option<String>,
+        view: View,
+    ) -> Outcome {
+        let out = self.add_task(text, view);
+        if !out.changed {
+            return out;
+        }
+        let g = self;
+        let Some(last) = g.store.pending.last().and_then(|p| match &p.action {
+            Action::AddTask { task, .. } => Some(task.id.clone()),
+            _ => None,
+        }) else {
+            return out;
+        };
+        let mut ch = Map::new();
+        if let Some(n) = notes.filter(|n| !n.trim().is_empty()) {
+            ch.insert("notes".into(), json!(n));
+        }
+        if let Some(d) = due.filter(|d| d.len() == 10) {
+            ch.insert("dueDay".into(), json!(d));
+        }
+        if !ch.is_empty() {
+            g.update_task(&last, ch);
+        }
+        out
+    }
+    fn add_from_text(&mut self, text: String, view: View) -> Outcome {
+        let n = match tasks_from_text(&text) {
+            TextTasks::Nothing => return Outcome::none(),
+            TextTasks::Link { title, url } => {
+                self.add_task_with_notes_in_view(title, Some(url), None, view);
+                1
+            }
+            TextTasks::Lines(lines) => {
+                let n = lines.len();
+                for l in lines {
+                    self.add_task(l, view.clone());
+                }
+                n
+            }
+            TextTasks::Paragraph { title, notes } => {
+                self.add_task_with_notes_in_view(title, Some(notes), None, view);
+                1
+            }
+        };
+        changed_with(
+            if n == 1 {
+                Message::TaskAdded
+            } else {
+                Message::TasksAdded { n: n as u32 }
+            },
+            None,
+        )
+    }
+    fn add_tag_to(&mut self, ids: Vec<String>, tag_id: String) -> Outcome {
+        let g = self;
+        let Some(name) = g.store.state.tag.entities.get(&tag_id).map(|t| t.title.clone()) else {
+            return Outcome::none();
+        };
+        let tasks = g.tasks(&ids);
+        let mut undo = vec![];
+        for t in &tasks {
+            if t.tag_ids.contains(&tag_id) {
+                continue;
+            }
+            let mut tids = t.tag_ids.clone();
+            tids.push(tag_id.clone());
+            undo.push(Action::UpdateTask {
+                id: t.id.clone(),
+                changes: [("tagIds".to_string(), json!(t.tag_ids))].into_iter().collect(),
+            });
+            g.update_task(&t.id, [("tagIds".to_string(), json!(tids))].into_iter().collect());
+        }
+        if undo.is_empty() {
+            return Outcome::none();
+        }
+        let n = undo.len() as u32;
+        let undo = g.push_undo(undo);
+        changed_with(
+            if ids.len() == 1 {
+                Message::Tagged { name }
+            } else {
+                Message::TasksTagged { n }
+            },
+            Some(undo),
+        )
+    }
+    fn add_tag_by_name(&mut self, ids: Vec<String>, name: String) -> Outcome {
+        if name.trim().is_empty() || !ids.iter().any(|id| self.store.state.task.entities.contains_key(id)) {
+            return Outcome::none();
+        }
+        let id = self.ensure_tag(&name);
+        self.add_tag_to(ids, id)
+    }
+    fn set_done(&mut self, id: String, done: bool) -> Outcome {
+        let g = self;
+        if g.task(&id).is_none() {
+            return Outcome::none();
+        }
+        g.update_task(&id, [("isDone".to_string(), json!(done))].into_iter().collect());
+        if !done {
+            return Outcome::changed();
+        }
+        if let Some(undo) = g.auto_archive(std::slice::from_ref(&id)) {
+            let undo = g.push_undo(undo);
+            return Outcome {
+                changed: true,
+                message: Some(Message::TaskCompletedArchived),
+                undo: Some(undo),
+                sync_now: true,
+            };
+        }
+        let undo = g.push_undo(vec![Action::UpdateTask {
+            id: id.clone(),
+            changes: [("isDone".to_string(), json!(false))].into_iter().collect(),
+        }]);
+        changed_with(Message::TaskCompleted, Some(undo))
+    }
+    fn reopen_tasks(&mut self, ids: Vec<String>) -> Outcome {
+        let g = self;
+        let mut seen = HashSet::new();
+        let tasks: Vec<Task> = ids
+            .into_iter()
+            .filter(|id| seen.insert(id.clone()))
+            .filter_map(|id| g.task(&id))
+            .filter(|task| task.is_done)
+            .collect();
+        if tasks.is_empty() {
+            return Outcome::none();
+        }
+        let mut undo = Vec::with_capacity(tasks.len());
+        for task in tasks {
+            g.update_task(&task.id, [("isDone".to_string(), json!(false))].into_iter().collect());
+            undo.push(Action::UpdateTask {
+                id: task.id,
+                changes: [("isDone".to_string(), json!(true))].into_iter().collect(),
+            });
+        }
+        Outcome {
+            undo: Some(g.push_undo(undo)),
+            ..Outcome::changed()
+        }
+    }
+
     fn dispatch(&mut self, a: Action) {
-        self.store.dispatch(a);
+        if self.staged {
+            self.store.stage(a);
+            self.dirty = true;
+        } else {
+            self.store.dispatch(a);
+        }
         self.invalidate();
     }
     fn push_undo(&mut self, actions: Vec<Action>) -> u64 {
@@ -303,7 +501,6 @@ impl Inner {
     /// Create today's (or the newest missed day's) instance of every due repeat config.
     pub(crate) fn spawn_repeats(&mut self) -> u32 {
         let today = today_str();
-        let archived = listing::archived_tasks(&self.store);
         let due: Vec<(RepeatCfg, String)> = self
             .store
             .state
@@ -312,23 +509,12 @@ impl Inner {
             .filter_map(|c| c.newest_due_day(&today).map(|d| (c.clone(), d)))
             .filter(|(c, day)| {
                 let id = format!("rpt_{}_{}", c.id, day);
-                !self.store.state.task.entities.contains_key(&id) && !archived.iter().any(|t| t.id == id)
+                !self.store.state.task.entities.contains_key(&id) && !listing::archived_has_task(&self.store, &id)
             })
             .collect();
         let n = due.len() as u32;
         for (cfg, day) in due {
-            let project = cfg
-                .project_id
-                .clone()
-                .filter(|p| !p.is_empty())
-                .unwrap_or_else(|| self.project_for(&View::Today));
-            let mut task = Task::new(cfg.title.as_deref().unwrap_or(""), &project);
-            task.id = format!("rpt_{}_{}", cfg.id, day);
-            task.repeat_cfg_id = Some(cfg.id.clone());
-            task.time_estimate = cfg.default_estimate.unwrap_or(0.0);
-            task.notes = cfg.notes.clone().filter(|n| !n.is_empty());
-            task.due_day = Some(day.clone());
-            task.tag_ids = cfg.tag_ids.iter().filter(|t| *t != TODAY_TAG_ID).cloned().collect();
+            let task = cfg.task_for_day(&day, &self.project_for(&View::Today), now_ms());
             self.dispatch(Action::AddTask { task, bottom: true });
             let changes = [
                 ("lastTaskCreationDay".to_string(), json!(day)),
@@ -417,24 +603,71 @@ fn cfg_to_draft(c: &RepeatCfg, existing: bool) -> RepeatDraft {
 #[cfg_attr(feature = "ffi", derive(uniffi::Object))]
 pub struct Engine {
     pub(crate) inner: Mutex<Inner>,
-    syncing: AtomicBool,
+    pub(crate) syncing: AtomicBool,
     #[cfg(feature = "p2p")]
     pub(crate) p2p: Mutex<Option<Arc<crate::p2p::Runtime>>>,
     pub(crate) ipc: Mutex<Option<crate::ipc::Server>>,
+}
+
+/// Keep the exchange marked active through its final guarded persistence, including
+/// error exits. A second sync cannot snapshot the store in the commit gap.
+struct SyncLease<'a>(&'a AtomicBool);
+impl Drop for SyncLease<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
 }
 
 impl Engine {
     pub(crate) fn lock(&self) -> MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
+    #[cfg(test)]
+    pub(crate) fn has_search_index(&self) -> bool {
+        self.lock().index.is_some()
+    }
+    /// Apply rules to a private candidate, persist once, then publish under the same
+    /// owner lock. A failed write cannot consume undo or wake sync with unsaved state.
+    fn try_edit<T>(&self, change: impl FnOnce(&mut Inner) -> T) -> Result<T, CoreError> {
+        self.try_edit_checked(|candidate| Ok(change(candidate)))
+    }
+    pub(crate) fn try_edit_checked<T>(
+        &self,
+        change: impl FnOnce(&mut Inner) -> Result<T, CoreError>,
+    ) -> Result<T, CoreError> {
+        let mut live = self.lock();
+        let mut candidate = live.clone();
+        candidate.staged = true;
+        candidate.dirty = false;
+        candidate.change_signal = None;
+        let result = change(&mut candidate)?;
+        let changed = candidate.dirty;
+        if changed {
+            candidate.store.save()?;
+        }
+        candidate.staged = false;
+        candidate.dirty = false;
+        candidate.change_signal = live.change_signal.clone();
+        *live = candidate;
+        if changed {
+            live.invalidate();
+        }
+        Ok(result)
+    }
+    fn edit(&self, change: impl FnOnce(&mut Inner) -> Outcome) -> Outcome {
+        self.try_edit(change).unwrap_or_else(save_failure)
+    }
     fn from_store(dir: PathBuf, store: Store) -> Arc<Self> {
         let _ = dir;
         Arc::new(Self {
             inner: Mutex::new(Inner {
+                staged: false,
+                dirty: false,
                 store,
                 prefs: Preferences::default(),
                 undo: vec![],
                 next_undo: 0,
+                sync_generation: 0,
                 index: None,
                 notified: HashSet::new(),
                 last_day: today_str(),
@@ -455,6 +688,13 @@ impl Engine {
     pub fn open(dir: String) -> Arc<Self> {
         let dir = PathBuf::from(dir);
         Self::from_store(dir.clone(), Store::load(dir))
+    }
+    /// Checked startup for native clients: recovery errors must not become empty data.
+    #[cfg_attr(feature = "ffi", uniffi::constructor)]
+    pub fn open_checked(dir: String) -> Result<Arc<Self>, CoreError> {
+        let dir = PathBuf::from(dir);
+        let store = Store::try_load(dir.clone())?;
+        Ok(Self::from_store(dir, store))
     }
     /// A fresh store in `dir` filled with the sample data used for screenshots and tests.
     #[cfg_attr(feature = "ffi", uniffi::constructor)]
@@ -484,10 +724,10 @@ impl Engine {
     /// times pages revealed); ignored elsewhere.
     pub fn listing(&self, view: View, archive_limit: u32) -> Listing {
         let mut g = self.lock();
-        let idx = g.index();
+        let idx = matches!(&view, View::Archive).then(|| g.index());
         listing::group_listing(
             &g.store,
-            listing::listing(&g.store, &idx, &view, &g.prefs, archive_limit as usize),
+            listing::listing(&g.store, idx.as_deref(), &view, &g.prefs, archive_limit as usize),
             g.prefs.group_by,
         )
     }
@@ -650,6 +890,37 @@ impl Engine {
     pub fn task_title(&self, id: String) -> Option<String> {
         self.lock().task(&id).map(|t| t.title)
     }
+    /// Read-only names for references to live or archived tasks. Unlike `task_title`,
+    /// this does not imply that the task can be opened, edited or dragged. Requested
+    /// IDs are resolved under one lock without materializing the full archive.
+    pub fn task_reference_titles(&self, ids: Vec<String>) -> HashMap<String, String> {
+        let g = self.lock();
+        let mut titles = HashMap::new();
+        for id in ids {
+            if titles.contains_key(&id) {
+                continue;
+            }
+            let title = g
+                .store
+                .state
+                .task
+                .entities
+                .get(&id)
+                .map(|task| task.title.clone())
+                .or_else(|| {
+                    ["archiveYoung", "archiveOld"].into_iter().find_map(|tier| {
+                        let value = g.store.state.rest.get(tier)?.get("task")?.get("entities")?.get(&id)?;
+                        serde_json::from_value::<Task>(value.clone())
+                            .ok()
+                            .map(|task| task.title)
+                    })
+                });
+            if let Some(title) = title {
+                titles.insert(id, title);
+            }
+        }
+        titles
+    }
     /// Every line is the id of a live task: our own row drags, not text to make tasks of.
     pub fn is_task_id_list(&self, text: String) -> bool {
         let g = self.lock();
@@ -719,40 +990,7 @@ impl Engine {
     /// Quick-add: `#tag` adds or creates tags, a trailing `1h 30m` sets the estimate; a
     /// day view plans the task for today, a slot view adds its tag, a tag view its tag.
     pub fn add_task(&self, text: String, view: View) -> Outcome {
-        let q = parse_quick_add(&text);
-        if q.title.is_empty() && q.tags.is_empty() {
-            return Outcome::none();
-        }
-        let mut g = self.lock();
-        let project = g.project_for(&view);
-        let mut task = Task::new(&q.title, &project);
-        task.time_estimate = q.estimate_ms;
-        if view.is_day() {
-            task.due_day = Some(today_str());
-        }
-        let mut names = q.tags;
-        if let View::Tag { id } = &view {
-            if let Some(t) = g.store.state.tag.entities.get(id) {
-                names.push(t.title.clone());
-            }
-        }
-        for slot in [Slot::Morning, Slot::Tonight] {
-            if view == slot.view() {
-                let id = g.ensure_slot_tag(slot);
-                task.tag_ids.push(id);
-            }
-        }
-        for name in names {
-            let id = g.ensure_tag(&name);
-            if !task.tag_ids.contains(&id) {
-                task.tag_ids.push(id);
-            }
-        }
-        if task.title.is_empty() {
-            return Outcome::none();
-        }
-        g.dispatch(Action::AddTask { task, bottom: true });
-        Outcome::changed()
+        self.edit(|g| g.add_task(text, view))
     }
     /// Quick-add straight into Today (the quick-add window, `--add`, the search provider).
     pub fn add_task_for_today(&self, text: String) -> Outcome {
@@ -761,58 +999,12 @@ impl Engine {
     /// URL scheme and drops: title with short syntax, optional notes and due day, added to
     /// the first project without planning it.
     pub fn add_task_with_notes(&self, text: String, notes: Option<String>, due: Option<String>) -> Outcome {
-        let out = self.add_task(text, View::Search);
-        if !out.changed {
-            return out;
-        }
-        let mut g = self.lock();
-        let Some(last) = g.store.pending.last().and_then(|p| match &p.action {
-            Action::AddTask { task, .. } => Some(task.id.clone()),
-            _ => None,
-        }) else {
-            return out;
-        };
-        let mut ch = Map::new();
-        if let Some(n) = notes.filter(|n| !n.trim().is_empty()) {
-            ch.insert("notes".into(), json!(n));
-        }
-        if let Some(d) = due.filter(|d| d.len() == 10) {
-            ch.insert("dueDay".into(), json!(d));
-        }
-        if !ch.is_empty() {
-            g.update_task(&last, ch);
-        }
-        out
+        self.edit(|g| g.add_task_with_notes(text, notes, due))
     }
     /// Text from a drop or a multi-line paste: a URL or a paragraph becomes one task with
     /// the text in its notes; several short lines become several tasks.
     pub fn add_from_text(&self, text: String, view: View) -> Outcome {
-        let n = match tasks_from_text(&text) {
-            TextTasks::Nothing => return Outcome::none(),
-            TextTasks::Link { title, url } => {
-                self.add_task_with_notes(title, Some(url), None);
-                1
-            }
-            TextTasks::Lines(lines) => {
-                let n = lines.len();
-                for l in lines {
-                    self.add_task(l, view.clone());
-                }
-                n
-            }
-            TextTasks::Paragraph { title, notes } => {
-                self.add_task_with_notes(title, Some(notes), None);
-                1
-            }
-        };
-        changed_with(
-            if n == 1 {
-                Message::TaskAdded
-            } else {
-                Message::TasksAdded { n: n as u32 }
-            },
-            None,
-        )
+        self.edit(|g| g.add_from_text(text, view))
     }
     /// The New Task dialog. The view adds its slot or tag like quick-add does.
     pub fn create_task(&self, draft: TaskDraft, view: View) -> Outcome {
@@ -827,144 +1019,152 @@ impl Engine {
                 id: None,
             };
         }
-        let mut g = self.lock();
-        let project = if draft.project_id.is_empty() {
-            g.project_for(&view)
-        } else {
-            draft.project_id.clone()
-        };
-        let mut t = Task::new(draft.title.trim(), &project);
-        t.due_with_time = draft
-            .time
-            .and_then(|c| local_ms(&draft.due_day.clone().unwrap_or_else(today_str), c.hour, c.minute));
-        t.due_day = draft.due_day.clone().filter(|_| t.due_with_time.is_none());
-        t.remind_at = match (t.due_with_time, draft.reminder_minutes_before) {
-            (Some(d), Some(m)) => Some(d.saturating_sub(m as u64 * 60_000)),
-            _ => None,
-        };
-        t.time_estimate = draft.estimate_ms;
-        if !draft.notes.is_empty() {
-            t.notes = Some(draft.notes.clone());
-        }
-        t.tag_ids = draft.tag_ids.clone();
-        for name in draft.new_tags.iter().map(|s| s.trim()).filter(|s| !s.is_empty()) {
-            let id = g.ensure_tag(name);
-            if !t.tag_ids.contains(&id) {
-                t.tag_ids.push(id);
+        self.try_edit(|g| {
+            let project = if draft.project_id.is_empty() {
+                g.project_for(&view)
+            } else {
+                draft.project_id.clone()
+            };
+            let mut t = Task::new(draft.title.trim(), &project);
+            t.due_with_time = draft
+                .time
+                .and_then(|c| local_ms(&draft.due_day.clone().unwrap_or_else(today_str), c.hour, c.minute));
+            t.due_day = draft.due_day.clone().filter(|_| t.due_with_time.is_none());
+            t.remind_at = match (t.due_with_time, draft.reminder_minutes_before) {
+                (Some(d), Some(m)) => Some(d.saturating_sub(m as u64 * 60_000)),
+                _ => None,
+            };
+            t.time_estimate = draft.estimate_ms;
+            if !draft.notes.is_empty() {
+                t.notes = Some(draft.notes.clone());
             }
-        }
-        match &view {
-            View::Tag { id } if !t.tag_ids.contains(id) => t.tag_ids.push(id.clone()),
-            View::Morning | View::Tonight => {
-                let slot = if view == View::Morning {
-                    Slot::Morning
-                } else {
-                    Slot::Tonight
-                };
-                let id = g.ensure_slot_tag(slot);
+            t.tag_ids = draft.tag_ids.clone();
+            for name in draft.new_tags.iter().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+                let id = g.ensure_tag(name);
                 if !t.tag_ids.contains(&id) {
                     t.tag_ids.push(id);
                 }
             }
-            _ => {}
-        }
-        let id = t.id.clone();
-        g.dispatch(Action::AddTask { task: t, bottom: true });
-        TaskCreation {
-            outcome: Outcome::changed(),
-            id: Some(id),
-        }
+            match &view {
+                View::Tag { id } if !t.tag_ids.contains(id) => t.tag_ids.push(id.clone()),
+                View::Morning | View::Tonight => {
+                    let slot = if view == View::Morning {
+                        Slot::Morning
+                    } else {
+                        Slot::Tonight
+                    };
+                    let id = g.ensure_slot_tag(slot);
+                    if !t.tag_ids.contains(&id) {
+                        t.tag_ids.push(id);
+                    }
+                }
+                _ => {}
+            }
+            let id = t.id.clone();
+            g.dispatch(Action::AddTask { task: t, bottom: true });
+            TaskCreation {
+                outcome: Outcome::changed(),
+                id: Some(id),
+            }
+        })
+        .unwrap_or_else(|error| TaskCreation {
+            outcome: save_failure(error),
+            id: None,
+        })
     }
     /// The edit dialog closing: only the fields that differ become one `updateTask`.
     pub fn save_task(&self, id: String, draft: TaskDraft) -> Outcome {
-        let mut g = self.lock();
-        let Some(t) = g.task(&id) else {
-            return Outcome::none();
-        };
-        let mut ch = Map::new();
-        let nt = draft.title.trim().to_string();
-        if !nt.is_empty() && nt != t.title {
-            ch.insert("title".into(), json!(nt));
-        }
-        if draft.estimate_ms != t.time_estimate {
-            ch.insert("timeEstimate".into(), json!(draft.estimate_ms));
-        }
-        // A time fixes the day too: `dueWithTime` and `dueDay` never coexist upstream.
-        let nw = draft
-            .time
-            .and_then(|c| local_ms(&draft.due_day.clone().unwrap_or_else(today_str), c.hour, c.minute));
-        let nd = draft.due_day.clone().filter(|_| nw.is_none());
-        if nw != t.due_with_time {
-            ch.insert("dueWithTime".into(), json!(nw));
-        }
-        if nd != t.due_day {
-            ch.insert("dueDay".into(), json!(nd));
-        }
-        let nr = match (nw, draft.reminder_minutes_before) {
-            (Some(d), Some(m)) => Some(d.saturating_sub(m as u64 * 60_000)),
-            _ => None,
-        };
-        if nr != t.remind_at {
-            ch.insert("remindAt".into(), json!(nr));
-            g.notified.remove(&id);
-        }
-        if t.parent_id.is_none() && !draft.project_id.is_empty() && draft.project_id != t.project_id {
-            ch.insert("projectId".into(), json!(draft.project_id));
-        }
-        if draft.notes != t.notes.clone().unwrap_or_default() {
-            ch.insert("notes".into(), json!(draft.notes));
-        }
-        let mut ids = draft.tag_ids.clone();
-        for name in draft.new_tags.iter().map(|s| s.trim()).filter(|s| !s.is_empty()) {
-            let tid = g.ensure_tag(name);
-            if !ids.contains(&tid) {
-                ids.push(tid);
+        self.edit(|g| {
+            let Some(t) = g.task(&id) else {
+                return Outcome::none();
+            };
+            let mut ch = Map::new();
+            let nt = draft.title.trim().to_string();
+            if !nt.is_empty() && nt != t.title {
+                ch.insert("title".into(), json!(nt));
             }
-        }
-        if ids != t.tag_ids {
-            ch.insert("tagIds".into(), json!(ids));
-        }
-        if ch.is_empty() {
-            return Outcome::none();
-        }
-        g.update_task(&id, ch);
-        Outcome::changed()
+            if draft.estimate_ms != t.time_estimate {
+                ch.insert("timeEstimate".into(), json!(draft.estimate_ms));
+            }
+            // A time fixes the day too: `dueWithTime` and `dueDay` never coexist upstream.
+            let nw = draft
+                .time
+                .and_then(|c| local_ms(&draft.due_day.clone().unwrap_or_else(today_str), c.hour, c.minute));
+            let nd = draft.due_day.clone().filter(|_| nw.is_none());
+            if nw != t.due_with_time {
+                ch.insert("dueWithTime".into(), json!(nw));
+            }
+            if nd != t.due_day {
+                ch.insert("dueDay".into(), json!(nd));
+            }
+            let nr = match (nw, draft.reminder_minutes_before) {
+                (Some(d), Some(m)) => Some(d.saturating_sub(m as u64 * 60_000)),
+                _ => None,
+            };
+            if nr != t.remind_at {
+                ch.insert("remindAt".into(), json!(nr));
+                g.notified.remove(&id);
+            }
+            if t.parent_id.is_none() && !draft.project_id.is_empty() && draft.project_id != t.project_id {
+                ch.insert("projectId".into(), json!(draft.project_id));
+            }
+            if draft.notes != t.notes.clone().unwrap_or_default() {
+                ch.insert("notes".into(), json!(draft.notes));
+            }
+            let mut ids = draft.tag_ids.clone();
+            for name in draft.new_tags.iter().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+                let tid = g.ensure_tag(name);
+                if !ids.contains(&tid) {
+                    ids.push(tid);
+                }
+            }
+            if ids != t.tag_ids {
+                ch.insert("tagIds".into(), json!(ids));
+            }
+            if ch.is_empty() {
+                return Outcome::none();
+            }
+            g.update_task(&id, ch);
+            Outcome::changed()
+        })
     }
     pub fn add_subtask(&self, parent_id: String, title: String) -> Outcome {
         if title.trim().is_empty() {
             return Outcome::none();
         }
-        let mut g = self.lock();
-        if g.task(&parent_id).is_none() {
-            return Outcome::none();
-        }
-        let mut task = Task::new(title.trim(), "");
-        task.parent_id = Some(parent_id.clone());
-        g.dispatch(Action::AddSubTask { task, parent_id });
-        Outcome::changed()
+        self.edit(|g| {
+            if g.task(&parent_id).is_none() {
+                return Outcome::none();
+            }
+            let mut task = Task::new(title.trim(), "");
+            task.parent_id = Some(parent_id.clone());
+            g.dispatch(Action::AddSubTask { task, parent_id });
+            Outcome::changed()
+        })
     }
     /// A fresh standalone copy with the same project, tags, estimate, notes and schedule.
     pub fn duplicate_task(&self, id: String) -> Outcome {
-        let mut g = self.lock();
-        let Some(t) = g.task(&id) else {
-            return Outcome::none();
-        };
-        let mut copy = Task::new(&t.title, &t.project_id);
-        copy.tag_ids = t.tag_ids.clone();
-        copy.time_estimate = t.time_estimate;
-        copy.notes = t.notes.clone();
-        copy.due_day = t.due_day.clone();
-        copy.due_with_time = t.due_with_time;
-        copy.remind_at = t.remind_at;
-        g.dispatch(Action::AddTask {
-            task: copy.clone(),
-            bottom: true,
-        });
-        let undo = g.push_undo(vec![Action::DeleteTask {
-            task: copy,
-            sub_tasks: vec![],
-        }]);
-        changed_with(Message::TaskDuplicated, Some(undo))
+        self.edit(|g| {
+            let Some(t) = g.task(&id) else {
+                return Outcome::none();
+            };
+            let mut copy = Task::new(&t.title, &t.project_id);
+            copy.tag_ids = t.tag_ids.clone();
+            copy.time_estimate = t.time_estimate;
+            copy.notes = t.notes.clone();
+            copy.due_day = t.due_day.clone();
+            copy.due_with_time = t.due_with_time;
+            copy.remind_at = t.remind_at;
+            g.dispatch(Action::AddTask {
+                task: copy.clone(),
+                bottom: true,
+            });
+            let undo = g.push_undo(vec![Action::DeleteTask {
+                task: copy,
+                sub_tasks: vec![],
+            }]);
+            changed_with(Message::TaskDuplicated, Some(undo))
+        })
     }
     /// The id of the most recently created task, to focus it after a duplicate or add.
     pub fn last_added_id(&self) -> Option<String> {
@@ -977,28 +1177,7 @@ impl Engine {
     // ---- completing, deleting ------------------------------------------------
 
     pub fn set_done(&self, id: String, done: bool) -> Outcome {
-        let mut g = self.lock();
-        if g.task(&id).is_none() {
-            return Outcome::none();
-        }
-        g.update_task(&id, [("isDone".to_string(), json!(done))].into_iter().collect());
-        if !done {
-            return Outcome::changed();
-        }
-        if let Some(undo) = g.auto_archive(std::slice::from_ref(&id)) {
-            let undo = g.push_undo(undo);
-            return Outcome {
-                changed: true,
-                message: Some(Message::TaskCompletedArchived),
-                undo: Some(undo),
-                sync_now: true,
-            };
-        }
-        let undo = g.push_undo(vec![Action::UpdateTask {
-            id: id.clone(),
-            changes: [("isDone".to_string(), json!(false))].into_iter().collect(),
-        }]);
-        changed_with(Message::TaskCompleted, Some(undo))
+        self.edit(|g| g.set_done(id, done))
     }
     pub fn toggle_done(&self, id: String) -> Outcome {
         let done = self.lock().task(&id).map(|t| t.is_done).unwrap_or(true);
@@ -1020,153 +1199,136 @@ impl Engine {
         }
     }
     pub fn delete_task(&self, id: String) -> Outcome {
-        let mut g = self.lock();
-        let Some(undo) = g.delete_task(&id) else {
-            return Outcome::none();
-        };
-        let undo = g.push_undo(undo);
-        changed_with(Message::TaskDeleted, Some(undo))
+        self.edit(|g| {
+            let Some(undo) = g.delete_task(&id) else {
+                return Outcome::none();
+            };
+            let undo = g.push_undo(undo);
+            changed_with(Message::TaskDeleted, Some(undo))
+        })
     }
     /// Mark several tasks done in one undoable batch.
     pub fn bulk_done(&self, ids: Vec<String>) -> Outcome {
-        let mut g = self.lock();
-        let tasks = g.tasks(&ids);
-        if tasks.is_empty() {
-            return Outcome::none();
-        }
-        let n = tasks.len() as u32;
-        let undo: Vec<Action> = tasks
-            .iter()
-            .map(|t| Action::UpdateTask {
-                id: t.id.clone(),
-                changes: [("isDone".to_string(), json!(t.is_done))].into_iter().collect(),
-            })
-            .collect();
-        for t in &tasks {
-            g.update_task(&t.id, [("isDone".to_string(), json!(true))].into_iter().collect());
-        }
-        let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
-        if let Some(archived) = g.auto_archive(&ids) {
-            // Restoring reopens the archived ones; the rest (subtasks) get their flag back.
-            let mut batch = archived;
-            batch.extend(undo.into_iter().filter(|a| match a {
-                Action::UpdateTask { id, .. } => {
-                    !ids.iter().any(|i| i == id) || tasks.iter().any(|t| t.id == *id && t.parent_id.is_some())
-                }
-                _ => true,
-            }));
-            let undo = g.push_undo(batch);
-            return Outcome {
-                changed: true,
-                message: Some(Message::TasksCompletedArchived { n }),
-                undo: Some(undo),
-                sync_now: true,
-            };
-        }
-        let undo = g.push_undo(undo);
-        changed_with(Message::TasksCompleted { n }, Some(undo))
+        self.edit(|g| {
+            let tasks = g.tasks(&ids);
+            if tasks.is_empty() {
+                return Outcome::none();
+            }
+            let n = tasks.len() as u32;
+            let undo: Vec<Action> = tasks
+                .iter()
+                .map(|t| Action::UpdateTask {
+                    id: t.id.clone(),
+                    changes: [("isDone".to_string(), json!(t.is_done))].into_iter().collect(),
+                })
+                .collect();
+            for t in &tasks {
+                g.update_task(&t.id, [("isDone".to_string(), json!(true))].into_iter().collect());
+            }
+            let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
+            if let Some(archived) = g.auto_archive(&ids) {
+                // Restoring reopens the archived ones; the rest (subtasks) get their flag back.
+                let mut batch = archived;
+                batch.extend(undo.into_iter().filter(|a| match a {
+                    Action::UpdateTask { id, .. } => {
+                        !ids.iter().any(|i| i == id) || tasks.iter().any(|t| t.id == *id && t.parent_id.is_some())
+                    }
+                    _ => true,
+                }));
+                let undo = g.push_undo(batch);
+                return Outcome {
+                    changed: true,
+                    message: Some(Message::TasksCompletedArchived { n }),
+                    undo: Some(undo),
+                    sync_now: true,
+                };
+            }
+            let undo = g.push_undo(undo);
+            changed_with(Message::TasksCompleted { n }, Some(undo))
+        })
     }
     /// Reopen completed tasks as one undoable batch. Missing, duplicate and already-open
     /// tasks are ignored; reopening never triggers automatic archiving.
     pub fn reopen_tasks(&self, ids: Vec<String>) -> Outcome {
-        let mut g = self.lock();
-        let mut seen = HashSet::new();
-        let tasks: Vec<Task> = ids
-            .into_iter()
-            .filter(|id| seen.insert(id.clone()))
-            .filter_map(|id| g.task(&id))
-            .filter(|task| task.is_done)
-            .collect();
-        if tasks.is_empty() {
-            return Outcome::none();
-        }
-        let mut undo = Vec::with_capacity(tasks.len());
-        for task in tasks {
-            g.update_task(&task.id, [("isDone".to_string(), json!(false))].into_iter().collect());
-            undo.push(Action::UpdateTask {
-                id: task.id,
-                changes: [("isDone".to_string(), json!(true))].into_iter().collect(),
-            });
-        }
-        Outcome {
-            undo: Some(g.push_undo(undo)),
-            ..Outcome::changed()
-        }
+        self.edit(|g| g.reopen_tasks(ids))
     }
     pub fn bulk_delete(&self, ids: Vec<String>) -> Outcome {
-        let mut g = self.lock();
-        let mut undo = vec![];
-        for id in &ids {
-            if let Some(batch) = g.delete_task(id) {
-                undo.extend(batch);
+        self.edit(|g| {
+            let mut undo = vec![];
+            for id in &ids {
+                if let Some(batch) = g.delete_task(id) {
+                    undo.extend(batch);
+                }
             }
-        }
-        if undo.is_empty() {
-            return Outcome::none();
-        }
-        let n = ids.len() as u32;
-        let undo = g.push_undo(undo);
-        changed_with(Message::TasksDeleted { n }, Some(undo))
+            if undo.is_empty() {
+                return Outcome::none();
+            }
+            let n = ids.len() as u32;
+            let undo = g.push_undo(undo);
+            changed_with(Message::TasksDeleted { n }, Some(undo))
+        })
     }
 
     // ---- day moves -------------------------------------------------------
 
     /// Plan for today (a drop on Today, Ctrl+T). Tasks already planned today are skipped.
     pub fn plan_for_today(&self, ids: Vec<String>) -> Outcome {
-        let mut g = self.lock();
-        let today = today_str();
-        let tasks: Vec<Task> = g
-            .tasks(&ids)
-            .into_iter()
-            .filter(|t| t.plan_day().as_deref() != Some(&today) || t.due_with_time.is_some())
-            .collect();
-        if tasks.is_empty() {
-            return Outcome::none();
-        }
-        let undo: Vec<Action> = tasks
-            .iter()
-            .map(|t| Action::UpdateTask {
-                id: t.id.clone(),
-                changes: [
-                    ("dueDay".to_string(), json!(t.due_day)),
-                    ("dueWithTime".to_string(), json!(t.due_with_time)),
-                    ("remindAt".to_string(), json!(t.remind_at)),
-                ]
+        self.edit(|g| {
+            let today = today_str();
+            let tasks: Vec<Task> = g
+                .tasks(&ids)
                 .into_iter()
-                .collect(),
-            })
-            .collect();
-        let n = tasks.len() as u32;
-        g.dispatch(Action::PlanForToday {
-            task_ids: tasks.iter().map(|t| t.id.clone()).collect(),
-            today,
-        });
-        let undo = g.push_undo(undo);
-        changed_with(
-            if n == 1 {
-                Message::PlannedForToday
-            } else {
-                Message::TasksPlannedForToday { n }
-            },
-            Some(undo),
-        )
+                .filter(|t| t.plan_day().as_deref() != Some(&today) || t.due_with_time.is_some())
+                .collect();
+            if tasks.is_empty() {
+                return Outcome::none();
+            }
+            let undo: Vec<Action> = tasks
+                .iter()
+                .map(|t| Action::UpdateTask {
+                    id: t.id.clone(),
+                    changes: [
+                        ("dueDay".to_string(), json!(t.due_day)),
+                        ("dueWithTime".to_string(), json!(t.due_with_time)),
+                        ("remindAt".to_string(), json!(t.remind_at)),
+                    ]
+                    .into_iter()
+                    .collect(),
+                })
+                .collect();
+            let n = tasks.len() as u32;
+            g.dispatch(Action::PlanForToday {
+                task_ids: tasks.iter().map(|t| t.id.clone()).collect(),
+                today,
+            });
+            let undo = g.push_undo(undo);
+            changed_with(
+                if n == 1 {
+                    Message::PlannedForToday
+                } else {
+                    Message::TasksPlannedForToday { n }
+                },
+                Some(undo),
+            )
+        })
     }
     pub fn remove_from_today(&self, id: String) -> Outcome {
-        let mut g = self.lock();
-        let Some(t) = g.task(&id) else {
-            return Outcome::none();
-        };
-        if t.due_day.as_deref() != Some(today_str().as_str()) {
-            return Outcome::none();
-        }
-        g.dispatch(Action::RemoveFromToday {
-            task_ids: vec![id.clone()],
-        });
-        let undo = g.push_undo(vec![Action::PlanForToday {
-            task_ids: vec![id],
-            today: today_str(),
-        }]);
-        changed_with(Message::RemovedFromToday, Some(undo))
+        self.edit(|g| {
+            let Some(t) = g.task(&id) else {
+                return Outcome::none();
+            };
+            if t.due_day.as_deref() != Some(today_str().as_str()) {
+                return Outcome::none();
+            }
+            g.dispatch(Action::RemoveFromToday {
+                task_ids: vec![id.clone()],
+            });
+            let undo = g.push_undo(vec![Action::PlanForToday {
+                task_ids: vec![id],
+                today: today_str(),
+            }]);
+            changed_with(Message::RemovedFromToday, Some(undo))
+        })
     }
     /// Ctrl+T and the context menu: plan for today, or take it off today if it is there.
     pub fn toggle_today(&self, id: String) -> Outcome {
@@ -1182,103 +1344,74 @@ impl Engine {
         }
     }
     pub fn toggle_slot(&self, ids: Vec<String>, slot: Slot) -> Outcome {
-        self.lock().toggle_slot(&ids, slot, false)
+        self.edit(|g| g.toggle_slot(&ids, slot, false))
     }
     pub fn move_to_tomorrow(&self, ids: Vec<String>) -> Outcome {
-        self.lock().move_to_day(&ids, &tomorrow(), |n| {
-            if n == 1 {
-                Message::MovedToTomorrow
-            } else {
-                Message::TasksMovedToTomorrow { n }
-            }
+        self.edit(|g| {
+            g.move_to_day(&ids, &tomorrow(), |n| {
+                if n == 1 {
+                    Message::MovedToTomorrow
+                } else {
+                    Message::TasksMovedToTomorrow { n }
+                }
+            })
         })
     }
     pub fn move_to_next_week(&self, ids: Vec<String>) -> Outcome {
-        self.lock().move_to_day(&ids, &next_monday(), |n| {
-            if n == 1 {
-                Message::MovedToNextWeek
-            } else {
-                Message::TasksMovedToNextWeek { n }
-            }
+        self.edit(|g| {
+            g.move_to_day(&ids, &next_monday(), |n| {
+                if n == 1 {
+                    Message::MovedToNextWeek
+                } else {
+                    Message::TasksMovedToNextWeek { n }
+                }
+            })
         })
     }
     /// Move top-level tasks (with their subtasks) to another project, one undo for all.
     pub fn move_to_project(&self, ids: Vec<String>, project_id: String) -> Outcome {
-        let mut g = self.lock();
-        let name = g.store.state.project.entities.get(&project_id).map(|p| p.title.clone());
-        let Some(name) = name else {
-            return Outcome::none();
-        };
-        let tasks: Vec<Task> = g
-            .tasks(&ids)
-            .into_iter()
-            .filter(|t| t.parent_id.is_none() && t.project_id != project_id)
-            .collect();
-        if tasks.is_empty() {
-            return Outcome::none();
-        }
-        let mut undo = vec![];
-        for t in &tasks {
-            let subs = g.sub_tasks(t);
-            let moved = Task {
-                project_id: project_id.clone(),
-                ..t.clone()
+        self.edit(|g| {
+            let name = g.store.state.project.entities.get(&project_id).map(|p| p.title.clone());
+            let Some(name) = name else {
+                return Outcome::none();
             };
-            undo.push(Action::MoveToProject {
-                task: moved,
-                sub_tasks: subs.clone(),
-                target_project_id: t.project_id.clone(),
-            });
-            g.dispatch(Action::MoveToProject {
-                task: t.clone(),
-                sub_tasks: subs,
-                target_project_id: project_id.clone(),
-            });
-        }
-        let undo = g.push_undo(undo);
-        changed_with(Message::MovedToProject { name }, Some(undo))
+            let tasks: Vec<Task> = g
+                .tasks(&ids)
+                .into_iter()
+                .filter(|t| t.parent_id.is_none() && t.project_id != project_id)
+                .collect();
+            if tasks.is_empty() {
+                return Outcome::none();
+            }
+            let mut undo = vec![];
+            for t in &tasks {
+                let subs = g.sub_tasks(t);
+                let moved = Task {
+                    project_id: project_id.clone(),
+                    ..t.clone()
+                };
+                undo.push(Action::MoveToProject {
+                    task: moved,
+                    sub_tasks: subs.clone(),
+                    target_project_id: t.project_id.clone(),
+                });
+                g.dispatch(Action::MoveToProject {
+                    task: t.clone(),
+                    sub_tasks: subs,
+                    target_project_id: project_id.clone(),
+                });
+            }
+            let undo = g.push_undo(undo);
+            changed_with(Message::MovedToProject { name }, Some(undo))
+        })
     }
     /// Add a tag (by id) to tasks that lack it. `Tagged` for one task, `TasksTagged` for a batch.
     pub fn add_tag_to(&self, ids: Vec<String>, tag_id: String) -> Outcome {
-        let mut g = self.lock();
-        let Some(name) = g.store.state.tag.entities.get(&tag_id).map(|t| t.title.clone()) else {
-            return Outcome::none();
-        };
-        let tasks = g.tasks(&ids);
-        let mut undo = vec![];
-        for t in &tasks {
-            if t.tag_ids.contains(&tag_id) {
-                continue;
-            }
-            let mut tids = t.tag_ids.clone();
-            tids.push(tag_id.clone());
-            undo.push(Action::UpdateTask {
-                id: t.id.clone(),
-                changes: [("tagIds".to_string(), json!(t.tag_ids))].into_iter().collect(),
-            });
-            g.update_task(&t.id, [("tagIds".to_string(), json!(tids))].into_iter().collect());
-        }
-        if undo.is_empty() {
-            return Outcome::none();
-        }
-        let n = undo.len() as u32;
-        let undo = g.push_undo(undo);
-        changed_with(
-            if ids.len() == 1 {
-                Message::Tagged { name }
-            } else {
-                Message::TasksTagged { n }
-            },
-            Some(undo),
-        )
+        self.edit(|g| g.add_tag_to(ids, tag_id))
     }
     /// Add a tag by name, creating it when new (the bulk Add Tag… dialog's text field).
     pub fn add_tag_by_name(&self, ids: Vec<String>, name: String) -> Outcome {
-        if name.trim().is_empty() {
-            return Outcome::none();
-        }
-        let id = self.lock().ensure_tag(&name);
-        self.add_tag_to(ids, id)
+        self.edit(|g| g.add_tag_by_name(ids, name))
     }
     /// A task (or several) dropped on a sidebar entry: move to project, add tag, plan for
     /// today, or move into a slot. False when nothing applied.
@@ -1291,32 +1424,33 @@ impl Engine {
                 } else {
                     Slot::Tonight
                 };
-                let mut g = self.lock();
-                let today = today_str();
-                // Already in the slot and planned today: nothing to do.
-                let ids: Vec<String> = g
-                    .tasks(&ids)
-                    .into_iter()
-                    .filter(|t| {
-                        !(t.plan_day().as_deref() == Some(&today)
-                            && listing::slot_of(&g.store, t) == Some(slot)
-                            && t.due_with_time.is_none())
-                    })
-                    .map(|t| t.id)
-                    .collect();
-                if ids.is_empty() {
-                    return Outcome::none();
-                }
-                // A drop always moves into the destination, even when a future task already has its tag.
-                let mut out = g.toggle_slot(&ids, slot, true);
-                if ids.len() == 1 {
-                    out.message = Some(if slot == Slot::Morning {
-                        Message::PlannedForMorning
-                    } else {
-                        Message::PlannedForTonight
-                    });
-                }
-                out
+                self.edit(|g| {
+                    let today = today_str();
+                    // Already in the slot and planned today: nothing to do.
+                    let ids: Vec<String> = g
+                        .tasks(&ids)
+                        .into_iter()
+                        .filter(|t| {
+                            !(t.plan_day().as_deref() == Some(&today)
+                                && listing::slot_of(&g.store, t) == Some(slot)
+                                && t.due_with_time.is_none())
+                        })
+                        .map(|t| t.id)
+                        .collect();
+                    if ids.is_empty() {
+                        return Outcome::none();
+                    }
+                    // A drop always moves into the destination, even when a future task already has its tag.
+                    let mut out = g.toggle_slot(&ids, slot, true);
+                    if ids.len() == 1 {
+                        out.message = Some(if slot == Slot::Morning {
+                            Message::PlannedForMorning
+                        } else {
+                            Message::PlannedForTonight
+                        });
+                    }
+                    out
+                })
             }
             View::Project { id } => self.move_to_project(ids, id),
             View::Tag { id } => self.add_tag_to(ids, id),
@@ -1332,237 +1466,242 @@ impl Engine {
     }
     /// A selection drag is one ordered change and one undo batch on either platform.
     pub fn reorder_tasks(&self, moved: Vec<String>, before: String, view: View) -> Outcome {
-        let mut g = self.lock();
-        if moved.is_empty() || moved.contains(&before) {
-            return Outcome::none();
-        }
-        if g.prefs.sort != SortKey::Manual {
-            return Outcome {
-                changed: false,
-                message: Some(Message::ManualOrderOnly),
-                undo: None,
-                sync_now: false,
+        self.edit(|g| {
+            if moved.is_empty() || moved.contains(&before) {
+                return Outcome::none();
+            }
+            if g.prefs.sort != SortKey::Manual {
+                return Outcome {
+                    changed: false,
+                    message: Some(Message::ManualOrderOnly),
+                    undo: None,
+                    sync_now: false,
+                };
+            }
+            let Some((context_type, context_id)) = Inner::list_context(&view) else {
+                return Outcome::none();
             };
-        }
-        let Some((context_type, context_id)) = Inner::list_context(&view) else {
-            return Outcome::none();
-        };
-        let visible = listing::view_task_ids(&g.store, &view);
-        let is_top_level = |id: &String| g.task(id).is_some_and(|t| t.parent_id.is_none());
-        if !visible.contains(&before) || !is_top_level(&before) {
-            return Outcome::none();
-        }
-        let moved: HashSet<String> = moved
-            .into_iter()
-            .filter(|id| visible.contains(id) && is_top_level(id))
-            .collect();
-        if moved.is_empty() {
-            return Outcome::none();
-        }
-        let group_for = |id: &String| {
-            g.task(id).and_then(|t| {
-                listing::task_group(
-                    &g.store,
-                    &view,
-                    &listing::task_row(&g.store, &view, &t, false),
-                    g.prefs.group_by,
-                )
-            })
-        };
-        let target_group = group_for(&before);
-        if moved.iter().any(|id| group_for(id) != target_group) {
-            return Outcome::none();
-        }
-        // Slots are filtered views of TODAY. Undo uses full-context predecessors so it
-        // also restores the position relative to tasks hidden by the slot filter.
-        let context_view = if matches!(view, View::Morning | View::Tonight) {
-            View::Today
-        } else {
-            view
-        };
-        let original = listing::view_task_ids(&g.store, &context_view);
-        let mut displayed = original.clone();
-        if g.prefs.direction == SortDirection::Descending {
-            displayed.reverse();
-        }
-        let selected: Vec<String> = displayed.iter().filter(|id| moved.contains(*id)).cloned().collect();
-        displayed.retain(|id| !moved.contains(id));
-        let Some(pos) = displayed.iter().position(|id| *id == before) else {
-            return Outcome::none();
-        };
-        displayed.splice(pos..pos, selected);
-        if g.prefs.direction == SortDirection::Descending {
-            displayed.reverse();
-        }
-        if displayed == original {
-            return Outcome::none();
-        }
-        let actions = |order: &[String]| -> Vec<Action> {
-            order
-                .iter()
-                .enumerate()
-                .filter(|(_, id)| moved.contains(*id))
-                .map(|(i, id)| Action::MoveInList {
-                    task_id: id.clone(),
-                    after_task_id: i.checked_sub(1).map(|p| order[p].clone()),
-                    context_type: context_type.into(),
-                    context_id: context_id.clone(),
+            let visible = listing::view_task_ids(&g.store, &view);
+            let is_top_level = |id: &String| g.task(id).is_some_and(|t| t.parent_id.is_none());
+            if !visible.contains(&before) || !is_top_level(&before) {
+                return Outcome::none();
+            }
+            let moved: HashSet<String> = moved
+                .into_iter()
+                .filter(|id| visible.contains(id) && is_top_level(id))
+                .collect();
+            if moved.is_empty() {
+                return Outcome::none();
+            }
+            let group_for = |id: &String| {
+                g.task(id).and_then(|t| {
+                    listing::task_group(
+                        &g.store,
+                        &view,
+                        &listing::task_row(&g.store, &view, &t, false),
+                        g.prefs.group_by,
+                    )
                 })
-                .collect()
-        };
-        let undo = actions(&original);
-        for action in actions(&displayed) {
-            g.dispatch(action);
-        }
-        let undo = g.push_undo(undo);
-        Outcome {
-            changed: true,
-            message: None,
-            undo: Some(undo),
-            sync_now: false,
-        }
+            };
+            let target_group = group_for(&before);
+            if moved.iter().any(|id| group_for(id) != target_group) {
+                return Outcome::none();
+            }
+            // Slots are filtered views of TODAY. Undo uses full-context predecessors so it
+            // also restores the position relative to tasks hidden by the slot filter.
+            let context_view = if matches!(view, View::Morning | View::Tonight) {
+                View::Today
+            } else {
+                view
+            };
+            let original = listing::view_task_ids(&g.store, &context_view);
+            let mut displayed = original.clone();
+            if g.prefs.direction == SortDirection::Descending {
+                displayed.reverse();
+            }
+            let selected: Vec<String> = displayed.iter().filter(|id| moved.contains(*id)).cloned().collect();
+            displayed.retain(|id| !moved.contains(id));
+            let Some(pos) = displayed.iter().position(|id| *id == before) else {
+                return Outcome::none();
+            };
+            displayed.splice(pos..pos, selected);
+            if g.prefs.direction == SortDirection::Descending {
+                displayed.reverse();
+            }
+            if displayed == original {
+                return Outcome::none();
+            }
+            let actions = |order: &[String]| -> Vec<Action> {
+                order
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, id)| moved.contains(*id))
+                    .map(|(i, id)| Action::MoveInList {
+                        task_id: id.clone(),
+                        after_task_id: i.checked_sub(1).map(|p| order[p].clone()),
+                        context_type: context_type.into(),
+                        context_id: context_id.clone(),
+                    })
+                    .collect()
+            };
+            let undo = actions(&original);
+            for action in actions(&displayed) {
+                g.dispatch(action);
+            }
+            let undo = g.push_undo(undo);
+            Outcome {
+                changed: true,
+                message: None,
+                undo: Some(undo),
+                sync_now: false,
+            }
+        })
     }
     /// Ctrl+Up / Ctrl+Down: move a task one place among the open tasks of the view.
     pub fn nudge(&self, id: String, delta: i32, view: View) -> Outcome {
-        let mut g = self.lock();
-        if g.prefs.sort != SortKey::Manual {
-            return Outcome {
-                changed: false,
-                message: Some(Message::ManualOrderOnly),
-                undo: None,
-                sync_now: false,
+        self.edit(|g| {
+            if g.prefs.sort != SortKey::Manual {
+                return Outcome {
+                    changed: false,
+                    message: Some(Message::ManualOrderOnly),
+                    undo: None,
+                    sync_now: false,
+                };
+            }
+            let Some((context_type, context_id)) = Inner::list_context(&view) else {
+                return Outcome::none();
             };
-        }
-        let Some((context_type, context_id)) = Inner::list_context(&view) else {
-            return Outcome::none();
-        };
-        let group_for = |id: &String| {
-            g.task(id).and_then(|t| {
-                listing::task_group(
-                    &g.store,
-                    &view,
-                    &listing::task_row(&g.store, &view, &t, false),
-                    g.prefs.group_by,
-                )
-            })
-        };
-        let selected_group = group_for(&id);
-        let list: Vec<String> = listing::view_task_ids(&g.store, &view)
-            .into_iter()
-            .filter(|i| g.task(i).is_some_and(|t| !t.is_done))
-            .filter(|i| group_for(i) == selected_group)
-            .collect();
-        let Some(pos) = list.iter().position(|i| *i == id) else {
-            return Outcome::none();
-        };
-        let delta = if g.prefs.direction == SortDirection::Descending {
-            -delta.signum()
-        } else {
-            delta.signum()
-        };
-        if delta == 0 {
-            return Outcome::none();
-        }
-        let target = pos as i32 + delta;
-        if target < 0 || target >= list.len() as i32 {
-            return Outcome::none();
-        }
-        // Moving down past X means "after X"; moving up before X means "after X's predecessor".
-        let after_task_id = if delta > 0 {
-            Some(list[target as usize].clone())
-        } else if target == 0 {
-            None
-        } else {
-            Some(list[target as usize - 1].clone())
-        };
-        let context_view = if matches!(view, View::Morning | View::Tonight) {
-            View::Today
-        } else {
-            view
-        };
-        let full = listing::view_task_ids(&g.store, &context_view);
-        let was_after = full
-            .iter()
-            .position(|i| *i == id)
-            .and_then(|p| p.checked_sub(1))
-            .map(|p| full[p].clone());
-        let undo = g.push_undo(vec![Action::MoveInList {
-            task_id: id.clone(),
-            after_task_id: was_after,
-            context_type: context_type.into(),
-            context_id: context_id.clone(),
-        }]);
-        g.dispatch(Action::MoveInList {
-            task_id: id,
-            after_task_id,
-            context_type: context_type.into(),
-            context_id,
-        });
-        Outcome {
-            changed: true,
-            message: None,
-            undo: Some(undo),
-            sync_now: false,
-        }
+            let group_for = |id: &String| {
+                g.task(id).and_then(|t| {
+                    listing::task_group(
+                        &g.store,
+                        &view,
+                        &listing::task_row(&g.store, &view, &t, false),
+                        g.prefs.group_by,
+                    )
+                })
+            };
+            let selected_group = group_for(&id);
+            let list: Vec<String> = listing::view_task_ids(&g.store, &view)
+                .into_iter()
+                .filter(|i| g.task(i).is_some_and(|t| !t.is_done))
+                .filter(|i| group_for(i) == selected_group)
+                .collect();
+            let Some(pos) = list.iter().position(|i| *i == id) else {
+                return Outcome::none();
+            };
+            let delta = if g.prefs.direction == SortDirection::Descending {
+                -delta.signum()
+            } else {
+                delta.signum()
+            };
+            if delta == 0 {
+                return Outcome::none();
+            }
+            let target = pos as i32 + delta;
+            if target < 0 || target >= list.len() as i32 {
+                return Outcome::none();
+            }
+            // Moving down past X means "after X"; moving up before X means "after X's predecessor".
+            let after_task_id = if delta > 0 {
+                Some(list[target as usize].clone())
+            } else if target == 0 {
+                None
+            } else {
+                Some(list[target as usize - 1].clone())
+            };
+            let context_view = if matches!(view, View::Morning | View::Tonight) {
+                View::Today
+            } else {
+                view
+            };
+            let full = listing::view_task_ids(&g.store, &context_view);
+            let was_after = full
+                .iter()
+                .position(|i| *i == id)
+                .and_then(|p| p.checked_sub(1))
+                .map(|p| full[p].clone());
+            let undo = g.push_undo(vec![Action::MoveInList {
+                task_id: id.clone(),
+                after_task_id: was_after,
+                context_type: context_type.into(),
+                context_id: context_id.clone(),
+            }]);
+            g.dispatch(Action::MoveInList {
+                task_id: id,
+                after_task_id,
+                context_type: context_type.into(),
+                context_id,
+            });
+            Outcome {
+                changed: true,
+                message: None,
+                undo: Some(undo),
+                sync_now: false,
+            }
+        })
     }
 
     // ---- archive, undo ----------------------------------------------------
 
     /// Move every done top-level task (with subtasks) to the young archive.
     pub fn archive_done(&self) -> Outcome {
-        let mut g = self.lock();
-        let (tasks, sub_tasks) = listing::done_tasks(&g.store);
-        if tasks.is_empty() {
-            return Outcome::none();
-        }
-        let n = tasks.len() as u32;
-        let undo: Vec<Action> = tasks
-            .iter()
-            .map(|t| Action::RestoreTask {
-                task: t.clone(),
-                sub_tasks: sub_tasks
-                    .iter()
-                    .filter(|s| s.parent_id.as_deref() == Some(&t.id))
-                    .cloned()
-                    .collect(),
-            })
-            .collect();
-        g.dispatch(Action::MoveToArchive { tasks, sub_tasks });
-        let undo = g.push_undo(undo);
-        Outcome {
-            changed: true,
-            message: Some(Message::Archived { n }),
-            undo: Some(undo),
-            sync_now: true,
-        }
+        self.edit(|g| {
+            let (tasks, sub_tasks) = listing::done_tasks(&g.store);
+            if tasks.is_empty() {
+                return Outcome::none();
+            }
+            let n = tasks.len() as u32;
+            let undo: Vec<Action> = tasks
+                .iter()
+                .map(|t| Action::RestoreTask {
+                    task: t.clone(),
+                    sub_tasks: sub_tasks
+                        .iter()
+                        .filter(|s| s.parent_id.as_deref() == Some(&t.id))
+                        .cloned()
+                        .collect(),
+                })
+                .collect();
+            g.dispatch(Action::MoveToArchive { tasks, sub_tasks });
+            let undo = g.push_undo(undo);
+            Outcome {
+                changed: true,
+                message: Some(Message::Archived { n }),
+                undo: Some(undo),
+                sync_now: true,
+            }
+        })
     }
     /// Ctrl+Z: the most recent batch, even after its toast is gone.
     pub fn undo(&self) -> Outcome {
-        let mut g = self.lock();
-        let Some((_, actions)) = g.undo.pop() else {
-            return Outcome {
-                changed: false,
-                message: Some(Message::NothingToUndo),
-                undo: None,
-                sync_now: false,
+        self.edit(|g| {
+            let Some((_, actions)) = g.undo.pop() else {
+                return Outcome {
+                    changed: false,
+                    message: Some(Message::NothingToUndo),
+                    undo: None,
+                    sync_now: false,
+                };
             };
-        };
-        for a in actions {
-            g.dispatch(a);
-        }
-        changed_with(Message::Undone, None)
+            for a in actions {
+                g.dispatch(a);
+            }
+            changed_with(Message::Undone, None)
+        })
     }
     /// A toast's Undo button: that batch, wherever it sits on the stack.
     pub fn undo_batch(&self, id: u64) -> Outcome {
-        let mut g = self.lock();
-        let Some(pos) = g.undo.iter().position(|(i, _)| *i == id) else {
-            return Outcome::none();
-        };
-        let (_, actions) = g.undo.remove(pos);
-        for a in actions {
-            g.dispatch(a);
-        }
-        Outcome::changed()
+        self.edit(|g| {
+            let Some(pos) = g.undo.iter().position(|(i, _)| *i == id) else {
+                return Outcome::none();
+            };
+            let (_, actions) = g.undo.remove(pos);
+            for a in actions {
+                g.dispatch(a);
+            }
+            Outcome::changed()
+        })
     }
 
     // ---- projects and tags -------------------------------------------------
@@ -1573,95 +1712,102 @@ impl Engine {
         }
         let project = Project::new(title.trim());
         let id = project.id.clone();
-        self.lock().dispatch(Action::AddProject { project });
-        Some(id)
+        self.try_edit(|g| {
+            g.dispatch(Action::AddProject { project });
+            id
+        })
+        .ok()
     }
     /// Rename and recolour. `color` is `#rrggbb`; None leaves the colour alone.
     pub fn update_project(&self, id: String, title: String, color: Option<String>) -> Outcome {
-        let mut g = self.lock();
-        let Some(p) = g.store.state.project.entities.get(&id).cloned() else {
-            return Outcome::none();
-        };
-        let mut ch = Map::new();
-        if !title.trim().is_empty() && title.trim() != p.title {
-            ch.insert("title".into(), json!(title.trim()));
-        }
-        if let Some(c) = color.filter(|c| p.color() != Some(c.as_str())) {
-            let mut theme = p.theme.clone();
-            if !theme.is_object() {
-                theme = json!({});
+        self.edit(|g| {
+            let Some(p) = g.store.state.project.entities.get(&id).cloned() else {
+                return Outcome::none();
+            };
+            let mut ch = Map::new();
+            if !title.trim().is_empty() && title.trim() != p.title {
+                ch.insert("title".into(), json!(title.trim()));
             }
-            theme["primary"] = json!(c);
-            ch.insert("theme".into(), theme);
-        }
-        if ch.is_empty() {
-            return Outcome::none();
-        }
-        g.dispatch(Action::UpdateProject { id, changes: ch });
-        Outcome::changed()
+            if let Some(c) = color.filter(|c| p.color() != Some(c.as_str())) {
+                let mut theme = p.theme.clone();
+                if !theme.is_object() {
+                    theme = json!({});
+                }
+                theme["primary"] = json!(c);
+                ch.insert("theme".into(), theme);
+            }
+            if ch.is_empty() {
+                return Outcome::none();
+            }
+            g.dispatch(Action::UpdateProject { id, changes: ch });
+            Outcome::changed()
+        })
     }
     /// Delete a project with all its tasks (after the UI confirmed). Inbox stays.
     pub fn delete_project(&self, id: String) -> Outcome {
         if id == INBOX_PROJECT_ID {
             return Outcome::none();
         }
-        let mut g = self.lock();
-        let Some(p) = g.store.state.project.entities.get(&id).cloned() else {
-            return Outcome::none();
-        };
-        let all: Vec<String> = g
-            .store
-            .state
-            .task
-            .iter()
-            .filter(|t| t.project_id == id)
-            .map(|t| t.id.clone())
-            .collect();
-        g.dispatch(Action::DeleteProject {
-            project_id: id,
-            note_ids: p.note_ids.clone(),
-            all_task_ids: all,
-        });
-        Outcome::changed()
+        self.edit(|g| {
+            let Some(p) = g.store.state.project.entities.get(&id).cloned() else {
+                return Outcome::none();
+            };
+            let all: Vec<String> = g
+                .store
+                .state
+                .task
+                .iter()
+                .filter(|t| t.project_id == id)
+                .map(|t| t.id.clone())
+                .collect();
+            g.dispatch(Action::DeleteProject {
+                project_id: id,
+                note_ids: p.note_ids.clone(),
+                all_task_ids: all,
+            });
+            Outcome::changed()
+        })
     }
     pub fn add_tag(&self, title: String) -> Option<String> {
         if title.trim().is_empty() {
             return None;
         }
-        Some(self.lock().ensure_tag(&title))
+        self.try_edit(|g| g.ensure_tag(&title)).ok()
     }
     pub fn update_tag(&self, id: String, title: String, color: Option<String>) -> Outcome {
-        let mut g = self.lock();
-        let Some(t) = g.store.state.tag.entities.get(&id).cloned() else {
-            return Outcome::none();
-        };
-        let mut ch = Map::new();
-        if !title.trim().is_empty() && title.trim() != t.title {
-            ch.insert("title".into(), json!(title.trim()));
-        }
-        if let Some(c) = color.filter(|c| tag_color(&t).as_deref() != Some(c.as_str())) {
-            let mut theme = t.theme.clone();
-            if !theme.is_object() {
-                theme = json!({});
+        self.edit(|g| {
+            let Some(t) = g.store.state.tag.entities.get(&id).cloned() else {
+                return Outcome::none();
+            };
+            let mut ch = Map::new();
+            if !title.trim().is_empty() && title.trim() != t.title {
+                ch.insert("title".into(), json!(title.trim()));
             }
-            theme["primary"] = json!(c);
-            ch.insert("theme".into(), theme);
-            ch.insert("color".into(), json!(c));
-        }
-        if ch.is_empty() {
-            return Outcome::none();
-        }
-        g.dispatch(Action::UpdateTag { id, changes: ch });
-        Outcome::changed()
+            if let Some(c) = color.filter(|c| tag_color(&t).as_deref() != Some(c.as_str())) {
+                let mut theme = t.theme.clone();
+                if !theme.is_object() {
+                    theme = json!({});
+                }
+                theme["primary"] = json!(c);
+                ch.insert("theme".into(), theme);
+                ch.insert("color".into(), json!(c));
+            }
+            if ch.is_empty() {
+                return Outcome::none();
+            }
+            g.dispatch(Action::UpdateTag { id, changes: ch });
+            Outcome::changed()
+        })
     }
     /// Delete a tag; tasks keep their other tags.
     pub fn delete_tag(&self, id: String) -> Outcome {
-        let mut g = self.lock();
-        if id == TODAY_TAG_ID || !g.store.state.tag.entities.contains_key(&id) {
-            return Outcome::none();
-        }
-        g.dispatch(Action::DeleteTag { id });
-        Outcome::changed()
+        self.edit(|g| {
+            if id == TODAY_TAG_ID || !g.store.state.tag.entities.contains_key(&id) {
+                return Outcome::none();
+            }
+            g.dispatch(Action::DeleteTag { id });
+            Outcome::changed()
+        })
     }
 
     // ---- repeats ---------------------------------------------------------
@@ -1694,45 +1840,50 @@ impl Engine {
                 sync_now: false,
             };
         }
-        let mut g = self.lock();
-        let Some(t) = g.task(&task_id) else {
-            return Outcome::none();
-        };
-        let existing = t
-            .repeat_cfg_id
-            .as_ref()
-            .and_then(|id| g.store.state.task_repeat_cfg.entities.get(id).cloned());
-        let cfg = draft_to_cfg(&existing.clone().unwrap_or_else(|| RepeatCfg::for_task(&t)), &draft);
-        let description = describe_repeat(&cfg);
-        if existing.is_none() {
-            g.dispatch(Action::AddRepeatCfg { task_id, cfg });
-        } else {
-            let mut changes = serde_json::to_value(&cfg)
-                .ok()
-                .and_then(|v| v.as_object().cloned())
-                .unwrap_or_default();
-            // Fields serde skips when None must still be cleared on the other side.
-            for key in ["monthlyWeekOfMonth", "monthlyWeekday"] {
-                changes.entry(key).or_insert(Value::Null);
+        self.edit(|g| {
+            let Some(t) = g.task(&task_id) else {
+                return Outcome::none();
+            };
+            let existing = t
+                .repeat_cfg_id
+                .as_ref()
+                .and_then(|id| g.store.state.task_repeat_cfg.entities.get(id).cloned());
+            let cfg = draft_to_cfg(&existing.clone().unwrap_or_else(|| RepeatCfg::for_task(&t)), &draft);
+            let description = describe_repeat(&cfg);
+            if existing.is_none() {
+                g.dispatch(Action::AddRepeatCfg { task_id, cfg });
+            } else {
+                let mut changes = serde_json::to_value(&cfg)
+                    .ok()
+                    .and_then(|v| v.as_object().cloned())
+                    .unwrap_or_default();
+                // Fields serde skips when None must still be cleared on the other side.
+                for key in ["monthlyWeekOfMonth", "monthlyWeekday"] {
+                    changes.entry(key).or_insert(Value::Null);
+                }
+                g.dispatch(Action::UpdateRepeatCfg { id: cfg.id, changes });
             }
-            g.dispatch(Action::UpdateRepeatCfg { id: cfg.id, changes });
-        }
-        changed_with(Message::RepeatSaved { description }, None)
+            changed_with(Message::RepeatSaved { description }, None)
+        })
     }
     pub fn stop_repeat(&self, task_id: String) -> Outcome {
-        let mut g = self.lock();
-        let Some(t) = g.task(&task_id) else {
-            return Outcome::none();
-        };
-        let Some(id) = t.repeat_cfg_id.clone() else {
-            return Outcome::none();
-        };
-        g.dispatch(Action::DeleteRepeatCfg { id });
-        changed_with(Message::NoLongerRepeats { title: t.title }, None)
+        self.edit(|g| {
+            let Some(t) = g.task(&task_id) else {
+                return Outcome::none();
+            };
+            let Some(id) = t.repeat_cfg_id.clone() else {
+                return Outcome::none();
+            };
+            g.dispatch(Action::DeleteRepeatCfg { id });
+            changed_with(Message::NoLongerRepeats { title: t.title }, None)
+        })
     }
     /// Create today's instances of repeating tasks (at startup, after sync, on day change).
     pub fn spawn_repeats(&self) -> u32 {
-        self.lock().spawn_repeats()
+        self.try_edit(|g| g.spawn_repeats()).unwrap_or_else(|error| {
+            eprintln!("repeat creation failed: {error}");
+            0
+        })
     }
 
     // ---- reminders, day change, summaries -------------------------------------
@@ -1742,18 +1893,19 @@ impl Engine {
     }
     /// Push a reminder forward by `minutes` and let it fire again.
     pub fn snooze(&self, id: String, minutes: u32) -> Outcome {
-        let mut g = self.lock();
-        if g.task(&id).is_none() {
-            return Outcome::none();
-        }
-        g.notified.remove(&id);
-        g.update_task(
-            &id,
-            [("remindAt".to_string(), json!(now_ms() + minutes as u64 * 60_000))]
-                .into_iter()
-                .collect(),
-        );
-        changed_with(Message::Snoozed { minutes }, None)
+        self.edit(|g| {
+            if g.task(&id).is_none_or(|task| task.is_done) {
+                return Outcome::none();
+            }
+            g.notified.remove(&id);
+            g.update_task(
+                &id,
+                [("remindAt".to_string(), json!(now_ms() + minutes as u64 * 60_000))]
+                    .into_iter()
+                    .collect(),
+            );
+            changed_with(Message::Snoozed { minutes }, None)
+        })
     }
     /// True once per calendar day: the caller then spawns repeats and refreshes.
     pub fn day_changed(&self) -> bool {
@@ -1774,7 +1926,6 @@ impl Engine {
     // ---- sync, backup, external changes ---------------------------------------
 
     pub fn sync_status(&self) -> SyncStatus {
-        let g = self.lock();
         #[cfg(feature = "p2p")]
         let (nearby_running, linked) = {
             let p = self.p2p.lock().unwrap_or_else(|e| e.into_inner());
@@ -1785,6 +1936,7 @@ impl Engine {
         };
         #[cfg(not(feature = "p2p"))]
         let (nearby_running, linked) = (false, 0);
+        let g = self.lock();
         SyncStatus {
             syncing: self.syncing.load(Ordering::SeqCst),
             pending_ops: g.store.pending.len() as u32,
@@ -1798,6 +1950,55 @@ impl Engine {
     /// snapshotted, synced without the lock held, and changes made meanwhile are re-applied
     /// on top and kept pending.
     pub fn sync_nextcloud(&self, settings: NextcloudSettings) -> Result<SyncReport, CoreError> {
+        self.sync_nextcloud_cancellable(settings, SyncCancellation::new())
+    }
+
+    /// Read-only authenticated WebDAV probe. `timeout_ms` is explicit so native tests
+    /// exercise the same Swift → UniFFI → Rust → HTTP path without a production wait.
+    pub fn test_nextcloud_connection_cancellable(
+        &self,
+        settings: NextcloudSettings,
+        cancellation: Arc<SyncCancellation>,
+        timeout_ms: u64,
+    ) -> Result<(), CoreError> {
+        if !cancellation.begin() {
+            return Err(CoreError::Transient {
+                message: "Connection test was cancelled or already used".into(),
+            });
+        }
+        let _operation = SyncOperation(&cancellation);
+        let cfg = sp_sync::NextcloudCfg {
+            server_url: settings.server_url,
+            user_name: settings.user_name,
+            password: settings.password,
+            folder: settings.folder,
+            compress: settings.compress,
+            encrypt_key: settings.encryption_password.filter(|key| !key.is_empty()),
+        };
+        if !cfg.is_complete() {
+            return Err(CoreError::NotConfigured);
+        }
+        sp_sync::probe_guarded(&cfg, std::time::Duration::from_millis(timeout_ms), || {
+            !cancellation.is_cancelled()
+        })
+        .map_err(|error| CoreError::Transient {
+            message: error.to_string(),
+        })
+    }
+
+    /// A single-use handle can cancel queued work before this blocking call starts.
+    /// Retain it until the call returns; cancellation does not release the I/O lease.
+    pub fn sync_nextcloud_cancellable(
+        &self,
+        settings: NextcloudSettings,
+        cancellation: Arc<SyncCancellation>,
+    ) -> Result<SyncReport, CoreError> {
+        if !cancellation.begin() {
+            return Err(CoreError::Transient {
+                message: "Sync operation was cancelled or already used".into(),
+            });
+        }
+        let _operation = SyncOperation(&cancellation);
         let cfg = sp_sync::NextcloudCfg {
             server_url: settings.server_url,
             user_name: settings.user_name,
@@ -1809,26 +2010,57 @@ impl Engine {
         if !cfg.is_complete() {
             return Err(CoreError::NotConfigured);
         }
-        if self.syncing.swap(true, Ordering::SeqCst) {
+        // Serialize provider admission with nearby start/stop and restore.
+        #[cfg(feature = "p2p")]
+        let nearby = self.p2p.lock().unwrap_or_else(|e| e.into_inner());
+        #[cfg(feature = "p2p")]
+        if nearby.is_some() {
             return Err(CoreError::Busy);
         }
-        let (mut snapshot, n_pending) = {
+        let (mut snapshot, generation, original_ops) = {
             let g = self.lock();
-            (g.store.clone(), g.store.pending.len())
+            // Reserve and capture the generation under one lock: cancellation
+            // must not slip between admission and taking the exchange snapshot.
+            if self.syncing.swap(true, Ordering::SeqCst) {
+                return Err(CoreError::Busy);
+            }
+            let ids: HashSet<String> = g.store.pending.iter().map(|p| p.op.id.clone()).collect();
+            (g.store.clone(), g.sync_generation, ids)
         };
-        let result = sp_sync::sync(&cfg, &mut snapshot);
-        self.syncing.store(false, Ordering::SeqCst);
+        let _lease = SyncLease(&self.syncing);
+        #[cfg(feature = "p2p")]
+        drop(nearby);
+        let result = sp_sync::exchange_guarded(&cfg, &mut snapshot, sp_sync::DEFAULT_EXCHANGE_TIMEOUT, || {
+            !cancellation.is_cancelled() && self.lock().sync_generation == generation
+        });
         match result {
             Ok(r) => {
                 let mut g = self.lock();
-                // Re-apply anything dispatched while the sync ran, keeping it pending.
-                let live = g.store.pending[n_pending..].to_vec();
+                if g.sync_generation != generation || !cancellation.begin_commit() {
+                    return Err(CoreError::Transient {
+                        message: "Sync was cancelled or superseded by a data replacement".into(),
+                    });
+                }
+                // Identify concurrent edits by stable operation IDs, never an array offset.
+                let live: Vec<_> = g
+                    .store
+                    .pending
+                    .iter()
+                    .filter(|p| !original_ops.contains(&p.op.id))
+                    .cloned()
+                    .collect();
                 for p in &live {
                     sp_oplog::apply(&mut snapshot.state, &p.action);
                 }
                 snapshot.pending.extend(live);
+                snapshot.meta.vector_clock =
+                    sp_oplog::merge_clocks(&snapshot.meta.vector_clock, &g.store.meta.vector_clock);
+                // These local claims can change while the HTTP exchange is in flight.
+                snapshot.meta.last_summary_day = g.store.meta.last_summary_day.clone();
+                snapshot.meta.last_nearby_ms = g.store.meta.last_nearby_ms;
+                snapshot.meta.p2p_bootstrapped = g.store.meta.p2p_bootstrapped;
                 snapshot.meta.last_nextcloud_ms = now_ms();
-                snapshot.save().ok();
+                snapshot.save()?;
                 g.store = snapshot;
                 g.invalidate();
                 g.spawn_repeats();
@@ -1851,13 +2083,33 @@ impl Engine {
             }
         }
     }
+    /// Invalidate the current Nextcloud exchange before its next request or commit.
+    /// Returns whether an active exchange was signalled, not whether its I/O stopped.
+    /// An in-flight HTTP request retains the shared whole-exchange deadline; await
+    /// the exchange before admitting another provider. Call off the UI thread.
+    pub fn cancel_nextcloud(&self) -> bool {
+        let mut g = self.lock();
+        if !self.syncing.load(Ordering::SeqCst) {
+            return false;
+        }
+        g.sync_generation = g.sync_generation.wrapping_add(1);
+        true
+    }
+
     /// Import a Super Productivity backup: replaces local state, drops pending ops.
     pub fn import_backup(&self, path: String) -> Result<Outcome, CoreError> {
         let data = std::fs::read(Path::new(&path))?;
         let v: Value = serde_json::from_slice(&data).map_err(|e| CoreError::Invalid { message: e.to_string() })?;
         let d = AppData::from_backup(v).map_err(|e| CoreError::Invalid { message: e.to_string() })?;
+        // Hold provider admission until replacement commits. A stopped runtime may
+        // still have queued events, but its store guard rejects all of them.
+        #[cfg(feature = "p2p")]
+        let mut nearby = self.p2p.lock().unwrap_or_else(|e| e.into_inner());
+        #[cfg(feature = "p2p")]
+        self.stop_p2p_locked(&mut nearby);
         let mut g = self.lock();
-        g.store.replace_state(d);
+        g.sync_generation = g.sync_generation.wrapping_add(1);
+        g.store.replace_state(d)?;
         g.invalidate();
         g.undo.clear();
         Ok(changed_with(Message::BackupImported, None))
@@ -1877,7 +2129,14 @@ impl Engine {
             return false;
         }
         let mut g = self.lock();
-        let on_disk = Store::load(g.store.dir().to_path_buf());
+        let on_disk = match Store::try_load(g.store.dir().to_path_buf()) {
+            Ok(store) => store,
+            Err(error) => {
+                // File monitors can fire after a failed write; preserve the live owner.
+                eprintln!("store reload failed: {error}");
+                return false;
+            }
+        };
         if on_disk.pending.len() != g.store.pending.len() || on_disk.meta.vector_clock != g.store.meta.vector_clock {
             g.store = on_disk;
             g.invalidate();
@@ -1896,35 +2155,26 @@ impl Engine {
                 .map(|done| (id.clone(), done)),
             _ => None,
         };
-        let (outcome, g) = if let Some((id, done)) = completion {
-            // CLI completion is an app operation: retain auto-archive and undo semantics.
-            let outcome = if done {
-                self.set_done(id, true)
+        self.try_edit(|g| {
+            if let Some((id, done)) = completion {
+                if done {
+                    g.set_done(id, true)
+                } else {
+                    g.reopen_tasks(vec![id])
+                }
             } else {
-                self.reopen_tasks(vec![id])
-            };
-            (outcome, self.lock())
-        } else {
-            let mut g = self.lock();
-            g.dispatch(action);
-            (Outcome::changed(), g)
-        };
-        // Store::dispatch logs persistence failures; CLI callers need an explicit error
-        // instead of an acknowledgment. Keep the lock through the durability check.
-        // The action remains in memory, and some files may already have been saved:
-        // callers must not fall back to dispatching it again.
-        g.store.save().map_err(|e| CoreError::Io {
-            message: format!("could not persist CLI change (already applied in app memory; do not retry blindly): {e}"),
-        })?;
-        Ok(outcome)
+                g.dispatch(action);
+                Outcome::changed()
+            }
+        })
+        .map_err(|error| CoreError::Io {
+            message: format!("could not persist CLI change: {error}"),
+        })
     }
     /// Replace the whole state (tests, `MOMENTUM_SCREENSHOT_DONE`): a raw dispatch.
     pub fn dispatch_raw(&self, action_json: String) -> bool {
         match serde_json::from_str::<Action>(&action_json) {
-            Ok(a) => {
-                self.lock().dispatch(a);
-                true
-            }
+            Ok(a) => self.try_edit(|g| g.dispatch(a)).is_ok(),
             Err(_) => false,
         }
     }
@@ -1971,7 +2221,9 @@ impl Engine {
     }
 
     pub fn dispatch(&self, action: Action) {
-        self.lock().dispatch(action);
+        if let Err(error) = self.try_edit(|g| g.dispatch(action)) {
+            eprintln!("store edit failed: {error}");
+        }
     }
     /// Read access to the store for the parts of the GTK app that still talk to it directly.
     pub fn with_store<T>(&self, f: impl FnOnce(&Store) -> T) -> T {
@@ -2007,5 +2259,14 @@ impl Engine {
     }
     pub fn is_syncing(&self) -> bool {
         self.syncing.load(Ordering::SeqCst)
+    }
+}
+
+fn save_failure(error: CoreError) -> Outcome {
+    Outcome {
+        message: Some(Message::SaveFailed {
+            error: error.to_string(),
+        }),
+        ..Outcome::none()
     }
 }

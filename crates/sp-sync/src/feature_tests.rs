@@ -226,3 +226,95 @@ fn recent_ops_are_capped() {
     assert_eq!(f.recent_ops.len(), MAX_RECENT_OPS);
     assert_eq!(f.oldest_op_sync_version, Some(1));
 }
+
+#[test]
+fn exchange_does_not_persist_before_the_owner_commits() {
+    let dav = MockDav::start();
+    let c = cfg(&dav, false);
+    let (mut remote, _remote_dir) = store(true);
+    add(&mut remote, "Remote");
+    sync(&c, &mut remote).unwrap();
+    let (mut local, dir) = store(false);
+    add(&mut local, "Local");
+    let files = ["state.json", "pending.json", "meta.json"];
+    let before: Vec<_> = files
+        .iter()
+        .map(|f| std::fs::read(dir.path().join(f)).unwrap())
+        .collect();
+    let report = exchange(&c, &mut local).unwrap();
+    assert!(report.downloaded && report.uploaded);
+    assert_eq!(titles(&local), ["Local", "Remote"]);
+    assert!(local.pending.is_empty());
+    for (name, bytes) in files.iter().zip(before) {
+        assert_eq!(
+            std::fs::read(dir.path().join(name)).unwrap(),
+            bytes,
+            "exchange changed {name}"
+        );
+    }
+    local.save().unwrap();
+    assert_eq!(titles(&Store::load(dir.path().to_path_buf())), ["Local", "Remote"]);
+}
+
+#[test]
+fn cancelled_exchange_performs_no_requests() {
+    let dav = MockDav::start();
+    let (mut local, _dir) = store(true);
+    add(&mut local, "Keep local");
+    assert!(matches!(
+        exchange_guarded(&cfg(&dav, false), &mut local, DEFAULT_EXCHANGE_TIMEOUT, || false),
+        Err(SyncError::Cancelled)
+    ));
+    assert_eq!(dav.gets.load(Ordering::SeqCst), 0);
+    assert_eq!(dav.puts.load(Ordering::SeqCst), 0);
+    assert_eq!(local.pending.len(), 1);
+}
+
+#[test]
+fn connection_probe_is_read_only_and_accepts_a_missing_collection() {
+    let dav = MockDav::start();
+    dav.missing_collection.store(true, Ordering::SeqCst);
+    probe_guarded(&cfg(&dav, false), Duration::from_secs(1), || true).unwrap();
+    assert_eq!(dav.propfinds.load(Ordering::SeqCst), 2);
+    assert_eq!(dav.gets.load(Ordering::SeqCst), 0);
+    assert_eq!(dav.puts.load(Ordering::SeqCst), 0);
+    assert_eq!(dav.collections.load(Ordering::SeqCst), 0);
+    assert_eq!(dav.file_count(), 0);
+}
+
+#[test]
+fn connection_probe_reports_authentication_cancellation_and_deadline() {
+    let dav = MockDav::start();
+    dav.reject_authentication.store(true, Ordering::SeqCst);
+    assert!(matches!(
+        probe_guarded(&cfg(&dav, false), Duration::from_secs(1), || true),
+        Err(SyncError::Http(ureq::Error::StatusCode(401)))
+    ));
+    dav.reject_authentication.store(false, Ordering::SeqCst);
+    assert!(matches!(
+        probe_guarded(&cfg(&dav, false), Duration::from_secs(1), || false),
+        Err(SyncError::Cancelled)
+    ));
+    assert!(matches!(
+        probe_guarded(&cfg(&dav, false), Duration::ZERO, || true),
+        Err(SyncError::Deadline)
+    ));
+}
+
+#[test]
+fn missing_collection_is_created_before_retrying_upload() {
+    let dav = MockDav::start();
+    dav.missing_collection.store(true, Ordering::SeqCst);
+    let (mut local, _dir) = store(true);
+    add(&mut local, "New folder task");
+    let report = sync(&cfg(&dav, false), &mut local).unwrap();
+    assert!(report.uploaded);
+    assert_eq!(report.ops_uploaded, 1);
+    assert_eq!(dav.collections.load(Ordering::SeqCst), 1);
+    assert_eq!(dav.puts.load(Ordering::SeqCst), 2);
+    assert_eq!(dav.file_count(), 1);
+    assert!(local.pending.is_empty());
+    let (mut peer, _peer_dir) = store(false);
+    assert!(sync(&cfg(&dav, false), &mut peer).unwrap().downloaded);
+    assert_eq!(titles(&peer), ["New folder task"]);
+}

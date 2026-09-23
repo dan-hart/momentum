@@ -1,0 +1,250 @@
+{
+  "automatedFindingsEmpty" : false,
+  "findings" : [
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 75.5, 31.0, 20.33333333333333)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Due",
+      "screen" : "subtask-editor",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "subtask-editor",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(72.0, 436.1666666666667, 53.66666666666667, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "subtask-editor",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(248.0, 436.1666666666667, 122.0, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Does not repeat",
+      "screen" : "subtask-editor",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.66666793823242, 753.0, 150.6666717529297, 22.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Duplicate Task",
+      "screen" : "subtask-editor",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(33.66666793823242, 804.0, 126.99998474121094, 24.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Delete Task",
+      "screen" : "subtask-editor",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "This SwiftUI.UIKitIconPreferringButton is disabled, but it is missing the UIAccessibilityTraitNotEnabled trait.",
+      "frame" : "(32.0, 179.0, 338.0, 34.33332824707031)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Reminder, None",
+      "screen" : "subtask-editor",
+      "summary" : "Missing trait: UIAccessibilityTraitNotEnabled",
+      "type" : "262144"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(33.66666793823242, 804.0, 126.99998474121094, 24.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Delete Task",
+      "screen" : "subtask-editor",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 666.8333333333334, 117.66666666666666, 20.333333333333258)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Child audit task",
+      "screen" : "subtask-editor",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 576.3333333333334, 370.0, 34.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat saves your current edits first.",
+      "screen" : "subtask-editor",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.66666793823242, 753.0, 150.6666717529297, 22.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Duplicate Task",
+      "screen" : "subtask-editor",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(35.33333206176758, 540.1666870117188, 131.6666717529297, 20.33331298828125)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add subtask",
+      "screen" : "subtask-editor",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 436.1666666666667, 53.66666666666667, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "subtask-editor",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.UIKitTextField may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(32.0, 348.33333333333326, 338.0, 22.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "subtask-editor",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(35.33333206176758, 540.1666870117188, 131.6666717529297, 20.33331298828125)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add subtask",
+      "screen" : "subtask-editor",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "The size of this SwiftUI.AccessibilityNode is too small for user to interact.",
+      "frame" : "(86.0, 253.33333333333334, 31.0, 14.333333333333343)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox",
+      "screen" : "subtask-hierarchy",
+      "summary" : "Hit area is too small",
+      "type" : "4"
+    },
+    {
+      "detail" : "The size of this SwiftUI.AccessibilityNode is too small for user to interact.",
+      "frame" : "(106.0, 333.3333333333333, 31.0, 14.333333333333371)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox",
+      "screen" : "subtask-hierarchy",
+      "summary" : "Hit area is too small",
+      "type" : "4"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(16.0, 583.0000000000001, 370.0, 52.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Enter an estimate such as 1h 30m.",
+      "screen" : "invalid-estimate",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(248.0, 797.1666666666666, 122.0, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Does not repeat",
+      "screen" : "invalid-estimate",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "This SwiftUI.UIKitIconPreferringButton is disabled, but it is missing the UIAccessibilityTraitNotEnabled trait.",
+      "frame" : "(32.0, 488.0, 338.0, 34.33331298828125)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Reminder, None",
+      "screen" : "invalid-estimate",
+      "summary" : "Missing trait: UIAccessibilityTraitNotEnabled",
+      "type" : "262144"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 652.3333333333334, 370.0, 42.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Tags",
+      "screen" : "invalid-estimate",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(72.0, 797.1666666666666, 53.66666666666667, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "invalid-estimate",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(248.0, 797.1666666666666, 122.0, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Does not repeat",
+      "screen" : "invalid-estimate",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 583.0000000000001, 370.0, 52.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Enter an estimate such as 1h 30m.",
+      "screen" : "invalid-estimate",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    }
+  ],
+  "screens" : [
+    "subtask-editor",
+    "subtask-hierarchy",
+    "invalid-estimate"
+  ]
+}

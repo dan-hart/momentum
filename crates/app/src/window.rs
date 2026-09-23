@@ -3243,7 +3243,7 @@ impl MomentumWindow {
                 // Only the fields that differ become one update; subtasks added meanwhile
                 // still need the list rebuilt.
                 let out = engine.save_task(id.clone(), form.into_draft());
-                if out.changed {
+                if out.changed || out.message.is_some() {
                     w.apply(out);
                 } else {
                     w.refresh();

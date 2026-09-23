@@ -1,0 +1,519 @@
+{
+  "automatedFindingsEmpty" : false,
+  "findings" : [
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-today",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-today",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-today",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-today",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.25, 230.5, 599.5, 192.5)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Nothing planned for today",
+      "screen" : "ax5-today",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(127.0, 1098.5, 351.5, 63.5)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "More Details",
+      "screen" : "ax5-quick-add",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-long-task",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-long-task",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-long-task",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-long-task",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-editor-top",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-task-list-settings-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-appearance",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-appearance",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-appearance",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-appearance",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-accent",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-accent",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-accent",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-accent",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this element",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-middle",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(57.5, 1083.0, 425.5, 57.5)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Refresh Schedule",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this UILabel",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this element",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Dynamic Type font sizes are unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this element may be clipped at larger Dynamic Type sizes.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    }
+  ],
+  "screens" : [
+    "ax5-today",
+    "ax5-quick-add",
+    "ax5-long-task",
+    "ax5-editor-top",
+    "ax5-settings",
+    "ax5-task-list-settings",
+    "ax5-task-list-settings-bottom",
+    "ax5-appearance",
+    "ax5-accent",
+    "ax5-notifications",
+    "ax5-notifications-middle",
+    "ax5-notifications-bottom"
+  ]
+}

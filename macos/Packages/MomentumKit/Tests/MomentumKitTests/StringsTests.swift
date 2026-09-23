@@ -25,7 +25,7 @@ import Testing
         .manualOrderOnly, .pickAWeekday, .noLongerRepeats(title: "Standup"),
         .repeatSaved(description: .daily), .backupImported, .backupExported,
         .synced(opsUploaded: 3), .linkedWith(name: "iMac"), .linking, .linkFailed, .linkDeclined,
-        .identityChanged(name: "iMac"), .nearbyStartFailed(error: "port in use"),
+        .saveFailed(error: "fixture failure"), .identityChanged(name: "iMac"), .nearbyStartFailed(error: "port in use"),
     ]
 
     @Test func everyMessageHasWording() {

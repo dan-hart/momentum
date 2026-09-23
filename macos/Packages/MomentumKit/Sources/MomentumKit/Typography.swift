@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+#if os(macOS)
 import AppKit
 import SwiftUI
 
@@ -109,3 +110,4 @@ public extension View {
         modifier(AppFont(role: role, area: area))
     }
 }
+#endif

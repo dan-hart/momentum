@@ -30,6 +30,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu day ago"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu days ago"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -48,6 +66,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "vor %llu Stunden"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu hour ago"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu hours ago"
                 }
               }
             }
@@ -74,6 +110,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu minute ago"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu minutes ago"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -96,6 +150,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu second ago"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%llu seconds ago"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -114,6 +186,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u erledigte Aufgaben archiviert"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u completed task archived"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u completed tasks archived"
                 }
               }
             }
@@ -170,6 +260,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u linked device, not synced yet"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u linked devices, not synced yet"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -188,6 +296,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u Aufgaben hinzugefügt"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task added"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks added"
                 }
               }
             }
@@ -214,6 +340,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task completed"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks completed"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -232,6 +376,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u Aufgaben erledigt und archiviert"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task completed and archived"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks completed and archived"
                 }
               }
             }
@@ -258,6 +420,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task deleted"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks deleted"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -276,6 +456,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u Aufgaben auf nächste Woche verschoben"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task moved to next week"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks moved to next week"
                 }
               }
             }
@@ -302,6 +500,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task moved to the morning"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks moved to the morning"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -320,6 +536,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u Aufgaben auf heute verschoben"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task moved to today"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks moved to today"
                 }
               }
             }
@@ -346,6 +580,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task moved to tomorrow"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks moved to tomorrow"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -364,6 +616,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u Aufgaben auf heute Abend verschoben"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task moved to tonight"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks moved to tonight"
                 }
               }
             }
@@ -390,6 +660,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task planned for today"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks planned for today"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -411,6 +699,57 @@
                 }
               }
             }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u task tagged"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u tasks tagged"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "16–30 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "16–30 Min."
+          }
+        }
+      }
+    },
+    "1–2 hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1–2 Stunden"
+          }
+        }
+      }
+    },
+    "31–60 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "31–60 Min."
           }
         }
       }
@@ -615,6 +954,16 @@
         }
       }
     },
+    "Could not save changes: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen konnten nicht gespeichert werden: %@"
+          }
+        }
+      }
+    },
     "Delete": {
       "localizations": {
         "de": {
@@ -701,6 +1050,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gib einen Aufgabentitel ein."
+          }
+        }
+      }
+    },
+    "Evening": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abend"
           }
         }
       }
@@ -875,6 +1235,17 @@
         }
       }
     },
+    "No Project": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Projekt"
+          }
+        }
+      }
+    },
     "No Results Found": {
       "localizations": {
         "de": {
@@ -891,6 +1262,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keine archivierten Aufgaben"
+          }
+        }
+      }
+    },
+    "No estimate": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Schätzung"
           }
         }
       }
@@ -1021,6 +1403,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wahltasten-Kurzbefehle können mit Akzentzeichen und Sonderzeichen kollidieren. Von macOS reservierte Kurzbefehle erreichen Momentum möglicherweise nicht. Die Schnelleingabe verwendet Control–Wahl–N, damit sie sich von „Neue Aufgabe“ unterscheidet."
+          }
+        }
+      }
+    },
+    "Over 2 hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über 2 Stunden"
           }
         }
       }
@@ -1160,6 +1553,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "Wiederholt sich alle %u Tage"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Repeats every %u day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Repeats every %u days"
                 }
               }
             }
@@ -1358,6 +1769,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "Erneute Erinnerung in %u Minuten"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Snoozed for %u minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Snoozed for %u minutes"
                 }
               }
             }
@@ -1584,6 +2013,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Tasks due in the next %u day appear here. Set a due day in a task's details."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Tasks due in the next %u days appear here. Set a due day in a task's details."
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1727,6 +2174,28 @@
         }
       }
     },
+    "Untagged": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ohne Schlagwort"
+          }
+        }
+      }
+    },
+    "Up to 15 min": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bis zu 15 Min."
+          }
+        }
+      }
+    },
     "Yesterday": {
       "localizations": {
         "de": {
@@ -1752,6 +2221,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "Du hast %u Aufgaben erledigt. Zeit zum Abschalten."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "You completed %u task. Time to switch off."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "You completed %u tasks. Time to switch off."
                 }
               }
             }
@@ -1855,105 +2342,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "„%@“ wird nicht mehr wiederholt"
-          }
-        }
-      }
-    },
-    "No Project": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kein Projekt"
-          }
-        }
-      }
-    },
-    "Untagged": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ohne Schlagwort"
-          }
-        }
-      }
-    },
-    "Up to 15 min": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bis zu 15 Min."
-          }
-        }
-      }
-    },
-    "16–30 min": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "16–30 Min."
-          }
-        }
-      }
-    },
-    "31–60 min": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "31–60 Min."
-          }
-        }
-      }
-    },
-    "1–2 hours": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1–2 Stunden"
-          }
-        }
-      }
-    },
-    "Over 2 hours": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Über 2 Stunden"
-          }
-        }
-      }
-    },
-    "No estimate": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Schätzung"
-          }
-        }
-      }
-    },
-    "Evening": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abend"
           }
         }
       }

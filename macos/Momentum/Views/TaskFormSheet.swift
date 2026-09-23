@@ -18,6 +18,7 @@ struct TaskFormSheet: SwiftUI.View {
     @State private var form = TaskFormModel()
     @State private var newSubtask = ""
     @State private var loaded = false
+    @State private var saveError: String?
     @FocusState private var titleFocused: Bool
 
     private var isNew: Bool { taskId == nil }
@@ -165,6 +166,13 @@ struct TaskFormSheet: SwiftUI.View {
                 }
             }
         }
+        .alert("Could not save changes", isPresented: Binding(
+            get: { saveError != nil }, set: { if !$0 { saveError = nil } }
+        )) {
+            Button("OK", role: .cancel) { saveError = nil }
+        } message: {
+            Text(saveError ?? "")
+        }
         .onAppear(perform: load)
         .onDisappear { if !isNew { applyEdit() } }
     }
@@ -181,18 +189,23 @@ struct TaskFormSheet: SwiftUI.View {
     }
 
     private func save() {
+        let outcome: Outcome?
         if isNew {
             guard form.canSave else { return }
-            state.createTask(form.draft)
+            outcome = state.createTask(form.draft)
         } else {
-            applyEdit()
+            outcome = applyEdit()
+        }
+        if let message = outcome?.message, case .saveFailed(let error) = message {
+            saveError = error
+            return
         }
         dismiss()
     }
 
-    private func applyEdit() {
-        guard let id = taskId, state.engine.taskDetail(id: id) != nil else { return }
-        state.saveTask(id, form.draft)
+    @discardableResult private func applyEdit() -> Outcome? {
+        guard let id = taskId, state.engine.taskDetail(id: id) != nil else { return nil }
+        return state.saveTask(id, form.draft)
     }
 }
 

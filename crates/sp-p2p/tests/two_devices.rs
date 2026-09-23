@@ -98,6 +98,9 @@ fn link_exchange_and_bootstrap() {
         snap_b.unwrap().json().unwrap(),
         br#"{"task":{"ids":["x"],"entities":{}}}"#
     );
+    // Consumers need the inbound notification to apply the durable journal to
+    // their task store without waiting for a later outbound exchange.
+    wait_for(&a, |e| matches!(e, Event::InboundSync { .. }));
     // The listener side (A) merged B's op during the same exchange.
     let (inbox_a, _) = a.take_inbox();
     assert_eq!(

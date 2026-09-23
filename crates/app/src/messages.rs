@@ -9,6 +9,7 @@ use crate::window::repeat_text;
 
 pub fn text(m: &Message) -> String {
     match m {
+        Message::SaveFailed { error } => format!("{} {error}", gettext("Could not save changes:")),
         Message::TaskCompleted => gettext("Task completed"),
         Message::TaskCompletedArchived => gettext("Task completed and archived"),
         Message::TasksCompleted { n } => format!("{n} {}", gettext("tasks completed")),

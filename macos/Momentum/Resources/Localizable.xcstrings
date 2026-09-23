@@ -67,6 +67,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u days"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -85,6 +103,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u Monate"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u month"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u months"
                 }
               }
             }
@@ -155,6 +191,24 @@
               }
             }
           }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u week"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u weeks"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -173,6 +227,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%u Jahre"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u year"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%u years"
                 }
               }
             }
@@ -692,6 +764,16 @@
         }
       }
     },
+    "Could not save changes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen konnten nicht gespeichert werden"
+          }
+        }
+      }
+    },
     "Counts unfinished tasks. Subtasks are included with their parent. The badge is hidden when the count is zero.": {
       "localizations": {
         "de": {
@@ -790,6 +872,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Daten"
+          }
+        }
+      }
+    },
+    "Data Unavailable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daten nicht verfügbar"
           }
         }
       }
@@ -1205,6 +1297,36 @@
         }
       }
     },
+    "Found %lld tasks.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Aufgaben gefunden."
+          }
+        }
+      }
+    },
+    "Found “%@”.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ gefunden."
+          }
+        }
+      }
+    },
+    "No tasks found.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Aufgaben gefunden."
+          }
+        }
+      }
+    },
     "Fonts": {
       "localizations": {
         "de": {
@@ -1502,6 +1624,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Momentum-Hilfe"
+          }
+        }
+      }
+    },
+    "Momentum couldn’t safely open its data. Existing files have been preserved.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum konnte die Daten nicht sicher öffnen. Vorhandene Dateien wurden beibehalten."
           }
         }
       }
@@ -2017,6 +2149,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aufgabe öffnen"
+          }
+        }
+      }
+    },
+    "Opening data": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daten werden geöffnet"
           }
         }
       }
@@ -2930,6 +3072,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Heute Abend"
+          }
+        }
+      }
+    },
+    "Try Again": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut versuchen"
           }
         }
       }
