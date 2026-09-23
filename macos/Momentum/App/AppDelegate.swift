@@ -60,9 +60,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         !(Self.shared?.prefs.runInBackground ?? false)
     }
 
+    /// A Dock click with no visible window: show the main window ourselves and tell AppKit
+    /// the reopen is handled. Returning true as well lets SwiftUI open a second, identical
+    /// main window for the same click.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { Self.showMainWindow() }
-        return true
+        if flag { return true }
+        return !Self.showMainWindow()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -117,14 +120,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Windows
 
-    static func showMainWindow() {
+    /// Returns false only when no main window exists and SwiftUI's `openWindow` has not been
+    /// captured yet, so the caller can leave the window to the system.
+    @discardableResult
+    static func showMainWindow() -> Bool {
         NSApp.activate()
         if let w = NSApp.windows.first(where: { $0.identifier?.rawValue.hasPrefix("main") == true }) {
             w.makeKeyAndOrderFront(nil)
-        } else {
-            // The window group has no window (closed while running in the background).
-            WindowOpener.shared.open?("main")
+            return true
         }
+        // The window group has no window (closed while running in the background).
+        guard let open = WindowOpener.shared.open else { return false }
+        open("main")
+        return true
     }
     static func openWindow(id: String) {
         WindowOpener.shared.open?(id)
