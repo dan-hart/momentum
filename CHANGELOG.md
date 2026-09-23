@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-23
+
 ### Added
 - Preferences › Tasks › "Archive completed tasks immediately": a completed task goes
   straight to the archive and syncs; undo brings it back open
@@ -20,7 +22,7 @@ All notable changes to Momentum are documented here. The format follows
   repository, and the Flathub manifest
 
 ### Changed
-- The macOS app's version now follows the workspace (0.3.5) instead of its own number
+- The macOS app's version now follows the workspace instead of its own number
 
 ## [0.3.5] - 2026-09-15
 

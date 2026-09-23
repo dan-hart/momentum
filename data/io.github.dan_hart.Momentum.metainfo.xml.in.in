@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.0/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.0/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.0/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.3.5/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.0/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,17 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.4.0" date="2026-09-23">
+      <description>
+        <p>Auto-archive, Linux desktop parity, and one release for every platform.</p>
+        <ul>
+          <li>Preferences › Tasks › "Archive completed tasks immediately": a completed task goes straight to the archive and syncs; undo brings it back open</li>
+          <li>Linux desktop parity: a native font chooser with independent content/interface scaling, exact task reveal through mo open, GApplication actions and task URLs, plus configurable Background Apps task-count modes</li>
+          <li>One release process for every platform: build-aux/release.py keeps one version across the Rust workspace, the GTK app, the macOS app, the metainfo and this changelog, and a single Release workflow runs every test against the tag, then publishes the GitHub Release with the Flatpak bundles, the macOS app and mo for macOS and Linux, updates the Homebrew tap (momentum cask, momentum-cli formula), the signed Flatpak repository, and the Flathub manifest</li>
+          <li>The macOS app's version now follows the workspace instead of its own number</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.5" date="2026-09-15">
       <description>
         <p>Mornings.</p>
