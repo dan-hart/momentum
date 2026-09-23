@@ -311,9 +311,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
+      # Only this workflow's own build artifacts: the CI suite it calls also uploads the
+      # Devel bundles it tested, which must not end up on the release.
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: "{flatpak-*,macos,cli-linux-*}"
           merge-multiple: true
       - name: Flathub manifest pinned to this tag
         run: |
@@ -363,6 +366,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: "{macos,cli-linux-*}"
           merge-multiple: true
       - uses: actions/checkout@v4
         with:
