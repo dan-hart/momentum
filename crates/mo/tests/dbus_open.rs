@@ -264,6 +264,13 @@ fn coexisting_profiles_receive_only_their_own_store_request() {
 
 #[test]
 fn private_bus_nonreply_times_out_without_writing() {
+    // MO_TEST_DBUS_METHOD_TIMEOUT_MS is a debug-only hook (crates/mo/src/lib.rs). A release
+    // build keeps the real 5 s timeout, so the hanging service below answers first and the
+    // test would be checking nothing; the release Flatpak build runs the suite in release.
+    if !cfg!(debug_assertions) {
+        eprintln!("skipped: the test timeout hook is compiled out of release builds");
+        return;
+    }
     let dir = tempfile::tempdir().unwrap();
     let record = dir.path().join("unused-cold-record");
     let bus = start_bus(dir.path(), &record);
