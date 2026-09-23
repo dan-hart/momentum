@@ -1297,6 +1297,16 @@
         }
       }
     },
+    "Fonts": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schriften"
+          }
+        }
+      }
+    },
     "Found %lld tasks.": {
       "localizations": {
         "de": {
@@ -1313,26 +1323,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "„%@“ gefunden."
-          }
-        }
-      }
-    },
-    "No tasks found.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Aufgaben gefunden."
-          }
-        }
-      }
-    },
-    "Fonts": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schriften"
           }
         }
       }
@@ -2002,6 +1992,16 @@
         }
       }
     },
+    "No tasks found.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Aufgaben gefunden."
+          }
+        }
+      }
+    },
     "No text selected": {
       "localizations": {
         "de": {
@@ -2078,6 +2078,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mitteilungen"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
           }
         }
       }
