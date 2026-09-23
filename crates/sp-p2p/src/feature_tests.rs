@@ -233,3 +233,82 @@ fn pairing_window_gates_approval_and_links_persist() {
         again.device_keys().unwrap().fingerprint()
     );
 }
+
+#[test]
+fn inbox_read_and_acknowledgement_preserve_new_arrivals_and_failed_ack() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("journal.json");
+    let record = |name: &str| {
+        let (o, a) = op("peer", name);
+        OpRecord {
+            id: o.id.clone(),
+            t: o.t,
+            origin: "peer".into(),
+            op: serde_json::to_value(o).unwrap(),
+            action: serde_json::to_value(a).unwrap(),
+        }
+    };
+    let first = record("first");
+    let second = record("second");
+    let snap = Snapshot::new("peer", b"first");
+    let newer = Snapshot::new("peer", b"newer");
+    let mut journal = Journal {
+        inbox: vec![first.clone()],
+        snapshot_in: Some(snap.clone()),
+        ..Default::default()
+    };
+    journal.save(&path).unwrap();
+    let read = journal.inbox();
+    assert_eq!(journal.inbox(), read, "reading must not consume the retry batch");
+    assert_eq!(Journal::load(&path).unwrap().inbox(), read);
+    journal.inbox.push(second.clone());
+    journal.snapshot_in = Some(newer.clone());
+    journal.save(&path).unwrap();
+    std::fs::create_dir(path.with_extension("tmp")).unwrap();
+    assert!(journal.acknowledge(&path, &read.0, read.1.as_ref()).is_err());
+    assert_eq!(journal.inbox, [first, second.clone()]);
+    assert_eq!(Journal::load(&path).unwrap().inbox, journal.inbox);
+    std::fs::remove_dir(path.with_extension("tmp")).unwrap();
+    journal.acknowledge(&path, &read.0, read.1.as_ref()).unwrap();
+    assert_eq!(journal.inbox, [second]);
+    assert_eq!(journal.snapshot_in, Some(newer));
+    assert_eq!(Journal::load(&path).unwrap().inbox(), journal.inbox());
+}
+
+#[test]
+fn shutdown_cancels_a_stalled_sync_all_socket() {
+    let dir = tempfile::tempdir().unwrap();
+    let node = P2p::start(
+        dir.path().join("node"),
+        "cancel-fixture",
+        "Fixture",
+        Box::new(FileKeyStore::new(dir.path().join("keys")).unwrap()),
+        0,
+    )
+    .unwrap();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let (arrived_tx, arrived) = std::sync::mpsc::channel();
+    let (release, released) = std::sync::mpsc::channel();
+    let server = std::thread::spawn(move || {
+        let (_stream, _) = listener.accept().unwrap();
+        arrived_tx.send(()).unwrap();
+        let _ = released.recv_timeout(Duration::from_secs(10));
+    });
+    node.handler.remember(
+        &Identity::new("stalled-peer", APP_ID, "Fixture"),
+        &"a".repeat(64),
+        Some(address),
+    );
+    node.sync_all().unwrap();
+    arrived.recv_timeout(Duration::from_secs(8)).unwrap();
+    let start = Instant::now();
+    node.shutdown();
+    let elapsed = start.elapsed();
+    let _ = release.send(());
+    server.join().unwrap();
+    assert!(
+        elapsed < Duration::from_secs(2),
+        "stopped only after the I/O timeout: {elapsed:?}"
+    );
+}

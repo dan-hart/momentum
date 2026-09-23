@@ -569,3 +569,27 @@ import Testing
         #expect(h.state.toasts.isEmpty == false, "the failure is shown, not swallowed")
     }
 }
+
+@Suite @MainActor struct PersistenceFailures {
+    @Test func formOperationsReturnSaveErrorsAndKeepTheirTaskDataForRetry() throws {
+        let h = Harness(demo: false)
+        h.state.addTask("Original")
+        let id = try #require(h.engine.allTasks().first?.id)
+        let blocked = h.dir.url.appendingPathComponent("store/pending.json.tmp")
+        try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: false)
+        var form = TaskFormModel(detail: try #require(h.engine.taskDetail(id: id)))
+        form.title = "Edited draft"
+        let failedEdit = h.state.saveTask(id, form.draft)
+        #expect(!failedEdit.changed)
+        if let message = failedEdit.message, case .saveFailed = message {
+            #expect(h.toastTexts.last == Strings.message(message))
+        } else { Issue.record("The form needs an explicit save failure to retain its draft") }
+        #expect(h.engine.taskDetail(id: id)?.title == "Original")
+        let failedCreation = h.state.createTask(form.draft)
+        #expect(!failedCreation.changed)
+        #expect(h.engine.allTasks().count == 1)
+        try FileManager.default.removeItem(at: blocked)
+        #expect(h.state.saveTask(id, form.draft).changed)
+        #expect(h.engine.taskDetail(id: id)?.title == "Edited draft")
+    }
+}

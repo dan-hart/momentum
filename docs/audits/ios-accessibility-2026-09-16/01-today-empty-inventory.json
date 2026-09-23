@@ -1,0 +1,1248 @@
+{
+  "automatedFindingsEmpty" : false,
+  "findings" : [
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(78.66666412353516, 202.3333282470703, 244.66668701171875, 89.50001525878906)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Nothing planned for today",
+      "screen" : "01-today-empty",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(66.66666666666669, 288.8333333333333, 268.66666666666663, 49.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Tasks planned for future dates appear here.",
+      "screen" : "02-upcoming-empty",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(112.0, 202.3333282470703, 178.0, 83.50001525878906)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Nothing coming up",
+      "screen" : "02-upcoming-empty",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(112.0, 202.3333282470703, 178.0, 83.50001525878906)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Nothing coming up",
+      "screen" : "02-upcoming-empty",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(112.0, 202.3333282470703, 178.0, 83.50001525878906)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Nothing coming up",
+      "screen" : "02-upcoming-empty",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(114.83333587646484, 274.6666564941406, 172.33331298828125, 86.16668701171875)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Search Everything",
+      "screen" : "03-search-empty",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(76.0, 363.8333333333333, 250.0, 49.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Search tasks, projects, tags, and notes.",
+      "screen" : "03-search-empty",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(114.83333587646484, 274.6666564941406, 172.33331298828125, 86.16668701171875)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Search Everything",
+      "screen" : "03-search-empty",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UISearchBarTextField may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(16.0, 168.00000000000003, 370.0, 62.33333333333334)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Search tasks and notes",
+      "screen" : "03-search-empty",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(39.68656539916992, 630.9112548828125, 129.3068084716797, 19.5240478515625)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "More Details",
+      "screen" : "04-quick-add",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(23.36318407960199, 565.7777777777777, 355.27363184079604, 49.93034825870643)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add #tags and an estimate, like 30m or 1h.",
+      "screen" : "04-quick-add",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(39.68656539916992, 630.9112548828125, 129.3068084716797, 19.5240478515625)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "More Details",
+      "screen" : "04-quick-add",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(23.36318407960199, 565.7777777777777, 355.27363184079604, 49.93034825870643)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add #tags and an estimate, like 30m or 1h.",
+      "screen" : "04-quick-add",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(39.68656539916992, 630.9112548828125, 129.3068084716797, 19.5240478515625)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "More Details",
+      "screen" : "04-quick-add",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "The size of this SwiftUI.AccessibilityNode is too small for user to interact.",
+      "frame" : "(86.0, 253.33333333333334, 130.33333333333334, 14.333333333333343)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox · ~15m · #Access",
+      "screen" : "05-today-populated",
+      "summary" : "Hit area is too small",
+      "type" : "4"
+    },
+    {
+      "detail" : "This SwiftUI.UIKitIconPreferringButton is disabled, but it is missing the UIAccessibilityTraitNotEnabled trait.",
+      "frame" : "(32.0, 506.6666564941406, 338.0, 34.333343505859375)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Reminder, None",
+      "screen" : "06-editor-top",
+      "summary" : "Missing trait: UIAccessibilityTraitNotEnabled",
+      "type" : "262144"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(248.0, 815.8333333333334, 122.0, 20.333333333333258)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Does not repeat",
+      "screen" : "06-editor-top",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 619.0, 370.0, 42.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Tags",
+      "screen" : "06-editor-top",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 513.5, 72.66666666666667, 20.33333333333337)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Reminder",
+      "screen" : "06-editor-top",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(72.0, 815.8333333333334, 53.66666666666667, 20.333333333333258)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "06-editor-top",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 676.8333333333334, 55.0, 20.333333333333258)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Access",
+      "screen" : "06-editor-top",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(72.0, 815.8333333333334, 53.66666666666667, 20.333333333333258)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "06-editor-top",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(248.0, 815.8333333333334, 122.0, 20.333333333333258)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Does not repeat",
+      "screen" : "06-editor-top",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 764.6666666666666, 370.0, 42.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Tags",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 659.1666666666666, 72.66666666666667, 20.333333333333258)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Reminder",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 822.5, 55.0, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Access",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 600.1666666666665, 37.66666666666666, 20.333333333333485)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Time",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 314.5, 54.0, 20.333333333333258)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Project",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 368.3333333333333, 370.0, 40.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Schedule",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 659.1666666666666, 72.66666666666667, 20.333333333333258)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Reminder",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 822.5, 55.0, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Access",
+      "screen" : "07-editor-scheduled-time",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(35.33333206176758, 268.1666564941406, 131.6666717529297, 20.333343505859375)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add subtask",
+      "screen" : "08-editor-actions",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this element",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "08-editor-actions",
+      "summary" : "Dynamic Type font sizes are unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this element",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "08-editor-actions",
+      "summary" : "Dynamic Type font sizes are unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.66666793823242, 371.3333435058594, 150.6666717529297, 22.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Duplicate Task",
+      "screen" : "08-editor-actions",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(33.66666793823242, 422.3333435058594, 126.99998474121094, 24.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Delete Task",
+      "screen" : "08-editor-actions",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(35.33333206176758, 268.1666564941406, 131.6666717529297, 20.333343505859375)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add subtask",
+      "screen" : "08-editor-actions",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this element may be clipped at larger Dynamic Type sizes.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "08-editor-actions",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this element may be clipped at larger Dynamic Type sizes.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "08-editor-actions",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 460.33333333333326, 370.0, 34.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Duplicate saves your current edits first.",
+      "screen" : "08-editor-actions",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 494.6666666666667, 370.0, 40.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Notes",
+      "screen" : "08-editor-actions",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(35.33333206176758, 268.1666564941406, 131.6666717529297, 20.333343505859375)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add subtask",
+      "screen" : "08-editor-actions",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 777.1666666666666, 45.66666666666666, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Starts",
+      "screen" : "09-repeat-weekly",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 871.6666666666666, 370.0, 54.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "A paused schedule keeps its settings but creates no tasks.",
+      "screen" : "09-repeat-weekly",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "This element appears to display text that should be represented using the accessibility API.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "09-repeat-weekly",
+      "summary" : "Potentially inaccessible text",
+      "type" : "2"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 785.6666666666666, 370.0, 54.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "A paused schedule keeps its settings but creates no tasks.",
+      "screen" : "10-repeat-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 749.5, 56.33333333333333, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Paused",
+      "screen" : "10-repeat-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 691.1666666666666, 45.66666666666666, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Starts",
+      "screen" : "10-repeat-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(16.0, 785.6666666666666, 370.0, 54.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "A paused schedule keeps its settings but creates no tasks.",
+      "screen" : "10-repeat-bottom",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 91.0, 370.0, 52.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeats weekly on Mon, Tue, Wed, Thu, Fri",
+      "screen" : "10-repeat-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "This element appears to display text that should be represented using the accessibility API.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "10-repeat-bottom",
+      "summary" : "Potentially inaccessible text",
+      "type" : "2"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(35.33333206176758, 573.1666870117188, 131.6666717529297, 20.33331298828125)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add subtask",
+      "screen" : "11-editor-notes",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(248.0, 469.1666666666667, 122.0, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Does not repeat",
+      "screen" : "11-editor-notes",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.66666793823242, 676.3333129882812, 150.6666717529297, 22.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Duplicate Task",
+      "screen" : "11-editor-notes",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(33.66666793823242, 727.3333129882812, 126.99998474121094, 24.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Delete Task",
+      "screen" : "11-editor-notes",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(72.0, 469.1666666666667, 53.66666666666667, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "11-editor-notes",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(35.33333206176758, 573.1666870117188, 131.6666717529297, 20.33331298828125)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add subtask",
+      "screen" : "11-editor-notes",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.UIKitTextField may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(32.0, 381.3333333333333, 338.0, 22.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "11-editor-notes",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 469.1666666666667, 53.66666666666667, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "11-editor-notes",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 107.50000000000004, 37.66666666666666, 20.333333333333314)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Time",
+      "screen" : "11-editor-notes",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 48.83333333333334, 37.66666666666666, 20.33333333333333)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Time",
+      "screen" : "11-editor-notes",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(72.0, 469.1666666666667, 53.66666666666667, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Repeat",
+      "screen" : "11-editor-notes",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(248.0, 469.1666666666667, 122.0, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Does not repeat",
+      "screen" : "11-editor-notes",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.66666793823242, 676.3333129882812, 150.6666717529297, 22.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Duplicate Task",
+      "screen" : "11-editor-notes",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(33.66666793823242, 727.3333129882812, 126.99998474121094, 24.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Delete Task",
+      "screen" : "11-editor-notes",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "The size of this SwiftUI.AccessibilityNode is too small for user to interact.",
+      "frame" : "(126.0, 253.33333333333334, 174.66666666666663, 14.333333333333343)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox · ~15m · 09:00 · #Access",
+      "screen" : "13-multi-selection",
+      "summary" : "Hit area is too small",
+      "type" : "4"
+    },
+    {
+      "detail" : "Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.",
+      "frame" : "(126.0, 253.33333333333334, 174.66666666666663, 14.333333333333343)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox · ~15m · 09:00 · #Access",
+      "screen" : "13-multi-selection",
+      "summary" : "Contrast nearly passed",
+      "type" : "1"
+    },
+    {
+      "detail" : "The size of this SwiftUI.AccessibilityNode is too small for user to interact.",
+      "frame" : "(86.0, 476.0, 174.66666666666663, 14.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox · ~15m · 09:00 · #Access",
+      "screen" : "14-completed-and-feedback",
+      "summary" : "Hit area is too small",
+      "type" : "4"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(128.33333333333334, 321.66666666666663, 145.3333333333333, 20.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Archive Completed",
+      "screen" : "14-completed-and-feedback",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(31.66666603088379, 442.0, 95.33333587646484, 24.333343505859375)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Access",
+      "screen" : "15-lists",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(32.0, 334.1666564941406, 81.33332824707031, 20.333343505859375)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox",
+      "screen" : "15-lists",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 486.0, 370.0, 54.66666666666663)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Free and open source. Your tasks work offline, without an account.",
+      "screen" : "20-settings",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 287.3333333333333, 195.66666666666663, 15.666666666666686)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Accent color, text, and feedback",
+      "screen" : "20-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 364.3333333333333, 203.33333333333331, 15.666666666666686)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Reminders and morning summary",
+      "screen" : "20-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 264.0, 92.0, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Appearance",
+      "screen" : "20-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 341.0, 96.0, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Notifications",
+      "screen" : "20-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 224.16666666666666, 56.0, 20.333333333333343)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Sort By",
+      "screen" : "21-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UILabel may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(229.0, 172.33333333333334, 124.66666666666669, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Morning & Night",
+      "screen" : "21-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UILabel may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(250.33333333333334, 224.33333333333334, 103.33333333333334, 20.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Manual Order",
+      "screen" : "21-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 328.16666666666674, 78.33333333333331, 20.333333333333314)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Upcoming",
+      "screen" : "21-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 276.16666666666674, 44.0, 20.333333333333314)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Order",
+      "screen" : "21-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(72.0, 224.16666666666666, 222.33333333333331, 20.333333333333343)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Color-code projects and tags",
+      "screen" : "22-appearance",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(80.0, 808.3333333333334, 72.33333333333331, 20.333333333333258)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Amethyst",
+      "screen" : "23-accent-top",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(80.0, 830.6666666666666, 52.0, 14.333333333333371)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "#9B59B6",
+      "screen" : "23-accent-top",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 700.3333333333334, 370.0, 70.66666666666652)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Body text keeps its system color for readability.",
+      "screen" : "24-accent-bottom",
+      "summary" : "Dynamic Type font sizes are unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this element",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "24-accent-bottom",
+      "summary" : "Dynamic Type font sizes are unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(16.0, 700.3333333333334, 370.0, 70.66666666666652)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Body text keeps its system color for readability.",
+      "screen" : "24-accent-bottom",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 648.3333333333333, 370.0, 52.000000000000114)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Ready for today",
+      "screen" : "24-accent-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(80.0, 39.33333333333337, 52.0, 14.333333333333336)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "#E67E22",
+      "screen" : "24-accent-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(80.0, 91.00000000000004, 56.66666666666666, 20.33333333333333)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Orange",
+      "screen" : "24-accent-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 586.0, 370.0, 40.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Feedback",
+      "screen" : "25-text-feedback",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 511.0, 370.0, 75.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Text also follows your device's Dynamic Type size. Navigation and system controls keep their native styles.",
+      "screen" : "25-text-feedback",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 312.33333333333337, 370.0, 51.99999999999994)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Reset Typography",
+      "screen" : "25-text-feedback",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 172.16666666666666, 34.33333333333333, 20.333333333333343)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Font",
+      "screen" : "25-text-feedback",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "This element appears to display text that should be represented using the accessibility API.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "25-text-feedback",
+      "summary" : "Potentially inaccessible text",
+      "type" : "2"
+    },
+    {
+      "detail" : "This element appears to display text that should be represented using the accessibility API.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "25-text-feedback",
+      "summary" : "Potentially inaccessible text",
+      "type" : "2"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 586.0, 370.0, 40.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Feedback",
+      "screen" : "26-text-feedback-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 511.0, 370.0, 75.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Text also follows your device's Dynamic Type size. Navigation and system controls keep their native styles.",
+      "screen" : "26-text-feedback-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 312.33333333333337, 370.0, 51.99999999999994)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Reset Typography",
+      "screen" : "26-text-feedback-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 172.16666666666666, 34.33333333333333, 20.333333333333343)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Font",
+      "screen" : "26-text-feedback-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "This element appears to display text that should be represented using the accessibility API.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "26-text-feedback-bottom",
+      "summary" : "Potentially inaccessible text",
+      "type" : "2"
+    },
+    {
+      "detail" : "This element appears to display text that should be represented using the accessibility API.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "26-text-feedback-bottom",
+      "summary" : "Potentially inaccessible text",
+      "type" : "2"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 738.8333333333334, 134.0, 20.333333333333258)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Planning Through",
+      "screen" : "27-notifications-top",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 827.0, 370.0, 54.66666666666663)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Momentum plans a limited window ahead. Permission is required for delivery.",
+      "screen" : "27-notifications-top",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(34.66666793823242, 789.6666870117188, 171.3333282470703, 23.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Refresh Schedule",
+      "screen" : "27-notifications-top",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 738.8333333333334, 134.0, 20.333333333333258)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Planning Through",
+      "screen" : "28-summary-time",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(16.0, 827.0, 370.0, 54.66666666666663)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Momentum plans a limited window ahead. Permission is required for delivery.",
+      "screen" : "28-summary-time",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(34.66666793823242, 789.6666870117188, 171.3333282470703, 23.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Refresh Schedule",
+      "screen" : "28-summary-time",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(32.0, 648.1666666666667, 134.0, 20.333333333333258)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Planning Through",
+      "screen" : "29-notifications-bottom",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(72.0, 81.5, 83.66666666666666, 20.33333333333333)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Permission",
+      "screen" : "29-notifications-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(276.6666666666667, 81.5, 93.33333333333331, 20.33333333333333)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Not Enabled",
+      "screen" : "29-notifications-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(34.66666793823242, 699.0, 171.3333282470703, 23.0)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Refresh Schedule",
+      "screen" : "29-notifications-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(29.33333396911621, 218.6666717529297, 141.3333282470703, 20.666671752929688)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Source Code",
+      "screen" : "30-about",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(29.33333396911621, 218.6666717529297, 141.3333282470703, 20.666671752929688)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Source Code",
+      "screen" : "30-about",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this SwiftUI.AccessibilityNode",
+      "frame" : "(39.68656539916992, 680.8416137695312, 129.3068084716797, 19.5240478515625)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "More Details",
+      "screen" : "31-quick-add-rejection",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(23.36318407960199, 615.7081260364841, 355.27363184079604, 49.93034825870643)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add #tags and an estimate, like 30m or 1h.",
+      "screen" : "31-quick-add-rejection",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(23.36318407960199, 515.8474295190713, 355.27363184079604, 49.93034825870643)",
+      "hittable" : "true",
+      "identifier" : "quick-add-error",
+      "label" : "The task could not be changed.",
+      "screen" : "31-quick-add-rejection",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(39.68656539916992, 680.8416137695312, 129.3068084716797, 19.5240478515625)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "More Details",
+      "screen" : "31-quick-add-rejection",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(23.36318407960199, 515.8474295190713, 355.27363184079604, 49.93034825870643)",
+      "hittable" : "true",
+      "identifier" : "quick-add-error",
+      "label" : "The task could not be changed.",
+      "screen" : "31-quick-add-rejection",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(23.36318407960199, 615.7081260364841, 355.27363184079604, 49.93034825870643)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Add #tags and an estimate, like 30m or 1h.",
+      "screen" : "31-quick-add-rejection",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(39.68656539916992, 680.8416137695312, 129.3068084716797, 19.5240478515625)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "More Details",
+      "screen" : "31-quick-add-rejection",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    }
+  ],
+  "screens" : [
+    "01-today-empty",
+    "02-upcoming-empty",
+    "03-search-empty",
+    "04-quick-add",
+    "05-today-populated",
+    "06-editor-top",
+    "07-editor-scheduled-time",
+    "08-editor-actions",
+    "09-repeat-weekly",
+    "10-repeat-bottom",
+    "11-editor-notes",
+    "12-task-context-menu",
+    "13-multi-selection",
+    "14-completed-and-feedback",
+    "15-lists",
+    "16-archive",
+    "17-project-editor",
+    "18-project-color",
+    "19-tag-editor",
+    "20-settings",
+    "21-task-list-settings",
+    "22-appearance",
+    "23-accent-top",
+    "24-accent-bottom",
+    "25-text-feedback",
+    "26-text-feedback-bottom",
+    "27-notifications-top",
+    "28-summary-time",
+    "29-notifications-bottom",
+    "30-about",
+    "31-quick-add-rejection"
+  ]
+}

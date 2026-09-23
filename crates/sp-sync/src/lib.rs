@@ -12,6 +12,9 @@ use sp_model::{now_ms, AppData, SCHEMA_VERSION};
 use sp_oplog::{apply, merge_clocks, Op, VectorClock};
 use sp_store::Store;
 use std::io::{Read, Write};
+use std::time::{Duration, Instant};
+
+pub const DEFAULT_EXCHANGE_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub const SYNC_FILE: &str = "sync-data.json";
 const MAX_RECENT_OPS: usize = 2000;
@@ -54,6 +57,10 @@ pub enum SyncError {
     FreshState,
     #[error("remote changed during upload; retry")]
     Conflict,
+    #[error("sync was cancelled because its source changed")]
+    Cancelled,
+    #[error("sync exceeded its deadline; retry when the connection is available")]
+    Deadline,
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }
@@ -124,6 +131,13 @@ pub struct NextcloudCfg {
     pub encrypt_key: Option<String>,
 }
 impl NextcloudCfg {
+    fn account_url(&self) -> String {
+        format!(
+            "{}/remote.php/dav/files/{}/",
+            self.server_url.trim_end_matches('/'),
+            urlencode(self.user_name.trim())
+        )
+    }
     fn folder_url(&self) -> String {
         let folder = self.folder.trim_matches('/');
         format!(
@@ -149,6 +163,35 @@ impl NextcloudCfg {
             && !self.folder.trim().is_empty()
     }
 }
+
+/// Verify that a Nextcloud WebDAV account and configured collection are reachable
+/// without reading the sync file or changing remote/local data. A missing collection
+/// is valid because the first real sync creates it after authenticating the account root.
+pub fn probe_guarded(cfg: &NextcloudCfg, timeout: Duration, is_current: impl Fn() -> bool) -> Result<(), SyncError> {
+    let guard = ExchangeGuard {
+        current: &is_current,
+        deadline: Instant::now() + timeout,
+    };
+    let propfind = |url: &str| {
+        guard.check()?;
+        let result = guard.agent()?.run(
+            ureq::http::Request::builder()
+                .method("PROPFIND")
+                .uri(url)
+                .header("Authorization", cfg.auth())
+                .header("Depth", "0")
+                .body(())
+                .unwrap(),
+        );
+        guard.check()?;
+        result.map(|_| ()).map_err(SyncError::from)
+    };
+    match propfind(&cfg.folder_url()) {
+        Ok(()) => Ok(()),
+        Err(SyncError::Http(ureq::Error::StatusCode(404))) => propfind(&cfg.account_url()),
+        Err(error) => Err(error),
+    }
+}
 fn urlencode(s: &str) -> String {
     s.bytes()
         .map(|b| {
@@ -167,42 +210,100 @@ fn etag(r: &ureq::http::Response<ureq::Body>) -> Option<String> {
         .find_map(|h| r.headers().get(*h)?.to_str().ok().map(|s| s.trim().to_string()))
 }
 
+struct ExchangeGuard<'a> {
+    current: &'a dyn Fn() -> bool,
+    deadline: Instant,
+}
+impl ExchangeGuard<'_> {
+    fn check(&self) -> Result<(), SyncError> {
+        if !(self.current)() {
+            return Err(SyncError::Cancelled);
+        }
+        if Instant::now() >= self.deadline {
+            return Err(SyncError::Deadline);
+        }
+        Ok(())
+    }
+    fn agent(&self) -> Result<ureq::Agent, SyncError> {
+        self.check()?;
+        Ok(ureq::Agent::config_builder()
+            // WebDAV collection creation uses MKCOL, an HTTP extension method.
+            .allow_non_standard_methods(true)
+            .timeout_global(Some(self.deadline.saturating_duration_since(Instant::now())))
+            .build()
+            .into())
+    }
+}
+
+#[cfg(test)]
 fn download(cfg: &NextcloudCfg) -> Result<Option<(SyncFile, String)>, SyncError> {
-    match ureq::get(&cfg.file_url()).header("Authorization", &cfg.auth()).call() {
+    download_guarded(
+        cfg,
+        &ExchangeGuard {
+            current: &|| true,
+            deadline: Instant::now() + DEFAULT_EXCHANGE_TIMEOUT,
+        },
+    )
+}
+fn download_guarded(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>) -> Result<Option<(SyncFile, String)>, SyncError> {
+    let result = guard
+        .agent()?
+        .get(&cfg.file_url())
+        .header("Authorization", &cfg.auth())
+        .call();
+    guard.check()?;
+    match result {
         Ok(mut r) => {
             let tag = etag(&r).unwrap_or_default();
             let body = r.body_mut().with_config().limit(512 << 20).read_to_string()?;
-            Ok(Some((decode(&body, cfg.encrypt_key.as_deref())?, tag)))
+            guard.check()?;
+            let decoded = decode(&body, cfg.encrypt_key.as_deref())?;
+            guard.check()?;
+            Ok(Some((decoded, tag)))
         }
         Err(ureq::Error::StatusCode(404)) => Ok(None),
         Err(e) => Err(e.into()),
     }
 }
-fn upload(cfg: &NextcloudCfg, body: &str, expected: Option<&str>) -> Result<String, SyncError> {
-    let mut req = ureq::put(&cfg.file_url())
-        .header("Authorization", &cfg.auth())
-        .header("Content-Type", "application/octet-stream");
-    req = match expected {
-        Some(tag) if tag.starts_with('"') => req.header("If-Match", tag),
-        Some(_) => req,
-        None => req.header("If-None-Match", "*"),
-    };
-    match req.send(body) {
-        Ok(r) => Ok(etag(&r).unwrap_or_default()),
-        Err(ureq::Error::StatusCode(412)) => Err(SyncError::Conflict),
-        Err(ureq::Error::StatusCode(404 | 409)) if expected.is_none() => {
-            ureq::run(
-                ureq::http::Request::builder()
-                    .method("MKCOL")
-                    .uri(cfg.folder_url())
-                    .header("Authorization", cfg.auth())
-                    .body(())
-                    .unwrap(),
-            )?;
-            upload(cfg, body, None)
+fn upload(
+    cfg: &NextcloudCfg,
+    body: &str,
+    expected: Option<&str>,
+    guard: &ExchangeGuard<'_>,
+) -> Result<String, SyncError> {
+    // At most one collection creation attempt; a server that keeps returning 404
+    // must not cause unbounded recursion or continue after cancellation.
+    for attempt in 0..2 {
+        let mut req = guard
+            .agent()?
+            .put(&cfg.file_url())
+            .header("Authorization", &cfg.auth())
+            .header("Content-Type", "application/octet-stream");
+        req = match expected {
+            Some(tag) if tag.starts_with('"') => req.header("If-Match", tag),
+            Some(_) => req,
+            None => req.header("If-None-Match", "*"),
+        };
+        let result = req.send(body);
+        guard.check()?;
+        match result {
+            Ok(r) => return Ok(etag(&r).unwrap_or_default()),
+            Err(ureq::Error::StatusCode(412)) => return Err(SyncError::Conflict),
+            Err(ureq::Error::StatusCode(404 | 409)) if expected.is_none() && attempt == 0 => {
+                guard.agent()?.run(
+                    ureq::http::Request::builder()
+                        .method("MKCOL")
+                        .uri(cfg.folder_url())
+                        .header("Authorization", cfg.auth())
+                        .body(())
+                        .unwrap(),
+                )?;
+                guard.check()?;
+            }
+            Err(e) => return Err(e.into()),
         }
-        Err(e) => Err(e.into()),
     }
+    unreachable!("the second PUT always returns")
 }
 
 #[derive(Debug, Default)]
@@ -212,11 +313,37 @@ pub struct Report {
     pub ops_uploaded: usize,
 }
 
-/// One sync cycle. Mutates `store` (state, pending, meta) on success.
+/// One sync cycle, including persistence for callers that exclusively own the store.
 pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> {
+    let report = exchange(cfg, store)?;
+    store.save()?;
+    Ok(report)
+}
+
+/// Exchange a snapshot in memory without writing to its backing directory.
+/// Concurrent store owners must merge local changes and validate their replacement
+/// generation before persisting the result. Errors may leave this snapshot mutated.
+pub fn exchange(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> {
+    exchange_guarded(cfg, store, DEFAULT_EXCHANGE_TIMEOUT, || true)
+}
+
+/// Cancellation is cooperative between requests and before returning a result.
+/// An in-flight request is bounded by the remaining whole-exchange deadline.
+/// Callers must still recheck their generation under the final persistence lock.
+pub fn exchange_guarded(
+    cfg: &NextcloudCfg,
+    store: &mut Store,
+    timeout: Duration,
+    is_current: impl Fn() -> bool,
+) -> Result<Report, SyncError> {
+    let guard = ExchangeGuard {
+        current: &is_current,
+        deadline: Instant::now() + timeout,
+    };
+    guard.check()?;
     let mut report = Report::default();
     for _attempt in 0..3 {
-        let remote = download(cfg)?;
+        let remote = download_guarded(cfg, &guard)?;
         let (mut file, tag) = match remote {
             Some((f, tag)) => {
                 if f.sync_version != store.meta.last_sync_version {
@@ -258,7 +385,7 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
         if store.pending.is_empty() && tag.is_some() {
             store.meta.last_sync_version = file.sync_version;
             store.meta.last_etag = tag;
-            store.save()?;
+            guard.check()?;
             return Ok(report);
         }
         let sv = file.sync_version + 1;
@@ -288,6 +415,7 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
             cfg,
             &encode(&file, cfg.compress, cfg.encrypt_key.as_deref())?,
             tag.as_deref(),
+            &guard,
         ) {
             Ok(new_tag) => {
                 report.uploaded = true;
@@ -295,7 +423,7 @@ pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> 
                 store.pending.clear();
                 store.meta.last_sync_version = sv;
                 store.meta.last_etag = Some(new_tag);
-                store.save()?;
+                guard.check()?;
                 return Ok(report);
             }
             Err(SyncError::Conflict) => continue,

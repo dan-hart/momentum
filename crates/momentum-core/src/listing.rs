@@ -30,6 +30,21 @@ pub(crate) fn archived_tasks(store: &Store) -> Vec<Task> {
         .collect()
 }
 
+/// Check archive membership from the entity map without deserializing every task.
+/// Repeat spawning only needs the identifier and runs during application startup.
+pub(crate) fn archived_has_task(store: &Store, id: &str) -> bool {
+    ["archiveYoung", "archiveOld"].iter().any(|tier| {
+        store
+            .state
+            .rest
+            .get(*tier)
+            .and_then(|archive| archive.get("task"))
+            .and_then(|tasks| tasks.get("entities"))
+            .and_then(|entities| entities.as_object())
+            .is_some_and(|entities| entities.contains_key(id))
+    })
+}
+
 pub(crate) fn build_index(store: &Store) -> SearchIndex {
     let tag_name = |id: &String| {
         store
@@ -349,10 +364,25 @@ fn sort_tasks(list: &mut [&Task], prefs: &Preferences) {
 }
 
 pub(crate) fn sidebar(store: &Store) -> Sidebar {
+    let family_count = |ids: &[String]| -> u32 {
+        ids.iter()
+            .filter_map(|id| store.state.task.entities.get(id))
+            .filter_map(|task| {
+                let root = task
+                    .parent_id
+                    .as_ref()
+                    .and_then(|id| store.state.task.entities.get(id))
+                    .unwrap_or(task);
+                (!root.is_done && root.parent_id.is_none()).then_some(root.id.as_str())
+            })
+            .collect::<std::collections::HashSet<_>>()
+            .len() as u32
+    };
     let entry = |view: View| SidebarEntry {
         view,
         title: String::new(),
         color: None,
+        task_count: 0,
     };
     let mut fixed = vec![entry(View::Today)];
     // Morning and Tonight only exist as entries while today has tasks in that slot.
@@ -374,6 +404,7 @@ pub(crate) fn sidebar(store: &Store) -> Sidebar {
                 view: View::project(&p.id),
                 title: p.title.clone(),
                 color: project_color(p),
+                task_count: family_count(&p.task_ids),
             })
             .collect(),
         tags: store
@@ -385,6 +416,7 @@ pub(crate) fn sidebar(store: &Store) -> Sidebar {
                 view: View::tag(&t.id),
                 title: t.title.clone(),
                 color: tag_color(t),
+                task_count: family_count(&t.task_ids),
             })
             .collect(),
     }
@@ -393,7 +425,7 @@ pub(crate) fn sidebar(store: &Store) -> Sidebar {
 /// Every non-search view. `archive_limit` is how many archived parents to show.
 pub(crate) fn listing(
     store: &Store,
-    index: &SearchIndex,
+    index: Option<&SearchIndex>,
     view: &View,
     prefs: &Preferences,
     archive_limit: usize,
@@ -455,6 +487,7 @@ pub(crate) fn listing(
         View::Archive => {
             // Read-only view over archiveYoung + archiveOld, newest completion first, paged.
             let parents: Vec<&Task> = index
+                .expect("archive listing requires the cached archive projection")
                 .archived
                 .iter()
                 .map(|(t, _)| t)
@@ -702,6 +735,9 @@ pub(crate) fn task_group(store: &Store, view: &View, row: &TaskRow, by: GroupBy)
     Some(match by {
         GroupBy::None => return None,
         GroupBy::MorningNight => {
+            if !view.is_day() {
+                return None;
+            }
             let slot = slot_from_names(row.tags.iter().map(|tag| tag.title.as_str()));
             match slot {
                 None => TaskGroup::Today,
@@ -777,10 +813,21 @@ pub(crate) fn group_listing(store: &Store, mut listing: Listing, by: GroupBy) ->
             grouped.push(section);
             continue;
         }
+        let Some(row_groups) = section
+            .rows
+            .iter()
+            .map(|row| match row {
+                Row::Task { row } => task_group(store, &listing.view, row, by),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()
+        else {
+            grouped.push(section);
+            continue;
+        };
         let mut groups = std::collections::BTreeMap::<(u8, String, String), Section>::new();
-        let mut rows = section.rows.into_iter().peekable();
-        while let Some(Row::Task { row }) = rows.next() {
-            let group = task_group(store, &listing.view, &row, by).expect("grouping enabled");
+        let mut rows = section.rows.into_iter().zip(row_groups).peekable();
+        while let Some((Row::Task { row }, group)) = rows.next() {
             let target = groups.entry(group_order(&group)).or_insert_with(|| Section {
                 kind: section.kind.clone(),
                 group: Some(group),
@@ -794,9 +841,11 @@ pub(crate) fn group_listing(store: &Store, mut listing: Listing, by: GroupBy) ->
             // Search results are independently matched items; ordinary lists are
             // parent/subtask families and group according to the parent's attributes.
             if listing.view != View::Search {
-                while matches!(rows.peek(), Some(Row::Task { row }) if row.parent_id.as_deref() == Some(parent_id.as_str()))
+                while matches!(rows.peek(), Some((Row::Task { row }, _)) if row.parent_id.as_deref() == Some(parent_id.as_str()))
                 {
-                    target.rows.push(rows.next().unwrap());
+                    if let Some((child, _)) = rows.next() {
+                        target.rows.push(child);
+                    }
                 }
             }
         }

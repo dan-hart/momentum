@@ -5,6 +5,7 @@
 // view and its listing, the selection, toasts and sheets, and it is where every user
 // action lands. Nothing here decides what a task list contains — the engine does, and
 // this only asks it again after each change.
+#if os(macOS)
 import AppKit
 import Foundation
 import MomentumCore
@@ -416,11 +417,15 @@ public final class AppState {
     public func addTask(withNotes text: String, notes: String?, due: String?) {
         apply(engine.addTaskWithNotes(text: text, notes: notes, due: due))
     }
-    public func createTask(_ draft: TaskDraft) {
-        apply(engine.createTask(draft: draft, view: view))
+    @discardableResult public func createTask(_ draft: TaskDraft) -> Outcome {
+        let outcome = engine.createTask(draft: draft, view: view)
+        apply(outcome)
+        return outcome
     }
-    public func saveTask(_ id: String, _ draft: TaskDraft) {
-        apply(engine.saveTask(id: id, draft: draft))
+    @discardableResult public func saveTask(_ id: String, _ draft: TaskDraft) -> Outcome {
+        let outcome = engine.saveTask(id: id, draft: draft)
+        apply(outcome)
+        return outcome
     }
     public func addSubtask(_ parent: String, _ title: String) {
         apply(engine.addSubtask(parentId: parent, title: title))
@@ -646,7 +651,12 @@ public final class AppState {
             guard engine.p2pRunning() else { return }
             nearbySyncing = true
             syncError = nil
-            engine.p2pSyncNow()
+            do {
+                _ = try engine.p2pSyncNow()
+            } catch {
+                nearbySyncing = false
+                syncError = Strings.error(error)
+            }
             return
         }
         guard prefs.syncEnabled else {
@@ -767,7 +777,7 @@ public final class AppState {
             guard prefs.p2pEnabled, !isDemo else { return }
             nearbySyncing = true
             syncError = nil
-        case .syncCompleted(let error):
+        case .syncCompleted(_, let error):
             guard prefs.p2pEnabled, !isDemo else { return }
             nearbySyncing = false
             syncError = error
@@ -833,24 +843,11 @@ public final class AppState {
     /// `momentum://add?title=&notes=&due=&tags=`, `superproductivity://create-task`,
     /// `superproductivity://complete-task?title=`.
     public func handle(url: URL) {
-        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        func param(_ k: String) -> String? {
-            items.first { $0.name == k }?.value
-        }
-        switch url.host() {
-        case "add", "create-task":
-            guard let title = param("title"), !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-            var text = title
-            if let tags = param("tags") {
-                for t in tags.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) where !t.isEmpty {
-                    text += " #\(t)"
-                }
-            }
-            addTask(withNotes: text, notes: param("notes"), due: param("due"))
-        case "complete-task":
-            if let title = param("title") { completeByTitle(title) }
-        default:
-            break
+        guard let action = TaskURLAction(url: url) else { return }
+        switch action {
+        case .create(let text, let notes, let due):
+            addTask(withNotes: text, notes: notes, due: due)
+        case .complete(let title): completeByTitle(title)
         }
     }
 
@@ -878,3 +875,4 @@ public final class AppState {
         return show
     }
 }
+#endif

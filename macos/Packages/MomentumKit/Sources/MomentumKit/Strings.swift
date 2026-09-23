@@ -323,6 +323,7 @@ public enum Strings {
         case .pickAWeekday: return String(localized: "Pick at least one weekday", bundle: .module)
         case .noLongerRepeats(let title): return String(localized: "“\(title)” no longer repeats", bundle: .module)
         case .repeatSaved(let description): return repeatText(description)
+        case .saveFailed(let error): return String(localized: "Could not save changes: \(error)", bundle: .module)
         case .backupImported: return String(localized: "Backup imported", bundle: .module)
         case .backupExported: return String(localized: "Backup exported", bundle: .module)
         case .synced(let n): return String(localized: "Synced (\(n)↑)", bundle: .module)

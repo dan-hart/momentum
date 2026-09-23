@@ -32,14 +32,14 @@ import Testing
 
         left.state.addTask("Task over the Swift LibreSync bridge")
         let id = try #require(left.engine.allTasks().first?.id)
-        left.engine.p2pSyncNow()
+        _ = try left.engine.p2pSyncNow()
         try await eventually("remote change refreshes the Swift task list and search index") {
             right.state.row(id)?.title == "Task over the Swift LibreSync bridge"
                 && right.indexer.indexed.last?.contains(where: { $0.id == id }) == true
         }
 
         right.state.setDone(id, true)
-        right.engine.p2pSyncNow()
+        _ = try right.engine.p2pSyncNow()
         try await eventually("completion travels back to the first Swift state") {
             left.state.row(id)?.isDone == true
         }

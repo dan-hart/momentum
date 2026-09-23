@@ -51,7 +51,7 @@ public enum SyncMethod: String, CaseIterable, Identifiable {
     }
 }
 
-public enum DockBadgeMode: String, CaseIterable, Identifiable {
+public enum DockBadgeMode: String, CaseIterable, Identifiable, Sendable {
     case dueToday, todayIncludingOverdue, none
     public var id: String { rawValue }
 
@@ -259,15 +259,20 @@ public struct Preferences {
     }
 }
 
-/// Where the store lives: the same directory `mo` uses, so the app and the command line
-/// never disagree. `MOMENTUM_DATA_DIR` overrides it (tests, a second profile).
+/// The app support store directory, shared with `mo` on macOS and sandboxed on iOS.
+/// `MOMENTUM_DATA_DIR` overrides it (tests, a second profile).
 public enum DataDirectory {
     public static var url: URL {
         if let override = ProcessInfo.processInfo.environment["MOMENTUM_DATA_DIR"], !override.isEmpty {
             return URL(fileURLWithPath: override)
         }
+        #if os(macOS)
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        #else
+        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        #endif
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+            ?? home.appendingPathComponent("Library/Application Support")
         return base.appendingPathComponent("momentum")
     }
 }

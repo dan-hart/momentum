@@ -1,0 +1,199 @@
+{
+  "automatedFindingsEmpty" : false,
+  "findings" : [
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(62.66666793823242, 260.6666564941406, 276.6666564941406, 273.6667175292969)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Nothing planned for today",
+      "screen" : "ax5-today",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-quick-add",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "User will not be able to change the font size of this element",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-quick-add",
+      "summary" : "Dynamic Type font sizes are partially unsupported",
+      "type" : "65536"
+    },
+    {
+      "detail" : "Text of this element may be clipped at larger Dynamic Type sizes.",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-quick-add",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(108.0, 746.6666666666666, 233.66666666666669, 91.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Inbox · ~15m · #Access",
+      "screen" : "ax5-long-task",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(115.66666666666667, 827.3333333333334, 183.99999999999994, 114.66666666666663)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Notifications",
+      "screen" : "ax5-settings",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 632.6666666666666, 191.66666666666663, 156.66666666666674)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Accent color, text, and feedback",
+      "screen" : "ax5-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 515.0, 198.66666666666663, 114.66666666666663)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Appearance",
+      "screen" : "ax5-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 545.6666666666667, 116.66666666666667, 57.33333333333337)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Order",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 377.0, 149.33333333333331, 57.333333333333314)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Sort By",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UILabel may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(44.0, 276.66666666666663, 284.0, 63.333333333333314)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Morning & Night",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this UILabel may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(44.0, 445.3333333333333, 284.0, 63.33333333333337)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Manual Order",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 714.3333333333334, 212.33333333333331, 57.33333333333326)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Upcoming",
+      "screen" : "ax5-task-list-settings",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "(115.66666666666667, 37.0, 116.66666666666667, 57.33333333333333)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Order",
+      "screen" : "ax5-task-list-settings-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 205.66666666666666, 212.33333333333331, 57.33333333333334)",
+      "hittable" : "false",
+      "identifier" : "",
+      "label" : "Upcoming",
+      "screen" : "ax5-task-list-settings-bottom",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Text of this SwiftUI.AccessibilityNode may be clipped at larger Dynamic Type sizes.",
+      "frame" : "(115.66666666666667, 353.0, 177.33333333333331, 229.33333333333326)",
+      "hittable" : "true",
+      "identifier" : "",
+      "label" : "Color-code projects and tags",
+      "screen" : "ax5-appearance",
+      "summary" : "Text clipped",
+      "type" : "131072"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    },
+    {
+      "detail" : "Contrast failed for SwiftUI.AccessibilityNode",
+      "frame" : "unknown",
+      "hittable" : "unknown",
+      "identifier" : "",
+      "label" : "",
+      "screen" : "ax5-notifications-bottom",
+      "summary" : "Contrast failed",
+      "type" : "1"
+    }
+  ],
+  "screens" : [
+    "ax5-today",
+    "ax5-quick-add",
+    "ax5-long-task",
+    "ax5-editor-top",
+    "ax5-settings",
+    "ax5-task-list-settings",
+    "ax5-task-list-settings-bottom",
+    "ax5-appearance",
+    "ax5-accent",
+    "ax5-notifications",
+    "ax5-notifications-middle",
+    "ax5-notifications-bottom"
+  ]
+}

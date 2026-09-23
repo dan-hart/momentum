@@ -94,3 +94,32 @@ Settings, menus, and the main list separately. The checker does not prove useful
 order, contrast, keyboard operability, or correct VoiceOver speech; review those manually.
 
 The live macOS audit is still pending; see [MACOS-MVP-CHECKLIST.md](MACOS-MVP-CHECKLIST.md).
+
+## iOS and iPadOS
+
+The iOS client uses native SwiftUI controls, semantic system colors, Dynamic Type,
+SF Symbols with accessibility labels, non-color selection state, Reduce Motion guards,
+and an Increase Contrast exception for calculated foreground ink over accent fills.
+Normal-contrast buttons using the default `#FF6600` accent render white text and symbols.
+
+The automated iOS suite is unit-only. Portable Swift tests cover state and rules;
+`MomentumViewTests` hosts the real production SwiftUI source in `UIHostingController`
+and asserts geometry, pixels, localization and accessibility metadata under explicit
+appearance, contrast and text-size traits. The project contains no XCUITest target and
+does not use ViewInspector. Run the combined lane on a disposable simulator:
+
+Asynchronous Quick Add, task, recurrence, project-move, backup and sync failures use
+semantic error ink and explicit accessibility focus. Inline estimate correction stays
+on the active field as an accessibility hint. The shared error presentation stacks at
+accessibility text sizes and is rendered at phone and iPad widths in unit tests.
+
+```sh
+python3 ios/scripts/test.py unit \
+  --destination 'platform=iOS Simulator,id=YOUR_TEST_SIMULATOR'
+```
+
+Unit tests cannot prove VoiceOver speech/order, Voice Control, Switch Control, Full
+Keyboard Access, gestures, system permission prompts or cross-app behavior. Check those
+manually on a disposable simulator when affected and record the exact OS/configuration.
+See [the iOS testing guide](../ios/TESTING.md) and the
+[dated audit](audits/2026-09-16-ios-accessibility.md).

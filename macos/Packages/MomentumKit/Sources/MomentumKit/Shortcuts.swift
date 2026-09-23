@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 /// The menu bindings and their displayed equivalents share this definition.
@@ -59,7 +61,8 @@ public enum AppShortcut: Hashable, Sendable {
         case .nextView: return KeyboardShortcut("]", modifiers: shifted)
         case .previousView: return KeyboardShortcut("[", modifiers: shifted)
         case .sync: return KeyboardShortcut("r", modifiers: base)
-        case .syncFunction: return KeyboardShortcut(KeyEquivalent(Character(UnicodeScalar(NSF5FunctionKey)!)), modifiers: [])
+        // Apple function-key character for F5 (NSF5FunctionKey on macOS).
+        case .syncFunction: return KeyboardShortcut(KeyEquivalent("\u{F708}"), modifiers: [])
         case .globalQuickAdd: return KeyboardShortcut("t", modifiers: [.control, .option])
         case .globalShow: return KeyboardShortcut("m", modifiers: [.control, .option])
         }
@@ -81,6 +84,7 @@ public enum AppShortcut: Hashable, Sendable {
     }
 }
 
+#if os(macOS)
 extension ModifierKey {
     public var shortcutWarning: String {
         switch self {
@@ -103,3 +107,4 @@ extension ModifierKey {
         selectTasks?()
     }
 }
+#endif

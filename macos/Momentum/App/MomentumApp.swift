@@ -29,12 +29,29 @@ struct MomentumApp: App {
             let dir = FileManager.default.temporaryDirectory.appendingPathComponent("momentum-demo")
             engine = Engine.demo(dir: dir.path)
         } else {
-            engine = Engine.open(dir: DataDirectory.url.path)
+            engine = Self.openStore()
         }
         // The services wait for the delegate to attach notifications and Spotlight.
         let s = AppState(engine: engine, services: false, isDemo: isDemo)
         _state = State(initialValue: s)
         AppDelegate.shared = s
+    }
+
+    /// Never construct a writable empty app state after a recovery failure.
+    private static func openStore() -> Engine {
+        while true {
+            do { return try Engine.openChecked(dir: DataDirectory.url.path) }
+            catch {
+                let alert = NSAlert()
+                alert.alertStyle = .critical
+                alert.messageText = String(localized: "Data Unavailable")
+                alert.informativeText = String(localized: "Momentum couldn’t safely open its data. Existing files have been preserved.")
+                    + "\n\n" + String(describing: error)
+                alert.addButton(withTitle: String(localized: "Try Again"))
+                alert.addButton(withTitle: String(localized: "Quit"))
+                if alert.runModal() != .alertFirstButtonReturn { exit(EXIT_FAILURE) }
+            }
+        }
     }
 
     var body: some Scene {

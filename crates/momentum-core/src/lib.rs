@@ -16,12 +16,20 @@ pub mod demo;
 mod engine;
 pub mod ipc;
 mod listing;
+mod notification_schedule;
+pub mod notifications;
 #[cfg(feature = "p2p")]
 pub mod p2p;
+mod sync_cancellation;
 pub mod text;
 pub mod types;
 
 pub use engine::{Engine, QUICK_MATCHES};
+pub use notifications::{
+    NotificationAcceptance, NotificationContent, NotificationObservation, NotificationPlan, NotificationRequest,
+    ProjectedOccurrence,
+};
+pub use sync_cancellation::SyncCancellation;
 pub use text::QuickAdd;
 pub use types::*;
 
@@ -81,4 +89,12 @@ pub fn day_offset(day: String, days: i64) -> String {
 uniffi::setup_scaffolding!("momentum");
 
 #[cfg(test)]
+mod notification_tests;
+#[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod transport_tests;
+
+#[cfg(test)]
+mod mutation_tests;

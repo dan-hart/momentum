@@ -22,6 +22,7 @@ public protocol SearchIndexer: AnyObject {
     func reindex(_ tasks: [TaskBrief])
 }
 
+#if os(macOS)
 /// Watches one file for writes by another process (`mo` when the app's socket is not up).
 /// Atomic writes replace the file rather than changing it, so the watch is re-armed after
 /// a rename or a delete.
@@ -95,3 +96,4 @@ public final class CliBridge: CliDelegate, @unchecked Sendable {
         Task { @MainActor [weak self] in self?.state?.sync() }
     }
 }
+#endif

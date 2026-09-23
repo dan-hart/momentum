@@ -657,7 +657,7 @@ fn live_engine_persistence_failure_is_not_acknowledged_or_retried() {
     let error: serde_json::Value = serde_json::from_str(&output).unwrap();
     assert!(error["error"]
         .as_str()
-        .is_some_and(|s| s.contains("could not persist CLI change") && s.contains("already applied")));
+        .is_some_and(|s| s.contains("could not persist CLI change")));
     assert_eq!(
         delegate.0.load(Ordering::SeqCst),
         1,
@@ -667,11 +667,15 @@ fn live_engine_persistence_failure_is_not_acknowledged_or_retried() {
     assert_eq!(store.state.task.ids.len(), 1, "failed task must not appear on disk");
     assert_eq!(store.pending.len(), 1);
     engine.with_store(|store| {
-        assert_eq!(store.state.task.ids.len(), 2, "failed operation remains in memory");
+        assert_eq!(
+            store.state.task.ids.len(),
+            1,
+            "failed operation must not be published in memory"
+        );
         assert_eq!(
             store.pending.len(),
-            2,
-            "failure must not dispatch a duplicate operation"
+            1,
+            "failure must not dispatch or retain an uncommitted operation"
         );
     });
     engine.stop_cli_server();
@@ -753,4 +757,18 @@ fn sync_respects_selected_provider_without_falling_back_to_nextcloud() {
         assert!(!ok);
         assert!(text.contains(expected), "{text}");
     }
+}
+
+#[test]
+fn unreadable_recovery_record_returns_a_normal_json_error_and_preserves_data() {
+    let mo = Mo::new();
+    mo.ok(&["add", "Keep me"]);
+    let before = std::fs::read(mo.dir.path().join("state.json")).unwrap();
+    std::fs::create_dir(mo.dir.path().join(".momentum-transaction")).unwrap();
+    std::fs::write(mo.dir.path().join(".momentum-transaction/manifest.json"), b"{}").unwrap();
+    let (ok, output) = mo.run(&["--json", "list"]);
+    assert!(!ok);
+    let error: serde_json::Value = serde_json::from_str(&output).expect("structured CLI error, not a panic");
+    assert!(error["error"].is_string());
+    assert_eq!(std::fs::read(mo.dir.path().join("state.json")).unwrap(), before);
 }

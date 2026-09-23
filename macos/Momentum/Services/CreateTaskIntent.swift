@@ -7,6 +7,9 @@ import Foundation
 struct CreateTaskIntent: AppIntent {
     static let title: LocalizedStringResource = "Create Task"
     static let description = IntentDescription("Create a Momentum task and return it to the next action. Supports #tags and estimates. An optional due date overrides the plan's date.")
+    #if os(iOS)
+    static var authenticationPolicy: IntentAuthenticationPolicy { .requiresAuthentication }
+    #endif
     static var supportedModes: IntentModes { .background }
     @Parameter(title: "Title") var taskTitle: String
     @Parameter(title: "Notes") var notes: String?
@@ -21,7 +24,7 @@ struct CreateTaskIntent: AppIntent {
         }
     }
     @MainActor func perform() async throws -> some IntentResult & ReturnsValue<MomentumTaskEntity> {
-        let task = try MomentumAutomationRuntime.automation().create(title: taskTitle, notes: notes ?? "",
+        let task = try await MomentumAutomationRuntime.create(title: taskTitle, notes: notes ?? "",
             planning: planning.model, projectId: project?.id, dueDate: dueDate)
         return .result(value: MomentumTaskEntity(task))
     }

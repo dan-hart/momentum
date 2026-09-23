@@ -60,16 +60,16 @@ impl P2pDelegate for WindowDelegate {
                 P2pEvent::Started { port } => tracing::info!("p2p: listening on port {port}"),
                 P2pEvent::StoreChanged => win.refresh(),
                 P2pEvent::StatusChanged => win.update_sync_button(),
-                P2pEvent::SyncStarted if win.p2p_enabled() => {
+                P2pEvent::SyncStarted { .. } if win.p2p_enabled() => {
                     win.imp().nearby_syncing.set(true);
                     win.update_sync_button();
                 }
-                P2pEvent::SyncCompleted { error } if win.p2p_enabled() => {
+                P2pEvent::SyncCompleted { error, .. } if win.p2p_enabled() => {
                     win.imp().nearby_syncing.set(false);
                     win.set_sync_error(error);
                     win.update_background_status();
                 }
-                P2pEvent::SyncStarted | P2pEvent::SyncCompleted { .. } => {}
+                P2pEvent::SyncStarted { .. } | P2pEvent::SyncCompleted { .. } => {}
                 P2pEvent::DevicesChanged | P2pEvent::DiscoveryUpdated => win.p2p_dialog_refresh(),
                 P2pEvent::Notice { message } => win.toast(&crate::messages::text(&message)),
             }
@@ -127,7 +127,9 @@ impl MomentumWindow {
         if !self.engine().p2p_running() {
             self.p2p_apply_setting();
         }
-        self.engine().p2p_sync_now();
+        if let Err(error) = self.engine().p2p_sync_now() {
+            self.set_sync_error(Some(error.to_string()));
+        }
     }
     // ---- Nearby Devices dialog ---------------------------------------------
 

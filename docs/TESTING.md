@@ -15,6 +15,8 @@ build-aux/test.sh                 # everything, inside the GNOME SDK sandbox (re
 build-aux/test.sh -p sp-oplog     # arguments go to cargo test
 cargo test --workspace --exclude momentum   # core crates only, on any OS, no GTK needed
 swift test --package-path macos/Packages/MomentumKit   # the macOS app's own tests
+python3 macos/scripts/tests/test_repeat_catalogs.py    # compiled Apple plural resources (Xcode required)
+python3 macos/scripts/tests/test_shared_plurals.py     # shared message/time/count plurals (Xcode required)
 ```
 
 Focused Linux-parity checks use the same isolated harness:
@@ -81,6 +83,12 @@ compiles the Blueprint UI, the resource bundle and the GSettings schema into
 script as its Meson test, so CI executes the UI tests on every push. The whole suite
 finishes in a few seconds once compiled.
 
+The repeat-catalog regression compiles the actual iOS and macOS string catalogs with
+`xcstringstool`, then resolves their English/German resources through Foundation.
+It checks day/week/month/year wording at 0, 1, 2 and 99 without launching an app
+or simulator. This catches missing source-language plural forms that catalog
+completeness checks alone cannot detect. The test skips on non-macOS hosts.
+
 ## Layers
 
 | Layer | Where | Needs | Covers |
@@ -137,9 +145,9 @@ Two habits keep the platforms from drifting:
 
 The macOS tests deliberately use no UI automation. The app's logic lives in the
 `MomentumKit` package rather than the app target, so the tests build the real state object
-over a throwaway copy of the demo data and drive it directly. The 105 tests finish in
-about a second, with no window, no app launch and nothing touching the real store,
-preferences or Keychain.
+over a throwaway copy of the demo data and drive it directly, with no window, no app
+launch and nothing touching the real store, preferences or Keychain. Dated suite
+counts and measured timings are recorded in [PROGRESS](PROGRESS.md).
 
 An opt-in socket integration test verifies the real Swift → UniFFI → LibreSync path:
 
@@ -158,6 +166,28 @@ second. Run it yourself before a release. It needs no app host and does not touc
 tasks or Keychain entries. This does not substitute for physical-device discovery or
 macOS-to-Linux acceptance.
 
+The mobile adapter has a separate opt-in socket test, using the same generated core:
+
+```sh
+python3 ios/scripts/test.py prepare  # after any Rust/FFI source change
+MOMENTUM_TEST_NEARBY=1 swift test --package-path ios/Packages/MomentumMobile --filter CoreNearbyRuntimeTests
+```
+
+It pairs two disposable stores, exchanges a task and completion in opposite
+directions, verifies callback delivery, stops on background, restarts with the saved
+peer and unlinks. The ordinary fast suite skips sockets and tests lifecycle races
+with controlled async gates. This host test does not prove native Bonjour, local
+network permission, physical iOS background behavior or mobile Settings integration.
+`SyncBoundaryIntegrationTests` in the native view lane separately exercises real
+Security.framework reads, device-only key protection and preservation of malformed
+stored credentials on both iOS versions.
+
+`NearbyTransportTests` in the native `transport` lane runs the two-peer lifecycle
+on iOS with unique Keychain services. It also checks certificate preservation and
+another exchange after restart without pairing again; teardown stops both nodes
+before removing only those fixture services and stores. Use `--filter
+NearbyTransportTests` with a simulator destination to run this acceptance case.
+
 
 ## macOS MVP acceptance
 
@@ -172,3 +202,142 @@ Localization validation is documented in [macos/LOCALIZATION.md](../macos/LOCALI
 The read-only macOS accessibility audit is `swift macos/scripts/a11y-audit.swift`; pass
 `--self-test` to verify the checker without an app or accessibility permission. A passing
 unit suite does not substitute for the live drag/drop and accessibility acceptance checks.
+
+## iOS accessibility inventory
+
+For the ordinary iOS edit/test loop, see [Fast iOS regression tests](../ios/TESTING.md).
+The default portable package suite is independent of simulator startup. The
+`MomentumFastTests` unit scheme hosts production SwiftUI views in-process through
+`UIHostingController`, without ViewInspector or app automation. Its fixture sets
+explicit light/dark, normal/increased contrast, Dynamic Type and locale traits so
+results do not inherit mutable simulator settings. Tests assert layout, rendered
+pixels, semantic color resolution and stable accessibility metadata.
+
+The project has no XCUITest target. Unit tests do not establish spoken VoiceOver,
+Voice Control, Switch Control, Full Keyboard Access, gestures, permission prompts,
+system notification delivery or cross-app flows. Check those boundaries manually on
+a disposable simulator when relevant code changes, and record the exact scope and
+runtime. Do not treat a unit-suite pass as complete assistive-technology acceptance.
+See the [dated audit](audits/2026-09-16-ios-accessibility.md) for findings and
+verification limits.
+
+
+## Interrupted store writes
+
+`cargo test -p sp-store` runs a child process that exits without destructors at every
+journal publication/file-replacement/commit boundary. Reopening must return either
+all three old files or all three committed files. Additional fixtures cover a failed
+later write, interrupted first save, invalid/incomplete recovery records and safe
+cleanup. `momentum-core::transport_tests` checks that failed import preserves live
+state/undo and `mo` checks its normal JSON error boundary.
+
+The private `.momentum-transaction` directory is an undo record, not a user backup.
+Its versioned manifest lists only the existing store filenames. It is published and
+synced before any live file is replaced; all replacement files and their parent are
+synced before the journal is atomically retired. Opening retries recovery before any
+client can write. Only reserved UUID-named preparation/retirement directories are
+cleaned up; unknown, malformed or incomplete active journals are preserved. One owner
+must serialize writes; this does not introduce cross-process locking or alter the
+backup/sync JSON schemas. Hardware power-loss and disk-controller guarantees are not
+established by process-exit tests.
+
+`LifecycleTests.failedBootstrapPreservesDataAndAllowsRetry` and the native
+`StoreRecoveryIntegrationTests` use isolated data to verify checked iOS startup and
+retry. Production never deletes a bad journal on Retry; tests remove only their own
+injected corrupt record to model an externally resolved fault. The screen uses Apple's
+[ContentUnavailableView](https://developer.apple.com/documentation/swiftui/contentunavailableview)
+with a descriptive message and retry action. Component rendering is not VoiceOver or
+full native recovery acceptance. Track write-performance regressions separately in
+B-023 rather than weakening persistence for fast tests.
+
+
+## Durable edit transactions
+
+`cargo test -p momentum-core mutation_tests` covers bulk completion/undo, failed save
+rollback, tagged creation, organization identities, compound capture/paste, no-op form
+saves and repeat-cursor retry. Its observer reads the actual committed store, proving
+that sync is awakened only after the complete batch is durable. The manual isolated
+sample runs with `cargo test -p momentum-core measure_durable_bulk_edits -- --ignored --nocapture`;
+there is no flaky timing threshold, and normal tests never disable disk durability.
+
+Mobile Swift tests cover real failed-save draft retention/retry, notification-action
+retry and localized automation errors. `TaskMutationIntegrationTests` exercises the
+same app-model/Quick Add path against the real iOS core, checking that a failed write
+does not trigger success invalidation or lose the draft. The Mac form adapter returns
+its outcome so explicit save failure can retain the sheet and use a native alert,
+following Apple's [alert guidance](https://developer.apple.com/design/human-interface-guidelines/alerts).
+Native keyboard/dismissal and physical-device performance remain separate acceptance.
+
+## Nearby receive, stop and restore
+
+`cargo test -p momentum-core p2p::tests` uses disposable keys/stores and isolated
+runtimes to cover durable received batches, store-write failure with retry, provider
+exclusion, concurrent startup, stopped late application, restore/restart epochs and
+corrupt-journal preservation. `cargo test -p sp-p2p --lib` covers non-destructive inbox
+reads, exact acknowledgement with newer arrivals and acknowledgement write failure.
+It also stalls a local TLS peer to verify that Sync All shutdown cancels active I/O
+instead of waiting for its five-second timeout. Discovery retains a two-second bound.
+
+Run `cargo test -p sp-p2p --test two_devices` for actual local pairing/exchange/bootstrap
+compatibility. These checks do not prove native permission handling, physical-device
+reachability, background expiration or battery behavior. A restored store is locally
+authoritative at replacement; future new remote operations still follow normal sync
+rules. The default-zero restore epoch is internal metadata, not a backup migration.
+
+Peer retry receipts are tested across a failed transport acknowledgement, a real
+Nextcloud upload that clears pending operations, process reopen and nearby restart.
+The same suite covers snapshot-covered operations and receipt pruning when the next
+inbox is empty. Receipts are committed with task state; they are not inferred from
+vector-clock maxima or the current upload queue.
+
+`transport_tests::explicit_cancellation_preserves_edits_and_allows_a_fresh_exchange`
+pauses a real GET, requests cancellation, edits locally and releases the response.
+It verifies zero subsequent PUTs, no stale commit/success, durable pending edits and
+successful retry. `cancel_nextcloud()` signals the current exchange; callers must
+still await it because in-flight HTTP I/O retains the 30-second exchange deadline.
+This is not evidence of immediate socket cancellation or iOS background acceptance.
+
+## iOS native backups — F-029
+
+`BackupTests` runs in the fast MomentumMobile package lane. It exercises real Rust
+export/restore identity, unrelated JSON rejection, failed-write retry, immutable
+coordinated file reads, cancellation, overlapping actions and the distinction between
+prepared export bytes and a successful system save. `BackupIntegrationTests` runs
+in the native view lane against isolated stores/preferences; it checks task refresh,
+selected-tab preservation, draft protection and failure-state cleanup, and attaches
+English/German AX5 light/dark renders. System document-picker interaction is a manual
+simulator boundary after the removal of XCUITest; unit coverage does not establish
+picker cancellation, spoken VoiceOver or third-party file-provider behavior.
+
+The implementation follows Apple's [FileDocument](https://developer.apple.com/documentation/swiftui/filedocument),
+[file exporter](https://developer.apple.com/documentation/swiftui/view/fileexporter(ispresented:document:contenttype:defaultfilename:oncompletion:))
+and [file importer](https://developer.apple.com/documentation/swiftui/view/fileimporter(ispresented:allowedcontenttypes:allowsmultipleselection:oncompletion:))
+interfaces. Import copies coordinated, security-scoped bytes off the main actor,
+then requires confirmation before invoking the shared core. Cancellation is not a
+reported save/restore success. File-provider interaction, notification delivery and
+provider lifecycle checks remain distinct from these fast model tests.
+
+## Queued sync cancellation and checked credentials — F-025/B-031/B-032
+
+`SyncCancellation` is a single-use core object shared across executor admission,
+HTTP checkpoints and the final commit boundary. `cancel()` accepts a request only
+while queued or running; it cannot retroactively cancel a committing/completed
+operation. An accepted cancellation still awaits the in-flight request's bounded
+deadline. The real HTTP tests `cancellation_before_executor_admission_never_starts_http`
+and `operation_cancellation_drains_the_admitted_exchange_without_upload_or_commit`
+verify zero stale upload/commit, preserved pending edits, lease retention and a fresh
+subsequent operation. Existing desktop `sync_nextcloud` remains compatible.
+
+`CheckedKeychainTests` injects Security statuses and uses isolated actual items.
+`SyncConnectionTests` tests the atomic mobile record, corrupt-record preservation,
+exact password handling, already-cancelled Swift tasks and the generated operation
+binding. `SyncBoundaryIntegrationTests` reads back real iOS Keychain protection and
+checks queued cancellation against the app's isolated engine. These are adapter
+checks; the native provider screen, lifecycle and physical locked-device behavior
+are not inferred.
+
+The mobile record follows Apple's [Keychain accessibility guidance](https://developer.apple.com/documentation/security/restricting-keychain-item-accessibility)
+and [checked update/delete handling](https://developer.apple.com/documentation/security/updating-and-deleting-keychain-items).
+It uses After First Unlock This Device Only for the planned bounded background-sync
+path, without migrating secrets to another device. Tests never erase a simulator
+or access production Keychain accounts.

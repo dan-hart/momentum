@@ -30,3 +30,9 @@
 /macos/**/.swiftpm/
 /macos/DerivedData/
 .DS_Store
+
+# iOS generated projects, packages and build products
+/ios/Momentum.xcodeproj/
+/ios/**/.build/
+/ios/**/.swiftpm/
+/ios/DerivedData/

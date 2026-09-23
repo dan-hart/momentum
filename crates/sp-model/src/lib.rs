@@ -4,7 +4,7 @@
 //! `*.model.ts` (MIT, (c) 2018 Johannes Millan); unknown fields round-trip via `extra`.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 pub const SCHEMA_VERSION: u32 = 4;
 pub const TODAY_TAG_ID: &str = "TODAY";
@@ -199,6 +199,27 @@ pub struct RepeatCfg {
     pub extra: Map<String, Value>,
 }
 impl RepeatCfg {
+    /// Construct a deterministic date-only instance without reading the clock or
+    /// generating an ID. The caller supplies its native context's fallback project.
+    pub fn task_for_day(&self, day: &str, fallback_project: &str, created: u64) -> Task {
+        Task {
+            id: format!("rpt_{}_{}", self.id, day),
+            title: self.title.as_deref().unwrap_or("").trim().into(),
+            project_id: self
+                .project_id
+                .as_deref()
+                .filter(|p| !p.is_empty())
+                .unwrap_or(fallback_project)
+                .into(),
+            created,
+            repeat_cfg_id: Some(self.id.clone()),
+            time_estimate: self.default_estimate.unwrap_or(0.0),
+            notes: self.notes.clone().filter(|n| !n.is_empty()),
+            due_day: Some(day.into()),
+            tag_ids: self.tag_ids.iter().filter(|t| *t != TODAY_TAG_ID).cloned().collect(),
+            ..Default::default()
+        }
+    }
     /// A new weekly (Mon–Fri) config for a task, mirroring upstream `DEFAULT_TASK_REPEAT_CFG`.
     /// `lastTaskCreationDay` is today so the existing task counts as today's instance.
     pub fn for_task(task: &Task) -> Self {
@@ -545,13 +566,28 @@ impl AppData {
     }
     /// Accepts a raw `AppDataComplete` or the `{data, timestamp, crossModelVersion}` backup wrapper.
     pub fn from_backup(v: Value) -> serde_json::Result<Self> {
-        match v.get("data") {
-            Some(inner) if v.get("task").is_none() => serde_json::from_value(inner.clone()),
-            _ => serde_json::from_value(v),
+        let data = match v.get("data") {
+            Some(inner) if v.get("task").is_none() => inner.clone(),
+            _ => v,
+        };
+        // Serde defaults are useful when loading older known data, but an arbitrary
+        // JSON object must never become an empty destructive backup replacement.
+        let task = data.get("task");
+        if !task.and_then(|t| t.get("ids")).is_some_and(Value::is_array)
+            || !task.and_then(|t| t.get("entities")).is_some_and(Value::is_object)
+        {
+            return Err(<serde_json::Error as serde::de::Error>::custom(
+                "backup must contain a task collection with ids and entities",
+            ));
         }
+        serde_json::from_value(data)
     }
     pub fn today_ids(&self) -> Vec<String> {
-        let today = today_str();
+        self.planned_ids(&today_str())
+    }
+    /// Top-level tasks planned for `day`, preserving the stored Today order first.
+    /// Uses the same timed-date precedence as Today; completion is filtered by callers.
+    pub fn planned_ids(&self, day: &str) -> Vec<String> {
         let mut ids: Vec<String> = self
             .tag
             .entities
@@ -562,10 +598,11 @@ impl AppData {
             self.task
                 .entities
                 .get(i)
-                .is_some_and(|t| t.parent_id.is_none() && t.plan_day().as_deref() == Some(&today))
+                .is_some_and(|t| t.parent_id.is_none() && t.plan_day().as_deref() == Some(day))
         });
+        let mut seen: HashSet<String> = ids.iter().cloned().collect();
         for t in self.task.iter() {
-            if t.parent_id.is_none() && t.plan_day().as_deref() == Some(&today) && !ids.contains(&t.id) {
+            if t.parent_id.is_none() && t.plan_day().as_deref() == Some(day) && seen.insert(t.id.clone()) {
                 ids.push(t.id.clone());
             }
         }
