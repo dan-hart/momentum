@@ -1227,10 +1227,12 @@ mod tests {
 
     #[test]
     fn receive_delegate_can_synchronously_stop_without_holding_the_ack_barrier() {
-        struct StopOnStatus(std::sync::Weak<super::Engine>);
+        // The startup sync cycle also reports StatusChanged from the node thread; only
+        // the event this test drives may stop the runtime, or the handle below is gone.
+        struct StopOnStatus(std::sync::Weak<super::Engine>, std::sync::Arc<super::AtomicBool>);
         impl super::P2pDelegate for StopOnStatus {
             fn on_event(&self, event: super::P2pEvent) {
-                if matches!(event, super::P2pEvent::StatusChanged) {
+                if matches!(event, super::P2pEvent::StatusChanged) && self.1.load(super::Ordering::SeqCst) {
                     if let Some(engine) = self.0.upgrade() {
                         engine.p2p_stop();
                     }
@@ -1239,16 +1241,18 @@ mod tests {
         }
         let dir = tempfile::tempdir().unwrap();
         let engine = super::Engine::open(dir.path().join("store").to_string_lossy().into_owned());
+        let armed = std::sync::Arc::new(super::AtomicBool::new(false));
         engine
             .clone()
             .p2p_start(
-                std::sync::Arc::new(StopOnStatus(std::sync::Arc::downgrade(&engine))),
+                std::sync::Arc::new(StopOnStatus(std::sync::Arc::downgrade(&engine), armed.clone())),
                 std::sync::Arc::new(NoSecrets),
                 "Fixture".into(),
                 Some(dir.path().join("keys").to_string_lossy().into_owned()),
             )
             .unwrap();
         let runtime = engine.runtime().unwrap();
+        armed.store(true, super::Ordering::SeqCst);
         assert!(runtime.apply_inbox().is_ok());
         assert!(!engine.p2p_running());
     }
