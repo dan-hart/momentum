@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.1/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.2/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.1/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.2/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.1/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.2/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.1/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.2/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,18 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.4.2" date="2026-09-28">
+      <description>
+        <p>Grouped context menus with Move To on Linux and iOS, and background sync on every platform.</p>
+        <ul>
+          <li>Linux: Preferences › Desktop › "Sync in the background" decides whether automatic sync keeps running while the window is closed; Sync Now always works</li>
+          <li>iOS: Settings › Sync › "Sync in the background" lets iOS wake Momentum occasionally for one bounded Nextcloud exchange; Low Power Mode and the connection's automatic switch still apply</li>
+          <li>Linux and iOS: the task context menu is grouped, with every Move to destination (Morning, Tonight, Tomorrow, Next Week, Project) in one Move To submenu; on Linux the menu now acts on the whole selection when the clicked row is selected</li>
+          <li>Linux: the empty search screen says "Search"; iOS: the search prompt is "Search"</li>
+          <li>iOS: Settings › Task Lists notes that Upcoming is always grouped by day</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.1" date="2026-09-28">
       <description>
         <p>Coming Up by day, a customizable Mac toolbar, background sync control and one main window.</p>

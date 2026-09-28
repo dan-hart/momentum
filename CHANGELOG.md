@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-09-28
+
 ### Added
 - Linux: Preferences › Desktop › "Sync in the background" decides whether automatic sync
   keeps running while the window is closed; Sync Now always works
