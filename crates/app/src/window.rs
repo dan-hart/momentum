@@ -772,12 +772,22 @@ impl MomentumWindow {
             // Context-menu actions carry the target id as a string parameter.
             targeted("ctx-open", |w, id| w.open_task(id)),
             targeted("ctx-done", |w, id| {
-                let out = w.engine().toggle_done(id.into());
-                w.apply(out);
+                let ids = w.selection_or(id);
+                let out = if ids.len() == 1 {
+                    w.engine().toggle_done(id.into())
+                } else {
+                    w.engine().bulk_done(ids)
+                };
+                w.leave_selection_and_apply(out);
             }),
             targeted("ctx-today", |w, id| {
-                let out = w.engine().toggle_today(id.into());
-                w.apply(out);
+                let ids = w.selection_or(id);
+                let out = if ids.len() == 1 {
+                    w.engine().toggle_today(id.into())
+                } else {
+                    w.engine().plan_for_today(ids)
+                };
+                w.leave_selection_and_apply(out);
             }),
             targeted("ctx-tonight", |w, id| {
                 let ids = w.selection_or(id);
@@ -795,9 +805,17 @@ impl MomentumWindow {
                 let ids = w.selection_or(id);
                 w.move_to_next_week(&ids);
             }),
-            targeted("ctx-move", |w, id| w.move_to_dialog(id)),
+            targeted("ctx-move", |w, id| w.move_many_dialog(w.selection_or(id))),
             targeted("ctx-repeat", |w, id| crate::repeat_dialog::open(w, id)),
-            targeted("ctx-delete", |w, id| w.delete_task(id)),
+            targeted("ctx-delete", |w, id| {
+                let ids = w.selection_or(id);
+                if ids.len() == 1 {
+                    w.delete_task(id);
+                } else {
+                    let out = w.engine().bulk_delete(ids);
+                    w.leave_selection_and_apply(out);
+                }
+            }),
             targeted("ctx-open-project", |w, id| w.go_to(View::project(id))),
             targeted("ctx-new-task", |w, id| {
                 w.go_to(View::project(id));
@@ -930,7 +948,7 @@ impl MomentumWindow {
                 #[upgrade_or]
                 glib::ControlFlow::Break,
                 move || {
-                    if w.imp().settings.boolean("auto-sync") && w.sync_configured() {
+                    if w.automatic_sync_allowed() && w.sync_configured() {
                         w.sync();
                     }
                     glib::ControlFlow::Continue
@@ -939,9 +957,20 @@ impl MomentumWindow {
         );
         self.spawn_repeats();
         self.refresh();
-        if imp.settings.boolean("auto-sync") && self.sync_configured() {
+        if self.automatic_sync_allowed() && self.sync_configured() {
             self.sync();
         }
+        // Automatic sync follows the window: hidden with "Sync in the background" off, it
+        // pauses; shown again, it catches up and the LibreSync transport restarts.
+        self.connect_visible_notify(|w| w.sync_availability_changed());
+        imp.settings.connect_changed(
+            Some("background-sync"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.sync_availability_changed()
+            ),
+        );
         if let Some(path) = std::env::var_os("MOMENTUM_SCREENSHOT") {
             if std::env::var_os("MOMENTUM_SCREENSHOT_DIALOG").is_some() {
                 self.new_task_dialog();
@@ -1534,6 +1563,7 @@ impl MomentumWindow {
                 let Some(t) = self.engine().task_menu(id.to_string()) else {
                     return menu;
                 };
+                // Act on the task.
                 let a = gio::Menu::new();
                 a.append_item(&item(gettext("Open"), "win.ctx-open"));
                 a.append_item(&item(
@@ -1545,9 +1575,9 @@ impl MomentumWindow {
                     "win.ctx-done",
                 ));
                 menu.append_section(None, &a);
-                // Scheduling moves in their own section, labelled so the group reads as one idea.
-                let m = gio::Menu::new();
-                m.append_item(&item(
+                // Plan it: Today, then every "Move to" destination in one submenu.
+                let plan = gio::Menu::new();
+                plan.append_item(&item(
                     if t.planned_today {
                         gettext("Remove from Today")
                     } else {
@@ -1555,28 +1585,37 @@ impl MomentumWindow {
                     },
                     "win.ctx-today",
                 ));
-                m.append_item(&item(
+                let move_to = gio::Menu::new();
+                let slots = gio::Menu::new();
+                slots.append_item(&item(
                     if t.slot == Some(Slot::Morning) {
-                        gettext("Move to Today")
+                        gettext("Today")
                     } else {
-                        gettext("Move to Morning")
+                        gettext("Morning")
                     },
                     "win.ctx-morning",
                 ));
-                m.append_item(&item(
+                slots.append_item(&item(
                     if t.slot == Some(Slot::Tonight) {
-                        gettext("Move to Today")
+                        gettext("Today")
                     } else {
-                        gettext("Move to Tonight")
+                        gettext("Tonight")
                     },
                     "win.ctx-tonight",
                 ));
-                m.append_item(&item(gettext("Move to Tomorrow"), "win.ctx-tomorrow"));
-                m.append_item(&item(gettext("Move to Next Week"), "win.ctx-next-week"));
+                move_to.append_section(None, &slots);
+                let days = gio::Menu::new();
+                days.append_item(&item(gettext("Tomorrow"), "win.ctx-tomorrow"));
+                days.append_item(&item(gettext("Next Week"), "win.ctx-next-week"));
+                move_to.append_section(None, &days);
                 if t.top_level {
-                    m.append_item(&item(gettext("Move to Project…"), "win.ctx-move"));
+                    let project = gio::Menu::new();
+                    project.append_item(&item(gettext("Project…"), "win.ctx-move"));
+                    move_to.append_section(None, &project);
                 }
-                menu.append_section(None, &m);
+                plan.append_submenu(Some(&gettext("Move To")), &move_to);
+                menu.append_section(None, &plan);
+                // Organise it.
                 if t.top_level {
                     let r = gio::Menu::new();
                     r.append_item(&item(
@@ -1986,6 +2025,23 @@ impl MomentumWindow {
         }
     }
 
+    /// Automatic sync runs while the window is showing, and in the background only when
+    /// the preference allows it. Sync Now is never affected.
+    pub fn automatic_sync_allowed(&self) -> bool {
+        let s = &self.imp().settings;
+        s.boolean("auto-sync") && (self.is_visible() || s.boolean("background-sync"))
+    }
+
+    /// The window was shown or hidden, or the background-sync preference changed: the
+    /// LibreSync transport follows, and a window coming back after a pause catches up.
+    fn sync_availability_changed(&self) {
+        let catch_up = self.is_visible() && !self.imp().settings.boolean("background-sync");
+        self.p2p_apply_setting();
+        if catch_up && self.automatic_sync_allowed() && self.sync_configured() && !self.imp().syncing.get() {
+            self.sync();
+        }
+    }
+
     /// Sync shortly after local changes settle: 20 s after the last change, so a burst of
     /// check-offs becomes one upload, while other devices still see it within half a minute.
     fn schedule_sync(&self) {
@@ -2003,7 +2059,8 @@ impl MomentumWindow {
                 self,
                 move || {
                     w.imp().sync_debounce.borrow_mut().take();
-                    if !w.imp().settings.boolean("auto-sync") || !w.sync_configured() {
+                    // Paused in the background: the window's return syncs what is pending.
+                    if !w.automatic_sync_allowed() || !w.sync_configured() {
                         return;
                     }
                     if w.imp().syncing.get() {
@@ -2398,7 +2455,7 @@ impl MomentumWindow {
             ),
             EmptyState::Search => (
                 "edit-find-symbolic".into(),
-                gettext("Search Everything"),
+                gettext("Search"),
                 gettext("Tasks, notes, subtasks, projects, tags and the archive"),
             ),
             EmptyState::NoResults => (
@@ -3361,7 +3418,7 @@ impl MomentumWindow {
         }
         match crate::prefs::sync_method(&imp.settings).as_str() {
             "libresync" => {
-                self.p2p_apply_setting();
+                self.p2p_apply_setting_for(true);
                 if !imp.syncing.get() {
                     self.p2p_sync_now();
                 }

@@ -2072,10 +2072,6 @@ msgstr ""
 msgid "Completed tasks land here when you archive them with {}."
 msgstr ""
 
-#: crates/app/src/window.rs:2370
-msgid "Search Everything"
-msgstr "Alles durchsuchen"
-
 #: crates/app/src/window.rs:2371
 msgid "Tasks, notes, subtasks, projects, tags and the archive"
 msgstr ""
@@ -2262,6 +2258,27 @@ msgstr "Neue Aufgabe"
 #: crates/app/src/window.rs:3341
 msgid "Sync is turned off. Enable it in Preferences."
 msgstr ""
+
+#: crates/app/src/window.rs:1573
+msgid "Next Week"
+msgstr "Nächste Woche"
+
+#: crates/app/src/window.rs:1577
+msgid "Project…"
+msgstr "Projekt…"
+
+#: crates/app/src/window.rs:1580
+msgid "Move To"
+msgstr "Verschieben nach"
+
+#: data/resources/ui/prefs.blp:117
+msgid "Sync in the background"
+msgstr "Im Hintergrund synchronisieren"
+
+#: data/resources/ui/prefs.blp:118
+msgid "Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works."
+msgstr "Weiter automatisch synchronisieren, während das Fenster geschlossen ist. Ausschalten, um nur bei geöffnetem Fenster zu synchronisieren; „Jetzt synchronisieren“ funktioniert immer."
+
 
 #~ msgid "Sync with Nextcloud"
 #~ msgstr "Mit Nextcloud synchronisieren"

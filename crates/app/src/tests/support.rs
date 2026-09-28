@@ -158,6 +158,7 @@ pub fn reset_settings() {
         "sync-enabled",
         "sync-method",
         "auto-sync",
+        "background-sync",
         "auto-archive",
         "run-in-background",
         "background-count-mode",

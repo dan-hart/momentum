@@ -226,7 +226,7 @@ tasks" when sync is not configured, or "press Ctrl+N" when it is.
 | Tonight | moon | Nothing planned for tonight | Tag a task "Evening", or Ctrl+Shift+T on a task |
 | Coming Up | calendar | Nothing coming up | Tasks due in the next 7 (or 30) days appear here; set a due day in a task's details |
 | Archive | archive box | No archived tasks | Completed tasks land here when archived with Ctrl+E |
-| Search | magnifier | Search Everything | Tasks, notes, subtasks, projects, tags and the archive |
+| Search | magnifier | Search | Tasks, notes, subtasks, projects, tags and the archive |
 | Project | folder | No tasks in <project> | Add a task above; drag tasks here from any other view |
 | Tag | tag | No tasks tagged #<tag> | Add a task above; drag tasks here to tag them |
 
@@ -250,8 +250,8 @@ debounce, backed by a lowercase index rebuilt only when data changes. Every word
 query must match somewhere in a task's title, notes, tag names or project name. Groups
 with counts: Tasks (open first, then done, alphabetical; capped at 60 with a "showing 60 of
 N, add another word" note), Projects, Tags (both navigate on activation), Archived (capped
-at 30). Empty prompt "Search Everything" on Linux and "Search" on macOS (2026-09-28); no-results
-state "No Results Found".
+at 30). Empty prompt "Search" (2026-09-29, formerly "Search Everything"); no-results state
+"No Results Found".
 
 ### 2.8 Keyboard and input
 
@@ -292,9 +292,11 @@ Super+…, and the Keyboard Shortcuts overlay and hints say so.
 | Menu, Shift+F10, right-click, long-press | Context menu on a task, project or tag row |
 | Ctrl+Alt+T, Ctrl+Alt+M (system-wide) | Add a task from anywhere; show the window |
 
-Context menu contents. Task: Open, Mark as Done/Not Done; a separated group with Plan for Today/Remove from
-Today, Move to Tonight/Move to Today, Move to Tomorrow, Move to Next Week, Move to Project…; Repeat… / Edit Repeat… (top-level tasks); then Delete. Project: Open, New Task Here…, Edit…, Delete Project…
-(not Inbox). Tag: Open, Edit…, Delete Tag….
+Context menu contents (revised 2026-09-29). Task: Open, Mark as Done/Not Done; a separated group with
+Plan for Today/Remove from Today and a **Move To** submenu holding Morning or Today, Tonight or Today,
+Tomorrow, Next Week, and Project… (top-level tasks); Repeat… / Edit Repeat… (top-level tasks); then
+Delete. When the clicked row is part of a selection, every item acts on the whole selection. Project:
+Open, New Task Here…, Edit…, Delete Project… (not Inbox). Tag: Open, Edit…, Delete Tag….
 
 ### 2.9 Preferences
 

@@ -114,6 +114,11 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         subtitle: _("Keep reminders and sync running after the window closes, and start at login");
       }
 
+      Adw.SwitchRow background_sync_row {
+        title: _("Sync in the background");
+        subtitle: _("Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works.");
+      }
+
       Adw.ComboRow background_count_row {
         title: _("Background task count");
         subtitle: _("Choose which tasks appear in the Background Apps status");

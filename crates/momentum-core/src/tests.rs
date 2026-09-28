@@ -2421,3 +2421,24 @@ fn coming_up_ignores_the_grouping_preference_and_keeps_one_section_per_day() {
         assert_eq!(l.sections[1].rows.len(), 2, "the later day holds both of its tasks");
     }
 }
+
+#[test]
+fn slot_of_tag_names_matches_the_task_menu_rule() {
+    let (e, _dir) = empty();
+    e.add_task("Both #Evening #Morning".into(), View::Today);
+    e.add_task("Later #evening".into(), View::Today);
+    e.add_task("Plain #urgent".into(), View::Today);
+    for title in ["Both", "Later", "Plain"] {
+        let id = id_of(&e, title);
+        let names: Vec<String> = e
+            .task_row(id.clone())
+            .unwrap()
+            .tags
+            .into_iter()
+            .map(|t| t.title)
+            .collect();
+        assert_eq!(slot_of_tag_names(names), e.task_menu(id).unwrap().slot, "{title}");
+    }
+    assert_eq!(slot_of_tag_names(vec!["MORNING".into()]), Some(Slot::Morning));
+    assert_eq!(slot_of_tag_names(vec![]), None);
+}

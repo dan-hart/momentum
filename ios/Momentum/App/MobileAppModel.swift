@@ -288,6 +288,27 @@ struct FeedbackToast: Identifiable, Equatable {
         return NotificationBackgroundRefreshPolicy.completedSuccessfully(status: notifications.status)
     }
 
+    /// Settings › Sync › "Sync in the background", shared with the Mac under the same key.
+    var backgroundSyncEnabled: Bool { Preferences(defaults).backgroundSync }
+
+    var shouldScheduleBackgroundSync: Bool {
+        allowsBackgroundNotificationRefresh
+            && BackgroundSyncPolicy.shouldSchedule(enabled: backgroundSyncEnabled,
+                                                   exchangePossible: sync.backgroundSyncPossible)
+    }
+
+    /// One bounded Nextcloud exchange from a background wake. The caller's cancellation
+    /// (the wake expiring) stops it; a committed exchange refreshes the app like any other.
+    func syncInBackground() async -> Bool {
+        guard allowsBackgroundNotificationRefresh, backgroundSyncEnabled, !lowPowerMode, !Task.isCancelled else {
+            return false
+        }
+        await start()
+        guard worker != nil, !Task.isCancelled else { return false }
+        await sync.load()
+        return await sync.syncInBackground()
+    }
+
     @discardableResult func perform(_ command: TaskCommand) async -> Outcome? {
         guard let worker else { return nil }
         let result = await worker.perform(command)

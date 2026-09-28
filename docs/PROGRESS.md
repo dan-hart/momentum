@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-09-28. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-09-29. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -151,6 +151,45 @@ performed for this handoff.
 | Billing/tips, F-034–F-036 | Future intention; pricing and entitlements open | Product decision and current provider/store review before implementation |
 
 ## Dated handoffs
+
+### 2026-09-29 — Linux and iOS: grouped context menu, Coming Up note, Search, background sync (F-016/F-045/F-047/F-048/F-049)
+
+- Worktree `.claude/worktrees/pull-latest-code-70308a` on `task/macos-app-updates-a4f5d9`
+  at `26fa1b5` (= main, the 0.4.1 release), dirty; local changes only, no commit or push.
+- **Shared core:** `slot_of_tag_names` (UniFFI export) hands native menus the Morning/
+  Evening tag rule so no Swift duplicates it; a core test compares it with `task_menu`.
+- **Linux:** the task context menu is act / plan (Plan for Today, a `gio::Menu` Move To
+  submenu: Morning or Today, Tonight or Today, Tomorrow, Next Week, Project…) / Repeat /
+  Delete, and every `ctx-*` action now acts on the whole selection when the clicked row is
+  selected (`selection_or`). The empty search title is "Search". New GSettings key
+  `background-sync` (default on) with a Preferences › Desktop switch gates the 300 s timer,
+  the 20 s debounce, the startup sync and the LibreSync transport on `is_visible()`;
+  `sync_availability_changed` catches up when the window returns. gettext: new msgids with
+  German entries, "Search Everything" removed; `msgfmt --check` and POTFILES pass. GTK
+  tests: submenu order, subtask exclusion, selection behaviour, the sync gate and the
+  preference binding — **compiled here (`cargo check -p momentum --tests`), not run on
+  Linux**; CI's Flatpak job runs them.
+- **iOS:** `TaskActionsMenu` grouped with a Move To submenu (Project as a nested submenu)
+  and Add Tag holding New Tag…; Today/slot labels come from `dueDay == today()` and the
+  core's slot rule. Search prompt "Search". Settings › Task Lists footer says Upcoming is
+  always grouped by day (the picker is global). Background sync: `PrefKey.backgroundSync`
+  toggle in Settings › Sync, `BackgroundSyncPolicy` (30-minute floor), a second
+  `BGAppRefreshTask` `com.codedbydan.Momentum.ios.sync.refresh` registered and submitted
+  beside the notification refresh, `MobileAppModel.syncInBackground` and
+  `NextcloudSyncState.syncInBackground`, which bypasses only the foreground term and
+  cancels the operation when the wake expires. iOS catalog synced from a simulator build,
+  361/361 German. Selection-mode drag already carries the whole selection (F-011) and was
+  left as is.
+- **Checks:** core 140 passed; macOS package 139 passed; macOS Debug build; iOS app
+  Debug build for the simulator succeeded; iOS fast lane
+  `NextcloudSyncStateTests|BackgroundSyncPolicyTests` 25 tests in 2 suites passed after
+  the expiry path was corrected to cancel the operation explicitly (the first version
+  hung the fixture); the whole fast lane then passed 153 tests in 23 suites. The view
+  lane's `SyncSettingsIntegrationTests` (the screen that hosts the new toggle) executed
+  10 tests with 0 failures on an iOS 26/27 iPhone simulator
+  (`views-1790629536643666000.xcresult`). Not done: a
+  simulator inspection of the new menu and settings rows, a real system wake, a Linux
+  runtime run.
 
 ### 2026-09-28 — macOS toolbar, Coming Up by day, multi-drag, one window, Move To menu, background sync, 0.4.1 (F-003/F-037/F-045–F-049, B-091)
 

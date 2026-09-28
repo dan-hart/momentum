@@ -73,6 +73,7 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         BGTaskSchedulerPermittedIdentifiers:
           - com.codedbydan.Momentum.ios.notifications.refresh
+          - com.codedbydan.Momentum.ios.sync.refresh
         UIBackgroundModes:
           - fetch
         UISupportedInterfaceOrientations:

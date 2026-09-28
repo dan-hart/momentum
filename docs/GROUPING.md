@@ -79,8 +79,8 @@ colors) through UniFFI. Frontends localize headings; no localized sentences ente
   preferences. Linux disables its `win.group-by` action in Coming Up the same way.
 - **iOS — day sections:** the shared core now returns `SectionKind::Day` for Coming Up on
   every platform, and the mobile list already renders those headings through the shared
-  `Strings.sectionTitle`. Disabling the mobile Group By control in Upcoming is still
-  Planned.
+  `Strings.sectionTitle`. The mobile Group By picker lives in Settings, away from any
+  list, so its footer says Upcoming is always grouped by day instead of disabling it.
 - **iOS — Planned:** expose these modes through native list options, persist locally,
   consume the same Rust metadata and intervals, preserve family/selection behavior and exclusive grouping,
   and support Dynamic Type, VoiceOver, increased contrast and non-color identification.

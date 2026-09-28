@@ -15,28 +15,54 @@ struct TaskActionsMenu: SwiftUI.View {
     var onNewTag: (() -> Void)?
     var onFinished: (TaskSelectionTransitionFeedback) -> Void = { _ in }
 
+    /// The clicked row's facts when the menu is for one task: the core's slot rule and
+    /// today's date decide which labels toggle back.
+    private var plannedToday: Bool { row.map { $0.dueDay == today() } ?? false }
+    private var slot: Slot? { row.flatMap { slotOfTagNames(names: $0.tags.map(\.title)) } }
+
     var body: some SwiftUI.View {
+        // Act
         if let onEdit { Button("Open", systemImage: "square.and.pencil", action: onEdit) }
         Button(row?.isDone == true ? "Mark as Not Done" : "Mark as Done", systemImage: row?.isDone == true ? "arrow.uturn.backward.circle" : "checkmark.circle") {
             act(.complete(ids, row?.isDone != true))
         }
-        Button("Plan for Today", systemImage: "star") { act(.today(ids)) }
-        if ids.count == 1 { Button("Remove from Today", systemImage: "star.slash") { act(.removeToday(ids[0])) } }
-        Button("Morning", systemImage: "sun.max") { act(.slot(ids, .morning)) }
-        Button("Evening", systemImage: "moon.stars") { act(.slot(ids, .tonight)) }
-        Button("Tomorrow", systemImage: "sunrise") { act(.tomorrow(ids)) }
-        Button("Next Week", systemImage: "calendar.badge.clock") { act(.nextWeek(ids)) }
-        Menu("Move to Project", systemImage: "folder") {
-            ForEach(projects, id: \.id) { project in
-                Button(project.title) { act(.project(ids, project.id)) }
+        Divider()
+        // Plan: Today, then every destination in one Move To submenu.
+        if plannedToday, ids.count == 1 {
+            Button("Remove from Today", systemImage: "star.slash") { act(.removeToday(ids[0])) }
+        } else {
+            Button("Plan for Today", systemImage: "star") { act(.today(ids)) }
+        }
+        Menu("Move To", systemImage: "arrow.turn.down.right") {
+            Button(slot == .morning ? "Today" : "Morning", systemImage: slot == .morning ? "star" : "sun.max") {
+                act(.slot(ids, .morning))
+            }
+            Button(slot == .tonight ? "Today" : "Evening", systemImage: slot == .tonight ? "star" : "moon.stars") {
+                act(.slot(ids, .tonight))
+            }
+            Divider()
+            Button("Tomorrow", systemImage: "sunrise") { act(.tomorrow(ids)) }
+            Button("Next Week", systemImage: "calendar.badge.clock") { act(.nextWeek(ids)) }
+            if !projects.isEmpty {
+                Divider()
+                Menu("Project", systemImage: "folder") {
+                    ForEach(projects, id: \.id) { project in
+                        Button(project.title) { act(.project(ids, project.id)) }
+                    }
+                }
             }
         }
+        Divider()
+        // Organise
         Menu("Add Tag", systemImage: "tag") {
             ForEach(tags, id: \.id) { tag in
                 Button(tag.title) { act(.tag(ids, tag.title)) }
             }
+            if let onNewTag {
+                if !tags.isEmpty { Divider() }
+                Button("New Tag…", systemImage: "tag.badge.plus", action: onNewTag)
+            }
         }
-        if let onNewTag { Button("New Tag…", systemImage: "tag.badge.plus", action: onNewTag) }
         if let row {
             Button("Copy Title", systemImage: "doc.on.doc") {
                 UIPasteboard.general.string = row.title

@@ -649,36 +649,91 @@ fn missing_project_fallback_reveals_exact_id_beyond_the_normal_search_cap() {
         );
     });
 }
+/// Every label in a menu model, walking sections and submenus, in display order.
+fn menu_labels(menu: &gio::Menu) -> Vec<String> {
+    fn walk(m: &gio::MenuModel, out: &mut Vec<String>) {
+        for i in 0..m.n_items() {
+            if let Some(l) = m
+                .item_attribute_value(i, "label", None)
+                .and_then(|v| v.str().map(String::from))
+            {
+                out.push(l);
+            }
+            for link in ["section", "submenu"] {
+                if let Some(sub) = m.item_link(i, link) {
+                    walk(&sub, out);
+                }
+            }
+        }
+    }
+    let mut out = vec![];
+    walk(menu.upcast_ref(), &mut out);
+    out
+}
+
+/// The labels directly inside the "Move To" submenu of a task menu.
+fn move_to_labels(menu: &gio::Menu) -> Vec<String> {
+    fn find(m: &gio::MenuModel) -> Option<gio::MenuModel> {
+        for i in 0..m.n_items() {
+            let label = m
+                .item_attribute_value(i, "label", None)
+                .and_then(|v| v.str().map(String::from));
+            if label.as_deref() == Some("Move To") {
+                return m.item_link(i, "submenu");
+            }
+            if let Some(sub) = m.item_link(i, "section") {
+                if let Some(found) = find(&sub) {
+                    return Some(found);
+                }
+            }
+        }
+        None
+    }
+    let mut out = vec![];
+    if let Some(sub) = find(menu.upcast_ref()) {
+        for i in 0..sub.n_items() {
+            if let Some(section) = sub.item_link(i, "section") {
+                for j in 0..section.n_items() {
+                    if let Some(l) = section.item_attribute_value(j, "label", None) {
+                        out.push(l.str().unwrap_or_default().to_string());
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 #[test]
 fn context_menu_offers_the_right_moves_for_a_task() {
     on_gtk(|| {
         let (win, _dir) = demo_window();
         let today_task = id_of(&win, "Write release notes for 0.1");
         let later = id_of(&win, "Plan weekend hike");
-        let labels = |menu: &gio::Menu| -> Vec<String> {
-            let mut out = vec![];
-            fn walk(m: &gio::MenuModel, out: &mut Vec<String>) {
-                for i in 0..m.n_items() {
-                    if let Some(l) = m
-                        .item_attribute_value(i, "label", None)
-                        .and_then(|v| v.str().map(String::from))
-                    {
-                        out.push(l);
-                    }
-                    for link in ["section", "submenu"] {
-                        if let Some(sub) = m.item_link(i, link) {
-                            walk(&sub, out);
-                        }
-                    }
-                }
-            }
-            walk(menu.upcast_ref(), &mut out);
-            out
-        };
+        let labels = menu_labels;
         let l = labels(&win.context_menu_model(&MenuKind::Task, &today_task));
         assert!(l.iter().any(|x| x.contains("Remove from Today")), "{l:?}");
         assert!(l.iter().any(|x| x.contains("Tonight")) && l.iter().any(|x| x.contains("Tomorrow")));
         assert!(l.iter().any(|x| x.contains("Next Week")) && l.iter().any(|x| x.contains("Delete")));
+        // Every "Move to" destination sits inside one submenu, in this order; the
+        // top level keeps Open, Done, Plan for Today, Repeat and Delete.
+        assert_eq!(
+            move_to_labels(&win.context_menu_model(&MenuKind::Task, &today_task)),
+            ["Morning", "Tonight", "Tomorrow", "Next Week", "Project…"]
+        );
+        assert!(
+            !l.iter().any(|x| x.starts_with("Move to ")),
+            "no flat Move to items: {l:?}"
+        );
+        let top: Vec<&String> = l
+            .iter()
+            .filter(|x| !["Morning", "Tonight", "Tomorrow", "Next Week", "Project…"].contains(&x.as_str()))
+            .collect();
+        assert_eq!(
+            top.len(),
+            6,
+            "Open, Done, Plan for Today, Move To, Repeat, Delete: {top:?}"
+        );
         let l2 = labels(&win.context_menu_model(&MenuKind::Task, &later));
         assert!(l2.iter().any(|x| x.contains("Plan for Today")), "{l2:?}");
         let inbox = INBOX_PROJECT_ID.to_string();
@@ -694,6 +749,80 @@ fn context_menu_offers_the_right_moves_for_a_task() {
         assert!(p_home.iter().any(|x| x.contains("Delete")));
     });
 }
+#[test]
+fn context_menu_acts_on_the_selection_and_hides_project_for_subtasks() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        reset_settings();
+        let a = id_of(&win, "Write release notes for 0.1");
+        let b = id_of(&win, "Test with Orca and high contrast");
+        win.engine().add_subtask(a.clone(), "Check the changelog".into());
+        win.refresh();
+        pump();
+        let child = id_of(&win, "Check the changelog");
+        assert!(
+            !move_to_labels(&win.context_menu_model(&MenuKind::Task, &child)).contains(&"Project…".to_string()),
+            "subtasks move with their parent"
+        );
+        // Right-clicking a selected row acts on the whole selection: two rows done at once.
+        win.set_selecting(true);
+        win.toggle_selected(&a);
+        win.toggle_selected(&b);
+        ActionGroupExt::activate_action(&win, "ctx-done", Some(&a.to_variant()));
+        pump();
+        assert!(win
+            .engine()
+            .with_store(|s| s.state.task.entities[&a].is_done && s.state.task.entities[&b].is_done));
+        assert!(!win.imp().selecting.get(), "a selection change ends selection mode");
+        win.engine().undo();
+        win.refresh();
+        // An unselected row is acted on alone even while selecting.
+        win.set_selecting(true);
+        win.toggle_selected(&a);
+        ActionGroupExt::activate_action(&win, "ctx-done", Some(&b.to_variant()));
+        pump();
+        assert!(win
+            .engine()
+            .with_store(|s| !s.state.task.entities[&a].is_done && s.state.task.entities[&b].is_done));
+        win.set_selecting(false);
+        reset_settings();
+    });
+}
+
+#[test]
+fn automatic_sync_pauses_while_hidden_unless_background_sync_is_on() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        reset_settings();
+        assert!(!win.is_visible(), "test windows are never presented");
+        assert!(
+            win.automatic_sync_allowed(),
+            "the default keeps syncing in the background"
+        );
+        settings().set_boolean("background-sync", false).unwrap();
+        pump();
+        assert!(!win.automatic_sync_allowed(), "hidden with background sync off: paused");
+        win.set_visible(true);
+        pump();
+        assert!(win.automatic_sync_allowed(), "the window is back");
+        settings().set_boolean("auto-sync", false).unwrap();
+        assert!(!win.automatic_sync_allowed(), "automatic sync itself is off");
+        settings().set_boolean("auto-sync", true).unwrap();
+        win.set_visible(false);
+        pump();
+        assert!(!win.automatic_sync_allowed());
+        settings().set_boolean("background-sync", true).unwrap();
+        pump();
+        assert!(win.automatic_sync_allowed());
+        // The preference row is bound to the key.
+        let prefs = crate::prefs::MomentumPrefs::default();
+        assert!(prefs.imp().background_sync_row.is_active());
+        prefs.imp().background_sync_row.set_active(false);
+        assert!(!settings().boolean("background-sync"));
+        reset_settings();
+    });
+}
+
 #[test]
 fn task_form_builds_a_task_with_time_reminder_estimate_and_tags() {
     on_gtk(|| {
@@ -1826,20 +1955,12 @@ fn morning_view_toggle_and_drop_mirror_tonight() {
         });
         assert!(has_evening && !has_morning);
         assert_eq!(due_day.as_deref(), Some(today_str().as_str()));
-        // Context menu offers the move for each slot; accelerator is bound.
-        let menu = win.context_menu_model(&MenuKind::Task, &coffee);
-        let mut labels = vec![];
-        for i in 0..menu.n_items() {
-            if let Some(sec) = menu.item_link(i, "section") {
-                for j in 0..sec.n_items() {
-                    if let Some(l) = sec.item_attribute_value(j, "label", None) {
-                        labels.push(l.str().unwrap_or_default().to_string());
-                    }
-                }
-            }
-        }
+        // The Move To submenu offers the move for each slot; accelerator is bound.
+        let labels = menu_labels(&win.context_menu_model(&MenuKind::Task, &coffee));
         assert!(
-            labels.iter().any(|l| l == "Move to Today") && labels.iter().any(|l| l == "Move to Tonight"),
+            labels.iter().any(|l| l == "Move To")
+                && labels.iter().any(|l| l == "Today")
+                && labels.iter().any(|l| l == "Tonight"),
             "{labels:?}"
         );
         assert_eq!(app().accels_for_action("win.toggle-morning"), vec!["<Shift><Control>m"]);

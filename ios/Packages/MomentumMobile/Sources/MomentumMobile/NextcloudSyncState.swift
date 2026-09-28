@@ -298,6 +298,64 @@ import Observation
         await task.value
     }
 
+    /// A system background wake may run one exchange: every condition except being on
+    /// screen applies, and Low Power Mode still pauses discretionary work.
+    public var backgroundSyncPossible: Bool {
+        allowed && loaded && saved != nil && saved?.validationIssue == nil && saved?.automatic == true
+            && provider == .nextcloud && !saving && transitions == 0 && !isSuspended
+            && !lowPowerMode && makeOperation != nil
+    }
+
+    /// One bounded exchange from a background wake, without the window. Cancelling the
+    /// calling task (the wake expiring) cancels the running operation; a commit that
+    /// beats the cancellation is still published. Returns whether an exchange committed.
+    public func syncInBackground() async -> Bool {
+        guard backgroundSyncPossible, let saved, let makeOperation else { return false }
+        if let active { await active.value }
+        guard !Task.isCancelled, backgroundSyncPossible, !isSyncing else { return false }
+        scheduled?.cancel(); scheduled = nil
+        isSyncing = true
+        editsDuringSync = false
+        let admittedGeneration = generation
+        let exchange = Task<Bool, Never> {
+            let next = await makeOperation(saved.settings)
+            operation = next
+            var committed = false
+            if Task.isCancelled || admittedGeneration != generation {
+                _ = next.cancel()
+            } else {
+                do {
+                    // An expiring wake cancels this task; hand that to the operation
+                    // explicitly so the core's cancellation barrier sees it at once.
+                    _ = try await withTaskCancellationHandler {
+                        try await next.run()
+                    } onCancel: {
+                        _ = next.cancel()
+                    }
+                    if failure != .credentialsRead && failure != .credentialsWrite { record(nil) }
+                    didCommit?()
+                    committed = true
+                } catch is CancellationError {
+                    // The wake expired or the provider changed; the core kept its state.
+                } catch {
+                    record(Self.classify(error))
+                }
+            }
+            await refreshStatus()
+            operation = nil
+            isSyncing = false
+            isStopping = false
+            active = nil
+            return committed
+        }
+        active = Task { _ = await exchange.value }
+        return await withTaskCancellationHandler {
+            await exchange.value
+        } onCancel: {
+            exchange.cancel()
+        }
+    }
+
     public func suspendForRestore() async {
         isSuspended = true
         await nearby?.suspend()

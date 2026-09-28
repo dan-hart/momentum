@@ -72,6 +72,10 @@ private struct TaskListSettings: View {
                                        options: [("7", "Next 7 Days"), ("30", "Next 30 Days")])
                     .accessibilityIdentifier("settings-range")
             } header: { Text("Organization").foregroundStyle(AccentTheme.secondaryText) }
+            footer: {
+                Text("Upcoming is always grouped by day. Group By applies to Today, projects and tags.")
+                    .foregroundStyle(AccentTheme.secondaryText)
+            }
             Section {
                 Toggle(isOn: $autoArchive) {
                     SettingsLabel("Archive completed tasks immediately", symbol: "archivebox.fill")

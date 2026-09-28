@@ -92,6 +92,12 @@ Low Power Mode pauses automatic sync and discretionary Spotlight/background-refr
 work. **Sync Now**, task editing and already scheduled local notifications remain
 available. Automatic work resumes when Low Power Mode turns off.
 
+**Sync in the background** (Settings › Sync, on by default) asks iOS for an occasional
+background wake, at most every half hour and only when iOS decides, that runs one
+bounded Nextcloud exchange without the app on screen. It applies only while the saved
+connection syncs automatically and Low Power Mode is off; an expiring wake cancels the
+exchange without recording a failure. LibreSync stays a foreground transport.
+
 Production-source setup/recovery, real Rust HTTP exchanges, and real two-peer
 LibreSync sockets have passed on iOS 26.5 and 27 with isolated stores and Keychain
 identities. The transport lane also contains an opt-in hosted HTTPS Nextcloud test;

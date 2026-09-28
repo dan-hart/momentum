@@ -141,6 +141,61 @@ import Testing
         #expect(!fixture.state.saving)
     }
 
+    @Test func backgroundExchangeRunsWithoutTheWindowAndHonoursLowPowerAndOff() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        await fixture.state.load()
+        await fixture.state.select(.nextcloud)
+        #expect(!fixture.state.canSync, "not on screen: the foreground path is closed")
+        #expect(fixture.state.backgroundSyncPossible)
+
+        let running = Task { await fixture.state.syncInBackground() }
+        await fixture.operation.waitUntilRunning()
+        #expect(fixture.state.isSyncing)
+        fixture.operation.finish(.success(SyncReport(downloaded: true, uploaded: false, opsUploaded: 0)))
+        #expect(await running.value, "a completed exchange reports a commit")
+        #expect(!fixture.state.isSyncing)
+        #expect(fixture.state.failure == nil)
+        #expect(await fixture.factory.count == 1)
+
+        fixture.state.setLowPowerMode(true)
+        #expect(!fixture.state.backgroundSyncPossible)
+        #expect(await !fixture.state.syncInBackground())
+        fixture.state.setLowPowerMode(false)
+        await fixture.state.select(.off)
+        #expect(await !fixture.state.syncInBackground())
+        #expect(await fixture.factory.count == 1, "Low Power Mode and Off never start an exchange")
+    }
+
+    @Test func backgroundExchangeWithoutAutomaticSyncIsNotPossible() async {
+        let fixture = SyncFixture(automatic: false)
+        defer { fixture.clean() }
+        await fixture.state.load()
+        await fixture.state.select(.nextcloud)
+        #expect(!fixture.state.backgroundSyncPossible, "the saved connection's automatic switch gates the wake")
+        #expect(await !fixture.state.syncInBackground())
+        #expect(await fixture.factory.count == 0)
+    }
+
+    @Test func expiringWakeCancelsTheBackgroundExchangeWithoutRecordingAFailure() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        await fixture.state.load()
+        await fixture.state.select(.nextcloud)
+        let running = Task { await fixture.state.syncInBackground() }
+        await fixture.operation.waitUntilRunning()
+        running.cancel()
+        await fixture.operation.waitUntilCancelled()
+        fixture.operation.finish(.failure(CancellationError()))
+        #expect(await !running.value)
+        await fixture.state.drain()
+        #expect(!fixture.state.isSyncing)
+        #expect(fixture.state.failure == nil, "an expired wake is not a sync failure")
+        // The next foreground return may sync as usual.
+        fixture.state.setForeground(true)
+        #expect(fixture.state.canSync)
+    }
+
     @Test func freshInstallAndIsolatedModeNeverStartTransport() async throws {
         let fixture = SyncFixture()
         defer { fixture.clean() }

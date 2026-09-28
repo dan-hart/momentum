@@ -6,6 +6,7 @@ import SwiftUI
 
 struct SyncSettings: View {
     @Bindable var state: NextcloudSyncState
+    @AppStorage(PrefKey.backgroundSync) private var backgroundSync = true
     @AccessibilityFocusState private var failureFocused: Bool
     @AccessibilityFocusState private var savedFocused: Bool
 
@@ -174,6 +175,8 @@ struct SyncSettings: View {
         } footer: {
             Text(state.lowPowerMode
                  ? "Sync Now remains available. Automatic sync resumes when Low Power Mode turns off."
+                 : backgroundSync
+                 ? "Exchanges stop when you leave the app; iOS may wake Momentum now and then to sync in the background. Unsynced changes stay on this device."
                  : "Open Momentum to sync. Exchanges stop when you leave the app; unsynced changes stay on this device.")
                 .foregroundStyle(AccentTheme.secondaryText)
         }
@@ -217,6 +220,9 @@ struct SyncSettings: View {
 
             Section {
                 Toggle("Sync Automatically", isOn: $state.draft.automatic)
+                Toggle("Sync in the background", isOn: $backgroundSync)
+                    .disabled(!state.draft.automatic)
+                    .accessibilityIdentifier("sync-background")
                 Toggle("Compress Sync File", isOn: $state.draft.compress)
                 field("Encryption Password (Optional)") {
                     SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
@@ -225,7 +231,7 @@ struct SyncSettings: View {
             } header: { Text("Options").foregroundStyle(Color.primary) }
             footer: {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open.")
+                    Text("Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open. Sync in the background lets iOS wake Momentum occasionally for one exchange; Low Power Mode pauses it.")
                     if !state.hasUnsavedChanges {
                         Text("Connection Saved")
                             .fixedSize(horizontal: false, vertical: true)

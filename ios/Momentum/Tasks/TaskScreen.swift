@@ -725,7 +725,7 @@ private struct SearchPresentation: ViewModifier {
     var focused: FocusState<Bool>.Binding
     func body(content: Content) -> some SwiftUI.View {
         if enabled {
-            content.searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search tasks and notes")
+            content.searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
                 .searchFocused(focused)
                 .task(id: model.searchFocusRevision) {
                     if model.searchFocusRevision > 0 { focused.wrappedValue = true }

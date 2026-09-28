@@ -6,6 +6,20 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Linux: Preferences › Desktop › "Sync in the background" decides whether automatic sync
+  keeps running while the window is closed; Sync Now always works
+- iOS: Settings › Sync › "Sync in the background" lets iOS wake Momentum occasionally for
+  one bounded Nextcloud exchange; Low Power Mode and the connection's automatic switch
+  still apply
+
+### Changed
+- Linux and iOS: the task context menu is grouped, with every Move to destination
+  (Morning, Tonight, Tomorrow, Next Week, Project) in one Move To submenu; on Linux the
+  menu now acts on the whole selection when the clicked row is selected
+- Linux: the empty search screen says "Search"; iOS: the search prompt is "Search"
+- iOS: Settings › Task Lists notes that Upcoming is always grouped by day
+
 ## [0.4.1] - 2026-09-28
 
 ### Added

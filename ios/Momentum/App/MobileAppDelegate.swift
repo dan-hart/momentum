@@ -18,6 +18,7 @@ final class MobileAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificati
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         NotificationBackgroundRefresh.register()
+        SyncBackgroundRefresh.register()
         let arguments = ProcessInfo.processInfo.arguments
         if !arguments.contains("--demo") { MomentumShortcuts.updateAppShortcutParameters() }
         guard !arguments.contains("--demo") else { return true }
@@ -40,6 +41,9 @@ final class MobileAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificati
         Task { @MainActor in
             await NotificationBackgroundRefresh.updateSchedule(
                 enabled: MobileAppModel.shared.shouldScheduleNotificationBackgroundRefresh
+            )
+            await SyncBackgroundRefresh.updateSchedule(
+                enabled: MobileAppModel.shared.shouldScheduleBackgroundSync
             )
         }
     }

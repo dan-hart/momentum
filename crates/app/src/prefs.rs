@@ -35,6 +35,8 @@ mod imp {
         #[template_child]
         pub background_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub background_sync_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub background_count_row: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub modifier_row: TemplateChild<adw::ComboRow>,
@@ -122,6 +124,7 @@ mod imp {
             s.bind("compress", &*self.compress_row, "active").build();
             s.bind("colorful-labels", &*self.colorful_row, "active").build();
             s.bind("run-in-background", &*self.background_row, "active").build();
+            s.bind("background-sync", &*self.background_sync_row, "active").build();
             let count_labels = [
                 gettext("Due or scheduled today"),
                 gettext("Today including overdue"),

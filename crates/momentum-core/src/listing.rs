@@ -121,7 +121,7 @@ pub(crate) fn slot_of(store: &Store, t: &Task) -> Option<Slot> {
     )
 }
 
-fn slot_from_names<'a>(names: impl IntoIterator<Item = &'a str>) -> Option<Slot> {
+pub(crate) fn slot_from_names<'a>(names: impl IntoIterator<Item = &'a str>) -> Option<Slot> {
     let mut evening = false;
     for name in names {
         if name.eq_ignore_ascii_case(Slot::Morning.tag_name()) {

@@ -963,6 +963,7 @@
       }
     },
     "Create ${taskTitle} for ${planning}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1425,6 +1426,16 @@
         }
       }
     },
+    "Exchanges stop when you leave the app; iOS may wake Momentum now and then to sync in the background. Unsynced changes stay on this device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abgleiche enden, wenn du die App verlässt; iOS kann Momentum gelegentlich wecken, um im Hintergrund zu synchronisieren. Nicht synchronisierte Änderungen bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
     "Export Backup": {
       "localizations": {
         "de": {
@@ -1466,6 +1477,7 @@
       }
     },
     "Find tasks in ${scope}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1975,6 +1987,16 @@
         }
       }
     },
+    "Move To": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verschieben nach"
+          }
+        }
+      }
+    },
     "Move Up": {
       "localizations": {
         "de": {
@@ -2266,6 +2288,7 @@
       }
     },
     "Open ${task}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2436,6 +2459,7 @@
       }
     },
     "Plan ${tasks} for today": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2816,6 +2840,7 @@
       }
     },
     "Search tasks and notes": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2896,6 +2921,7 @@
       }
     },
     "Set ${tasks} completed to ${completed}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3165,6 +3191,16 @@
         }
       }
     },
+    "Sync in the background": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Hintergrund synchronisieren"
+          }
+        }
+      }
+    },
     "Sync is disabled in preview and test mode.": {
       "localizations": {
         "de": {
@@ -3406,6 +3442,7 @@
       }
     },
     "The project could not be saved.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3446,6 +3483,7 @@
       }
     },
     "The tag could not be saved.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3741,6 +3779,16 @@
         }
       }
     },
+    "Upcoming is always grouped by day. Group By applies to Today, projects and tags.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demnächst ist immer nach Tag gruppiert. „Gruppieren nach“ gilt für Heute, Projekte und Schlagwörter."
+          }
+        }
+      }
+    },
     "Use HTTPS. HTTP is allowed only for local test servers.": {
       "localizations": {
         "de": {
@@ -3762,11 +3810,22 @@
       }
     },
     "Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Verwende auf allen Geräten dasselbe Verschlüsselungspasswort. Die automatische Synchronisierung fasst kurz aufeinanderfolgende Änderungen zusammen und prüft bei geöffneter App auf neue Änderungen."
+          }
+        }
+      }
+    },
+    "Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open. Sync in the background lets iOS wake Momentum occasionally for one exchange; Low Power Mode pauses it.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwende auf jedem Gerät dasselbe Verschlüsselungspasswort. Die automatische Synchronisierung fasst nahe beieinanderliegende Änderungen zusammen und prüft auf Änderungen, solange die App geöffnet ist. „Im Hintergrund synchronisieren“ lässt iOS Momentum gelegentlich für einen Abgleich wecken; der Stromsparmodus pausiert das."
           }
         }
       }

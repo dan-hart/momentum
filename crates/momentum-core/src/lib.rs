@@ -68,6 +68,12 @@ pub fn complete_hash_word(text: String, cursor: u32, name: String) -> Option<Com
 pub fn day_label(day: String) -> DayLabel {
     text::day_label(&day)
 }
+/// The day period a task's tag names put it in (Morning wins over Evening), for menus
+/// that only have a row's tags at hand. The same rule shapes Today's sections.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn slot_of_tag_names(names: Vec<String>) -> Option<Slot> {
+    listing::slot_from_names(names.iter().map(String::as_str))
+}
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn today() -> String {
     sp_model::today_str()

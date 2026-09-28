@@ -84,7 +84,16 @@ impl MomentumWindow {
 
     /// Starts or stops the engine to match the preference.
     pub fn p2p_apply_setting(&self) {
-        match (self.p2p_enabled(), self.engine().p2p_running()) {
+        self.p2p_apply_setting_for(false);
+    }
+
+    /// The transport runs while LibreSync is selected and, when background sync is off,
+    /// only while the window is showing. `manual` is Sync Now: it may start the transport
+    /// for one exchange even while automatic sync is paused.
+    pub fn p2p_apply_setting_for(&self, manual: bool) {
+        let s = &self.imp().settings;
+        let wanted = self.p2p_enabled() && (manual || self.is_visible() || s.boolean("background-sync"));
+        match (wanted, self.engine().p2p_running()) {
             (true, false) if !self.imp().syncing.get() => self.p2p_start(),
             (false, true) => self.engine().p2p_stop(),
             _ => {}
