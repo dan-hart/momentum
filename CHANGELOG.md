@@ -6,6 +6,28 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-28
+
+### Added
+- macOS: View › Customize Toolbar… rearranges, removes and restores the toolbar's items
+  (New Task, Sync Now, View Options, plus optional Quick Add and Archive Completed)
+- macOS: Settings › Sync › "Sync in the background" decides whether automatic sync keeps
+  running while Momentum has no window open; Sync Now always works
+
+### Changed
+- Coming Up is always one section per day — Tomorrow, then the weekday names of this week,
+  then dates — on every platform; Group By is disabled while it is showing, and its rows no
+  longer repeat the day the heading names
+- macOS: dragging a selected task lifts and moves the whole selection, one item per task
+- macOS: the task context menu is grouped, with every Move to destination (Morning, Tonight,
+  Tomorrow, Next Week, Project…) in one Move To submenu
+- macOS: the search field and empty search screen say "Search"
+- The Linux and macOS apps' iOS sibling now carries the same version and build number
+
+### Fixed
+- macOS: clicking the Dock icon while the app ran without a window could open two main
+  windows; the main window is now a single-instance scene
+
 ## [0.4.0] - 2026-09-23
 
 ### Added

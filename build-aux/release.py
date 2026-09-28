@@ -4,7 +4,8 @@
 """One version for every app, and the files a release derives from it.
 
 Cargo.toml's workspace version is the source of truth. The GTK app, the macOS app, the
-Flatpak metadata and the changelog each carry a copy, and this tool keeps them equal:
+iOS app, the Flatpak metadata and the changelog each carry a copy, and this tool keeps
+them equal:
 
   build-aux/release.py version                 print the version
   build-aux/release.py check [--tag vX.Y.Z]    every copy agrees (and matches the tag)
@@ -30,6 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CARGO_TOML = ROOT / "Cargo.toml"
 MESON_BUILD = ROOT / "meson.build"
 PROJECT_YML = ROOT / "macos" / "project.yml"
+IOS_PROJECT_YML = ROOT / "ios" / "project.yml"
 METAINFO = ROOT / "data" / "io.github.dan_hart.Momentum.metainfo.xml.in.in"
 CHANGELOG = ROOT / "CHANGELOG.md"
 FLATHUB_MANIFEST = ROOT / "build-aux" / "flathub" / "io.github.dan_hart.Momentum.json"
@@ -149,16 +151,17 @@ def collect_mismatches(version, tag=None):
     if meson != version:
         problems.append(f"meson.build says {meson}")
 
-    project = read(PROJECT_YML)
-    marketing = marketing_version(project)
-    if marketing != version:
-        problems.append(f"macos/project.yml MARKETING_VERSION says {marketing}")
-    build = build_number(project)
-    if build != expected_build_number(version):
-        problems.append(
-            f"macos/project.yml CURRENT_PROJECT_VERSION is {build}, "
-            f"expected {expected_build_number(version)} for {version}"
-        )
+    for name, path in (("macos/project.yml", PROJECT_YML), ("ios/project.yml", IOS_PROJECT_YML)):
+        project = read(path)
+        marketing = marketing_version(project)
+        if marketing != version:
+            problems.append(f"{name} MARKETING_VERSION says {marketing}")
+        build = build_number(project)
+        if build != expected_build_number(version):
+            problems.append(
+                f"{name} CURRENT_PROJECT_VERSION is {build}, "
+                f"expected {expected_build_number(version)} for {version}"
+            )
 
     metainfo = read(METAINFO)
     newest = metainfo_version(metainfo)
@@ -212,12 +215,13 @@ def cmd_bump(args):
         f'\\g<1>"{new}"', read(CARGO_TOML), "Cargo.toml"))
     # meson.build
     write(MESON_BUILD, sub_once(r"^(\s*version: )'[^']+',", rf"\g<1>'{new}',", read(MESON_BUILD), "meson.build"))
-    # macOS
-    project = read(PROJECT_YML)
-    project = sub_once(r"^(\s*MARKETING_VERSION: )\"[^\"]+\"", f'\\g<1>"{new}"', project, "macos/project.yml")
-    project = sub_once(r"^(\s*CURRENT_PROJECT_VERSION: )\"[^\"]+\"",
-                       f'\\g<1>"{expected_build_number(new)}"', project, "macos/project.yml")
-    write(PROJECT_YML, project)
+    # macOS and iOS: the same marketing version and the same derived build number.
+    for name, path in (("macos/project.yml", PROJECT_YML), ("ios/project.yml", IOS_PROJECT_YML)):
+        project = read(path)
+        project = sub_once(r"^(\s*MARKETING_VERSION: )\"[^\"]+\"", f'\\g<1>"{new}"', project, name)
+        project = sub_once(r"^(\s*CURRENT_PROJECT_VERSION: )\"[^\"]+\"",
+                           f'\\g<1>"{expected_build_number(new)}"', project, name)
+        write(path, project)
 
     # CHANGELOG: close the section, open a fresh one.
     header = f"## [{new}] - {date}"
@@ -250,7 +254,7 @@ def cmd_bump(args):
     problems = collect_mismatches(new)
     if problems:
         fail("bump left a mismatch: " + "; ".join(problems))
-    print(f"{old} -> {new}: Cargo.toml, meson.build, macos/project.yml, CHANGELOG.md, metainfo")
+    print(f"{old} -> {new}: Cargo.toml, meson.build, macos/project.yml, ios/project.yml, CHANGELOG.md, metainfo")
     print(f"Review the diff, commit, then: git tag -a v{new} -m 'Momentum {new}' && git push origin main v{new}")
 
 
