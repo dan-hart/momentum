@@ -171,6 +171,8 @@ import Testing
         #expect(Strings.empty(.project(name: "Home"), modifier: "⌘", syncConfigured: true).title.contains("Home"))
         #expect(Strings.empty(.tag(name: "urgent"), modifier: "⌘", syncConfigured: true).title.contains("urgent"))
         #expect(Strings.empty(.upcoming(days: 30), modifier: "⌘", syncConfigured: true).description.contains("30"))
+        #expect(Strings.empty(.search, modifier: "⌘", syncConfigured: true).title == String(localized: "Search"),
+                "the search prompt is the plain word")
     }
 
     @Test func allDoneCopyChangesWithTheView() {

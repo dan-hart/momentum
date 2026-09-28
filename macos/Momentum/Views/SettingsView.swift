@@ -111,6 +111,7 @@ private struct SyncSettings: SwiftUI.View {
     @AppStorage(PrefKey.nextcloudUser) private var user = ""
     @AppStorage(PrefKey.nextcloudFolder) private var folder = "super-productivity"
     @AppStorage(PrefKey.autoSync) private var autoSync = true
+    @AppStorage(PrefKey.backgroundSync) private var backgroundSync = true
     @AppStorage(PrefKey.compress) private var compress = false
     @State private var password = ""
     @State private var encryption = ""
@@ -144,6 +145,7 @@ private struct SyncSettings: SwiftUI.View {
 
                 Section(String(localized: "When")) {
                     Toggle(String(localized: "Sync automatically"), isOn: $autoSync)
+                    backgroundSyncToggle
                     Toggle(String(localized: "Compress the sync file"), isOn: $compress)
                 }
             } else if method == SyncMethod.libresync.rawValue {
@@ -151,6 +153,9 @@ private struct SyncSettings: SwiftUI.View {
                     Text(String(localized: "Your devices sync directly over the local network, end-to-end encrypted, with no server. Link them once with a six-digit code."))
                     LabeledContent(String(localized: "Linked devices"), value: "\(state.syncStatus.linkedDevices)")
                     Button(String(localized: "Manage Devices…")) { state.showDevices() }
+                }
+                Section(String(localized: "When")) {
+                    backgroundSyncToggle
                 }
             }
             if state.syncAvailable {
@@ -167,8 +172,19 @@ private struct SyncSettings: SwiftUI.View {
             encryption = state.keychain.get(Keychain.encryption) ?? ""
         }
         .onChange(of: method) { _, _ in state.preferencesChanged() }
+        .onChange(of: backgroundSync) { _, _ in state.preferencesChanged() }
         .onChange(of: password) { _, new in state.keychain.set(Keychain.nextcloud, new) }
         .onChange(of: encryption) { _, new in state.keychain.set(Keychain.encryption, new) }
+    }
+}
+
+private extension SyncSettings {
+    /// Automatic sync keeps running with the window closed only while this is on; Sync
+    /// Now always works. Pair it with General › Keep running in the background.
+    @ViewBuilder var backgroundSyncToggle: some SwiftUI.View {
+        Toggle(String(localized: "Sync in the background"), isOn: $backgroundSync)
+        Text(String(localized: "Keep syncing while Momentum runs without a window. Turn this off to sync only while the window is open; Sync Now always works. Needs “Keep running in the background” in General."))
+            .appFont(.caption).foregroundStyle(.secondary)
     }
 }
 

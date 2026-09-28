@@ -533,8 +533,33 @@ impl MomentumWindow {
                 gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
         }
-        // Stateful sort action backed by GSettings; the header menu's radio items target it.
-        self.add_action(&imp.settings.create_action("group-by"));
+        // Stateful sort actions backed by GSettings; the header menu's radio items target
+        // them. Group By is a SimpleAction mirrored to its key so it can be disabled in
+        // Coming Up, whose sections are always its days.
+        let group_by = gio::SimpleAction::new_stateful(
+            "group-by",
+            Some(glib::VariantTy::STRING),
+            &imp.settings.string("group-by").to_variant(),
+        );
+        group_by.connect_change_state(glib::clone!(
+            #[weak(rename_to = settings)]
+            imp.settings,
+            move |action, value| {
+                if let Some(choice) = value.and_then(|v| v.str()) {
+                    let _ = settings.set_string("group-by", choice);
+                    action.set_state(&choice.to_variant());
+                }
+            }
+        ));
+        imp.settings.connect_changed(
+            Some("group-by"),
+            glib::clone!(
+                #[weak]
+                group_by,
+                move |settings, _| group_by.set_state(&settings.string("group-by").to_variant())
+            ),
+        );
+        self.add_action(&group_by);
         self.add_action(&imp.settings.create_action("task-sort"));
         self.add_action(&imp.settings.create_action("sort-direction"));
         self.add_action(&imp.settings.create_action("upcoming-range"));
@@ -1948,7 +1973,13 @@ impl MomentumWindow {
             View::Tag { .. } => (true, true),
             _ => (false, false),
         };
-        for (name, on) in [("edit-context", editable), ("delete-context", deletable)] {
+        // Coming Up is always one section per day, so its Group By choice is disabled.
+        let groupable = view != View::Upcoming;
+        for (name, on) in [
+            ("edit-context", editable),
+            ("delete-context", deletable),
+            ("group-by", groupable),
+        ] {
             if let Some(a) = self.lookup_action(name).and_downcast::<gio::SimpleAction>() {
                 a.set_enabled(on);
             }

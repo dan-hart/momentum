@@ -1448,6 +1448,16 @@
         }
       }
     },
+    "Keep syncing while Momentum runs without a window. Turn this off to sync only while the window is open; Sync Now always works. Needs “Keep running in the background” in General.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiter synchronisieren, während Momentum ohne Fenster läuft. Ausschalten, um nur bei geöffnetem Fenster zu synchronisieren; „Jetzt synchronisieren“ funktioniert immer. Erfordert „Im Hintergrund weiterlaufen“ unter Allgemein."
+          }
+        }
+      }
+    },
     "Keyboard": {
       "localizations": {
         "de": {
@@ -1742,6 +1752,16 @@
         }
       }
     },
+    "Move To": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verschieben nach"
+          }
+        }
+      }
+    },
     "Move Up": {
       "localizations": {
         "de": {
@@ -1982,6 +2002,16 @@
         }
       }
     },
+    "Next Week": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächste Woche"
+          }
+        }
+      }
+    },
     "No tags yet": {
       "localizations": {
         "de": {
@@ -2164,6 +2194,7 @@
       }
     },
     "Opening data": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2343,6 +2374,16 @@
         }
       }
     },
+    "Project…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projekt…"
+          }
+        }
+      }
+    },
     "Quick Add": {
       "localizations": {
         "de": {
@@ -2499,16 +2540,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Suche"
-          }
-        }
-      }
-    },
-    "Search Everything": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alles durchsuchen"
           }
         }
       }
@@ -2789,6 +2820,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Automatisch synchronisieren"
+          }
+        }
+      }
+    },
+    "Sync in the background": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Hintergrund synchronisieren"
           }
         }
       }

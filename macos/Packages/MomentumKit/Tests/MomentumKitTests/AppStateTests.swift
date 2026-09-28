@@ -71,19 +71,28 @@ import Testing
         #expect(!configured.description.contains("turn on sync"))
     }
 
-    @Test func comingUpShowsDatesOnRowsAndFollowsTheRange() {
+    @Test func comingUpIsOneSectionPerDayWhateverTheGroupingSays() throws {
         let h = Harness()
         h.state.go(to: .upcoming)
-        #expect(h.state.listing.sections.allSatisfy { $0.kind == .plain })
-        #expect(h.state.listing.sections.flatMap(\.rows).allSatisfy {
-            if case .task(let row) = $0 { return row.day != nil }
-            return false
-        })
         #expect(!h.rows.isEmpty)
-        let far = h.rows.count
+        #expect(h.sectionKinds.allSatisfy { $0.isDay })
+        let first = try #require(h.state.listing.sections.first)
+        #expect(Strings.sectionTitle(first) == String(localized: "Tomorrow"), "the first heading is Tomorrow")
+        #expect(h.state.listing.sections.flatMap(\.rows).allSatisfy {
+            if case .task(let row) = $0 { return row.day == nil && row.dueDay != nil }
+            return false
+        }, "the heading says the day; rows do not repeat it")
+        let headings = h.state.listing.sections.map { Strings.sectionTitle($0) }
+        for choice in ["project", "tag", "estimate", "none"] {
+            h.defaults.set(choice, forKey: PrefKey.groupBy)
+            h.state.preferencesChanged()
+            #expect(h.state.listing.sections.map { Strings.sectionTitle($0) } == headings, "Group By \(choice) leaves Coming Up alone")
+            #expect(h.state.listing.sections.allSatisfy { $0.group == nil })
+        }
+        let near = h.rows.count
         h.defaults.set("30", forKey: PrefKey.upcomingRange)
         h.state.preferencesChanged()
-        #expect(h.rows.count >= far)
+        #expect(h.rows.count >= near)
     }
 
     @Test func archivePagesAndTheArchiveRowsAreReadOnly() throws {
@@ -544,6 +553,24 @@ import Testing
         #expect(h.state.syncStatus.pendingOps == 0)
         h.state.addTask("something")
         #expect(h.state.syncStatus.pendingOps > 0)
+    }
+
+    @Test func automaticSyncPausesWithTheWindowClosedOnlyWhenBackgroundSyncIsOff() {
+        let h = Harness()
+        #expect(h.state.mainWindowVisible)
+        #expect(h.state.automaticSyncAllowed, "the default: automatic, in the background too")
+        h.state.setMainWindowVisible(false)
+        #expect(!h.state.mainWindowVisible)
+        #expect(h.state.automaticSyncAllowed, "background sync is on by default")
+        h.defaults.set(false, forKey: PrefKey.backgroundSync)
+        #expect(!h.state.automaticSyncAllowed, "no window and no background sync: paused")
+        h.state.setMainWindowVisible(true)
+        #expect(h.state.automaticSyncAllowed, "the window is back")
+        h.defaults.set(false, forKey: PrefKey.autoSync)
+        #expect(!h.state.automaticSyncAllowed, "automatic sync itself is off")
+        h.defaults.set(true, forKey: PrefKey.autoSync)
+        h.state.setMainWindowVisible(true)
+        #expect(h.state.mainWindowVisible, "reporting the same state twice is harmless")
     }
 }
 

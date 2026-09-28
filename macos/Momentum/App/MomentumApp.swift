@@ -55,7 +55,10 @@ struct MomentumApp: App {
     }
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        // A `Window`, not a `WindowGroup`: there is exactly one main window. Reopening from
+        // the Dock, `openWindow`, and state restoration all resolve to this one instance,
+        // so nothing can present a second copy of it.
+        Window(Text(verbatim: "Momentum"), id: "main") {
             ContentView()
                 .environment(state)
                 .momentumTypography()
@@ -64,6 +67,8 @@ struct MomentumApp: App {
         .defaultSize(width: 1000, height: 700)
         .commands {
             MomentumCommands(state: state)
+            // View › Customize Toolbar…, for the identified items in ContentView's toolbar.
+            ToolbarCommands()
         }
 
         Window(String(localized: "Add Task"), id: "quick-add") {

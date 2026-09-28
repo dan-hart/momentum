@@ -19,6 +19,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notifications: NotificationManager?
     private var spotlight: SpotlightIndexer?
     private let services = ServiceProvider()
+    private var windowObserver: NSObjectProtocol?
+
+    /// The one main window's identifier begins with its scene id ("main-AppWindow-1").
+    static func isMainWindow(_ w: NSWindow) -> Bool {
+        w.identifier?.rawValue.hasPrefix("main") == true
+    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -42,6 +48,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKeys = GlobalHotKeys(
             quickAdd: { [weak self] in self?.openQuickAdd() },
             show: { NSApp.activate(); Self.showMainWindow() })
+        // Automatic sync may pause while the main window is closed (Settings › Sync).
+        windowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: nil, queue: .main
+        ) { note in
+            guard let w = note.object as? NSWindow, Self.isMainWindow(w) else { return }
+            Task { @MainActor in Self.shared?.setMainWindowVisible(false) }
+        }
         let show = state.handle(arguments: CommandLine.arguments)
         if CommandLine.arguments.contains("--quick-add") {
             openQuickAdd()
@@ -50,7 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // Launched only to run a command: do not linger.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { NSApp.terminate(nil) }
             } else {
-                NSApp.windows.forEach { if $0.identifier?.rawValue.hasPrefix("main") == true { $0.orderOut(nil) } }
+                NSApp.windows.forEach { if Self.isMainWindow($0) { $0.orderOut(nil) } }
+                state.setMainWindowVisible(false)
             }
         }
         updateLoginItem()
@@ -61,8 +75,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// A Dock click with no visible window: show the main window ourselves and tell AppKit
-    /// the reopen is handled. Returning true as well lets SwiftUI open a second, identical
-    /// main window for the same click.
+    /// the reopen is handled. The main scene is a single `Window`, so even a reopen that
+    /// SwiftUI also answers brings the same window forward rather than a second one.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if flag { return true }
         return !Self.showMainWindow()
@@ -125,11 +139,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @discardableResult
     static func showMainWindow() -> Bool {
         NSApp.activate()
-        if let w = NSApp.windows.first(where: { $0.identifier?.rawValue.hasPrefix("main") == true }) {
+        defer { Self.shared?.setMainWindowVisible(true) }
+        if let w = NSApp.windows.first(where: isMainWindow) {
             w.makeKeyAndOrderFront(nil)
             return true
         }
-        // The window group has no window (closed while running in the background).
+        // The window was closed while running in the background: reopen the one scene.
         guard let open = WindowOpener.shared.open else { return false }
         open("main")
         return true

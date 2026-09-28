@@ -32,6 +32,7 @@ import Testing
         #expect(p.syncEnabled == false, "nothing leaves the device until sync is turned on")
         #expect(p.p2pEnabled == false)
         #expect(p.autoSync == true)
+        #expect(p.backgroundSync == true, "closing the window does not stop sync unless asked")
         #expect(p.colorful == true)
         #expect(d.string(forKey: PrefKey.nextcloudFolder) == "super-productivity")
     }

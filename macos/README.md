@@ -77,6 +77,21 @@ platform compiling instead of quietly leaving a blank label.
 | Background portal with autostart | `SMAppService` login item, plus an optional menu bar item |
 | D-Bus `org.gtk.Actions` for `mo` | A Unix socket in the data directory, which `mo` also uses on Linux |
 
+## Toolbar, menus and windows
+
+**View → Customize Toolbar…** rearranges the toolbar: New Task, Sync Now and View Options
+are there by default, and Quick Add and Archive Completed can be added. Every item has a
+stable identifier, so the arrangement persists with the window. The task context menu is
+grouped into act (Open, Mark as Done), plan (Plan for Today, a **Move To** submenu with
+Morning/Tonight, Tomorrow, Next Week and Project…), organise (Add Tag…, Repeat…,
+Duplicate, Copy Title) and Delete. Dragging a selected row lifts the whole selection, one
+item per task, onto the sidebar or a Manual Order position.
+
+The main window is a single `Window` scene: a Dock click, `openWindow`, the menu bar item
+and the ⌃⌥M shortcut all reopen the same window, never a second copy. Coming Up is always
+one section per day (Tomorrow, then weekday names, then dates) and its Group By choice is
+disabled; the other views keep the selected grouping.
+
 ## Fonts
 
 Open **Settings → Fonts → Choose Font…** to use the macOS Fonts panel. The chosen
@@ -98,7 +113,11 @@ the same. LibreSync retains its shared protocol identifier for Linux compatibili
 The app and `mo` share one store and one Keychain service, so either can be used at any
 time. Settings → Sync offers one method: Off, Nextcloud, or LibreSync. Only the selected
 service can run, including automatic and CLI-triggered sync. Switching keeps saved
-connections and pairings. Existing nearby-sync users migrate to LibreSync; other enabled
+connections and pairings. **Sync in the background** (on by default) decides whether
+automatic sync keeps running while Momentum has no window on screen — with *Keep running
+in the background* on, the app stays alive after the window closes. Turned off, automatic
+Nextcloud cycles and the LibreSync transport pause until the window returns, which then
+syncs anything pending; Sync Now always works. Existing nearby-sync users migrate to LibreSync; other enabled
 users migrate to Nextcloud. Preview mode never starts either transport.
 
 The main window and Sync settings show the selected service, in-progress spinner, last

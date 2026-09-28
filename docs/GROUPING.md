@@ -23,8 +23,12 @@ sync. It does not change tasks, their tags/projects/estimates, or saved manual o
   Grouping changes presentation only; existing sidebar views still filter by due day.
   Moving a task to the other day period removes opposing tags; undo restores them.
 - Overdue tasks remain in the Today view within their selected group, with their due
-  dates visible. Coming Up keeps its 7/30-day filter and shows dates on each row rather
-  than date headings. Empty states, task membership and archive paging stay unchanged.
+  dates visible. **Coming Up does not use Group By** (revised 2026-09-28): it keeps its
+  7/30-day filter and is always one section per day, soonest first — Tomorrow, then the
+  weekday names of the coming week, then dates — with the sort preference ordering tasks
+  inside each day. The Group By control is disabled while Coming Up is showing, the
+  saved preference is untouched, and rows there carry the raw due day but no repeated
+  day label. Empty states, task membership and archive paging stay unchanged.
 - Project groups use the project name in its saved color, with the same accessibility
   and colorful-label fallbacks as tag groups. Unavailable projects use **No Project**.
 - Tag groups use the **first existing tag in the task's stored tag order**, excluding
@@ -69,9 +73,14 @@ colors) through UniFFI. Frontends localize headings; no localized sentences ente
 - **Linux:** GTK settings action and native Group By radio submenu within View Options;
   libadwaita list headings and escaped Pango text for colored tags/projects. Follow
   [GNOME menu guidance](https://developer.gnome.org/hig/patterns/controls/menus.html).
-- **macOS:** SwiftUI Picker in both toolbar View Options and the system View menu;
-  existing native list sections, keyboard access and accessible combined group headings.
-  Reuse the app's color accessibility policy and user typography preferences.
+- **macOS:** SwiftUI Picker in both toolbar View Options and the system View menu,
+  disabled in Coming Up; existing native list sections, keyboard access and accessible
+  combined group headings. Reuse the app's color accessibility policy and user typography
+  preferences. Linux disables its `win.group-by` action in Coming Up the same way.
+- **iOS — day sections:** the shared core now returns `SectionKind::Day` for Coming Up on
+  every platform, and the mobile list already renders those headings through the shared
+  `Strings.sectionTitle`. Disabling the mobile Group By control in Upcoming is still
+  Planned.
 - **iOS — Planned:** expose these modes through native list options, persist locally,
   consume the same Rust metadata and intervals, preserve family/selection behavior and exclusive grouping,
   and support Dynamic Type, VoiceOver, increased contrast and non-color identification.

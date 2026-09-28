@@ -25,14 +25,14 @@ struct ContentView: SwiftUI.View {
         .navigationTitle(Strings.viewTitle(state.listing.title))
         .navigationSubtitle(subtitle)
         .searchable(text: $state.searchText, isPresented: $state.isSearchPresented,
-                    placement: .toolbar, prompt: String(localized: "Search Everything"))
+                    placement: .toolbar, prompt: String(localized: "Search"))
         .onChange(of: state.isSearchPresented) { _, presented in state.searchPresentationChanged(presented) }
         .task(id: state.searchText) {
             // Coalesce keystrokes: rebuild the result list at most every 120 ms.
             try? await Task.sleep(for: .milliseconds(120))
             if !Task.isCancelled { state.searchTextChanged() }
         }
-        .toolbar { ToolbarItems() }
+        .toolbar(id: "main") { ToolbarItems() }
         .sheet(item: $state.sheet, onDismiss: state.sheetDismissed) { sheet in
             sheetView(sheet)
         }
@@ -45,7 +45,9 @@ struct ContentView: SwiftUI.View {
         }
         .onAppear {
             WindowOpener.shared.open = { id in openWindow(id: id) }
+            state.setMainWindowVisible(true)
         }
+        .onDisappear { state.setMainWindowVisible(false) }
         .onOpenURL { url in state.handle(url: url) }
         .focusedSceneValue(\.appState, state)
     }
@@ -176,28 +178,41 @@ struct BannerView: SwiftUI.View {
     }
 }
 
-struct ToolbarItems: ToolbarContent {
+/// Every item has a stable id so View › Customize Toolbar… can rearrange, remove and
+/// restore them; the choice persists with the window's toolbar configuration.
+struct ToolbarItems: CustomizableToolbarContent {
     @Environment(AppState.self) private var state
 
-    var body: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
+    var body: some CustomizableToolbarContent {
+        ToolbarItem(id: "new-task", placement: .primaryAction) {
             Button { state.newTask() } label: { Label(String(localized: "New Task"), systemImage: "plus") }
                 .help(String(localized: "New Task (\(state.modifier.symbol)N)"))
         }
-        if state.syncAvailable {
-            ToolbarItem {
-                Button { state.sync() } label: {
-                    if state.syncInProgress {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Label(String(localized: "Sync Now"), systemImage: "arrow.triangle.2.circlepath")
-                    }
+        ToolbarItem(id: "sync") {
+            Button { state.sync() } label: {
+                if state.syncInProgress {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Label(String(localized: "Sync Now"), systemImage: "arrow.triangle.2.circlepath")
                 }
-                .disabled(state.syncInProgress)
-                .help(state.syncInProgress ? String(localized: "Syncing…") : String(localized: "Sync Now (\(state.modifier.symbol)R)"))
             }
+            .disabled(state.syncInProgress || !state.syncAvailable)
+            .help(state.syncInProgress ? String(localized: "Syncing…") : String(localized: "Sync Now (\(state.modifier.symbol)R)"))
         }
-        ToolbarItem {
+        ToolbarItem(id: "quick-add", showsByDefault: false) {
+            Button { WindowOpener.shared.open?("quick-add") } label: {
+                Label(String(localized: "Quick Add…"), systemImage: "plus.circle")
+            }
+            .help(String(localized: "Quick Add…"))
+        }
+        ToolbarItem(id: "archive-completed", showsByDefault: false) {
+            Button { state.archiveDone() } label: {
+                Label(String(localized: "Archive Completed Tasks"), systemImage: "archivebox")
+            }
+            .disabled(!state.listing.canArchive)
+            .help(String(localized: "Archive Completed Tasks"))
+        }
+        ToolbarItem(id: "view-options") {
             Menu {
                 SortMenu(state: state)
                 Divider()

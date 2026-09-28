@@ -34,7 +34,7 @@ verification claim for subsequent changes.
 | **Today** | Top-level tasks due today, in the stored Today order, then any other task due today | Open overdue tasks are included with their due dates visible; the selected Group By is the only grouping layer; completed tasks move to a "Completed (N)" section at the bottom (this applies to every list view). The Today membership follows upstream's virtual TODAY tag rule: the local day of `dueWithTime` if set, else `dueDay == today`. |
 | **Morning** | Today's tasks tagged "Morning" (case-insensitive; the tag is created on first use) | Same rules as Tonight; Morning appears as a group only with Morning & Night grouping. Ctrl+Shift+M, context menu "Move to Morning", drop target. A task is in one slot at most: moving to Morning drops the Evening tag and vice versa. The Morning and Tonight sidebar entries appear only while a task planned for today carries the tag; if the entry disappears while it is the current view, the window falls back to Today. |
 | **Tonight** | Today's tasks that carry the "Evening" tag (case-insensitive) | With Morning & Night grouping these tasks appear under "Evening"; other group modes do not split them by day period. Quick-add and the dialog from this view add today's date and the Evening tag, creating the tag if needed. Dropping a task here does the same. |
-| **Coming Up** | Open top-level tasks due in the next 7 days (default) or 30 days | Uses the selected Group By. Due dates appear on task rows (Tomorrow, Friday, 14 October), with no additional date sections. |
+| **Coming Up** | Open top-level tasks due in the next 7 days (default) or 30 days | One section per day, soonest first: Tomorrow, then weekday names for the rest of the week, then dates (14 October, 3 January 2027). Group By does not apply and its control is disabled here; the sort preference orders tasks within a day. Rows do not repeat the day. |
 | **Archive** | Archived tasks from both archive tiers, newest completion first | Read-only rows: no checkbox, no drag, no menu. Paged 100 at a time with a Show More button. |
 | **Search** | Live results across everything | See 2.7. |
 | **Project** | The project's task list in its stored order | One per non-archived, non-hidden project. Subtasks appear indented under their parent. |
@@ -250,7 +250,8 @@ debounce, backed by a lowercase index rebuilt only when data changes. Every word
 query must match somewhere in a task's title, notes, tag names or project name. Groups
 with counts: Tasks (open first, then done, alphabetical; capped at 60 with a "showing 60 of
 N, add another word" note), Projects, Tags (both navigate on activation), Archived (capped
-at 30). Empty prompt "Search Everything"; no-results state "No Results Found".
+at 30). Empty prompt "Search Everything" on Linux and "Search" on macOS (2026-09-28); no-results
+state "No Results Found".
 
 ### 2.8 Keyboard and input
 

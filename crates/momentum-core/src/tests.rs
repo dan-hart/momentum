@@ -855,7 +855,7 @@ fn sorting_by_title_estimate_and_direction() {
 }
 
 #[test]
-fn coming_up_shows_dates_on_rows_and_honours_the_range() {
+fn coming_up_groups_by_day_and_honours_the_range() {
     let (e, _d) = demo();
     let mut far = Task::new("far away", INBOX_PROJECT_ID);
     far.due_day = Some(day_str(today_n() + 20));
@@ -867,7 +867,24 @@ fn coming_up_shows_dates_on_rows_and_honours_the_range() {
     let l = e.listing(View::Upcoming, 100);
     let rows = row_ids(&l);
     assert!(!rows.is_empty() && !rows.contains(&far_id), "7-day window");
-    assert!(l.sections.iter().all(|s| s.kind == SectionKind::Plain));
+    let labels: Vec<&DayLabel> = l
+        .sections
+        .iter()
+        .map(|s| match &s.kind {
+            SectionKind::Day { label } => label,
+            other => panic!("Coming Up is one section per day, not {other:?}"),
+        })
+        .collect();
+    assert_eq!(labels[0].relation, DayRelation::Tomorrow, "the first day is Tomorrow");
+    assert_eq!(l.sections[0].count, 2, "both demo tasks due tomorrow share one section");
+    assert!(
+        labels.windows(2).all(|w| w[0].day < w[1].day),
+        "days run soonest first, each once: {labels:?}"
+    );
+    assert!(
+        l.sections.iter().all(|s| s.group.is_none()),
+        "Group By does not apply to Coming Up"
+    );
     let task_rows: Vec<_> = l
         .sections
         .iter()
@@ -878,21 +895,20 @@ fn coming_up_shows_dates_on_rows_and_honours_the_range() {
         })
         .collect();
     assert!(
-        task_rows.iter().all(|row| row.day.is_some()),
-        "due dates remain visible without date headings"
-    );
-    assert_eq!(
-        task_rows
-            .iter()
-            .filter(|row| row.day.as_ref().unwrap().relation == DayRelation::Tomorrow)
-            .count(),
-        2
+        task_rows.iter().all(|row| row.day.is_none() && row.due_day.is_some()),
+        "the day heading says the day; rows keep only the raw due day"
     );
     e.set_preferences(Preferences {
         upcoming_days: 30,
         ..Preferences::default()
     });
-    assert!(row_ids(&e.listing(View::Upcoming, 100)).contains(&far_id));
+    let wide = e.listing(View::Upcoming, 100);
+    assert!(row_ids(&wide).contains(&far_id));
+    assert!(
+        matches!(&wide.sections.last().unwrap().kind,
+            SectionKind::Day { label } if label.relation != DayRelation::ThisWeek && label.relation != DayRelation::Tomorrow),
+        "past a week the heading is a date"
+    );
     let (empty_e, _d2) = empty();
     assert_eq!(
         empty_e.listing(View::Upcoming, 100).empty,
@@ -2259,7 +2275,13 @@ fn morning_night_is_plain_outside_day_views() {
     e.dispatch(Action::AddTask { task, bottom: true });
 
     for (context, listing, expected_kind) in [
-        ("Upcoming", e.listing(View::Upcoming, 100), SectionKind::Plain),
+        (
+            "Upcoming",
+            e.listing(View::Upcoming, 100),
+            SectionKind::Day {
+                label: text::day_label(&due_day),
+            },
+        ),
         ("project", e.listing(View::project(&project), 100), SectionKind::Plain),
         ("tag", e.listing(View::tag(&tag), 100), SectionKind::Plain),
         (
@@ -2273,13 +2295,15 @@ fn morning_night_is_plain_outside_day_views() {
         assert_eq!(section.kind, expected_kind, "{context} keeps its section kind");
         assert_eq!(section.group, None, "{context} stays ungrouped");
         assert_eq!(section.rows.len(), 1, "{context} keeps the task once");
+        // Coming Up's heading names the day, so its rows carry only the raw due day.
+        let day_on_row = context != "Upcoming";
         assert!(
             matches!(
                 &section.rows[0],
                 Row::Task { row }
-                    if row.day.is_some() && row.due_day.as_deref() == Some(due_day.as_str())
+                    if row.day.is_some() == day_on_row && row.due_day.as_deref() == Some(due_day.as_str())
             ),
-            "{context} retains visible and raw due-day metadata"
+            "{context} retains its due-day metadata"
         );
     }
 }
@@ -2364,13 +2388,21 @@ fn exclusive_grouping_preserves_completed_tasks_as_one_separate_section() {
 }
 
 #[test]
-fn exclusive_upcoming_groups_span_dates_without_hiding_due_days() {
+fn coming_up_ignores_the_grouping_preference_and_keeps_one_section_per_day() {
     let (e, _dir) = empty();
-    for (name, offset) in [("Tomorrow", 1), ("Later", 3)] {
+    for (name, offset) in [("Tomorrow", 1), ("Later", 3), ("Same later day #tagged", 3)] {
         let mut t = Task::new(name, INBOX_PROJECT_ID);
         t.due_day = Some(day_str(today_n() + offset));
         e.dispatch(Action::AddTask { task: t, bottom: true });
     }
+    let expected = vec![
+        SectionKind::Day {
+            label: text::day_label(&day_str(today_n() + 1)),
+        },
+        SectionKind::Day {
+            label: text::day_label(&day_str(today_n() + 3)),
+        },
+    ];
     for mode in [
         GroupBy::MorningNight,
         GroupBy::None,
@@ -2383,12 +2415,9 @@ fn exclusive_upcoming_groups_span_dates_without_hiding_due_days() {
             ..Default::default()
         });
         let l = e.listing(View::Upcoming, 100);
-        assert_eq!(l.sections.len(), 1, "same group spans both dates in {mode:?}");
-        assert_eq!(l.sections[0].kind, SectionKind::Plain);
-        assert_eq!(l.sections[0].rows.len(), 2);
-        assert!(l.sections[0]
-            .rows
-            .iter()
-            .all(|r| matches!(r, Row::Task { row } if row.day.is_some())));
+        let kinds: Vec<SectionKind> = l.sections.iter().map(|s| s.kind.clone()).collect();
+        assert_eq!(kinds, expected, "one section per day regardless of {mode:?}");
+        assert!(l.sections.iter().all(|s| s.group.is_none()), "{mode:?} adds no groups");
+        assert_eq!(l.sections[1].rows.len(), 2, "the later day holds both of its tasks");
     }
 }

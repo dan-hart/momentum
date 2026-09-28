@@ -256,7 +256,7 @@ public enum Strings {
             return EmptyCopy(symbol: "archivebox", title: String(localized: "No archived tasks", bundle: .module),
                              description: String(localized: "Completed tasks land here when you archive them with \(modifier)E.", bundle: .module))
         case .search:
-            return EmptyCopy(symbol: "magnifyingglass", title: String(localized: "Search Everything", bundle: .module),
+            return EmptyCopy(symbol: "magnifyingglass", title: String(localized: "Search", bundle: .module),
                              description: String(localized: "Tasks, notes, subtasks, projects, tags and the archive", bundle: .module))
         case .noResults:
             return EmptyCopy(symbol: "magnifyingglass", title: String(localized: "No Results Found", bundle: .module),

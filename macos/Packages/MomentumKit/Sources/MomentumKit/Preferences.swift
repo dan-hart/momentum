@@ -13,6 +13,8 @@ public enum PrefKey {
     public static let nextcloudUser = "nextcloud-user"
     public static let nextcloudFolder = "nextcloud-folder"
     public static let autoSync = "auto-sync"
+    /// Automatic sync may run while the app has no window on screen.
+    public static let backgroundSync = "background-sync"
     public static let compress = "compress"
     public static let syncEnabled = "sync-enabled"
     public static let projectsCollapsed = "projects-collapsed"
@@ -123,6 +125,7 @@ public struct Preferences {
         defaults.register(defaults: [
             PrefKey.nextcloudFolder: "super-productivity",
             PrefKey.autoSync: true,
+            PrefKey.backgroundSync: true,
             PrefKey.compress: false,
             PrefKey.syncEnabled: false,
             PrefKey.groupBy: "morning-night",
@@ -168,6 +171,8 @@ public struct Preferences {
     }
     public var syncEnabled: Bool { syncMethod == .nextcloud }
     public var autoSync: Bool { defaults.bool(forKey: PrefKey.autoSync) }
+    /// Whether automatic sync keeps running while no window is showing.
+    public var backgroundSync: Bool { defaults.bool(forKey: PrefKey.backgroundSync) }
     public var p2pEnabled: Bool { syncMethod == .libresync }
     public var colorful: Bool { defaults.bool(forKey: PrefKey.colorfulLabels) }
     public var runInBackground: Bool { defaults.bool(forKey: PrefKey.runInBackground) }

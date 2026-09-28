@@ -80,6 +80,8 @@ public final class AppState {
     public private(set) var syncError: String?
     public private(set) var selectedSyncMethod: SyncMethod = .off
     public var syncInProgress: Bool { isSyncing || nearbySyncing }
+    /// The main window is on screen. Automatic sync may pause while it is not.
+    public private(set) var mainWindowVisible = true
     /// A sync passed one second: show the spinner rather than flashing it.
     public private(set) var syncIsSlow = false
     public var sheet: Sheet?
@@ -163,7 +165,7 @@ public final class AppState {
         }
         periodicSync = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.prefs.autoSync, self.prefs.syncConfigured else { return }
+                guard let self, self.automaticSyncAllowed, self.prefs.syncConfigured else { return }
                 self.sync()
             }
         }
@@ -174,7 +176,27 @@ public final class AppState {
         }
         applyP2pSetting()
         checkReminders()
-        if prefs.autoSync, prefs.syncConfigured {
+        if automaticSyncAllowed, prefs.syncConfigured {
+            sync()
+        }
+    }
+
+    // MARK: Window visibility
+
+    /// Automatic sync runs while the window is showing, and in the background only when
+    /// the preference allows it. Manual Sync Now is never affected.
+    public var automaticSyncAllowed: Bool {
+        prefs.autoSync && (mainWindowVisible || prefs.backgroundSync)
+    }
+
+    /// The app reports its main window appearing and closing. Coming back after a pause
+    /// catches up on anything automatic sync skipped.
+    public func setMainWindowVisible(_ visible: Bool) {
+        guard visible != mainWindowVisible else { return }
+        mainWindowVisible = visible
+        let catchUp = visible && !prefs.backgroundSync
+        applyP2pSetting()
+        if catchUp, automaticSyncAllowed, prefs.syncConfigured {
             sync()
         }
     }
@@ -337,6 +359,14 @@ public final class AppState {
         guard row(id)?.archived == false else { return nil }
         let ids = selection.contains(id) ? targets : [id]
         return TaskTransfer(ids: ids.filter { row($0)?.archived == false })
+    }
+    /// What the list's drag container hands over for the rows the system lifted: one
+    /// item per live task, in list order, whichever order the rows were selected in.
+    public func dragPayload(for ids: [String]) -> [TaskTransfer] {
+        let wanted = Set(ids)
+        return allRowIds
+            .filter { wanted.contains($0) && row($0)?.archived == false }
+            .map { TaskTransfer(ids: [$0]) }
     }
 
     // MARK: Applying outcomes
@@ -634,7 +664,8 @@ public final class AppState {
             guard let self, !Task.isCancelled else { return }
             if self.isSyncing {
                 self.scheduleSync()
-            } else if self.engine.pendingCount() > 0 {
+            } else if self.engine.pendingCount() > 0, self.automaticSyncAllowed {
+                // Paused in the background: the window's return syncs what is pending.
                 self.sync()
             }
         }
@@ -647,7 +678,7 @@ public final class AppState {
         }
         if prefs.p2pEnabled {
             guard !syncInProgress else { return }
-            applyP2pSetting()
+            applyP2pSetting(manual: true)
             guard engine.p2pRunning() else { return }
             nearbySyncing = true
             syncError = nil
@@ -749,8 +780,11 @@ public final class AppState {
 
     // MARK: Nearby devices
 
-    public func applyP2pSetting() {
-        let want = !isDemo && prefs.p2pEnabled && !isSyncing
+    /// The LibreSync transport runs while the provider is selected and, when background
+    /// sync is off, only while the window is showing. `manual` is Sync Now: it may start
+    /// the transport for one exchange even while automatic sync is paused.
+    public func applyP2pSetting(manual: Bool = false) {
+        let want = !isDemo && prefs.p2pEnabled && !isSyncing && (manual || mainWindowVisible || prefs.backgroundSync)
         if want, !engine.p2pRunning() {
             do {
                 p2pInfo = try engine.p2pStart(

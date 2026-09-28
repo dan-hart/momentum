@@ -1702,16 +1702,6 @@
         }
       }
     },
-    "Search Everything": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alles durchsuchen"
-          }
-        }
-      }
-    },
     "Shortcuts reserved by macOS may not reach Momentum.": {
       "localizations": {
         "de": {

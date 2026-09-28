@@ -46,6 +46,23 @@ import Testing
         #expect(h.rows == Array(original.reversed()))
     }
 
+    @Test func theDragContainerHandsOverOneItemPerLiveTaskInListOrder() throws {
+        let h = Harness()
+        let archived = h.id("Write release notes for 0.1")
+        h.state.setDone(archived, true)
+        h.state.archiveDone()
+        let live = Array(h.rows.prefix(3))
+        #expect(live.count == 3)
+        // The system passes the lifted ids in its own order; the payload follows the list.
+        let payload = h.state.dragPayload(for: [live[2], "not-a-row", live[0]])
+        #expect(payload.map(\.ids) == [[live[0]], [live[2]]])
+        #expect(payload.map(\.id) == [live[0], live[2]], "each item is identified by its task")
+        #expect(h.state.dragPayload(for: []).isEmpty)
+        h.state.go(to: .archive)
+        #expect(h.rows.contains(archived))
+        #expect(h.state.dragPayload(for: [archived]).isEmpty, "an archived row lifts nothing")
+    }
+
     @Test func slotDropAlwaysMovesIntoDestinationAndKeepsUndoForTheBatch() {
         let h = Harness()
         let first = h.id("Read two chapters"), second = h.id("Prep tomorrow's lunch")

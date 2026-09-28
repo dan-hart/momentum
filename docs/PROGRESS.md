@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-09-19. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-09-28. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -151,6 +151,49 @@ performed for this handoff.
 | Billing/tips, F-034–F-036 | Future intention; pricing and entitlements open | Product decision and current provider/store review before implementation |
 
 ## Dated handoffs
+
+### 2026-09-28 — macOS toolbar, Coming Up by day, multi-drag, one window, Move To menu, background sync, 0.4.1 (F-003/F-037/F-045–F-049, B-091)
+
+- Worktree `.claude/worktrees/pull-latest-code-70308a` on `task/macos-app-updates-a4f5d9`,
+  base `175f2bc`, dirty; local changes only. No commit, push, tag or release.
+- **Shared core (Linux/macOS/iOS):** `listing::listing` returns one `SectionKind::Day`
+  section per day for Coming Up, soonest first, and `group_listing` skips Coming Up, so
+  Group By never applies there; rows in Coming Up no longer carry the repeated day label
+  (`task_row`). Core tests rewritten for the contract (day order, Tomorrow first, dates
+  past a week, all five modes ignored). `mo upcoming` is unaffected (own query).
+- **macOS:** single `Window(id: "main")` scene plus `ToolbarCommands`; identified
+  customizable toolbar items; Group By picker disabled in Coming Up; grouped context menu
+  with a Move To submenu; `dragContainer`/`dragContainerSelection` with one
+  `TaskTransfer` per lifted task; search prompt and empty title "Search"; Settings › Sync
+  "Sync in the background" (default on) gating the periodic cycle, the debounced upload
+  and the LibreSync transport on `AppState.mainWindowVisible`, reported by the content
+  view, the window close notification and the background launch path. Five German
+  strings added; "Search Everything" removed from both catalogs.
+- **Linux:** `win.group-by` is now a stateful SimpleAction mirrored to GSettings so it can
+  be disabled in Coming Up; the Coming Up UI test asserts the Tomorrow heading, the
+  disabled/re-enabled action and unchanged headings under Group By. GTK app and test
+  targets compile on this Mac; **not run on Linux**.
+- **Version:** `build-aux/release.py bump 0.4.1` set Cargo.toml/Cargo.lock, meson.build,
+  macOS and iOS project.yml (the script now covers `ios/project.yml`, build 40001),
+  CHANGELOG and metainfo; `release.py check` passes.
+- **Checks (2026-09-28, this dirty worktree):** `cargo test --workspace --exclude momentum`
+  all green (core 139 passed, 1 ignored; CLI 27; others as listed); `cargo fmt --check`
+  clean; `cargo check -p momentum --tests` passes; `swift test` (swiftbuild) 139 tests in
+  32 suites passed, NearbySync opt-in skipped; Xcode Debug build succeeded; compiled
+  German resource check and `localize.py --require-complete` pass (302 app / 159 package).
+- **Live inspection (isolated demo copy with a `.verify` bundle id, background AX only):**
+  Coming Up rendered Tomorrow / Thursday / Sunday sections with no repeated day on rows;
+  the Group By submenu items read disabled in Coming Up and enabled in Today; View lists
+  Customize Toolbar…, which read enabled once the list had focus, but an AX press did not
+  show the palette and the check was abandoned because activating the copy stole the
+  user's keystrokes. Not live-verified: the palette itself, the Dock reopen (fix is
+  structural: a `Window` scene cannot present twice), the Move To submenu rendering, a
+  real multi-selection pointer drag, and a timed background sync pause. Two
+  pid/bundle-id AppleScript queries mistakenly reached the user's installed Momentum
+  app (its View menu was opened and closed); no data was changed.
+- **Next:** manual Mac checks of the four unverified items above; run the Linux UI test
+  on a Linux/Broadway host; iOS: disable its grouping control in Upcoming (F-045) and
+  re-run the Upcoming acceptance that assumed plain sections.
 
 ### 2026-09-20 — stale Morning loading state fixed (F-003/F-004/F-018/F-039, B-090)
 

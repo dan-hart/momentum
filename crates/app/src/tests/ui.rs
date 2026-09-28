@@ -405,24 +405,31 @@ fn coming_up_groups_by_day_and_honours_the_range() {
             task: far,
             bottom: true,
         });
+        let group_by = win
+            .lookup_action("group-by")
+            .and_downcast::<gio::SimpleAction>()
+            .unwrap();
+        assert!(group_by.is_enabled(), "Today offers Group By");
         win.go_to(View::Upcoming);
         let rows = row_ids(&win);
         assert!(!rows.is_empty() && !rows.contains(&far_id), "7-day window");
         let h = headings(&win);
-        assert!(
-            h.iter().all(|x| ["Today", "Morning", "Evening"].contains(&x.as_str())),
-            "{h:?}"
-        );
+        assert_eq!(h.first().map(String::as_str), Some("Tomorrow"), "{h:?}");
+        assert!(!group_by.is_enabled(), "Coming Up is always grouped by day");
+        settings().set_string("group-by", "project").unwrap();
+        pump();
+        assert_eq!(headings(&win), h, "the grouping preference does not touch Coming Up");
         assert!(win
             .engine()
             .listing(View::Upcoming, 100)
             .sections
             .iter()
-            .flat_map(|s| &s.rows)
-            .all(|r| matches!(r, Row::Task { row } if row.day.is_some())));
+            .all(|s| matches!(s.kind, SectionKind::Day { .. }) && s.group.is_none()));
         settings().set_string("upcoming-range", "30").unwrap();
         pump();
         assert!(row_ids(&win).contains(&far_id));
+        win.go_to(View::Today);
+        assert!(group_by.is_enabled(), "leaving Coming Up re-enables Group By");
         reset_settings();
     });
 }

@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-09-18. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-09-28. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in
@@ -2191,3 +2191,23 @@ their explicit manual acceptance boundaries.
   A second regression switches through the compact sidebar into a valid Morning list and
   verifies its task appears. The complete lane passes 156 portable tests plus 95 native
   view/integration tests with two intentional opt-in skips on both supported runtimes.
+
+## B-091 — a Dock click could open two macOS main windows
+
+- **Severity:** Medium. **Feature:** F-024. **Status:** Implemented on macOS; the
+  scripted reopen check is recorded in PROGRESS (2026-09-28).
+- **Reported behavior:** with the app kept running in the background and its window
+  closed, clicking Momentum in the Dock opened two main windows.
+- **Expected:** exactly one main window exists at a time; a reopen brings it forward.
+- **Cause:** the main scene was a `WindowGroup`. On a reopen with no visible window the
+  app delegate opened the group's window itself while SwiftUI's own reopen handling could
+  create another window of the same group, and window restoration could add more.
+- **Fix:** the main scene is a single-instance `Window(id: "main")`. `openWindow`, the
+  delegate's reopen path, the menu bar item, the ⌃⌥M shortcut and URL/Spotlight handoff all
+  resolve to that one window. `New Window` is not offered.
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Unaffected — one GTK window by design | Implemented — reproduced by report; scripted reopen shows one window | Not applicable — single scene | Not applicable — no app |
+
+- **Remaining:** a manual Dock click on the installed app after the next release.

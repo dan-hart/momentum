@@ -173,8 +173,10 @@ pub(crate) fn task_row(store: &Store, view: &View, t: &Task, archived: bool) -> 
         .map(describe_repeat);
     let due_day = t.plan_day();
     // Day views already say which day it is, except for overdue tasks, whose day is the point.
+    // Coming Up's day headings already say which day each row belongs to.
     let day = due_day.as_deref().and_then(|d| {
-        let day_known = matches!(view, View::Today | View::Morning | View::Tonight) && d >= today_str().as_str();
+        let day_known = (matches!(view, View::Today | View::Morning | View::Tonight) && d >= today_str().as_str())
+            || *view == View::Upcoming;
         (!day_known).then(|| day_label(d))
     });
     let done_day = if archived {
@@ -467,14 +469,24 @@ pub(crate) fn listing(
                     .then_with(|| a.due_with_time.cmp(&b.due_with_time))
                     .then_with(|| a.title.cmp(&b.title))
             });
-            // The selected grouping owns section structure. Dates remain on rows.
-            sort_tasks(&mut tasks, prefs);
-            if !tasks.is_empty() {
+            // Coming Up is always one section per day, soonest first: Tomorrow, the weekday
+            // names of this week, then dates. Group By does not apply here; the sort
+            // preference orders the tasks within each day.
+            let mut days: Vec<(String, Vec<&Task>)> = vec![];
+            for t in tasks {
+                let day = t.plan_day().unwrap_or_default();
+                match days.last_mut() {
+                    Some((d, list)) if *d == day => list.push(t),
+                    _ => days.push((day, vec![t])),
+                }
+            }
+            for (day, mut list) in days {
+                sort_tasks(&mut list, prefs);
                 out.sections.push(Section {
                     group: None,
-                    kind: SectionKind::Plain,
-                    count: tasks.len() as u32,
-                    rows: tasks
+                    kind: SectionKind::Day { label: day_label(&day) },
+                    count: list.len() as u32,
+                    rows: list
                         .into_iter()
                         .map(|t| Row::Task {
                             row: task_row(store, view, t, false),
@@ -801,7 +813,8 @@ fn group_order(group: &TaskGroup) -> (u8, String, String) {
 }
 
 pub(crate) fn group_listing(store: &Store, mut listing: Listing, by: GroupBy) -> Listing {
-    if by == GroupBy::None {
+    // Coming Up's structure is its days; the grouping preference never applies to it.
+    if by == GroupBy::None || listing.view == View::Upcoming {
         return listing;
     }
     let mut grouped = Vec::new();

@@ -66,6 +66,10 @@ struct TaskListView: SwiftUI.View {
                     }
                 }
                 .listStyle(.inset)
+                // Multi-item drag: every selected row lifts when one of them is dragged,
+                // and the payload is one TaskTransfer per task in list order.
+                .dragContainer(for: TaskTransfer.self) { ids in state.dragPayload(for: ids) }
+                .dragContainerSelection(state.targets)
                 .focused($listFocused)
                 // Selecting a row alone can leave the quick-add field as first responder.
                 .simultaneousGesture(TapGesture().onEnded { listFocused = true })
@@ -205,7 +209,8 @@ extension Row {
     }
 }
 
-/// The context menu for one task or the whole selection.
+/// The context menu for one task or the whole selection, in four groups: act on the
+/// task, plan it (every "Move to" destination in one submenu), organise it, and delete.
 struct TaskContextMenu: SwiftUI.View {
     @Environment(AppState.self) private var state
     let ids: [String]
@@ -219,6 +224,7 @@ struct TaskContextMenu: SwiftUI.View {
         if live.isEmpty {
             EmptyView()
         } else {
+            // Act
             if live.count == 1 {
                 Button(String(localized: "Open")) { state.open(live[0]) }
             }
@@ -226,29 +232,36 @@ struct TaskContextMenu: SwiftUI.View {
                 state.toggleDone(live)
             }
             Divider()
+            // Plan
             Button(info?.plannedToday == true ? String(localized: "Remove from Today") : String(localized: "Plan for Today")) {
                 state.toggleToday(live)
             }
-            Button(info?.slot == .morning ? String(localized: "Move to Today") : String(localized: "Move to Morning")) {
-                state.toggleSlot(live, .morning)
+            Menu(String(localized: "Move To")) {
+                Button(info?.slot == .morning ? String(localized: "Today") : String(localized: "Morning")) {
+                    state.toggleSlot(live, .morning)
+                }
+                Button(info?.slot == .tonight ? String(localized: "Today") : String(localized: "Tonight")) {
+                    state.toggleSlot(live, .tonight)
+                }
+                Divider()
+                Button(String(localized: "Tomorrow")) { state.moveToTomorrow(live) }
+                Button(String(localized: "Next Week")) { state.moveToNextWeek(live) }
+                let topLevel = live.filter { state.row($0)?.isSubtask == false }
+                if !topLevel.isEmpty {
+                    Divider()
+                    Button(String(localized: "Project…")) { state.sheet = .moveToProject(topLevel) }
+                }
             }
-            Button(info?.slot == .tonight ? String(localized: "Move to Today") : String(localized: "Move to Tonight")) {
-                state.toggleSlot(live, .tonight)
-            }
-            Button(String(localized: "Move to Tomorrow")) { state.moveToTomorrow(live) }
-            Button(String(localized: "Move to Next Week")) { state.moveToNextWeek(live) }
-            let topLevel = live.filter { state.row($0)?.isSubtask == false }
-            if !topLevel.isEmpty {
-                Button(String(localized: "Move to Project…")) { state.sheet = .moveToProject(topLevel) }
-            }
+            Divider()
+            // Organise
             Button(String(localized: "Add Tag…")) { state.sheet = .addTag(live) }
             if let i = info, i.topLevel {
-                Divider()
                 Button(i.repeats ? String(localized: "Edit Repeat…") : String(localized: "Repeat…")) {
                     state.sheet = .repeatSchedule(i.id)
                 }
             }
             if live.count == 1 {
+                Divider()
                 Button(String(localized: "Duplicate")) { state.duplicate(live[0]) }
                 Button(String(localized: "Copy Title")) { state.copyTitle(live[0]) }
             }

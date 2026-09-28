@@ -109,13 +109,15 @@ struct TaskRowView: SwiftUI.View {
     }
 }
 
-/// Archived rows expose no drag interaction, including archived results in Search.
+/// A live row lifts as one item of the list's drag container (see TaskListView), which
+/// carries the whole selection when a selected row is dragged. Archived rows expose no
+/// drag interaction, including archived results in Search.
 private struct TaskDragSource: ViewModifier {
     @Environment(AppState.self) private var state
     let id: String
     func body(content: Content) -> some SwiftUI.View {
-        if let transfer = state.dragTransfer(for: id) {
-            content.draggable(transfer)
+        if state.row(id)?.archived == false {
+            content.draggable(containerItemID: id)
         } else {
             content
         }

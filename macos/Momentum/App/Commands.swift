@@ -191,8 +191,9 @@ struct MomentumCommands: Commands {
     }
 }
 
-/// Sort By, Order and Coming Up, bound to the defaults; used by the View menu and the
-/// toolbar's View Options.
+/// Group By, Sort By, Order and Coming Up, bound to the defaults; used by the View menu
+/// and the toolbar's View Options. Coming Up is always one section per day, so Group By
+/// is disabled there rather than offering a choice that would not apply.
 struct SortMenu: SwiftUI.View {
     let state: AppState
     @AppStorage(PrefKey.groupBy) private var group = "morning-night"
@@ -208,6 +209,7 @@ struct SortMenu: SwiftUI.View {
             Text(String(localized: "Tag")).tag("tag")
             Text(String(localized: "Time Estimate")).tag("estimate")
         }
+        .disabled(state.view == .upcoming)
         Picker(String(localized: "Sort By"), selection: $sort) {
             Text(String(localized: "Manual Order")).tag("manual")
             Text(String(localized: "Title")).tag("title")
