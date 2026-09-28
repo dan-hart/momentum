@@ -86,7 +86,12 @@ impl PausedDav {
                 let mut body = vec![0; length];
                 stream.read_exact(&mut body).unwrap();
                 if first {
-                    assert!(head.starts_with("GET "));
+                    // The held first request is an exchange's download or a connection
+                    // probe's PROPFIND; either way the fixture waits to be released.
+                    assert!(
+                        head.starts_with("GET ") || head.starts_with("PROPFIND "),
+                        "unexpected first request: {head}"
+                    );
                     first = false;
                     arrival.send(()).unwrap();
                     if released.recv_timeout(Duration::from_secs(5)).is_err() {
@@ -400,9 +405,11 @@ fn nextcloud_connection_probe_does_not_mutate_store_or_sync_status() {
         .collect();
     let server = PausedDav::new();
     let cancellation = SyncCancellation::new();
+    // Long enough for the PROPFIND to reach the fixture on a slow runner, short enough
+    // that the held response trips the deadline rather than the fixture's own 5 s wait.
     assert!(
         engine
-            .test_nextcloud_connection_cancellable(server.settings.clone(), cancellation, 1)
+            .test_nextcloud_connection_cancellable(server.settings.clone(), cancellation, 250)
             .is_err(),
         "the held fixture must hit the injected deadline"
     );

@@ -32,23 +32,26 @@ macos/scripts/build-core.sh
 
 # Xcode's Release configuration links arm64 and x86_64; build only what the core has, so
 # a Mac without the second Rust target still packages (REQUIRE_UNIVERSAL catches it in CI).
-CORE_ARCHS=$(lipo -archs "$ROOT/target/xcframework-stage/lib/libmomentum_ffi.a")
+# build-core.sh stages `mo` from the same Mac targets as the library, so its slices are
+# the core's architectures.
+CORE_ARCHS=$(lipo -archs "$ROOT/target/xcframework-stage/mo")
 echo "   core architectures: $CORE_ARCHS"
 
 echo "== xcodegen"
 (cd macos && xcodegen generate >/dev/null)
 
 echo "== xcodebuild Release (identity: $IDENTITY)"
-SIGN_FLAGS="CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=$IDENTITY"
+# The identity may contain spaces ("Developer ID Application: Name (TEAM)"): pass the
+# settings as separate arguments rather than a word-split string.
+set -- CODE_SIGN_STYLE=Manual "CODE_SIGN_IDENTITY=$IDENTITY"
 if [ "$IDENTITY" != "-" ]; then
   [ -n "$TEAM" ] || { echo "APPLE_TEAM_ID is required with MACOS_SIGN_IDENTITY" >&2; exit 1; }
-  SIGN_FLAGS="$SIGN_FLAGS DEVELOPMENT_TEAM=$TEAM OTHER_CODE_SIGN_FLAGS=--timestamp"
+  set -- "$@" "DEVELOPMENT_TEAM=$TEAM" OTHER_CODE_SIGN_FLAGS=--timestamp
 fi
 mkdir -p "$DERIVED"
 LOG="$DERIVED/xcodebuild.log"
-# shellcheck disable=SC2086
 if ! xcodebuild -project macos/Momentum.xcodeproj -scheme Momentum -configuration Release \
-  -derivedDataPath "$DERIVED" ARCHS="$CORE_ARCHS" ONLY_ACTIVE_ARCH=NO $SIGN_FLAGS build >"$LOG" 2>&1; then
+  -derivedDataPath "$DERIVED" ARCHS="$CORE_ARCHS" ONLY_ACTIVE_ARCH=NO "$@" build >"$LOG" 2>&1; then
   echo "xcodebuild failed; full log: $LOG" >&2
   grep -E 'error:|\*\* BUILD' "$LOG" >&2 || tail -n 60 "$LOG" >&2
   exit 1
