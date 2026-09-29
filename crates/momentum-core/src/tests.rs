@@ -232,7 +232,11 @@ fn today_view_groups_by_day_period_and_keeps_overdue_dates_visible() {
         sections: vec![l.sections[1].clone()],
         ..l.clone()
     });
-    assert_eq!(today_rows[0], id_of(&e, "Renew library books"), "overdue first within Today");
+    assert_eq!(
+        today_rows[0],
+        id_of(&e, "Renew library books"),
+        "overdue first within Today"
+    );
     let tonight = id_of(&e, "Read two chapters");
     let dentist = id_of(&e, "Dentist appointment");
     assert!(rows.iter().position(|r| *r == dentist) < rows.iter().position(|r| *r == tonight));
