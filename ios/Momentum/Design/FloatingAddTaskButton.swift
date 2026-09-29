@@ -44,19 +44,20 @@ struct FloatingAddTaskButton: View {
                 pressed = false
             }
         } label: {
-            ViewThatFits(in: .horizontal) {
-                Label("Add task", systemImage: "plus")
-                    .fixedSize(horizontal: true, vertical: false)
-                Image(systemName: "plus")
-            }
-            .font(.headline)
-            .foregroundStyle(AccentTheme.onAccent(AccentChoice.resolve(selected)))
-            .padding(.horizontal, 8)
-            .frame(minHeight: 32)
+            // Symbol only. The name lives in the accessibility label, the Large Content
+            // Viewer (long-press at accessibility text sizes), and the hover tooltip; the
+            // symbol itself follows Dynamic Type, and the hit target never drops below 44 pt.
+            Image(systemName: "plus")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(AccentTheme.onAccent(AccentChoice.resolve(selected)))
+                .frame(minWidth: 26, minHeight: 26)
+                .contentShape(Circle())
         }
         .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.capsule)
+        .buttonBorderShape(.circle)
         .controlSize(.large)
+        .help("Add task")
+        .accessibilityShowsLargeContentViewer { Label("Add task", systemImage: "plus") }
         .shadow(color: .black.opacity(0.16), radius: 4, x: 0, y: 2)
         .scaleEffect(pressed ? motion.pressedScale : 1)
         .opacity(pressed && reduceMotion ? 0.78 : 1)

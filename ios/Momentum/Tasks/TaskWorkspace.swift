@@ -23,39 +23,60 @@ struct TaskWorkspace: SwiftUI.View {
                 availableWidth: geometry.size.width
             )
 
-            NavigationSplitView(
-                columnVisibility: columnVisibility(layout: layout),
-                preferredCompactColumn: preferredCompactColumn(layout: layout)
-            ) {
-                ListPicker(snapshot: snapshot, selection: selection(layout: layout))
-                    .navigationSplitViewColumnWidth(
-                        min: TaskWorkspacePolicy.minimumSidebarWidth,
-                        ideal: 300,
-                        max: 340
-                    )
-                    .background(TaskWorkspaceColumnMarker(identifier: "task-workspace-sidebar"))
-                    .accessibilityIdentifier("task-workspace-sidebar")
-            } detail: {
-                NavigationStack {
-                    TaskScreen(
-                        view: state.selection,
-                        dismissesWhenViewDisappears: false,
-                        loadingPresentation: state.selection == .today ? loadingPresentation : .progress,
-                        onSnapshotChange: receive,
-                        snapshotLoader: snapshotLoader,
-                        onInitialSnapshotReady: onInitialTodayReady,
-                        showsSidebarButton: layout == .detailOnly
-                    )
-                    .id(state.selection)
+            Group {
+                if layout == .all, horizontalSizeClass != .regular {
+                    // A wide phone in landscape: the split view would still collapse in a
+                    // compact size class, so draw the two columns side by side ourselves.
+                    HStack(spacing: 0) {
+                        NavigationStack { sidebar(layout: layout) }
+                            .frame(width: 300)
+                        Divider()
+                        detail(layout: layout)
+                    }
+                } else {
+                    NavigationSplitView(
+                        columnVisibility: columnVisibility(layout: layout),
+                        preferredCompactColumn: preferredCompactColumn(layout: layout)
+                    ) {
+                        sidebar(layout: layout)
+                            .navigationSplitViewColumnWidth(
+                                min: TaskWorkspacePolicy.minimumSidebarWidth,
+                                ideal: 300,
+                                max: 340
+                            )
+                    } detail: {
+                        detail(layout: layout)
+                    }
+                    .navigationSplitViewStyle(.balanced)
                 }
-                .background(TaskWorkspaceColumnMarker(identifier: "task-workspace-detail"))
-                .accessibilityIdentifier("task-workspace-detail")
             }
-            .navigationSplitViewStyle(.balanced)
             .onChange(of: layout, initial: true) { _, newLayout in
                 state.applyLayout(newLayout)
             }
         }
+    }
+
+    private func sidebar(layout: TaskWorkspacePresentation) -> some SwiftUI.View {
+        ListPicker(snapshot: snapshot, selection: selection(layout: layout))
+            .background(TaskWorkspaceColumnMarker(identifier: "task-workspace-sidebar"))
+            .accessibilityIdentifier("task-workspace-sidebar")
+    }
+
+    private func detail(layout: TaskWorkspacePresentation) -> some SwiftUI.View {
+        NavigationStack {
+            TaskScreen(
+                view: state.selection,
+                dismissesWhenViewDisappears: false,
+                loadingPresentation: state.selection == .today ? loadingPresentation : .progress,
+                onSnapshotChange: receive,
+                snapshotLoader: snapshotLoader,
+                onInitialSnapshotReady: onInitialTodayReady,
+                showsSidebarButton: layout == .detailOnly
+            )
+            .id(state.selection)
+        }
+        .background(TaskWorkspaceColumnMarker(identifier: "task-workspace-detail"))
+        .accessibilityIdentifier("task-workspace-detail")
     }
 
     private func selection(layout: TaskWorkspacePresentation) -> Binding<MomentumCore.View> {

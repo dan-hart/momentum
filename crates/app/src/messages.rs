@@ -29,6 +29,18 @@ pub fn text(m: &Message) -> String {
         Message::MovedToNextWeek => format!("{} {}", gettext("Moved to"), gettext("next week")),
         Message::TasksMovedToTomorrow { n } => format!("{n} {} {}", gettext("tasks moved to"), gettext("tomorrow")),
         Message::TasksMovedToNextWeek { n } => format!("{n} {} {}", gettext("tasks moved to"), gettext("next week")),
+        Message::MovedToDay { day } => format!(
+            "{} {}",
+            gettext("Moved to"),
+            crate::window::fmt_day(&momentum_core::text::day_label(day))
+        ),
+        Message::TasksMovedToDay { n, day } => {
+            format!(
+                "{n} {} {}",
+                gettext("tasks moved to"),
+                crate::window::fmt_day(&momentum_core::text::day_label(day))
+            )
+        }
         Message::PlannedForToday => gettext("Planned for today"),
         Message::PlannedForMorning => gettext("Planned for the morning"),
         Message::PlannedForTonight => gettext("Planned for tonight"),

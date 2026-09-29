@@ -9,8 +9,10 @@ struct TaskRowView: SwiftUI.View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.appTypography) private var typography
     @LabelColors private var colorful: Bool
+    @AppStorage(PrefKey.rowDensity) private var density = "regular"
     let row: TaskRow
     @State private var targeted = false
+    private var compact: Bool { density == "compact" }
 
     var body: some SwiftUI.View {
         HStack(alignment: .center, spacing: 10) {
@@ -33,17 +35,17 @@ struct TaskRowView: SwiftUI.View {
                 .labelsHidden()
                 .accessibilityLabel(String(localized: "Done: \(row.title)"))
             }
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: compact ? 1 : 4) {
                 Text(row.title)
                     .foregroundStyle(row.isDone ? .secondary : .primary)
                     .strikethrough(row.isDone, color: .secondary)
-                    .lineLimit(2)
+                    .lineLimit(compact ? 1 : 2)
                     .fixedSize(horizontal: false, vertical: true)
                 if let subtitle = subtitle {
                     subtitle
                         .appFont(.caption, area: .content)
                         .foregroundStyle(.secondary)
-                        .lineLimit(typography.contentSize > 18 ? 3 : 2)
+                        .lineLimit(compact ? 1 : typography.contentSize > 18 ? 3 : 2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -52,7 +54,7 @@ struct TaskRowView: SwiftUI.View {
         }
         .appFont(.body, area: .content)
         .padding(.leading, row.isSubtask ? 28 : 0)
-        .padding(.vertical, 6)
+        .padding(.vertical, compact ? 0 : 6)
         .contentShape(Rectangle())
         .listRowBackground(targeted ? Color.accentColor.opacity(0.15) : nil)
         .modifier(TaskDragSource(id: row.id))

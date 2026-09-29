@@ -56,6 +56,20 @@ import XCTest
         XCTAssertEqual(model.feedback, "Undone")
     }
 
+    func testPullToRefreshRedrawsAndNeverStartsSyncWhenOff() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let name = "momentum-pull-refresh-tests-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.foreground()
+        let before = model.revision
+        await model.pullToRefresh()
+        XCTAssertEqual(model.revision, before + 1, "a pull always redraws the list")
+        XCTAssertEqual(model.sync.provider, .off, "isolated stores never select a provider")
+        XCTAssertFalse(model.sync.isSyncing, "Off starts no exchange")
+    }
+
     func testInteractionFeedbackTriggers() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let name = "momentum-interaction-feedback-tests-\(UUID())"

@@ -200,6 +200,7 @@ struct SortMenu: SwiftUI.View {
     @AppStorage(PrefKey.taskSort) private var sort = "manual"
     @AppStorage(PrefKey.sortDirection) private var direction = "ascending"
     @AppStorage(PrefKey.upcomingRange) private var range = "7"
+    @AppStorage(PrefKey.rowDensity) private var density = "regular"
 
     var body: some SwiftUI.View {
         Picker(String(localized: "Group By"), selection: $group) {
@@ -224,6 +225,11 @@ struct SortMenu: SwiftUI.View {
         Picker(String(localized: "Coming Up"), selection: $range) {
             Text(String(localized: "Next 7 Days")).tag("7")
             Text(String(localized: "Next 30 Days")).tag("30")
+        }
+        // Row density, shared with iOS under the same key: Compact fits more tasks.
+        Picker(String(localized: "Layout"), selection: $density) {
+            Text(String(localized: "Regular")).tag("regular")
+            Text(String(localized: "Compact")).tag("compact")
         }
     }
 }

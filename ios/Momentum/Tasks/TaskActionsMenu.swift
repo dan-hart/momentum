@@ -42,6 +42,11 @@ struct TaskActionsMenu: SwiftUI.View {
             }
             Divider()
             Button("Tomorrow", systemImage: "sunrise") { act(.tomorrow(ids)) }
+            // The two days after tomorrow, by weekday name.
+            ForEach([Int64(2), 3], id: \.self) { days in
+                let day = dayOffset(day: today(), days: days)
+                Button(Strings.day(dayLabel(day: day)), systemImage: "calendar") { act(.day(ids, day)) }
+            }
             Button("Next Week", systemImage: "calendar.badge.clock") { act(.nextWeek(ids)) }
             if !projects.isEmpty {
                 Divider()

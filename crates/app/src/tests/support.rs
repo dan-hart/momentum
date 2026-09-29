@@ -152,6 +152,7 @@ pub fn reset_settings() {
         "task-sort",
         "sort-direction",
         "upcoming-range",
+        "row-density",
         "colorful-labels",
         "modifier-key",
         "p2p-enabled",

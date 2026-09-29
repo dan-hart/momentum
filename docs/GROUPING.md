@@ -16,7 +16,8 @@ sync. It does not change tasks, their tags/projects/estimates, or saved manual o
   Project, Tag, or Time Estimate groups. None produces one flat open-task list.
   Completed tasks stay together in one separate section at the bottom. Search keeps
   its result-type separation (tasks, projects, tags, archive), caps and notes.
-- **Morning & Night:** groups appear in **Today → Morning → Evening** order, showing
+- **Morning & Night:** groups appear in **Morning → Today → Evening** order (revised
+  2026-09-29 from Today first), showing
   only populated groups. Morning and Evening are determined by case-insensitive
   `Morning` / `Evening` tag names. All remaining tasks go into Today (the unassigned
   day-period category, not an extra due-date filter). If both tags exist, Morning wins.

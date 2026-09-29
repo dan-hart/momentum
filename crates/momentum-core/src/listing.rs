@@ -801,8 +801,9 @@ pub(crate) fn task_group(store: &Store, view: &View, row: &TaskRow, by: GroupBy)
 
 fn group_order(group: &TaskGroup) -> (u8, String, String) {
     match group {
-        TaskGroup::Today => (0, String::new(), String::new()),
-        TaskGroup::Morning => (1, String::new(), String::new()),
+        // The day in order: Morning, then the rest of Today, then Evening (2026-09-29).
+        TaskGroup::Morning => (0, String::new(), String::new()),
+        TaskGroup::Today => (1, String::new(), String::new()),
         TaskGroup::Evening => (2, String::new(), String::new()),
         TaskGroup::Project { id, title, .. } | TaskGroup::Tag { id, title, .. } => {
             (0, title.to_lowercase(), id.clone())

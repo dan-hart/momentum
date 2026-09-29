@@ -664,6 +664,16 @@
         }
       }
     },
+    "Compact": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompakt"
+          }
+        }
+      }
+    },
     "Complete Tasks": {
       "localizations": {
         "de": {
@@ -1494,6 +1504,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zuletzt synchronisiert: %@"
+          }
+        }
+      }
+    },
+    "Layout": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Darstellung"
           }
         }
       }
@@ -2420,6 +2440,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Momentum beenden"
+          }
+        }
+      }
+    },
+    "Regular": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
           }
         }
       }

@@ -118,6 +118,37 @@ import XCTest
         }
     }
 
+    func testToolbarBadgeShowsTheStatusInTheAccentColorWithoutScrolling() async throws {
+        let name = "momentum-sync-badge-render-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let state = NextcloudSyncState(defaults: defaults, persistence: RenderConnection())
+        state.connect(makeOperation: { _ in RenderOperation() }, status: {
+            SyncStatus(syncing: false, pendingOps: 0, lastNextcloudMs: UInt64(Date().timeIntervalSince1970 * 1000) - 5 * 60_000,
+                       lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0)
+        })
+        await state.load()
+        await state.select(.nextcloud)
+        let presentation = SyncStatusPresentation(state: state)
+        XCTAssertEqual(presentation.text(now: .now), "Last synced 5 minutes ago")
+        XCTAssertEqual(presentation.symbol, "checkmark.circle")
+        // Rendered bare, as the list does inside its own NavigationStack; a stack wrapper
+        // would fill the fixture's probe height instead of reporting the control's size.
+        for scheme in [ColorScheme.light, .dark] {
+            let badge = try HostingFixture.render(SyncStatusToolbarButton(state: state).tint(.red), scheme: scheme)
+            XCTAssertGreaterThan(badge.size.height, 0)
+            XCTAssertTrue(containsRedInk(badge.image),
+                          "the checkmark takes the accent tint, not the primary label color")
+            let attachment = XCTAttachment(image: badge.image)
+            attachment.name = "Sync status badge \(scheme)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        await state.select(.off)
+        XCTAssertThrowsError(try HostingFixture.render(SyncStatusToolbarButton(state: state)),
+                             "Off shows no badge, so there is nothing to size")
+    }
+
     func testConfigurationErrorWrapsAtLargestTextOnPhoneAndPadWidths() throws {
         for width: CGFloat in [320] {
             let render = try HostingFixture.render(
@@ -224,6 +255,27 @@ private actor RenderConnection: NextcloudConnectionPersistence {
         return value
     }
     func save(_ connection: NextcloudConnection) {}
+}
+
+/// True when any pixel is clearly red: the fixture tints the badge red so the
+/// accent-following symbol is distinguishable from black or white label ink.
+private func containsRedInk(_ image: UIImage) -> Bool {
+    guard let cgImage = image.cgImage else { return false }
+    let width = cgImage.width, height = cgImage.height
+    var bytes = [UInt8](repeating: 0, count: width * height * 4)
+    let drew = bytes.withUnsafeMutableBytes { buffer in
+        guard let context = CGContext(
+            data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+            bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return false }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return true
+    }
+    guard drew else { return false }
+    return stride(from: 0, to: bytes.count, by: 4).contains { i in
+        bytes[i] > 150 && bytes[i + 1] < 90 && bytes[i + 2] < 90
+    }
 }
 
 private struct RenderOperation: NextcloudRunningOperation {

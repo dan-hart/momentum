@@ -936,6 +936,11 @@ Android is Planned and has no implemented UI to reproduce these defects.
 
 ## B-039 — scrolled content overlaps the navigation title
 
+- **2026-09-29 note:** the opaque surface below was replaced at the user's request by
+  the Liquid Glass navigation bar with the system's soft top scroll-edge effect, which
+  keeps titles readable while content shows through. The pixel evidence below describes
+  the earlier opaque fix and no longer applies.
+
 - **Severity:** Medium. **Features:** F-019/F-020/F-025. **Affected:** iOS Sync settings, Today and Accent Color reproduced;
   shared task and Settings navigation also received the same canvas correction.
 - **Reproduction:** save a connection and scroll to the bottom. The flat-canvas

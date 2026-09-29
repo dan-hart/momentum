@@ -157,8 +157,9 @@ struct RootView: SwiftUI.View {
             .accessibilityIdentifier(MobileTab.settings.accessibilityIdentifier)
         }
         .background(TabBarAccessibilityBridge(hidden: isPresentingStartupSkeleton))
-        // Keep the grouped canvas continuous behind native floating controls.
-        .scrollEdgeEffectHidden(true, for: [.top, .bottom])
+        // Keep the grouped canvas continuous behind the floating tab bar; the top edge
+        // keeps its soft Liquid Glass treatment under each tab's navigation bar.
+        .scrollEdgeEffectHidden(true, for: .bottom)
         .sensoryFeedback(.success, trigger: model.completionFeedback) { oldValue, newValue in
             InteractionFeedbackPolicy.shouldPresent(enabled: haptics, oldValue: oldValue, newValue: newValue)
         }

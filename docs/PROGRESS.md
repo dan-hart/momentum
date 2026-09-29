@@ -152,6 +152,111 @@ performed for this handoff.
 
 ## Dated handoffs
 
+### 2026-09-29 — iOS sync badge in the toolbar, round Add button; Morning first in Morning & Night (F-019/F-020/F-028/F-037)
+
+- **Core:** Morning & Night groups now order Morning → Today → Evening (`group_order`);
+  core, GTK and macOS tests updated (the overdue-first rule now applies within the Today
+  group). GROUPING.md revised.
+- **iOS:** `SyncStatusPresentation` (main-actor) is the single source for the symbol and
+  wording; `SyncStatusToolbarButton` sits in every list's navigation bar (spinner while
+  syncing, provider symbol in the accent color, orange when attention is needed) and opens
+  Settings › Sync. A fixed capsule beside Add task was built, installed, and then removed
+  at the user's request; the text status row at the end of the list (`SyncStatusLink`)
+  stays, so the German strings for the capsule are now stale in the catalog. The footer
+  row is its own section with 6 pt section spacing and no vertical row insets, so it sits
+  just under the last task rather than a full inset-grouped gap away.
+- **iOS Add task (F-019/F-020):** the floating control is now a round plus button
+  (`FloatingAddTaskButton`): accessibility label "Add task", hover help, Large Content
+  Viewer at accessibility text sizes, a 44 pt minimum target with a circular content
+  shape, the contrasting on-accent ink and the existing press/reduced-motion policy. The
+  render test asserts the circle (about 58 pt; a 44 pt inner frame first produced a 74 pt
+  slab), a height of 44–64 pt, and that the plus glyph itself grows at AX5, measured from
+  the dark render where the only white ink is the glyph.
+- **Checks:** core 141 passed; GTK compiles; macOS package 140 passed after rebuilding
+  the core (a stale xcframework first failed the order test). iOS view lane on the
+  iPhone 18 Pro iOS 27.2 simulator: `ViewRenderingTests` 39, `StoreRecoveryIntegrationTests`
+  3 and `SyncSettingsIntegrationTests` 11 passed (badge tinted red in the fixture and the
+  ink read back; Off renders nothing). The signed Debug build (0.4.2, build 402) installed
+  and launched on the user's iPhone 17 Pro Max with the accent badge, the tightened list
+  footer and the round Add button. Demo mode keeps sync Off, so the badge was not seen in
+  the simulator; no live confirmation from the device yet.
+- **Lessons:** wrapping a control in `NavigationStack` inside the render fixture fills
+  the 10 000 pt probe height and surfaces as a "caught error"; render controls bare. The
+  view-lane `--filter` takes one suite; regex alternation runs 0 tests and the runner
+  still exits 0, so read "Executed N tests" before chaining an install.
+
+### 2026-09-29 — weekday moves on every platform, iPhone landscape sidebar, desktop parity (F-025/F-051/F-052/F-053)
+
+- Same dirty worktree as the iOS handoff below; local changes only.
+- **Core:** `Engine::move_to_day(ids, day)` with `Message::MovedToDay`/`TasksMovedToDay`
+  (the UI names the day); the internal `move_to_day` takes a closure. Core test covers a
+  weekday target, the batch message, one undo and an invalid day.
+- **Context menus:** the Move To submenu on Linux (`ctx-in-2-days`/`ctx-in-3-days`),
+  macOS (`AppState.moveInDays`) and iOS (`OrganizationCommand.day`) lists the two days
+  after tomorrow by weekday name, computed from `day_offset` and `day_label`. GTK test
+  asserts the submenu order and the move; macOS and iOS package tests cover the move and
+  the toast wording; Linux/macOS toasts reuse "Moved to …" with the day name.
+- **iPhone landscape:** `TaskWorkspacePolicy.presentation` now depends on width alone
+  (≥ 700 pt) and `TaskWorkspace` draws the sidebar and list side by side itself in a
+  compact size class; policy test for an 874-point compact width. Portrait view tests
+  keep their 390-point expectations. Rotation on a device or simulator not exercised.
+- **Desktop parity from the mobile pass:** View Options › Layout (Regular/Compact) on
+  macOS (`TaskRowView`) and Linux (`row-density` GSettings key, `compact-row` style
+  class, GTK test); sync cadence halved on both desktops (150 s idle, 10 s debounce).
+  Pull-to-refresh and Liquid Glass headers have no desktop equivalent; grouped menus,
+  background sync and on-page view options already existed there.
+- **Checks (2026-09-29):** core 141 passed (1 ignored) and CLI 27 passed; GTK app
+  and tests compile (`cargo check -p momentum --tests`), rustfmt clean, `msgfmt` and
+  POTFILES pass; macOS package 140 tests in 32 suites passed and the Debug app built,
+  catalogs 305/305 and 160/160 German; iOS package lane 155 tests in 23 suites passed,
+  the app built for the iPhone 18 Pro (iOS 27) simulator, and the view lane's
+  `ViewRenderingTests` (39 tests, including the new 874-point landscape test that
+  finds both columns) passed after one fix to the test itself. Simulator inspection:
+  the Move To submenu lists Tomorrow, Thursday, Friday, Next Week. Not verified: the
+  GTK tests at runtime, a Mac live look at the Layout picker and weekday items, device
+  rotation, German rendering of the new items.
+
+### 2026-09-29 — iOS: pull-to-refresh, on-page View Options, 2× sync cadence (F-025/F-037/F-050)
+
+- Worktree on `task/macos-app-updates-a4f5d9` at `27bf43b` (= main, 0.4.2), dirty; local
+  changes only.
+- Requested items already present in 0.4.2 and confirmed in the iOS 27 simulator with
+  demo data: Upcoming is one section per day (Tomorrow, Friday, Monday…); the task context
+  menu is grouped with a Move To submenu (Morning, Evening, Tomorrow, Next Week, Project);
+  adding a task opens one full editor (Title, Project, Schedule, Tags, Notes) and no other
+  sheet; Settings › Sync › Sync in the background exists. The phone last received 0.4.0
+  (2026-09-20), which explains the "two views" and the ungrouped Upcoming.
+- **New:** `.refreshable` on every task list → `MobileAppModel.pullToRefresh` (reload
+  external changes, one exchange with the selected provider, status refresh, redraw);
+  the ••• toolbar menu is now View Options with Group By (disabled in Upcoming), Sort By,
+  Order and, in Upcoming, the 7/30-day range, as titled submenus persisted under the same
+  keys as Settings › Task Lists; cadence halved to 10 s coalescing, 150 s idle poll and a
+  15-minute background floor. German "View Options" added.
+- **Checks:** package lane 153 tests in 23 suites passed with the new cadences; iOS app
+  Debug build for the iPhone 18 Pro (iOS 27) simulator; View Options and the Move To
+  submenu inspected there; in Upcoming the Group By submenu opens with every choice
+  greyed and the Upcoming range appears. View-lane `TaskMutationIntegrationTests`, with
+  the new Off-path pull-to-refresh test, passed on the same simulator
+  (`views-1790715621102160000.xcresult`). iOS catalog 366/366 German. Not verified: the
+  live pull gesture with a real provider, a real background wake, German rendering of
+  the new menu.
+- **Follow-up the same day:** pull-to-refresh exists only while a provider is selected
+  (`PullToRefresh` modifier); Settings › Sync gained a Background section holding the
+  "Sync in the background" switch (disabled with a note for LibreSync) and the Options
+  section lost its copy; `momentumNavigationCanvas` now keeps the Liquid Glass bar with
+  the soft top scroll-edge effect instead of B-039's opaque surface, and the root tab
+  view hides only the bottom edge effect; task rows use 7 pt List insets (was the
+  system 11) with 3 pt title/metadata spacing, and View Options › Layout adds Compact
+  (2 pt insets, one-line metadata, two-line titles) under the shared `row-density`
+  key (default regular, covered by the macOS package defaults test); Compact rows also
+  drop the 44-point minimum row height to 36 while the checkbox keeps a 44-point hit
+  area. iOS Debug build succeeded; the whole view lane passed on the iPhone 18 Pro
+  simulator (93 tests, 2 intentional skips, `views-1790716093266670000.xcresult`) with
+  the glass header; catalog 372/372 German. Simulator inspection: the list scrolls
+  visibly under the glass title, Regular rows are tighter, View Options › Layout
+  switches to Compact. Not verified: German rendering of the new rows, Dynamic Type at
+  accessibility sizes with Compact, VoiceOver on the shorter rows.
+
 ### 2026-09-29 — Linux and iOS: grouped context menu, Coming Up note, Search, background sync (F-016/F-045/F-047/F-048/F-049)
 
 - Worktree `.claude/worktrees/pull-latest-code-70308a` on `task/macos-app-updates-a4f5d9`

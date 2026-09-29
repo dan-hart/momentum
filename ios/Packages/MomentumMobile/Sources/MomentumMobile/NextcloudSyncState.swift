@@ -6,6 +6,8 @@ import Observation
 
 /// Owns presentation and scheduling only. Rust owns transport, conflict resolution,
 /// deadlines and the final commit boundary. No polling runs while inactive or Off.
+/// Cadence (2026-09-29, twice the desktop's): edits settle for 10 s before an upload,
+/// and an idle foreground polls every 150 s.
 @MainActor @Observable public final class NextcloudSyncState {
     public enum Failure: String, Sendable {
         case credentialsRead, credentialsWrite, configuration, connection, network, busy
@@ -190,11 +192,11 @@ import Observation
 
     public func localChanges(immediate: Bool = false) {
         if provider == .libresync {
-            scheduleNearby(after: immediate ? .zero : .seconds(20))
+            scheduleNearby(after: immediate ? .zero : .seconds(10))
             return
         }
         if isSyncing { editsDuringSync = true }
-        else { schedule(after: immediate ? .zero : .seconds(20)) }
+        else { schedule(after: immediate ? .zero : .seconds(10)) }
     }
 
     public func refreshStatus() async {
@@ -237,7 +239,7 @@ import Observation
             isSyncing = false
             isStopping = false
             active = nil
-            schedule(after: foregroundRetry ? .zero : editsDuringSync ? .seconds(20) : .seconds(300))
+            schedule(after: foregroundRetry ? .zero : editsDuringSync ? .seconds(10) : .seconds(150))
         }
         active = task
         await task.value
@@ -364,7 +366,7 @@ import Observation
     public func resumeAfterRestore() {
         isSuspended = false
         nearby?.resume()
-        schedule(after: .seconds(20))
+        schedule(after: .seconds(10))
     }
     public func drain() async { await active?.value }
 

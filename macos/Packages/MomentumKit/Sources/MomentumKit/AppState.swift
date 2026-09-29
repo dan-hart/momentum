@@ -163,7 +163,7 @@ public final class AppState {
         tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
-        periodicSync = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        periodicSync = Timer.scheduledTimer(withTimeInterval: 150, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.automaticSyncAllowed, self.prefs.syncConfigured else { return }
                 self.sync()
@@ -509,6 +509,10 @@ public final class AppState {
     public func moveToNextWeek(_ ids: [String]) {
         apply(engine.moveToNextWeek(ids: ids))
     }
+    /// The context menu's weekday items: `days` after today.
+    public func moveInDays(_ ids: [String], _ days: Int64) {
+        apply(engine.moveToDay(ids: ids, day: dayOffset(day: today(), days: days)))
+    }
     public func moveToProject(_ ids: [String], _ projectId: String) {
         apply(engine.moveToProject(ids: ids, projectId: projectId))
     }
@@ -655,12 +659,13 @@ public final class AppState {
 
     // MARK: Sync
 
-    /// A burst of edits becomes one upload: 20 s after the last change.
+    /// A burst of edits becomes one upload: 10 s after the last change (halved 2026-09-29,
+    /// with the idle cycle at 150 s, to match the mobile cadence).
     private func scheduleSync() {
         guard !isDemo, prefs.autoSync, prefs.syncConfigured else { return }
         syncDebounce?.cancel()
         syncDebounce = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(20))
+            try? await Task.sleep(for: .seconds(10))
             guard let self, !Task.isCancelled else { return }
             if self.isSyncing {
                 self.scheduleSync()

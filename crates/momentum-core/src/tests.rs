@@ -222,13 +222,17 @@ fn today_view_groups_by_day_period_and_keeps_overdue_dates_visible() {
     assert_eq!(
         l.sections.iter().map(|s| s.group.clone()).collect::<Vec<_>>(),
         vec![
-            Some(TaskGroup::Today),
             Some(TaskGroup::Morning),
+            Some(TaskGroup::Today),
             Some(TaskGroup::Evening)
         ]
     );
     let rows = row_ids(&l);
-    assert_eq!(rows[0], id_of(&e, "Renew library books"), "overdue first");
+    let today_rows = row_ids(&Listing {
+        sections: vec![l.sections[1].clone()],
+        ..l.clone()
+    });
+    assert_eq!(today_rows[0], id_of(&e, "Renew library books"), "overdue first within Today");
     let tonight = id_of(&e, "Read two chapters");
     let dentist = id_of(&e, "Dentist appointment");
     assert!(rows.iter().position(|r| *r == dentist) < rows.iter().position(|r| *r == tonight));
@@ -249,7 +253,8 @@ fn today_view_groups_by_day_period_and_keeps_overdue_dates_visible() {
     assert_eq!(dentist_row.time, Some(ClockTime { hour: 15, minute: 30 }));
     assert!(dentist_row.reminder.is_some());
     assert_eq!(dentist_row.project.as_ref().map(|p| p.title.as_str()), Some("Home"));
-    let overdue_row = match &l.sections[0].rows[0] {
+    // Morning comes first; the overdue task leads the Today group that follows it.
+    let overdue_row = match &l.sections[1].rows[0] {
         Row::Task { row } => row.clone(),
         _ => panic!(),
     };
@@ -2332,14 +2337,14 @@ fn morning_night_matches_tags_case_insensitively_and_keeps_families_together() {
     assert_eq!(
         l.sections.iter().map(|s| s.group.clone()).collect::<Vec<_>>(),
         vec![
-            Some(TaskGroup::Today),
             Some(TaskGroup::Morning),
+            Some(TaskGroup::Today),
             Some(TaskGroup::Evening)
         ]
     );
     assert_eq!(
         row_ids(&Listing {
-            sections: vec![l.sections[1].clone()],
+            sections: vec![l.sections[0].clone()],
             ..l.clone()
         }),
         [both.clone(), child]
@@ -2441,4 +2446,37 @@ fn slot_of_tag_names_matches_the_task_menu_rule() {
     }
     assert_eq!(slot_of_tag_names(vec!["MORNING".into()]), Some(Slot::Morning));
     assert_eq!(slot_of_tag_names(vec![]), None);
+}
+
+#[test]
+fn move_to_day_targets_any_day_and_names_it_in_the_message() {
+    let (e, _dir) = demo();
+    let id = id_of(&e, "Write release notes for 0.1");
+    let other = id_of(&e, "Read two chapters");
+    let day = day_str(today_n() + 2);
+    let out = e.move_to_day(vec![id.clone()], day.clone());
+    assert_eq!(out.message, Some(Message::MovedToDay { day: day.clone() }));
+    assert_eq!(task(&e, &id).plan_day().as_deref(), Some(day.as_str()));
+    assert_eq!(
+        text::day_label(&day).relation,
+        DayRelation::ThisWeek,
+        "a weekday name, not a date"
+    );
+    let later = day_str(today_n() + 3);
+    let out = e.move_to_day(vec![id.clone(), other.clone()], later.clone());
+    assert_eq!(
+        out.message,
+        Some(Message::TasksMovedToDay {
+            n: 2,
+            day: later.clone()
+        })
+    );
+    assert!(out.undo.is_some());
+    e.undo();
+    assert_eq!(
+        task(&e, &id).plan_day().as_deref(),
+        Some(day.as_str()),
+        "one undo for the batch"
+    );
+    assert!(!e.move_to_day(vec![id], "not a day".into()).changed);
 }

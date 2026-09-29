@@ -30,9 +30,12 @@ fn today_view_shows_only_today_morning_evening_groups() {
     on_gtk(|| {
         let (win, _dir) = demo_window();
         let h = headings(&win);
-        assert_eq!(h, ["Today", "Morning", "Evening"]);
+        assert_eq!(h, ["Morning", "Today", "Evening"]);
         let rows = row_ids(&win);
-        assert_eq!(rows[0], id_of(&win, "Renew library books"), "overdue first");
+        let morning = id_of(&win, "Stretch and plan the day");
+        let overdue = id_of(&win, "Renew library books");
+        assert_eq!(rows[0], morning, "the morning comes first");
+        assert_eq!(rows[1], overdue, "then what slipped, first within Today");
         let tonight = id_of(&win, "Read two chapters");
         let dentist = id_of(&win, "Dentist appointment");
         assert!(rows.iter().position(|r| *r == dentist) < rows.iter().position(|r| *r == tonight));
@@ -717,18 +720,41 @@ fn context_menu_offers_the_right_moves_for_a_task() {
         assert!(l.iter().any(|x| x.contains("Next Week")) && l.iter().any(|x| x.contains("Delete")));
         // Every "Move to" destination sits inside one submenu, in this order; the
         // top level keeps Open, Done, Plan for Today, Repeat and Delete.
-        assert_eq!(
-            move_to_labels(&win.context_menu_model(&MenuKind::Task, &today_task)),
-            ["Morning", "Tonight", "Tomorrow", "Next Week", "Project…"]
+        let today_n = day_number(&today_str()).unwrap_or(0);
+        let in_two = fmt_day(&momentum_core::text::day_label(&day_str(today_n + 2)));
+        let in_three = fmt_day(&momentum_core::text::day_label(&day_str(today_n + 3)));
+        assert!(
+            in_two.chars().all(|c| !c.is_ascii_digit()),
+            "a weekday name, not a date: {in_two}"
         );
+        let submenu = move_to_labels(&win.context_menu_model(&MenuKind::Task, &today_task));
+        assert_eq!(
+            submenu,
+            [
+                "Morning",
+                "Tonight",
+                "Tomorrow",
+                in_two.as_str(),
+                in_three.as_str(),
+                "Next Week",
+                "Project…"
+            ]
+        );
+        // The weekday item moves the task to that day; one undo brings it back.
+        ActionGroupExt::activate_action(&win, "ctx-in-2-days", Some(&today_task.to_variant()));
+        pump();
+        assert_eq!(
+            win.engine()
+                .with_store(|s| s.state.task.entities[&today_task].plan_day()),
+            Some(day_str(today_n + 2))
+        );
+        win.engine().undo();
+        win.refresh();
         assert!(
             !l.iter().any(|x| x.starts_with("Move to ")),
             "no flat Move to items: {l:?}"
         );
-        let top: Vec<&String> = l
-            .iter()
-            .filter(|x| !["Morning", "Tonight", "Tomorrow", "Next Week", "Project…"].contains(&x.as_str()))
-            .collect();
+        let top: Vec<&String> = l.iter().filter(|x| !submenu.contains(x)).collect();
         assert_eq!(
             top.len(),
             6,
@@ -785,6 +811,34 @@ fn context_menu_acts_on_the_selection_and_hides_project_for_subtasks() {
             .engine()
             .with_store(|s| !s.state.task.entities[&a].is_done && s.state.task.entities[&b].is_done));
         win.set_selecting(false);
+        reset_settings();
+    });
+}
+
+#[test]
+fn compact_layout_marks_every_task_row_and_reverts() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        reset_settings();
+        let rows = |win: &MomentumWindow| -> Vec<bool> {
+            descendants(win.imp().task_box.upcast_ref())
+                .into_iter()
+                .filter_map(|w| w.downcast::<adw::ActionRow>().ok())
+                .map(|r| r.has_css_class("compact-row"))
+                .collect()
+        };
+        assert!(!win.compact_rows());
+        assert!(!rows(&win).is_empty() && rows(&win).iter().all(|c| !c));
+        // The same settings-backed action the View Options radio items target.
+        win.lookup_action("row-density")
+            .unwrap()
+            .change_state(&"compact".to_variant());
+        pump();
+        assert!(win.compact_rows());
+        assert!(rows(&win).iter().all(|c| *c), "every task row is compact");
+        settings().set_string("row-density", "regular").unwrap();
+        pump();
+        assert!(rows(&win).iter().all(|c| !c));
         reset_settings();
     });
 }

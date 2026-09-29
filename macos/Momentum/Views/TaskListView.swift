@@ -245,6 +245,10 @@ struct TaskContextMenu: SwiftUI.View {
                 }
                 Divider()
                 Button(String(localized: "Tomorrow")) { state.moveToTomorrow(live) }
+                // The two days after tomorrow, by weekday name.
+                ForEach([Int64(2), 3], id: \.self) { days in
+                    Button(Strings.day(dayLabel(day: dayOffset(day: today(), days: days)))) { state.moveInDays(live, days) }
+                }
                 Button(String(localized: "Next Week")) { state.moveToNextWeek(live) }
                 let topLevel = live.filter { state.row($0)?.isSubtask == false }
                 if !topLevel.isEmpty {

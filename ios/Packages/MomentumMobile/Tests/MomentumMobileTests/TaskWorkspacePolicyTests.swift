@@ -11,8 +11,13 @@ import Testing
         ) == .all)
     }
 
+    @Test func aWideCompactPhoneInLandscapeShowsBothColumns() {
+        // iPhone Pro in landscape: compact size class, 874 points wide.
+        #expect(TaskWorkspacePolicy.presentation(horizontalSizeClass: .compact, availableWidth: 874) == .all)
+    }
+
     @Test(arguments: [
-        (TaskWorkspaceHorizontalSizeClass.compact, 844.0),
+        (TaskWorkspaceHorizontalSizeClass.compact, 699.0),
         (.regular, 699.0),
     ])
     func compactOrNarrowLayoutPrefersDetail(

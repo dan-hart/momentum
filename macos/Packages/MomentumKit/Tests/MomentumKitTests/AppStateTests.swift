@@ -17,8 +17,12 @@ import Testing
         let h = Harness()
         #expect(h.state.view == .today)
         #expect(h.sectionKinds.allSatisfy { $0 == .plain })
-        #expect(h.state.listing.sections.map(\.group) == [.today, .morning, .evening])
-        #expect(h.rows.first == h.id("Renew library books"), "what slipped comes first")
+        #expect(h.state.listing.sections.map(\.group) == [.morning, .today, .evening], "the day in order")
+        let todayRows = h.state.listing.sections[1].rows.compactMap { row -> String? in
+            if case .task(let task) = row { return task.id }
+            return nil
+        }
+        #expect(todayRows.first == h.id("Renew library books"), "what slipped comes first within Today")
         #expect(!h.sectionKinds.contains(.completed), "nothing is done yet")
         #expect(h.state.listing.empty == nil)
         #expect(h.state.listing.title == .today)
@@ -271,6 +275,18 @@ import Testing
         #expect(h.toastTexts.last == Strings.message(.movedToTomorrow))
         #expect(h.engine.taskRow(id: id)?.dueDay == dayOffset(day: today(), days: 1))
         #expect(!h.rows.contains(id), "it left Today")
+        h.state.undo()
+        #expect(h.engine.taskRow(id: id)?.dueDay == today())
+    }
+
+    @Test func theWeekdayItemsMoveToTheDayAfterTomorrowAndNameIt() {
+        let h = Harness()
+        let id = h.id("Write release notes for 0.1")
+        let target = dayOffset(day: today(), days: 2)
+        h.state.moveInDays([id], 2)
+        #expect(h.engine.taskRow(id: id)?.dueDay == target)
+        #expect(h.toastTexts.last == Strings.message(.movedToDay(day: target)))
+        #expect(h.toastTexts.last?.contains(Strings.day(dayLabel(day: target))) == true, "the toast names the weekday")
         h.state.undo()
         #expect(h.engine.taskRow(id: id)?.dueDay == today())
     }

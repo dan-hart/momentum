@@ -6,3 +6,16 @@ row:drop(active) {
   background-color: alpha(var(--accent-bg-color), 0.25);
   box-shadow: inset 0 0 0 1px var(--accent-bg-color);
 }
+
+/* View Options › Layout › Compact: shorter task rows with single-line metadata. */
+row.compact-row {
+  min-height: 0;
+}
+row.compact-row > box.header {
+  min-height: 0;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+row.compact-row .subtitle {
+  font-size: 0.9em;
+}

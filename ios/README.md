@@ -92,8 +92,11 @@ Low Power Mode pauses automatic sync and discretionary Spotlight/background-refr
 work. **Sync Now**, task editing and already scheduled local notifications remain
 available. Automatic work resumes when Low Power Mode turns off.
 
+Automatic sync uploads edits 10 seconds after they settle and polls every 150 seconds
+while the app is open; pulling down any list reloads it and runs one exchange right away.
+
 **Sync in the background** (Settings › Sync, on by default) asks iOS for an occasional
-background wake, at most every half hour and only when iOS decides, that runs one
+background wake, at most every 15 minutes and only when iOS decides, that runs one
 bounded Nextcloud exchange without the app on screen. It applies only while the saved
 connection syncs automatically and Low Power Mode is off; an expiring wake cancels the
 exchange without recording a failure. LibreSync stays a foreground transport.

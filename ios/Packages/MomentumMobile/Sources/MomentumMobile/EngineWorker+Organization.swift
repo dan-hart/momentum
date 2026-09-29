@@ -17,6 +17,8 @@ public enum OrganizationCommand: Sendable {
     case removeToday(String)
     case slot([String], Slot)
     case tomorrow([String])
+    /// A specific `YYYY-MM-DD` day, such as the weekday items after Tomorrow.
+    case day([String], String)
     case nextWeek([String])
     case project([String], String)
     case tag([String], String)
@@ -56,6 +58,7 @@ extension EngineWorker {
         case .removeToday(let id): engine.removeFromToday(id: id)
         case .slot(let ids, let slot): engine.toggleSlot(ids: ids, slot: slot)
         case .tomorrow(let ids): engine.moveToTomorrow(ids: ids)
+        case .day(let ids, let day): engine.moveToDay(ids: ids, day: day)
         case .nextWeek(let ids): engine.moveToNextWeek(ids: ids)
         case .project(let ids, let project): engine.moveToProject(ids: ids, projectId: project)
         case .tag(let ids, let name): engine.addTagByName(ids: ids, name: name)

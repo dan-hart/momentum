@@ -441,6 +441,16 @@
         }
       }
     },
+    "%u tasks moved to %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%u Aufgaben verschoben auf %@"
+          }
+        }
+      }
+    },
     "%u tasks moved to next week": {
       "localizations": {
         "de": {

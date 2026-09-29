@@ -439,7 +439,7 @@ msgid "Encryption password"
 msgstr ""
 
 #: data/resources/ui/prefs.blp:47
-msgid "At startup, every five minutes, and shortly after you make changes"
+msgid "At startup, every few minutes, and shortly after you make changes"
 msgstr ""
 
 #: data/resources/ui/prefs.blp:51
@@ -2165,4 +2165,16 @@ msgstr ""
 
 #: data/resources/ui/prefs.blp:118
 msgid "Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works."
+msgstr ""
+
+#: data/resources/ui/window.blp:141
+msgid "Layout"
+msgstr ""
+
+#: data/resources/ui/window.blp:144
+msgid "Regular"
+msgstr ""
+
+#: data/resources/ui/window.blp:150
+msgid "Compact"
 msgstr ""

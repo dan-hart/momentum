@@ -294,7 +294,7 @@ Super+…, and the Keyboard Shortcuts overlay and hints say so.
 
 Context menu contents (revised 2026-09-29). Task: Open, Mark as Done/Not Done; a separated group with
 Plan for Today/Remove from Today and a **Move To** submenu holding Morning or Today, Tonight or Today,
-Tomorrow, Next Week, and Project… (top-level tasks); Repeat… / Edit Repeat… (top-level tasks); then
+Tomorrow, the two following days by weekday name, Next Week, and Project… (top-level tasks); Repeat… / Edit Repeat… (top-level tasks); then
 Delete. When the clicked row is part of a selection, every item acts on the whole selection. Project:
 Open, New Task Here…, Edit…, Delete Project… (not Inbox). Tag: Open, Edit…, Delete Tag….
 
@@ -315,7 +315,7 @@ Open, New Task Here…, Edit…, Delete Project… (not Inbox). Tag: Open, Edit�
 
 - Nextcloud Sync: master switch (off by default; nothing leaves the device until on),
   server URL, username, app password, sync folder, encryption password, sync
-  automatically (at startup, every five minutes, and 20 seconds after the last local
+  automatically (at startup, every 150 seconds, and 10 seconds after the last local
   change so a burst of edits becomes one upload; archiving syncs at once), compress sync
   file, Sync Now. Rows are
   disabled while the switch is off. Secrets go to the system keyring.
@@ -509,8 +509,8 @@ the op format with.
 - Encryption: Argon2id (64 MiB, 3 iterations, 1 lane, 32-byte key, 16-byte random salt)
   then AES-256-GCM with a 12-byte nonce; wire = base64(salt ‖ nonce ‖ ciphertext+tag).
   Legacy files: PBKDF2-HMAC-SHA256, 1000 rounds, salt = password, base64(nonce ‖ ct).
-- When sync runs (with "Sync automatically" on): at startup; every five minutes (to pull
-  remote changes); 20 seconds after the last local change, debounced, so a burst of edits
+- When sync runs (with "Sync automatically" on): at startup; every 150 seconds (to pull
+  remote changes); 10 seconds after the last local change, debounced, so a burst of edits
   becomes one upload; immediately after Archive Completed; and on demand (Ctrl+R, header
   button, menus). The debounced sync is skipped when nothing is pending and deferred while
   another sync is running. A port should keep the same three triggers and the same order:

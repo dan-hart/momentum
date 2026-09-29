@@ -140,6 +140,22 @@ menu view_menu {
   }
 
   section {
+    label: _("Layout");
+
+    item {
+      label: _("Regular");
+      action: "win.row-density";
+      target: "regular";
+    }
+
+    item {
+      label: _("Compact");
+      action: "win.row-density";
+      target: "compact";
+    }
+  }
+
+  section {
     item {
       label: _("Edit Project or Tag…");
       action: "win.edit-context";

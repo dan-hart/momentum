@@ -10,8 +10,8 @@ import Testing
         #expect(!BackgroundSyncPolicy.shouldSchedule(enabled: true, exchangePossible: false))
     }
 
-    @Test func nextRequestKeepsAHalfHourFloor() {
+    @Test func nextRequestKeepsAFifteenMinuteFloor() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        #expect(BackgroundSyncPolicy.earliestBeginDate(after: now) == now.addingTimeInterval(30 * 60))
+        #expect(BackgroundSyncPolicy.earliestBeginDate(after: now) == now.addingTimeInterval(15 * 60))
     }
 }

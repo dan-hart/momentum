@@ -20,12 +20,16 @@ public enum TaskWorkspacePolicy {
     public static let minimumSidebarWidth = 280.0
     public static let minimumAccessibleDetailWidth = 420.0
 
+    /// Both columns fit whenever the width allows an accessible detail beside the
+    /// sidebar. That includes an iPhone in landscape whose size class is still
+    /// compact (2026-09-29); the workspace draws those columns itself, because a
+    /// split view collapses in a compact class regardless of visibility.
     public static func presentation(
         horizontalSizeClass: TaskWorkspaceHorizontalSizeClass,
         availableWidth: Double
     ) -> TaskWorkspacePresentation {
-        guard horizontalSizeClass == .regular,
-              availableWidth >= minimumSidebarWidth + minimumAccessibleDetailWidth else {
+        _ = horizontalSizeClass
+        guard availableWidth >= minimumSidebarWidth + minimumAccessibleDetailWidth else {
             return .detailOnly
         }
         return .all

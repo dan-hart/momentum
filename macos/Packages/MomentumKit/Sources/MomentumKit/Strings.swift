@@ -307,6 +307,8 @@ public enum Strings {
         case .movedToNextWeek: return String(localized: "Moved to next week", bundle: .module)
         case .tasksMovedToTomorrow(let n): return String(localized: "\(n) tasks moved to tomorrow", bundle: .module)
         case .tasksMovedToNextWeek(let n): return String(localized: "\(n) tasks moved to next week", bundle: .module)
+        case .movedToDay(let day): return String(localized: "Moved to \(self.day(day))", bundle: .module)
+        case .tasksMovedToDay(let n, let day): return String(localized: "\(n) tasks moved to \(self.day(day))", bundle: .module)
         case .plannedForToday: return String(localized: "Planned for today", bundle: .module)
         case .plannedForMorning: return String(localized: "Planned for the morning", bundle: .module)
         case .plannedForTonight: return String(localized: "Planned for tonight", bundle: .module)
@@ -345,7 +347,7 @@ public enum Strings {
         case .taskDuplicated: return String(localized: "Duplicate", bundle: .module)
         case .movedToTonight, .movedToMorning, .movedToToday, .tasksMovedToTonight, .tasksMovedToMorning,
              .tasksMovedToToday, .movedToTomorrow, .movedToNextWeek, .tasksMovedToTomorrow, .tasksMovedToNextWeek,
-             .plannedForToday, .plannedForMorning, .plannedForTonight, .removedFromToday, .tasksPlannedForToday:
+             .movedToDay, .tasksMovedToDay, .plannedForToday, .plannedForMorning, .plannedForTonight, .removedFromToday, .tasksPlannedForToday:
             return String(localized: "Move", bundle: .module)
         case .movedToProject: return String(localized: "Move to Project", bundle: .module)
         case .tagged, .tasksTagged: return String(localized: "Tag", bundle: .module)

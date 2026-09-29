@@ -10,7 +10,7 @@ import UIKit
 extension OrganizationCommand {
     var emitsMovementSuccessFeedback: Bool {
         switch self {
-        case .today, .toggleToday, .removeToday, .slot, .tomorrow, .nextWeek,
+        case .today, .toggleToday, .removeToday, .slot, .tomorrow, .day, .nextWeek,
              .project, .drop, .reorder, .nudge:
             true
         case .tag, .importText, .updateProject, .updateTag, .deleteProject, .deleteTag:
@@ -286,6 +286,19 @@ struct FeedbackToast: Identifiable, Equatable {
         }
         guard !Task.isCancelled else { return false }
         return NotificationBackgroundRefreshPolicy.completedSuccessfully(status: notifications.status)
+    }
+
+    /// Pull-to-refresh: reload what another process may have written, run one exchange
+    /// with the selected provider when there is one, and redraw. Off just redraws.
+    func pullToRefresh() async {
+        await start()
+        await worker?.refreshForForeground()
+        if sync.provider != .off {
+            await sync.load()
+            await sync.syncNow()
+        }
+        await sync.refreshStatus()
+        revision += 1
     }
 
     /// Settings › Sync › "Sync in the background", shared with the Mac under the same key.

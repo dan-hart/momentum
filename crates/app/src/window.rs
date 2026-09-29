@@ -14,7 +14,7 @@ use momentum_core::{
     Preferences, RepeatDescription, Row, SectionKind, SectionNote, Slot, SortDirection, SortKey, TaskGroup, TaskRow,
     ViewTitle,
 };
-use sp_model::{now_ms, INBOX_PROJECT_ID};
+use sp_model::{day_number, day_str, now_ms, today_str, INBOX_PROJECT_ID};
 use sp_oplog::Action;
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
@@ -563,6 +563,16 @@ impl MomentumWindow {
         self.add_action(&imp.settings.create_action("task-sort"));
         self.add_action(&imp.settings.create_action("sort-direction"));
         self.add_action(&imp.settings.create_action("upcoming-range"));
+        // Row density is presentation only: rebuild the rows without touching the core.
+        self.add_action(&imp.settings.create_action("row-density"));
+        imp.settings.connect_changed(
+            Some("row-density"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.refresh_tasks()
+            ),
+        );
         // The preferences the core computes with: handed over whenever they change.
         for key in ["group-by", "task-sort", "sort-direction", "upcoming-range"] {
             imp.settings.connect_changed(
@@ -805,6 +815,14 @@ impl MomentumWindow {
                 let ids = w.selection_or(id);
                 w.move_to_next_week(&ids);
             }),
+            targeted("ctx-in-2-days", |w, id| {
+                let ids = w.selection_or(id);
+                w.move_in_days(&ids, 2);
+            }),
+            targeted("ctx-in-3-days", |w, id| {
+                let ids = w.selection_or(id);
+                w.move_in_days(&ids, 3);
+            }),
             targeted("ctx-move", |w, id| w.move_many_dialog(w.selection_or(id))),
             targeted("ctx-repeat", |w, id| crate::repeat_dialog::open(w, id)),
             targeted("ctx-delete", |w, id| {
@@ -941,7 +959,7 @@ impl MomentumWindow {
             ),
         );
         glib::timeout_add_seconds_local(
-            300,
+            150,
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
@@ -1391,6 +1409,13 @@ impl MomentumWindow {
         self.leave_selection_and_apply(out);
     }
 
+    /// The context menu's weekday items: `days` after today.
+    fn move_in_days(&self, ids: &[String], days: i64) {
+        let day = day_str(day_number(&today_str()).unwrap_or(0) + days);
+        let out = self.engine().move_to_day(ids.to_vec(), day);
+        self.leave_selection_and_apply(out);
+    }
+
     /// A change made from selection mode ends it when something happened.
     fn leave_selection_and_apply(&self, out: Outcome) {
         if out.changed && self.imp().selecting.get() {
@@ -1606,6 +1631,14 @@ impl MomentumWindow {
                 move_to.append_section(None, &slots);
                 let days = gio::Menu::new();
                 days.append_item(&item(gettext("Tomorrow"), "win.ctx-tomorrow"));
+                // The two days after tomorrow, named by weekday ("Wednesday", "Thursday").
+                let today_n = day_number(&today_str()).unwrap_or(0);
+                for (offset, action) in [(2, "win.ctx-in-2-days"), (3, "win.ctx-in-3-days")] {
+                    days.append_item(&item(
+                        fmt_day(&momentum_core::text::day_label(&day_str(today_n + offset))),
+                        action,
+                    ));
+                }
                 days.append_item(&item(gettext("Next Week"), "win.ctx-next-week"));
                 move_to.append_section(None, &days);
                 if t.top_level {
@@ -2042,8 +2075,8 @@ impl MomentumWindow {
         }
     }
 
-    /// Sync shortly after local changes settle: 20 s after the last change, so a burst of
-    /// check-offs becomes one upload, while other devices still see it within half a minute.
+    /// Sync shortly after local changes settle: 10 s after the last change (halved
+    /// 2026-09-29 with the 150 s idle cycle), so a burst of check-offs becomes one upload.
     fn schedule_sync(&self) {
         let imp = self.imp();
         if !imp.settings.boolean("auto-sync") || !self.sync_configured() {
@@ -2053,7 +2086,7 @@ impl MomentumWindow {
             id.remove();
         }
         let id = glib::timeout_add_seconds_local_once(
-            20,
+            10,
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
@@ -2085,6 +2118,12 @@ impl MomentumWindow {
         }
         self.refresh_sidebar();
         self.refresh_tasks();
+    }
+
+    /// View Options › Layout › Compact: rows keep only what a title and one line of
+    /// metadata need, so more tasks fit on screen.
+    pub fn compact_rows(&self) -> bool {
+        self.imp().settings.string("row-density") == "compact"
     }
 
     /// CSS class that colours symbolic icons with a project/tag colour from the sync data.
@@ -2522,6 +2561,9 @@ impl MomentumWindow {
             .activatable(!t.archived)
             .build();
         crate::typography::register_content_root(&row);
+        if self.compact_rows() {
+            row.add_css_class("compact-row");
+        }
         if indent {
             row.set_margin_start(32);
         }

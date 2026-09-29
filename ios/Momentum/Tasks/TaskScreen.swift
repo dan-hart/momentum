@@ -109,6 +109,51 @@ struct TaskScreen: SwiftUI.View {
     }
 
 
+    @AppStorage(PrefKey.groupBy) private var groupBy = "morning-night"
+    @AppStorage(PrefKey.taskSort) private var sortKey = "manual"
+    @AppStorage(PrefKey.sortDirection) private var sortDirection = "ascending"
+    @AppStorage(PrefKey.upcomingRange) private var upcomingRange = "7"
+    @AppStorage(PrefKey.rowDensity) private var rowDensity = TaskRowDensity.regular.rawValue
+
+    /// The same choices as Settings › Task Lists, on the list they change, like the Mac's
+    /// View Options. Upcoming is always one section per day, so Group By is disabled there.
+    @ViewBuilder private var viewOptions: some SwiftUI.View {
+        Picker("Group By", selection: $groupBy) {
+            Text("Morning & Night").tag("morning-night")
+            Text("None").tag("none")
+            Text("Project").tag("project")
+            Text("Tag").tag("tag")
+            Text("Time Estimate").tag("estimate")
+        }
+        .pickerStyle(.menu)
+        .disabled(view == .upcoming)
+        Picker("Sort By", selection: $sortKey) {
+            Text("Manual Order").tag("manual")
+            Text("Title").tag("title")
+            Text("Due Day").tag("due")
+            Text("Estimate").tag("estimate")
+            Text("Created").tag("created")
+        }
+        .pickerStyle(.menu)
+        Picker("Order", selection: $sortDirection) {
+            Text("Ascending").tag("ascending")
+            Text("Descending").tag("descending")
+        }
+        .pickerStyle(.menu)
+        if view == .upcoming {
+            Picker("Upcoming", selection: $upcomingRange) {
+                Text("Next 7 Days").tag("7")
+                Text("Next 30 Days").tag("30")
+            }
+            .pickerStyle(.menu)
+        }
+        Picker("Layout", selection: $rowDensity) {
+            Text("Regular").tag(TaskRowDensity.regular.rawValue)
+            Text("Compact").tag(TaskRowDensity.compact.rawValue)
+        }
+        .pickerStyle(.menu)
+    }
+
     private var refreshKey: String { "\(view)-\(model.worker != nil)-\(model.revision)-\(query)-\(archiveLimit)" }
     private var title: String {
         view == .upcoming ? String(localized: "Upcoming")
@@ -151,6 +196,7 @@ struct TaskScreen: SwiftUI.View {
                                 switch row {
                                 case .task(let task):
                                     taskRow(task, snapshot: snapshot)
+                                        .listRowInsets(TaskRowDensity.from(rowDensity).rowInsets)
                                         .tag(task.id)
                                         .selectionDisabled(task.archived)
                                 case .project(let project):
@@ -172,12 +218,18 @@ struct TaskScreen: SwiftUI.View {
                         Button("Show More") { archiveLimit += 100 }
                     }
                     if sync.provider != .off {
-                        SyncStatusLink(state: sync)
-                            .listRowBackground(Color.clear)
-                            .selectionDisabled(true)
+                        // Sits close under the last task instead of a full section gap.
+                        Section {
+                            SyncStatusLink(state: sync)
+                                .listRowBackground(Color.clear)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                                .selectionDisabled(true)
+                        }
+                        .listSectionSpacing(6)
                     }
                 }
                 .listStyle(.insetGrouped)
+                .modifier(PullToRefresh(enabled: sync.provider != .off) { await model.pullToRefresh() })
                 .contentMargins(.bottom, 76, for: .scrollContent)
                 .dropDestination(for: ExternalTaskText.self) { items, _ in
                     guard view != .archive else { return false }
@@ -206,6 +258,9 @@ struct TaskScreen: SwiftUI.View {
         ))
         .onAppear { isVisible = true }
         .onDisappear { isVisible = false }
+        .onChange(of: "\(groupBy)-\(sortKey)-\(sortDirection)-\(upcomingRange)") {
+            Task { await model.preferencesChanged() }
+        }
         .navigationTitle(title)
         .navigationBarBackButtonHidden(showsSidebarButton)
         .momentumNavigationCanvas()
@@ -245,6 +300,8 @@ struct TaskScreen: SwiftUI.View {
                 }
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
+                // Sync status without scrolling: a badge here and a capsule at the bottom.
+                SyncStatusToolbarButton(state: sync)
                 if view != .archive {
                     Menu {
                         Button(editMode.isEditing ? "Done Selecting" : "Select Tasks") {
@@ -260,7 +317,10 @@ struct TaskScreen: SwiftUI.View {
                         }
                         Button("Archive Completed") { act(.archive) }
                             .disabled(snapshot?.listing.canArchive != true)
-                    } label: { Label("List options", systemImage: "ellipsis") }
+                        Divider()
+                        viewOptions
+                    } label: { Label("View Options", systemImage: "ellipsis") }
+                    .accessibilityIdentifier("task-view-options")
                 }
                 if snapshot?.canUndo == true {
                     Button { act(.undo) } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
@@ -630,16 +690,19 @@ struct TaskRowContent: SwiftUI.View {
     let toggle: () -> Void
     let open: () -> Void
     @AppStorage(PrefKey.colorfulLabels) private var colorful = true
+    @AppStorage(PrefKey.rowDensity) private var rowDensity = TaskRowDensity.regular.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    private var density: TaskRowDensity { TaskRowDensity.from(rowDensity) }
 
     var body: some SwiftUI.View {
         HStack(spacing: 10) {
             if !task.archived, presentation == .browsing {
                 Button(action: toggle) {
                     Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                        .font(.title2).frame(minWidth: 44, minHeight: 44)
+                        .font(.title2).frame(minWidth: 44, minHeight: density.minimumRowHeight)
+                        .contentShape(Rectangle().size(width: 44, height: 44, anchor: .center))
                         .symbolRenderingMode(.hierarchical)
                         .contentTransition(.symbolEffect(.replace, options: .nonRepeating))
                         .symbolEffect(.bounce, options: .nonRepeating, value: reduceMotion ? false : task.isDone)
@@ -658,7 +721,7 @@ struct TaskRowContent: SwiftUI.View {
             } else {
                 Button(action: open) {
                     details
-                        .frame(minHeight: 44)
+                        .frame(minHeight: density.minimumRowHeight)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -667,13 +730,13 @@ struct TaskRowContent: SwiftUI.View {
             }
         }
         .padding(.leading, task.isSubtask ? 20 : 0)
-        .padding(.vertical, 3)
     }
 
     private var details: some SwiftUI.View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: density.subtitleSpacing) {
                 Text(task.title).mobileFont(content: true)
+                    .lineLimit(density.titleLines)
                     .strikethrough(task.isDone && !task.archived)
                     .foregroundStyle(task.isDone || task.archived ? AccentTheme.secondaryText : Color.primary)
                 let parts = TaskSubtitle.parts(for: task)
@@ -685,6 +748,7 @@ struct TaskRowContent: SwiftUI.View {
                             .foregroundColor(color)
                         return Text("\(result)\(part)")
                     }.mobileFont(content: true, caption: true)
+                    .lineLimit(density.subtitleLines)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -715,6 +779,16 @@ struct TaskRowContent: SwiftUI.View {
         return values.enumerated().reduce(Text("")) { result, item in
             item.offset == 0 ? item.element : Text("\(result), \(item.element)")
         }
+    }
+}
+
+/// Pulling down runs one exchange, so the control exists only while a provider is
+/// selected; with sync Off there is nothing a pull could fetch.
+private struct PullToRefresh: ViewModifier {
+    let enabled: Bool
+    let action: @Sendable () async -> Void
+    func body(content: Content) -> some SwiftUI.View {
+        if enabled { content.refreshable { await action() } } else { content }
     }
 }
 

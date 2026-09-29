@@ -6,6 +6,31 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- iOS: pull down any list to reload it and run one exchange with the selected sync provider
+- iOS: View Options on every list (the ••• menu) with Group By, Sort By, Order and, in
+  Upcoming, the 7/30-day range; Settings › Task Lists keeps the same choices
+- iOS: View Options › Layout offers Regular and Compact task rows; Regular rows are also
+  a little tighter than before
+- iOS: Settings › Sync has a Background section with the "Sync in the background" switch
+- Every platform: the task context menu's Move To submenu offers the two days after
+  tomorrow by their weekday names ("Wednesday", "Thursday")
+- iOS: on an iPhone wide enough in landscape, the lists sidebar sits beside the task list
+- Linux and macOS: View Options › Layout offers Regular and Compact task rows
+- iOS: the floating Add task control is a round plus button; it keeps the "Add task"
+  accessibility label, a 44 pt target, Dynamic Type scaling and the Large Content Viewer
+- iOS: a sync status badge in every list's navigation bar (spinner while syncing, the
+  provider symbol in the accent color, orange when attention is needed) opens Settings › Sync;
+  the text status at the end of the list stays and now sits closer under the last task
+
+### Changed
+- Every platform: Morning & Night grouping shows Morning first, then Today, then Evening
+- Every platform: sync runs twice as often: edits upload 10 s after they settle and an
+  idle app polls every 150 s; iOS background wakes may come every 15 minutes
+- iOS: navigation bars are Liquid Glass again; lists scroll underneath with the system's
+  soft edge effect instead of an opaque header
+- iOS: pull to refresh is available only while a sync provider is selected
+
 ## [0.4.2] - 2026-09-28
 
 ### Added

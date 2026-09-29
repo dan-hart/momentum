@@ -33,6 +33,8 @@ public enum PrefKey {
     public static let morningSummaryMinute = "morning-summary-minute"
     public static let p2pEnabled = "p2p-enabled"
     public static let sidebarVisible = "sidebar-visible"
+    /// iOS list density: "regular" or "compact". A presentation choice, never synced.
+    public static let rowDensity = "row-density"
     // Mac-only presentation preferences; never written to the shared task store.
     public static let dockBadgeMode = "dock-badge-mode"
     public static let appFontName = "app-font-name"
@@ -143,6 +145,7 @@ public struct Preferences {
             PrefKey.morningSummaryMinute: 0,
             PrefKey.p2pEnabled: false,
             PrefKey.sidebarVisible: true,
+            PrefKey.rowDensity: "regular",
             PrefKey.appFontName: "",
             PrefKey.contentFontSize: 13.0,
             PrefKey.interfaceFontSize: 13.0,

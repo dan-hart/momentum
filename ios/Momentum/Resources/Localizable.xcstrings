@@ -642,6 +642,16 @@
         }
       }
     },
+    "Background": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrund"
+          }
+        }
+      }
+    },
     "Backup Couldn’t Be Completed": {
       "localizations": {
         "de": {
@@ -798,6 +808,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Farben"
+          }
+        }
+      }
+    },
+    "Compact": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompakt"
           }
         }
       }
@@ -963,7 +983,6 @@
       }
     },
     "Create ${taskTitle} for ${planning}": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1477,7 +1496,6 @@
       }
     },
     "Find tasks in ${scope}": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1697,12 +1715,32 @@
         }
       }
     },
+    "Layout": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Darstellung"
+          }
+        }
+      }
+    },
     "LibreSync exchanges encrypted task data directly with linked devices while Momentum is open. No Momentum account is required.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "LibreSync tauscht verschlüsselte Aufgabendaten direkt mit verknüpften Geräten aus, während Momentum geöffnet ist. Es ist kein Momentum-Konto erforderlich."
+          }
+        }
+      }
+    },
+    "LibreSync talks directly to nearby devices, so it syncs only while Momentum is open.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LibreSync spricht direkt mit Geräten in der Nähe und synchronisiert daher nur, solange Momentum geöffnet ist."
           }
         }
       }
@@ -1758,6 +1796,7 @@
       }
     },
     "List options": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2077,6 +2116,17 @@
         }
       }
     },
+    "Needs attention": {
+      "extractionState": "stale",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Braucht Aufmerksamkeit"
+          }
+        }
+      }
+    },
     "Never": {
       "localizations": {
         "de": {
@@ -2288,7 +2338,6 @@
       }
     },
     "Open ${task}": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2459,7 +2508,6 @@
       }
     },
     "Plan ${tasks} for today": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2595,6 +2643,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zeitplan aktualisieren"
+          }
+        }
+      }
+    },
+    "Regular": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
           }
         }
       }
@@ -2921,7 +2979,6 @@
       }
     },
     "Set ${tasks} completed to ${completed}": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3237,6 +3294,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronisierungsstatus nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Synced %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiert %@"
+          }
+        }
+      }
+    },
+    "Synced %lld min ago": {
+      "extractionState": "stale",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vor %lld Min. synchronisiert"
+          }
+        }
+      }
+    },
+    "Synced just now": {
+      "extractionState": "stale",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerade synchronisiert"
           }
         }
       }
@@ -3810,7 +3900,6 @@
       }
     },
     "Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open.": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3821,6 +3910,7 @@
       }
     },
     "Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open. Sync in the background lets iOS wake Momentum occasionally for one exchange; Low Power Mode pauses it.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3846,6 +3936,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Version"
+          }
+        }
+      }
+    },
+    "View Options": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ansichtsoptionen"
           }
         }
       }
@@ -3906,6 +4006,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deine Aufgaben, in deinem Tempo."
+          }
+        }
+      }
+    },
+    "iOS may wake Momentum now and then for one exchange while it is closed. Requires Sync Automatically; Low Power Mode pauses it.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS kann Momentum gelegentlich für einen Abgleich wecken, während es geschlossen ist. Erfordert „Automatisch synchronisieren“; der Stromsparmodus pausiert das."
           }
         }
       }

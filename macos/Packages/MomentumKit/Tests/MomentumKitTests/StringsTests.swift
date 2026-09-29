@@ -19,6 +19,7 @@ import Testing
         .movedToTonight, .movedToMorning, .movedToToday,
         .tasksMovedToTonight(n: 2), .tasksMovedToMorning(n: 2), .tasksMovedToToday(n: 2),
         .movedToTomorrow, .movedToNextWeek, .tasksMovedToTomorrow(n: 2), .tasksMovedToNextWeek(n: 2),
+        .movedToDay(day: "2026-10-01"), .tasksMovedToDay(n: 2, day: "2026-10-01"),
         .plannedForToday, .plannedForMorning, .plannedForTonight, .removedFromToday,
         .tasksPlannedForToday(n: 5), .movedToProject(name: "Home"), .tagged(name: "urgent"),
         .tasksTagged(n: 2), .archived(n: 7), .snoozed(minutes: 60), .undone, .nothingToUndo,

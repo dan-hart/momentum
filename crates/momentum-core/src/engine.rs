@@ -415,7 +415,7 @@ impl Inner {
     }
     /// Push tasks to a day (keeps tags; clears any time of day). Tasks already on that
     /// day are skipped.
-    fn move_to_day(&mut self, ids: &[String], day: &str, message: fn(u32) -> Message) -> Outcome {
+    fn move_to_day(&mut self, ids: &[String], day: &str, message: impl Fn(u32) -> Message) -> Outcome {
         let tasks = self.tasks(ids);
         let mut undo = vec![];
         for t in tasks
@@ -1353,6 +1353,23 @@ impl Engine {
                     Message::MovedToTomorrow
                 } else {
                     Message::TasksMovedToTomorrow { n }
+                }
+            })
+        })
+    }
+    /// Push tasks to any day, such as the day after tomorrow from a "Wednesday" menu item.
+    /// An unparsable day changes nothing.
+    pub fn move_to_day(&self, ids: Vec<String>, day: String) -> Outcome {
+        if day_number(&day).is_none() {
+            return Outcome::none();
+        }
+        self.edit(|g| {
+            let target = day.clone();
+            g.move_to_day(&ids, &day, move |n| {
+                if n == 1 {
+                    Message::MovedToDay { day: target.clone() }
+                } else {
+                    Message::TasksMovedToDay { n, day: target.clone() }
                 }
             })
         })

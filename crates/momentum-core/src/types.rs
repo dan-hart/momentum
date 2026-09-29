@@ -529,51 +529,103 @@ pub struct RepeatDraft {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
 pub enum Message {
-    SaveFailed { error: String },
+    SaveFailed {
+        error: String,
+    },
     TaskCompleted,
     TaskCompletedArchived,
-    TasksCompleted { n: u32 },
-    TasksCompletedArchived { n: u32 },
+    TasksCompleted {
+        n: u32,
+    },
+    TasksCompletedArchived {
+        n: u32,
+    },
     TaskDeleted,
-    TasksDeleted { n: u32 },
+    TasksDeleted {
+        n: u32,
+    },
     TaskAdded,
-    TasksAdded { n: u32 },
+    TasksAdded {
+        n: u32,
+    },
     TaskDuplicated,
     MovedToTonight,
     MovedToMorning,
     MovedToToday,
-    TasksMovedToTonight { n: u32 },
-    TasksMovedToMorning { n: u32 },
-    TasksMovedToToday { n: u32 },
+    TasksMovedToTonight {
+        n: u32,
+    },
+    TasksMovedToMorning {
+        n: u32,
+    },
+    TasksMovedToToday {
+        n: u32,
+    },
     MovedToTomorrow,
     MovedToNextWeek,
-    TasksMovedToTomorrow { n: u32 },
-    TasksMovedToNextWeek { n: u32 },
+    TasksMovedToTomorrow {
+        n: u32,
+    },
+    TasksMovedToNextWeek {
+        n: u32,
+    },
+    /// Moved to a specific day (`YYYY-MM-DD`); the UI names the day ("Wednesday").
+    MovedToDay {
+        day: String,
+    },
+    TasksMovedToDay {
+        n: u32,
+        day: String,
+    },
     PlannedForToday,
     PlannedForMorning,
     PlannedForTonight,
     RemovedFromToday,
-    TasksPlannedForToday { n: u32 },
-    MovedToProject { name: String },
-    Tagged { name: String },
-    TasksTagged { n: u32 },
-    Archived { n: u32 },
-    Snoozed { minutes: u32 },
+    TasksPlannedForToday {
+        n: u32,
+    },
+    MovedToProject {
+        name: String,
+    },
+    Tagged {
+        name: String,
+    },
+    TasksTagged {
+        n: u32,
+    },
+    Archived {
+        n: u32,
+    },
+    Snoozed {
+        minutes: u32,
+    },
     Undone,
     NothingToUndo,
     ManualOrderOnly,
     PickAWeekday,
-    NoLongerRepeats { title: String },
-    RepeatSaved { description: RepeatDescription },
+    NoLongerRepeats {
+        title: String,
+    },
+    RepeatSaved {
+        description: RepeatDescription,
+    },
     BackupImported,
     BackupExported,
-    Synced { ops_uploaded: u32 },
-    LinkedWith { name: String },
+    Synced {
+        ops_uploaded: u32,
+    },
+    LinkedWith {
+        name: String,
+    },
     Linking,
     LinkFailed,
     LinkDeclined,
-    IdentityChanged { name: String },
-    NearbyStartFailed { error: String },
+    IdentityChanged {
+        name: String,
+    },
+    NearbyStartFailed {
+        error: String,
+    },
 }
 
 /// What a mutation did: whether anything changed, what to tell the user, and the undo

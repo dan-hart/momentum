@@ -100,6 +100,22 @@ import Testing
         #expect(today.tasks.first?.id == task.id)
     }
 
+    @Test func weekdayMovesTargetTheNamedDayAndUndoRestoresIt() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("momentum-weekday-move-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let worker = await EngineWorker.open(directory: dir)
+        _ = await worker.perform(.add("Later this week", .today))
+        let id = try #require(await worker.lastAddedTaskID())
+        let target = dayOffset(day: today(), days: 2)
+        let outcome = await worker.organize(.day([id], target))
+        #expect(outcome.changed)
+        #expect(outcome.message == .movedToDay(day: target))
+        #expect(dayLabel(day: target).relation == .thisWeek, "the menu shows a weekday name for it")
+        #expect(await worker.snapshot(view: .upcoming).tasks.first?.dueDay == target)
+        _ = await worker.perform(.undo)
+        #expect(await worker.snapshot(view: .today).tasks.first?.id == id)
+    }
+
     @Test func groupingPreferencesAffectTheSameCoreListing() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("momentum-grouping-\(UUID())")
         defer { try? FileManager.default.removeItem(at: dir) }

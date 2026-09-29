@@ -35,6 +35,7 @@ import Testing
         #expect(p.backgroundSync == true, "closing the window does not stop sync unless asked")
         #expect(p.colorful == true)
         #expect(d.string(forKey: PrefKey.nextcloudFolder) == "super-productivity")
+        #expect(d.string(forKey: PrefKey.rowDensity) == "regular", "iOS lists start at the regular density")
     }
 
     @Test func groupingChoicesPersistAndUnknownValuesFallBackToMorningNight() {

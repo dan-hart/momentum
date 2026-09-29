@@ -32,6 +32,19 @@ struct SyncSettings: View {
                 Text("Sync is optional. Turning it off keeps your tasks and saved connection on this device.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
+            if state.provider != .off, state.allowed {
+                Section {
+                    Toggle("Sync in the background", isOn: $backgroundSync)
+                        .disabled(state.provider != .nextcloud)
+                        .accessibilityIdentifier("sync-background")
+                } header: { Text("Background").foregroundStyle(Color.primary) }
+                footer: {
+                    Text(state.provider == .nextcloud
+                         ? "iOS may wake Momentum now and then for one exchange while it is closed. Requires Sync Automatically; Low Power Mode pauses it."
+                         : "LibreSync talks directly to nearby devices, so it syncs only while Momentum is open.")
+                        .foregroundStyle(AccentTheme.secondaryText)
+                }
+            }
             if state.provider == .nextcloud {
                 status
                 if state.loading { ProgressView("Loading Connection…") }
@@ -220,9 +233,6 @@ struct SyncSettings: View {
 
             Section {
                 Toggle("Sync Automatically", isOn: $state.draft.automatic)
-                Toggle("Sync in the background", isOn: $backgroundSync)
-                    .disabled(!state.draft.automatic)
-                    .accessibilityIdentifier("sync-background")
                 Toggle("Compress Sync File", isOn: $state.draft.compress)
                 field("Encryption Password (Optional)") {
                     SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
@@ -231,7 +241,7 @@ struct SyncSettings: View {
             } header: { Text("Options").foregroundStyle(Color.primary) }
             footer: {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open. Sync in the background lets iOS wake Momentum occasionally for one exchange; Low Power Mode pauses it.")
+                    Text("Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open.")
                     if !state.hasUnsavedChanges {
                         Text("Connection Saved")
                             .fixedSize(horizontal: false, vertical: true)
@@ -329,21 +339,66 @@ private struct SyncProviderSettings: View {
 }
 
 /// Compact list footer; its minute cadence runs only while the list is visible.
+/// The facts behind every sync status surface: the toolbar badge, the bottom capsule
+/// and the Settings row. One place decides the symbol and wording.
+@MainActor struct SyncStatusPresentation {
+    let state: NextcloudSyncState
+
+    var syncing: Bool {
+        state.provider == .libresync ? state.nearby?.isSyncing == true : state.isSyncing
+    }
+
+    var needsAttention: Bool {
+        state.provider == .libresync
+            ? state.nearby?.failure != nil || state.nearby?.transportError != nil
+            : state.failure != nil
+    }
+
+    var symbol: String {
+        if needsAttention { return "exclamationmark.circle" }
+        if syncing { return "arrow.trianglehead.2.clockwise.rotate.90" }
+        return state.provider == .libresync ? "antenna.radiowaves.left.and.right" : "checkmark.circle"
+    }
+
+    private var lastSync: Date? {
+        guard let status = state.status else { return nil }
+        let milliseconds = state.provider == .libresync ? status.lastNearbyMs : status.lastNextcloudMs
+        guard milliseconds > 0 else { return nil }
+        return Date(timeIntervalSince1970: Double(milliseconds) / 1000)
+    }
+
+    /// The full sentence, for Settings and accessibility.
+    func text(now: Date) -> String {
+        if syncing { return state.isStopping ? String(localized: "Stopping sync…") : String(localized: "Syncing…") }
+        if needsAttention { return String(localized: "Sync needs attention") }
+        guard state.status != nil else { return String(localized: "Sync status unavailable") }
+        guard let date = lastSync else { return String(localized: "Not synced yet") }
+        let seconds = max(0, now.timeIntervalSince(date))
+        if seconds < 60 { return String(localized: "Last synced just now") }
+        let minutes = max(1, Int(seconds / 60))
+        if minutes == 1 { return String(localized: "Last synced 1 minute ago") }
+        if minutes < 60 { return String(localized: "Last synced \(minutes) minutes ago") }
+        return String(localized: "Last synced \(date.formatted(date: .abbreviated, time: .shortened))")
+    }
+}
+
+/// The Settings row: the whole sentence, centered.
 struct SyncStatusLink: View {
     var state: NextcloudSyncState
 
     var body: some View {
         if state.provider != .off {
+            let presentation = SyncStatusPresentation(state: state)
             NavigationLink { SyncSettings(state: state) } label: {
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     HStack(spacing: 7) {
-                        Image(systemName: symbol).accessibilityHidden(true)
-                        Text(statusText(now: context.date))
+                        Image(systemName: presentation.symbol).accessibilityHidden(true)
+                        Text(presentation.text(now: context.date))
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .font(.footnote)
-                    .foregroundStyle(needsAttention ? Color.primary : AccentTheme.secondaryText)
+                    .foregroundStyle(presentation.needsAttention ? Color.primary : AccentTheme.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .frame(minHeight: 44)
@@ -352,36 +407,27 @@ struct SyncStatusLink: View {
             .accessibilityIdentifier("sync-status")
         }
     }
+}
 
-    private var syncing: Bool {
-        state.provider == .libresync ? state.nearby?.isSyncing == true : state.isSyncing
-    }
+/// The navigation bar's sync badge: a spinner while syncing, the provider symbol
+/// otherwise, orange when something needs attention. Opens Settings › Sync.
+struct SyncStatusToolbarButton: View {
+    var state: NextcloudSyncState
 
-    private var needsAttention: Bool {
-        state.provider == .libresync
-            ? state.nearby?.failure != nil || state.nearby?.transportError != nil
-            : state.failure != nil
-    }
-
-    private var symbol: String {
-        if needsAttention { return "exclamationmark.circle" }
-        if syncing { return "arrow.trianglehead.2.clockwise.rotate.90" }
-        return state.provider == .libresync ? "antenna.radiowaves.left.and.right" : "checkmark.circle"
-    }
-
-    private func statusText(now: Date) -> String {
-        if syncing { return state.isStopping ? String(localized: "Stopping sync…") : String(localized: "Syncing…") }
-        if needsAttention { return String(localized: "Sync needs attention") }
-        guard let status = state.status else { return String(localized: "Sync status unavailable") }
-        let milliseconds = state.provider == .libresync ? status.lastNearbyMs : status.lastNextcloudMs
-        guard milliseconds > 0 else { return String(localized: "Not synced yet") }
-        let date = Date(timeIntervalSince1970: Double(milliseconds) / 1000)
-        let seconds = max(0, now.timeIntervalSince(date))
-        if seconds < 60 { return String(localized: "Last synced just now") }
-        let minutes = max(1, Int(seconds / 60))
-        if minutes == 1 { return String(localized: "Last synced 1 minute ago") }
-        if minutes < 60 { return String(localized: "Last synced \(minutes) minutes ago") }
-        return String(localized: "Last synced \(date.formatted(date: .abbreviated, time: .shortened))")
+    var body: some View {
+        if state.provider != .off {
+            let presentation = SyncStatusPresentation(state: state)
+            NavigationLink { SyncSettings(state: state) } label: {
+                if presentation.syncing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: presentation.symbol)
+                        .foregroundStyle(presentation.needsAttention ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.tint))
+                }
+            }
+            .accessibilityLabel(presentation.text(now: .now))
+            .accessibilityIdentifier("sync-status-toolbar")
+        }
     }
 }
 

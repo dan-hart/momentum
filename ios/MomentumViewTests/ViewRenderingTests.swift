@@ -313,6 +313,21 @@ import XCTest
         XCTAssertFalse(fixture.mounted.hasVisibleView(identifier: "task-workspace-sidebar"))
     }
 
+    func testWidePhoneInLandscapeShowsSidebarBesideTheList() async throws {
+        // An iPhone Pro in landscape keeps a compact size class at 874 points; the
+        // workspace draws both columns itself instead of collapsing.
+        let fixture = try await taskWorkspaceFixture(
+            size: CGSize(width: 874, height: 402),
+            horizontalSizeClass: .compact
+        )
+        defer { fixture.mounted.unmount(); fixture.cleanup() }
+
+        try await fixture.mounted.wait(until: "landscape split with both columns") {
+            fixture.mounted.hasVisibleView(identifier: "task-workspace-detail")
+                && fixture.mounted.hasVisibleView(identifier: "task-workspace-sidebar")
+        }
+    }
+
     func testCompactTaskWorkspaceUsesSidebarButtonInsteadOfBackButton() async throws {
         let fixture = try await taskWorkspaceFixture(
             size: CGSize(width: 390, height: 844),
@@ -680,17 +695,25 @@ import XCTest
         }
     }
 
-    func testFloatingAddFitsCompactWidthAndGrowsWithAccessibleText() throws {
+    func testFloatingAddIsARoundPlusThatKeepsA44PointTargetAndGrowsWithAccessibleText() throws {
         for scheme in [ColorScheme.light, .dark] {
             let button = FloatingAddTaskButton(action: {})
             let normal = try HostingFixture.render(button, width: 280, scheme: scheme)
             let large = try HostingFixture.render(button, width: 280, size: .accessibility5,
                                                   scheme: scheme, locale: "de")
-            XCTAssertGreaterThanOrEqual(normal.size.height, 44)
-            XCTAssertGreaterThan(large.size.height, normal.size.height)
-            XCTAssertLessThan(large.size.height, normal.size.height * 2,
-                              "An oversized translated label must yield to the compact symbol")
+            XCTAssertGreaterThanOrEqual(normal.size.height, 44, "HIG minimum hit target")
+            XCTAssertLessThanOrEqual(normal.size.height, 64, "a floating button, not a slab")
+            XCTAssertEqual(normal.size.width, normal.size.height, accuracy: 2, "a circle, not a capsule with text")
+            XCTAssertGreaterThanOrEqual(large.size.height, normal.size.height)
+            XCTAssertLessThan(large.size.height, normal.size.height * 2)
             XCTAssertLessThanOrEqual(large.size.width, 280)
+            if scheme == .dark {
+                // The fixture paints black behind the control, so the only white ink is the glyph.
+                let glyph = try XCTUnwrap(whiteInkBounds(in: normal.image))
+                let largeGlyph = try XCTUnwrap(whiteInkBounds(in: large.image))
+                XCTAssertGreaterThan(largeGlyph.height, glyph.height, "the plus symbol follows Dynamic Type")
+                XCTAssertLessThan(glyph.width, normal.size.width * 0.7, "ink stays clear of the circle's edge")
+            }
             let attachment = XCTAttachment(image: normal.image)
             attachment.name = "Add task white foreground \(scheme)"
             attachment.lifetime = .keepAlways
@@ -1124,6 +1147,35 @@ import XCTest
             defaults.removePersistentDomain(forName: defaultsName)
             try? FileManager.default.removeItem(at: directory)
         })
+    }
+
+    /// Bounding box of the near-white pixels: the on-accent plus glyph over the accent fill.
+    private func whiteInkBounds(in image: UIImage) -> CGRect? {
+        guard let cgImage = image.cgImage else { return nil }
+        let width = cgImage.width, height = cgImage.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drew = bytes.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drew else { return nil }
+        var minX = width, maxX = -1, minY = height, maxY = -1
+        for y in 0..<height {
+            for x in 0..<width {
+                let index = (y * width + x) * 4
+                if bytes[index] > 235, bytes[index + 1] > 235, bytes[index + 2] > 235 {
+                    minX = min(minX, x); maxX = max(maxX, x)
+                    minY = min(minY, y); maxY = max(maxY, y)
+                }
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 
     private func addTaskButtonBounds(in image: UIImage) -> CGRect? {
