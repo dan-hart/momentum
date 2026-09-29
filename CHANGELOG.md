@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-29
+
 ### Added
 - iOS: pull down any list to reload it and run one exchange with the selected sync provider
 - iOS: View Options on every list (the ••• menu) with Group By, Sort By, Order and, in
