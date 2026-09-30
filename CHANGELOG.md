@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-09-30
+
 ### Fixed
 - Sync: an upload cut off by a slow connection could be stored by the server as the sync
   file and lock every device out. Uploads now carry a checksum and expected length, the

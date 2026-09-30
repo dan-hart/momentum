@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.3/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.4/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.3/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.4/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.3/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.4/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.3/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.4/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,18 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.4.4" date="2026-09-30">
+      <description>
+        <ul>
+          <li>Sync: an upload cut off by a slow connection could be stored by the server as the sync file and lock every device out. Uploads now carry a checksum and expected length, the stored size is checked afterwards, and a partial copy is reported instead of trusted</li>
+          <li>Sync: a large sync file over a slow or relayed connection no longer fails at 30 s; a foreground exchange may take up to five minutes while stalls still fail fast</li>
+          <li>Sync: a damaged server copy is told apart from a wrong encryption password</li>
+          <li>Every platform: sync failures are explained in plain words with what to do next; the technical message stays behind Details</li>
+          <li>Every platform: Replace Server Copy publishes this device's tasks over a damaged server copy (kept as sync-data.json.damaged) after confirmation; mo sync --replace-remote does the same from the command line</li>
+          <li>iOS: the sync failure section shows "Trying again…" and "Last tried" so Try Again is visibly acknowledged</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.3" date="2026-09-29">
       <description>
         <ul>
