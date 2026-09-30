@@ -2212,3 +2212,40 @@ fn grouping_settings_refresh_native_headings_without_losing_tasks() {
         reset_settings();
     });
 }
+
+#[test]
+fn a_damaged_server_copy_gets_a_plain_heading_a_remedy_and_a_replace_offer() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        win.set_sync_failure(
+            Some("the sync file on the server could not be read: Invalid input length: 7".into()),
+            Some(momentum_core::SyncFailureKind::RemoteFileDamaged),
+        );
+        let dialog = win.sync_error_dialog().expect("a failure builds a dialog");
+        assert_eq!(dialog.heading().as_deref(), Some("The copy on the server is damaged"));
+        let body = dialog.body().to_string();
+        assert!(body.starts_with("No device can read the copy on the server."), "{body}");
+        assert!(
+            body.contains("Details: the sync file on the server could not be read"),
+            "{body}"
+        );
+        assert!(
+            dialog.has_response("replace"),
+            "a damaged copy offers Replace Server Copy"
+        );
+        assert!(dialog.has_response("retry"));
+
+        win.set_sync_failure(
+            Some("offline".into()),
+            Some(momentum_core::SyncFailureKind::Unreachable),
+        );
+        let dialog = win.sync_error_dialog().unwrap();
+        assert_eq!(dialog.heading().as_deref(), Some("Momentum can’t reach your server"));
+        assert!(!dialog.has_response("replace"), "only a damaged copy may be replaced");
+
+        win.set_sync_error(Some("legacy text".into()));
+        let dialog = win.sync_error_dialog().unwrap();
+        assert_eq!(dialog.heading().as_deref(), Some("Sync needs attention"));
+        assert_eq!(dialog.body().as_str(), "legacy text");
+    });
+}

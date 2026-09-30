@@ -732,6 +732,63 @@ pub struct SyncStatus {
     pub linked_devices: u32,
 }
 
+/// Why a Nextcloud exchange failed, so every interface can say it in plain words
+/// and offer the matching remedy. Mirrors `sp_sync::SyncFailureKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
+pub enum SyncFailureKind {
+    Unreachable,
+    Unauthorized,
+    ServerError,
+    TimedOut,
+    EncryptionPasswordMissing,
+    EncryptionPasswordWrong,
+    RemoteFileDamaged,
+    Incompatible,
+    NothingToStartFrom,
+    Conflict,
+    Cancelled,
+    UploadIncomplete,
+    Other,
+}
+
+impl From<sp_sync::SyncFailureKind> for SyncFailureKind {
+    fn from(kind: sp_sync::SyncFailureKind) -> Self {
+        use sp_sync::SyncFailureKind as K;
+        match kind {
+            K::Unreachable => Self::Unreachable,
+            K::Unauthorized => Self::Unauthorized,
+            K::ServerError => Self::ServerError,
+            K::TimedOut => Self::TimedOut,
+            K::EncryptionPasswordMissing => Self::EncryptionPasswordMissing,
+            K::EncryptionPasswordWrong => Self::EncryptionPasswordWrong,
+            K::RemoteFileDamaged => Self::RemoteFileDamaged,
+            K::Incompatible => Self::Incompatible,
+            K::NothingToStartFrom => Self::NothingToStartFrom,
+            K::Conflict => Self::Conflict,
+            K::Cancelled => Self::Cancelled,
+            K::UploadIncomplete => Self::UploadIncomplete,
+            K::Other => Self::Other,
+        }
+    }
+}
+
+impl SyncFailureKind {
+    /// Whether the person can fix this in Settings or with a recovery action, rather
+    /// than by waiting and trying again.
+    pub fn is_actionable(self) -> bool {
+        matches!(
+            self,
+            Self::Unauthorized
+                | Self::EncryptionPasswordMissing
+                | Self::EncryptionPasswordWrong
+                | Self::RemoteFileDamaged
+                | Self::Incompatible
+                | Self::NothingToStartFrom
+        )
+    }
+}
+
 #[derive(Debug, Clone, thiserror::Error)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Error))]
 pub enum CoreError {
@@ -740,10 +797,10 @@ pub enum CoreError {
     NotConfigured,
     /// A sync problem the user can fix in Preferences: wrong password, unsupported file.
     #[error("{message}")]
-    Actionable { message: String },
+    Actionable { kind: SyncFailureKind, message: String },
     /// A passing problem: network, server error, conflict after retries.
     #[error("{message}")]
-    Transient { message: String },
+    Transient { kind: SyncFailureKind, message: String },
     #[error("another sync is already running")]
     Busy,
     #[error("{message}")]

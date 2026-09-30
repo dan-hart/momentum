@@ -186,14 +186,36 @@ import Testing
 }
 
 @Suite struct ErrorWording {
+    @Test func everySyncFailureKindHasAHeadlineAndARemedyInPlainWords() {
+        let kinds: [SyncFailureKind] = [
+            .unreachable, .unauthorized, .serverError, .timedOut, .encryptionPasswordMissing, .encryptionPasswordWrong,
+            .remoteFileDamaged, .incompatible, .nothingToStartFrom, .conflict, .cancelled, .uploadIncomplete, .other,
+        ]
+        var headlines = Set<String>()
+        for kind in kinds {
+            let headline = Strings.syncFailureHeadline(kind)
+            let remedy = Strings.syncFailureRemedy(kind)
+            #expect(!headline.isEmpty && !remedy.isEmpty)
+            #expect(!headline.contains("WebDAV") && !headline.contains("base64") && !headline.contains("HTTP"),
+                    "a headline speaks the person's language: \(headline)")
+            #expect(remedy.hasSuffix("."), "the remedy is a sentence, not a label: \(remedy)")
+            headlines.insert(headline)
+        }
+        #expect(headlines.count == kinds.count, "every kind reads differently")
+        #expect(Strings.syncFailureRemedy(.remoteFileDamaged).contains("Replace Server Copy"))
+        #expect(Strings.syncFailureKind(CoreError.Actionable(kind: .remoteFileDamaged, message: "x")) == .remoteFileDamaged)
+        #expect(Strings.syncFailureKind(CoreError.Transient(kind: .timedOut, message: "x")) == .timedOut)
+        #expect(Strings.syncFailureKind(CoreError.Busy) == nil)
+    }
+
     @Test func everyCoreErrorIsExplained() {
         let errors: [CoreError] = [
-            .NotConfigured, .Actionable(message: "wrong password"), .Transient(message: "network down"),
+            .NotConfigured, .Actionable(kind: .other, message: "wrong password"), .Transient(kind: .other, message: "network down"),
             .Busy, .Io(message: "no such file"), .Invalid(message: "bad json"), .Nearby(message: "port in use"),
         ]
         for e in errors {
             #expect(!Strings.error(e).isEmpty, "\(e)")
         }
-        #expect(Strings.error(CoreError.Actionable(message: "wrong password")).contains("wrong password"))
+        #expect(Strings.error(CoreError.Actionable(kind: .other, message: "wrong password")).contains("wrong password"))
     }
 }

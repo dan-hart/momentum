@@ -45,6 +45,9 @@ public struct NextcloudConnectionOperation: NextcloudConnectionTestOperation {
 public struct NextcloudOperation: NextcloudRunningOperation {
     let engine: Engine
     let settings: NextcloudSettings
+    /// The whole-exchange budget. Foreground exchanges take the core's generous
+    /// default; a system background wake passes what iOS allows it.
+    let budgetMs: UInt64?
     private let cancellation = SyncCancellation()
 
     @discardableResult public func cancel() -> Bool { cancellation.cancel() }
@@ -53,7 +56,11 @@ public struct NextcloudOperation: NextcloudRunningOperation {
         do {
             return try await withTaskCancellationHandler {
                 try await Task.detached(priority: .utility) {
-                    try engine.syncNextcloudCancellable(settings: settings, cancellation: cancellation)
+                    if let budgetMs {
+                        try engine.syncNextcloudWithBudget(settings: settings, cancellation: cancellation, timeoutMs: budgetMs)
+                    } else {
+                        try engine.syncNextcloudCancellable(settings: settings, cancellation: cancellation)
+                    }
                 }.value
             } onCancel: { _ = cancellation.cancel() }
         } catch {
@@ -65,11 +72,45 @@ public struct NextcloudOperation: NextcloudRunningOperation {
     }
 }
 
+/// Publishes this device's tasks as the server copy; the core parks the damaged copy
+/// first. The same cancellation and commit rules as a sync exchange apply.
+public struct NextcloudReplaceOperation: NextcloudRunningOperation {
+    let engine: Engine
+    let settings: NextcloudSettings
+    private let cancellation = SyncCancellation()
+
+    @discardableResult public func cancel() -> Bool { cancellation.cancel() }
+
+    public func run() async throws -> SyncReport {
+        do {
+            return try await withTaskCancellationHandler {
+                try await Task.detached(priority: .utility) {
+                    try engine.replaceRemoteSyncFile(settings: settings, cancellation: cancellation)
+                }.value
+            } onCancel: { _ = cancellation.cancel() }
+        } catch {
+            if cancellation.isCancelled() { throw CancellationError() }
+            throw error
+        }
+    }
+}
+
 extension EngineWorker {
     public func syncStatus() -> SyncStatus { engine.syncStatus() }
 
+    /// What a background wake may spend on one exchange before iOS ends it.
+    public static let backgroundExchangeBudgetMs: UInt64 = 25_000
+
     public func nextcloudOperation(settings: NextcloudSettings) -> NextcloudOperation {
-        NextcloudOperation(engine: engine, settings: settings)
+        NextcloudOperation(engine: engine, settings: settings, budgetMs: nil)
+    }
+
+    public func nextcloudBackgroundOperation(settings: NextcloudSettings) -> NextcloudOperation {
+        NextcloudOperation(engine: engine, settings: settings, budgetMs: Self.backgroundExchangeBudgetMs)
+    }
+
+    public func nextcloudReplaceOperation(settings: NextcloudSettings) -> NextcloudReplaceOperation {
+        NextcloudReplaceOperation(engine: engine, settings: settings)
     }
 
     public func nextcloudConnectionTestOperation(

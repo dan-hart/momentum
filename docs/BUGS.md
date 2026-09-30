@@ -2197,6 +2197,49 @@ their explicit manual acceptance boundaries.
   verifies its task appears. The complete lane passes 156 portable tests plus 95 native
   view/integration tests with two intentional opt-in skips on both supported runtimes.
 
+## B-092 — a cut-off Nextcloud upload was stored as the sync file and locked every device out
+
+- **Severity:** High. **Features:** F-028/F-054. **Status:** Fixed in the core; the
+  user's server was repaired on 2026-09-29 and all three copies agree (version 85).
+- **Reported behavior:** the phone, on cellular through the Tailscale relay, showed a
+  network-style sync failure while its connection test passed; a few minutes later the
+  Mac reported "could not decrypt the sync file: Invalid input length: 4849657".
+- **Reproduction (from the server's timestamps and both devices' metadata):** the Mac
+  synced at 17:43:41 CDT (version 83). The phone downloaded that copy at 17:46:04, then
+  uploaded the merge of its nine pending edits. At 17:46:48 the 30 s whole-exchange
+  deadline closed the connection after 4,849,657 body bytes. Nextcloud, behind an nginx
+  that streams request bodies through, stored the partial body and answered with a
+  fresh ETag. A base64 body of length 1 mod 4 cannot be decoded, so every later
+  download on any device failed at the decode step.
+- **Expected:** a transfer that stops early is never accepted as the sync file; a large
+  file over a slow link gets the time it needs; the failure is named in plain words.
+- **Cause:** one fixed 30 s budget for download, merge and upload; no upload integrity
+  check; a decode failure classified as a generic "connection" problem on iOS and shown
+  raw on the desktops. The connection probe reads no file, so it kept passing.
+- **Fix:** every upload sends `OC-Checksum` (SHA-1) and `X-Expected-Entity-Length`,
+  which Nextcloud verifies, and reads the stored size back with PROPFIND; a mismatch is
+  `SyncError::UploadIncomplete` and the pending edits stay. The foreground budget is
+  five minutes with 20 s connect and 45 s first-byte limits; background wakes pass 25 s.
+  Decryption tells a damaged body (`Decrypt`) from a wrong password
+  (`WrongEncryptionPassword`). `SyncError::kind()` → `SyncFailureKind` rides on
+  `CoreError::Actionable`/`Transient`. `replace_remote` publishes one device's full data
+  after parking the damaged copy as `sync-data.json.damaged`; exposed as
+  `Engine::replace_remote_sync_file`, `mo sync --replace-remote`, and a Replace Server
+  Copy action in each app.
+- **Recovery performed:** the corrupt file was downloaded and kept with local backups
+  of both stores under the Mac's Momentum `backups/` folder; `mo sync --replace-remote`
+  published the Mac's copy (version 84); the phone downloaded it, re-applied its nine
+  edits and published version 85; the Mac downloaded version 85.
+- **Regression evidence:** sp-sync tests `a_cut_off_upload_is_reported_and_never_replaces_the_previous_copy`,
+  `a_damaged_server_copy_is_told_apart_from_a_wrong_password_and_can_be_replaced`,
+  `replace_remote_refuses_a_fresh_device_and_works_without_a_server_copy` (mock proxy keeps
+  half a body; truncated encrypted body; COPY aside); core transport tests answer the
+  size read-back. Platform evidence is in PROGRESS (2026-09-29 evening).
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Implemented — same core; dialog names the failure and offers Replace Server Copy (GTK test) | Implemented — same core; popover names the failure and offers Replace Server Copy; signed 0.4.3 release installed and syncing | Implemented — fixed core on the device synced version 85 live; failure section names the kind, shows Details, acknowledges Try Again, offers Replace Server Copy (view test) | Not applicable — no app |
+
 ## B-091 — a Dock click could open two macOS main windows
 
 - **Severity:** Medium. **Feature:** F-024. **Status:** Implemented on macOS; the

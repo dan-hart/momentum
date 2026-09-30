@@ -6,6 +6,23 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Sync: an upload cut off by a slow connection could be stored by the server as the sync
+  file and lock every device out. Uploads now carry a checksum and expected length, the
+  stored size is checked afterwards, and a partial copy is reported instead of trusted
+- Sync: a large sync file over a slow or relayed connection no longer fails at 30 s; a
+  foreground exchange may take up to five minutes while stalls still fail fast
+- Sync: a damaged server copy is told apart from a wrong encryption password
+
+### Added
+- Every platform: sync failures are explained in plain words with what to do next; the
+  technical message stays behind Details
+- Every platform: Replace Server Copy publishes this device's tasks over a damaged server
+  copy (kept as sync-data.json.damaged) after confirmation; `mo sync --replace-remote`
+  does the same from the command line
+- iOS: the sync failure section shows "Trying again…" and "Last tried" so Try Again is
+  visibly acknowledged
+
 ## [0.4.3] - 2026-09-29
 
 ### Added

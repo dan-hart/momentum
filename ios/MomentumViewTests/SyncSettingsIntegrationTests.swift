@@ -149,6 +149,49 @@ import XCTest
                              "Off shows no badge, so there is nothing to size")
     }
 
+    func testADamagedServerCopyIsExplainedInPlainWordsWithReplaceAndDetails() async throws {
+        let name = "momentum-sync-damaged-render-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let state = NextcloudSyncState(defaults: defaults, persistence: RenderConnection())
+        let damaged = CoreError.Actionable(kind: .remoteFileDamaged,
+                                           message: "the sync file on the server could not be read: Invalid input length: 4849657")
+        state.connect(makeOperation: { _ in FailingOperation(error: damaged) },
+                      makeReplaceOperation: { _ in RenderOperation() },
+                      status: { SyncStatus(syncing: false, pendingOps: 9, lastNextcloudMs: 1_789_660_000_000,
+                                           lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0) })
+        await state.load()
+        state.setForeground(true)
+        await state.select(.nextcloud)
+        await state.syncNow()
+        XCTAssertEqual(state.failure, .connection)
+        XCTAssertEqual(state.failureKind, .remoteFileDamaged)
+        XCTAssertTrue(state.canReplaceServerCopy)
+        XCTAssertNotNil(state.lastAttemptAt, "Try Again is acknowledged even when the same failure returns")
+
+        let headline = Strings.syncFailureHeadline(.remoteFileDamaged)
+        XCTAssertEqual(headline, "The copy on the server is damaged")
+        XCTAssertFalse(Strings.syncFailureRemedy(.remoteFileDamaged).contains("Invalid input length"),
+                       "the decoder's words stay behind Details")
+        for size in [DynamicTypeSize.large, .accessibility5] {
+            // Tall enough for the whole form, so the last section is laid out and exposed.
+            // The section on its own: the whole settings form only materializes the rows
+            // that fit its viewport, and this one sits last.
+            let mounted = try HostingFixture.mount(NavigationStack { Form { SyncFailureSection(state: state, failure: .connection) } },
+                                                   defaults: defaults, defaultsName: name,
+                                                   size: CGSize(width: 390, height: size == .large ? 1200 : 3000),
+                                                   dynamicTypeSize: size)
+            defer { mounted.unmount() }
+            try await mounted.wait(until: "the failure section is exposed") {
+                mounted.hasAccessibilityElement(label: headline)
+            }
+            let labels = mounted.accessibilityLabels()
+            XCTAssertTrue(labels.contains { $0.hasPrefix("Replace Server Copy") }, "a damaged copy offers the replacement: \(labels)")
+            XCTAssertTrue(labels.contains { $0.hasPrefix("Try Again") }, labels.joined(separator: " | "))
+            XCTAssertTrue(labels.contains { $0.hasPrefix("Details") }, "the core's sentence waits behind Details: \(labels)")
+        }
+    }
+
     func testConfigurationErrorWrapsAtLargestTextOnPhoneAndPadWidths() throws {
         for width: CGFloat in [320] {
             let render = try HostingFixture.render(
@@ -280,6 +323,12 @@ private func containsRedInk(_ image: UIImage) -> Bool {
 
 private struct RenderOperation: NextcloudRunningOperation {
     func run() async throws -> SyncReport { throw CancellationError() }
+    func cancel() -> Bool { true }
+}
+
+private struct FailingOperation: NextcloudRunningOperation {
+    let error: Error
+    func run() async throws -> SyncReport { throw error }
     func cancel() -> Bool { true }
 }
 

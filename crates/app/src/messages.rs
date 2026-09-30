@@ -70,3 +70,43 @@ pub fn text(m: &Message) -> String {
         Message::NearbyStartFailed { error } => format!("{} {error}", gettext("Nearby sync could not start:")),
     }
 }
+
+/// One plain sentence naming a sync failure, for the dialog heading and the banner.
+pub fn sync_failure_headline(kind: momentum_core::SyncFailureKind) -> String {
+    use momentum_core::SyncFailureKind as K;
+    match kind {
+        K::Unreachable => gettext("Momentum can’t reach your server"),
+        K::Unauthorized => gettext("The server didn’t accept your login"),
+        K::ServerError => gettext("The server ran into a problem"),
+        K::TimedOut => gettext("Sync took too long to finish"),
+        K::EncryptionPasswordMissing => gettext("The sync file is encrypted"),
+        K::EncryptionPasswordWrong => gettext("The encryption password doesn’t match"),
+        K::RemoteFileDamaged => gettext("The copy on the server is damaged"),
+        K::Incompatible => gettext("The copy on the server needs a newer Momentum"),
+        K::NothingToStartFrom => gettext("Nothing to sync yet"),
+        K::Conflict => gettext("Another device is syncing at the same time"),
+        K::Cancelled => gettext("Sync was interrupted"),
+        K::UploadIncomplete => gettext("The upload didn’t arrive whole"),
+        K::Other => gettext("Sync couldn’t finish"),
+    }
+}
+
+/// What to do about a sync failure, naming the Preferences controls.
+pub fn sync_failure_remedy(kind: momentum_core::SyncFailureKind) -> String {
+    use momentum_core::SyncFailureKind as K;
+    match kind {
+        K::Unreachable => gettext("Check that this computer is online and that the server address is right, then retry. Your tasks are safe on this computer."),
+        K::Unauthorized => gettext("Check the user name and app password in Preferences. An app password comes from your Nextcloud security settings."),
+        K::ServerError => gettext("The server answered with an error. Retry in a few minutes; if it keeps happening, check the server itself."),
+        K::TimedOut => gettext("The connection is slow or unstable. Retry on a faster connection, or turn on “Compress the sync file” in Preferences to make the transfer smaller."),
+        K::EncryptionPasswordMissing => gettext("Enter the encryption password you use on your other devices in Preferences."),
+        K::EncryptionPasswordWrong => gettext("Enter the same encryption password you use on your other devices. A different password on one device makes the file unreadable there."),
+        K::RemoteFileDamaged => gettext("No device can read the copy on the server. On the device with your most recent tasks, choose Replace Server Copy; the damaged copy is kept on the server as sync-data.json.damaged."),
+        K::Incompatible => gettext("Update Momentum on this computer. If another app wrote the file, turn off its newer sync format."),
+        K::NothingToStartFrom => gettext("This computer has no tasks yet and the server has no copy. Sync from a device that has your tasks first, or import a backup here."),
+        K::Conflict => gettext("Two devices uploaded at the same moment. Wait a moment and retry."),
+        K::Cancelled => gettext("Retry."),
+        K::UploadIncomplete => gettext("The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Retry on a steadier connection."),
+        K::Other => gettext("Retry. If it keeps failing, the details below say what the server or this computer reported."),
+    }
+}

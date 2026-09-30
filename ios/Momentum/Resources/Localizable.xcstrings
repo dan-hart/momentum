@@ -1715,6 +1715,16 @@
         }
       }
     },
+    "Last tried %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuletzt versucht %@"
+          }
+        }
+      }
+    },
     "Layout": {
       "localizations": {
         "de": {
@@ -2767,6 +2777,36 @@
         }
       }
     },
+    "Replace Server Copy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serverkopie ersetzen"
+          }
+        }
+      }
+    },
+    "Replace Server Copy…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serverkopie ersetzen …"
+          }
+        }
+      }
+    },
+    "Replace the copy on the server with this device’s tasks?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Kopie auf dem Server durch die Aufgaben dieses Geräts ersetzen?"
+          }
+        }
+      }
+    },
     "Reset Typography": {
       "localizations": {
         "de": {
@@ -3789,6 +3829,16 @@
         }
       }
     },
+    "Trying again…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuer Versuch …"
+          }
+        }
+      }
+    },
     "Typography": {
       "localizations": {
         "de": {
@@ -3996,6 +4046,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dein Tag"
+          }
+        }
+      }
+    },
+    "Your other devices will download this device’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine anderen Geräte laden beim nächsten Sync die Aufgaben dieses Geräts und fügen ihre noch wartenden Änderungen hinzu. Die beschädigte Kopie bleibt als sync-data.json.damaged auf dem Server."
+          }
+        }
+      }
+    },
+    "Your tasks are safe on this device until sync succeeds.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Aufgaben sind auf diesem Gerät sicher, bis die Synchronisierung gelingt."
           }
         }
       }

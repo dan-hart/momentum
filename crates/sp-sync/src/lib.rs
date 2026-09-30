@@ -14,9 +14,18 @@ use sp_store::Store;
 use std::io::{Read, Write};
 use std::time::{Duration, Instant};
 
-pub const DEFAULT_EXCHANGE_TIMEOUT: Duration = Duration::from_secs(30);
+/// The whole-exchange budget for a foreground sync. A large sync file over a slow or
+/// relayed connection needs minutes, not seconds; stalls are bounded separately by
+/// the per-phase timeouts in `ExchangeGuard::agent`.
+pub const DEFAULT_EXCHANGE_TIMEOUT: Duration = Duration::from_secs(300);
+/// A budget a system background wake can honour before the OS ends the process.
+pub const BACKGROUND_EXCHANGE_TIMEOUT: Duration = Duration::from_secs(25);
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
+const RESPONSE_TIMEOUT: Duration = Duration::from_secs(45);
 
 pub const SYNC_FILE: &str = "sync-data.json";
+/// Where `replace_remote` parks an unreadable server copy before overwriting it.
+pub const DAMAGED_FILE: &str = "sync-data.json.damaged";
 const MAX_RECENT_OPS: usize = 2000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,8 +54,10 @@ pub enum SyncError {
     Http(#[from] ureq::Error),
     #[error("remote file is encrypted; set the encryption password in Preferences")]
     Encrypted,
-    #[error("could not decrypt the sync file: {0}")]
+    #[error("the sync file on the server could not be read: {0}")]
     Decrypt(String),
+    #[error("wrong encryption password for the sync file on the server")]
+    WrongEncryptionPassword,
     #[error("remote file uses format v{0}, expected v2 (turn off \"Surgical sync\" upstream)")]
     Version(u64),
     #[error("schema version {0} is newer than this app supports ({SCHEMA_VERSION})")]
@@ -61,8 +72,72 @@ pub enum SyncError {
     Cancelled,
     #[error("sync exceeded its deadline; retry when the connection is available")]
     Deadline,
+    #[error("the server kept {kept} of {sent} bytes of the upload; the previous copy is unchanged")]
+    UploadIncomplete { sent: u64, kept: u64 },
     #[error("{0}")]
     Io(#[from] std::io::Error),
+}
+
+/// What went wrong, for interfaces that explain a failure in their own words.
+/// Every variant maps to one plain-language headline and one remedy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SyncFailureKind {
+    /// The server could not be reached: no network, DNS, connection refused, TLS.
+    Unreachable,
+    /// The server answered 401 or 403.
+    Unauthorized,
+    /// The server answered with another error status.
+    ServerError,
+    /// The whole-exchange budget ran out.
+    TimedOut,
+    /// The file is encrypted and no password is set locally.
+    EncryptionPasswordMissing,
+    /// The file could not be decrypted with the local password.
+    EncryptionPasswordWrong,
+    /// The server copy is truncated, corrupt or not a sync file.
+    RemoteFileDamaged,
+    /// The server copy uses a format or schema this app does not support.
+    Incompatible,
+    /// No server copy exists and this device has no full data set to publish.
+    NothingToStartFrom,
+    /// Another device changed the file during every upload attempt.
+    Conflict,
+    /// The exchange was cancelled or superseded locally.
+    Cancelled,
+    /// The server accepted fewer bytes than were sent; the previous copy remains.
+    UploadIncomplete,
+    /// Anything else: a local I/O failure while persisting, for example.
+    Other,
+}
+
+impl SyncError {
+    pub fn kind(&self) -> SyncFailureKind {
+        use SyncFailureKind as K;
+        match self {
+            SyncError::Http(e) => match e {
+                ureq::Error::StatusCode(401 | 403) => K::Unauthorized,
+                ureq::Error::StatusCode(_) => K::ServerError,
+                ureq::Error::Timeout(_) => K::TimedOut,
+                ureq::Error::HostNotFound
+                | ureq::Error::ConnectionFailed
+                | ureq::Error::Io(_)
+                | ureq::Error::Tls(_)
+                | ureq::Error::Rustls(_)
+                | ureq::Error::BodyStalled => K::Unreachable,
+                _ => K::ServerError,
+            },
+            SyncError::Encrypted => K::EncryptionPasswordMissing,
+            SyncError::WrongEncryptionPassword => K::EncryptionPasswordWrong,
+            SyncError::Decrypt(_) | SyncError::Parse(_) => K::RemoteFileDamaged,
+            SyncError::Version(_) | SyncError::Schema(_) => K::Incompatible,
+            SyncError::FreshState => K::NothingToStartFrom,
+            SyncError::Conflict => K::Conflict,
+            SyncError::Cancelled => K::Cancelled,
+            SyncError::Deadline => K::TimedOut,
+            SyncError::UploadIncomplete { .. } => K::UploadIncomplete,
+            SyncError::Io(_) => K::Other,
+        }
+    }
 }
 
 /// Parse `pf_[C][E]<ver>__<body>`; body is JSON, or base64 gzip when `C`.
@@ -76,7 +151,10 @@ pub fn decode(body: &str, password: Option<&str>) -> Result<SyncFile, SyncError>
     let decrypted;
     let json = if flags.contains('E') {
         let pw = password.filter(|p| !p.is_empty()).ok_or(SyncError::Encrypted)?;
-        decrypted = crypto::decrypt(json, pw).map_err(SyncError::Decrypt)?;
+        decrypted = crypto::decrypt(json, pw).map_err(|e| match e {
+            crypto::DecryptError::WrongPassword => SyncError::WrongEncryptionPassword,
+            crypto::DecryptError::Damaged(detail) => SyncError::Decrypt(detail),
+        })?;
         decrypted.as_str()
     } else {
         json
@@ -226,10 +304,16 @@ impl ExchangeGuard<'_> {
     }
     fn agent(&self) -> Result<ureq::Agent, SyncError> {
         self.check()?;
+        let remaining = self.deadline.saturating_duration_since(Instant::now());
         Ok(ureq::Agent::config_builder()
             // WebDAV collection creation uses MKCOL, an HTTP extension method.
             .allow_non_standard_methods(true)
-            .timeout_global(Some(self.deadline.saturating_duration_since(Instant::now())))
+            // The whole exchange stays within its budget, and a dead connection still
+            // fails fast: connecting and the first response byte have their own limits,
+            // while a body transfer may use everything that is left.
+            .timeout_global(Some(remaining))
+            .timeout_connect(Some(CONNECT_TIMEOUT.min(remaining)))
+            .timeout_recv_response(Some(RESPONSE_TIMEOUT.min(remaining)))
             .build()
             .into())
     }
@@ -265,12 +349,61 @@ fn download_guarded(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>) -> Result<Opt
         Err(e) => Err(e.into()),
     }
 }
+fn sha1_hex(body: &[u8]) -> String {
+    use sha1::Digest;
+    let digest = sha1::Sha1::digest(body);
+    digest.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// The server's stored size and ETag for the sync file, or `None` when it is absent.
+/// Read with PROPFIND: a HEAD answer may omit Content-Length behind a proxy, and a
+/// missing size must never pass for a matching one.
+fn remote_size(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>) -> Result<Option<(u64, String)>, SyncError> {
+    let result = guard.agent()?.run(
+        ureq::http::Request::builder()
+            .method("PROPFIND")
+            .uri(cfg.file_url())
+            .header("Authorization", cfg.auth())
+            .header("Depth", "0")
+            .body(())
+            .unwrap(),
+    );
+    guard.check()?;
+    match result {
+        Ok(mut r) => {
+            let xml = r.body_mut().with_config().limit(1 << 20).read_to_string()?;
+            let size = xml_text(&xml, "getcontentlength")
+                .and_then(|v| v.trim().parse().ok())
+                .ok_or_else(|| SyncError::Parse("PROPFIND answer without getcontentlength".into()))?;
+            let tag = xml_text(&xml, "getetag")
+                .map(|t| t.trim().to_string())
+                .unwrap_or_default();
+            Ok(Some((size, tag)))
+        }
+        Err(ureq::Error::StatusCode(404)) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// The text of the first `<…:name>` element, namespace prefix ignored, entities decoded.
+fn xml_text<'a>(xml: &'a str, name: &str) -> Option<String> {
+    let open = format!(":{name}>");
+    let start = xml.find(&open)? + open.len();
+    let end = xml[start..].find("</")? + start;
+    Some(xml[start..end].replace("&quot;", "\"").replace("&amp;", "&"))
+}
+
+/// Upload with three guards against a cut-off transfer being accepted as the file:
+/// Nextcloud verifies `OC-Checksum` and `X-Expected-Entity-Length` itself, and the
+/// stored size is read back afterwards. A partial copy is reported, never trusted.
 fn upload(
     cfg: &NextcloudCfg,
     body: &str,
     expected: Option<&str>,
     guard: &ExchangeGuard<'_>,
 ) -> Result<String, SyncError> {
+    let sent = body.len() as u64;
+    let checksum = format!("SHA1:{}", sha1_hex(body.as_bytes()));
     // At most one collection creation attempt; a server that keeps returning 404
     // must not cause unbounded recursion or continue after cancellation.
     for attempt in 0..2 {
@@ -278,7 +411,9 @@ fn upload(
             .agent()?
             .put(&cfg.file_url())
             .header("Authorization", &cfg.auth())
-            .header("Content-Type", "application/octet-stream");
+            .header("Content-Type", "application/octet-stream")
+            .header("OC-Checksum", &checksum)
+            .header("X-Expected-Entity-Length", sent.to_string());
         req = match expected {
             Some(tag) if tag.starts_with('"') => req.header("If-Match", tag),
             Some(_) => req,
@@ -287,7 +422,15 @@ fn upload(
         let result = req.send(body);
         guard.check()?;
         match result {
-            Ok(r) => return Ok(etag(&r).unwrap_or_default()),
+            Ok(r) => {
+                let tag = etag(&r).unwrap_or_default();
+                if let Some((kept, _)) = remote_size(cfg, guard)? {
+                    if kept != sent {
+                        return Err(SyncError::UploadIncomplete { sent, kept });
+                    }
+                }
+                return Ok(tag);
+            }
             Err(ureq::Error::StatusCode(412)) => return Err(SyncError::Conflict),
             Err(ureq::Error::StatusCode(404 | 409)) if expected.is_none() && attempt == 0 => {
                 guard.agent()?.run(
@@ -304,6 +447,73 @@ fn upload(
         }
     }
     unreachable!("the second PUT always returns")
+}
+
+/// Publish this device's full data set as the server copy, keeping the current
+/// server file as `sync-data.json.damaged` first. This is the recovery for a server
+/// copy nobody can read any more; it never merges, so the caller must have chosen
+/// the device whose data should win. Other devices see a new sync version, download
+/// it and re-upload their own pending edits on their next exchange.
+pub fn replace_remote(
+    cfg: &NextcloudCfg,
+    store: &mut Store,
+    timeout: Duration,
+    is_current: impl Fn() -> bool,
+) -> Result<Report, SyncError> {
+    let guard = ExchangeGuard {
+        current: &is_current,
+        deadline: Instant::now() + timeout,
+    };
+    guard.check()?;
+    if store.state.rest.get("globalConfig").is_none() {
+        return Err(SyncError::FreshState);
+    }
+    let current = remote_size(cfg, &guard)?;
+    if current.is_some() {
+        let result = guard.agent()?.run(
+            ureq::http::Request::builder()
+                .method("COPY")
+                .uri(cfg.file_url())
+                .header("Authorization", cfg.auth())
+                .header("Destination", format!("{}/{}", cfg.folder_url(), DAMAGED_FILE))
+                .header("Overwrite", "T")
+                .body(())
+                .unwrap(),
+        );
+        guard.check()?;
+        result?;
+    }
+    let sv = store.meta.last_sync_version + 1;
+    let mut file = SyncFile {
+        version: 2,
+        sync_version: sv,
+        schema_version: SCHEMA_VERSION,
+        vector_clock: store.meta.vector_clock.clone(),
+        last_modified: now_ms(),
+        client_id: store.meta.client_id.clone(),
+        state: store.state.clone(),
+        archive_young: None,
+        archive_old: None,
+        recent_ops: vec![],
+        oldest_op_sync_version: None,
+    };
+    file.archive_young = file.state.rest.remove("archiveYoung");
+    file.archive_old = file.state.rest.remove("archiveOld");
+    let expected = current.as_ref().map(|(_, tag)| tag.as_str());
+    let new_tag = upload(
+        cfg,
+        &encode(&file, cfg.compress, cfg.encrypt_key.as_deref())?,
+        expected,
+        &guard,
+    )?;
+    store.pending.clear();
+    store.meta.last_sync_version = sv;
+    store.meta.last_etag = Some(new_tag);
+    Ok(Report {
+        downloaded: false,
+        uploaded: true,
+        ops_uploaded: 0,
+    })
 }
 
 #[derive(Debug, Default)]
@@ -465,6 +675,9 @@ mod tests {
         let enc = encode(&f, true, Some("secret")).unwrap();
         assert!(enc.starts_with("pf_CE2__"));
         assert_eq!(decode(&enc, Some("secret")).unwrap().sync_version, 3);
-        assert!(matches!(decode(&enc, Some("wrong")), Err(SyncError::Decrypt(_))));
+        assert!(matches!(
+            decode(&enc, Some("wrong")),
+            Err(SyncError::WrongEncryptionPassword)
+        ));
     }
 }

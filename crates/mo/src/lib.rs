@@ -77,7 +77,12 @@ enum Cmd {
     /// List tags
     Tags,
     /// Sync with Nextcloud
-    Sync,
+    Sync {
+        /// Replace the copy on the server with this computer's tasks. The recovery for
+        /// a server copy no device can read; the old copy is kept as sync-data.json.damaged.
+        #[arg(long)]
+        replace_remote: bool,
+    },
     /// Show or set Nextcloud settings; passwords go to the system keychain
     Config {
         #[arg(long)]
@@ -337,6 +342,17 @@ fn secret(purpose: &str) -> Option<String> {
 /// Hand a payload to a running app: the data directory's socket first (any platform,
 /// see `momentum_core::ipc`), then D-Bus on Linux for the case the socket is not up yet.
 /// Ok(false) means no running app answered, so the caller writes the store itself.
+/// Whether the desktop app currently answers on its CLI socket, without sending it
+/// any request. A stale socket file from a crashed app counts as not running.
+#[cfg(unix)]
+fn app_is_running(dir: &Path) -> bool {
+    std::os::unix::net::UnixStream::connect(momentum_core::ipc::socket_path(dir)).is_ok()
+}
+#[cfg(not(unix))]
+fn app_is_running(_dir: &Path) -> bool {
+    false
+}
+
 fn forward(dir: &Path, payload: &str) -> Result<bool, String> {
     if momentum_core::ipc::forward(dir, payload)? {
         return Ok(true);
@@ -842,14 +858,19 @@ where
                     writeln!(out, "#{:<27} {} tasks", g.title, g.task_ids.len()).unwrap();
                 }
             }
-            Cmd::Sync => {
+            Cmd::Sync { replace_remote } => {
                 let c = load_config(&dir);
                 match c.method.as_deref() {
                     Some("off") => return Err("Sync is turned off. Select a sync method in Momentum Settings.".into()),
                     None | Some("nextcloud") | Some("libresync") => {}
                     Some(_) => return Err("Unknown sync method. Select a sync method in Momentum Settings.".into()),
                 }
-                if forward(&dir, "\"sync\"")? {
+                if replace_remote && app_is_running(&dir) {
+                    return Err(
+                        "Quit Momentum first: replacing the server copy needs exclusive access to the data.".into(),
+                    );
+                }
+                if !replace_remote && forward(&dir, "\"sync\"")? {
                     if json {
                         writeln!(out, "{}", serde_json::json!({"status": "requested"})).unwrap();
                     } else {
@@ -870,7 +891,14 @@ where
                     compress: c.compress,
                     encrypt_key: secret("encryption"),
                 };
-                let r = sp_sync::sync(&cfg, &mut store).map_err(|e| e.to_string())?;
+                let r = if replace_remote {
+                    let r = sp_sync::replace_remote(&cfg, &mut store, sp_sync::DEFAULT_EXCHANGE_TIMEOUT, || true)
+                        .map_err(|e| e.to_string())?;
+                    store.save().map_err(|e| e.to_string())?;
+                    r
+                } else {
+                    sp_sync::sync(&cfg, &mut store).map_err(|e| e.to_string())?
+                };
                 if json {
                     writeln!(
                         out,

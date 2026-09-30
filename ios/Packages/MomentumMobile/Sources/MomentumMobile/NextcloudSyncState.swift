@@ -27,6 +27,13 @@ import Observation
     public private(set) var isSuspended = false
     public private(set) var lowPowerMode = false
     public private(set) var failure: Failure?
+    /// The core's classification of the last failed exchange, when it was one.
+    public private(set) var failureKind: SyncFailureKind?
+    /// The core's own sentence for the last failed exchange, for a Details control.
+    public private(set) var failureMessage: String?
+    /// When the last exchange or replacement ended, however it ended, so a retry is
+    /// visibly acknowledged even when the same failure comes back.
+    public private(set) var lastAttemptAt: Date?
     public private(set) var status: SyncStatus?
     public private(set) var connectionTest: ConnectionTestState = .idle
     public private(set) var nearby: NearbyLifecycle?
@@ -64,12 +71,16 @@ import Observation
     @ObservationIgnored private var editsDuringSync = false
     @ObservationIgnored private var foregroundRetry = false
     @ObservationIgnored private var makeOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)?
+    @ObservationIgnored private var makeBackgroundOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)?
+    @ObservationIgnored private var makeReplaceOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)?
     @ObservationIgnored private var readStatus: (@Sendable () async -> SyncStatus)?
     @ObservationIgnored private var makeConnectionTest: (@Sendable (NextcloudSettings) async -> any NextcloudConnectionTestOperation)?
     @ObservationIgnored private var connectionTestOperation: (any NextcloudConnectionTestOperation)?
     @ObservationIgnored private var connectionTestTask: Task<Void, Never>?
     @ObservationIgnored private var connectionTestGeneration = 0
     private static let failureKey = "mobile-nextcloud-failure"
+    private static let failureKindKey = "mobile-nextcloud-failure-kind"
+    private static let failureMessageKey = "mobile-nextcloud-failure-message"
 
     public init(defaults: UserDefaults, persistence: any NextcloudConnectionPersistence, allowed: Bool = true,
                 sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
@@ -79,12 +90,20 @@ import Observation
         self.sleep = sleep
         provider = allowed ? (SyncMethod(rawValue: defaults.string(forKey: PrefKey.syncMethod) ?? "") ?? .off) : .off
         failure = allowed ? defaults.string(forKey: Self.failureKey).flatMap(Failure.init(rawValue:)) : nil
+        if failure != nil {
+            failureKind = defaults.string(forKey: Self.failureKindKey).flatMap(SyncFailureKind.init(storageName:))
+            failureMessage = defaults.string(forKey: Self.failureMessageKey)
+        }
     }
 
     public func connect(makeOperation: @escaping @Sendable (NextcloudSettings) async -> any NextcloudRunningOperation,
+                        makeBackgroundOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)? = nil,
+                        makeReplaceOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)? = nil,
                         makeConnectionTest: (@Sendable (NextcloudSettings) async -> any NextcloudConnectionTestOperation)? = nil,
                         status: @escaping @Sendable () async -> SyncStatus) {
         self.makeOperation = makeOperation
+        self.makeBackgroundOperation = makeBackgroundOperation
+        self.makeReplaceOperation = makeReplaceOperation
         self.makeConnectionTest = makeConnectionTest
         readStatus = status
     }
@@ -208,7 +227,25 @@ import Observation
             await nearby?.syncNow()
             return
         }
-        guard eligible, let saved, let makeOperation else { return }
+        guard let makeOperation else { return }
+        await run(makeOperation)
+    }
+
+    /// Whether Replace Server Copy is offered: the core said the server copy is
+    /// damaged and a replacement operation is wired up.
+    public var canReplaceServerCopy: Bool {
+        failureKind == .remoteFileDamaged && makeReplaceOperation != nil && provider == .nextcloud
+    }
+
+    /// Publish this device's tasks as the server copy after the person confirmed that
+    /// this device's tasks should win. Same admission and commit path as an exchange.
+    public func replaceServerCopy() async {
+        guard canReplaceServerCopy, let makeReplaceOperation else { return }
+        await run(makeReplaceOperation)
+    }
+
+    private func run(_ make: @escaping @Sendable (NextcloudSettings) async -> any NextcloudRunningOperation) async {
+        guard eligible, let saved else { return }
         if let active { await active.value; return }
         scheduled?.cancel(); scheduled = nil
         isSyncing = true
@@ -218,7 +255,7 @@ import Observation
         let task = Task {
             let finishExecution = beginExecution?()
             defer { finishExecution?() }
-            let next = await makeOperation(saved.settings)
+            let next = await make(saved.settings)
             operation = next
             if Task.isCancelled || admittedGeneration != generation || !eligible {
                 _ = next.cancel()
@@ -231,8 +268,9 @@ import Observation
                 } catch is CancellationError {
                     // Preserve prior failures and the core's last successful exchange.
                 } catch {
-                    record(Self.classify(error))
+                    record(Self.classify(error), from: error)
                 }
+                lastAttemptAt = Date()
             }
             await refreshStatus()
             operation = nil
@@ -312,7 +350,7 @@ import Observation
     /// calling task (the wake expiring) cancels the running operation; a commit that
     /// beats the cancellation is still published. Returns whether an exchange committed.
     public func syncInBackground() async -> Bool {
-        guard backgroundSyncPossible, let saved, let makeOperation else { return false }
+        guard backgroundSyncPossible, let saved, let makeOperation = makeBackgroundOperation ?? makeOperation else { return false }
         if let active { await active.value }
         guard !Task.isCancelled, backgroundSyncPossible, !isSyncing else { return false }
         scheduled?.cancel(); scheduled = nil
@@ -340,8 +378,9 @@ import Observation
                 } catch is CancellationError {
                     // The wake expired or the provider changed; the core kept its state.
                 } catch {
-                    record(Self.classify(error))
+                    record(Self.classify(error), from: error)
                 }
+                lastAttemptAt = Date()
             }
             await refreshStatus()
             operation = nil
@@ -415,9 +454,22 @@ import Observation
             await self.nearby?.syncNow()
         }
     }
-    private func record(_ value: Failure?) {
+    private func record(_ value: Failure?, from error: Error? = nil) {
         failure = value
         defaults.set(value?.rawValue, forKey: Self.failureKey)
+        let core = error as? CoreError
+        failureKind = switch core {
+        case .Actionable(let kind, _), .Transient(let kind, _): kind
+        default: nil
+        }
+        failureMessage = switch core {
+        case .Actionable(_, let message), .Transient(_, let message), .Io(let message), .Invalid(let message),
+             .Nearby(let message): message
+        case .NotConfigured, .Busy, .none: error.map { String(describing: $0) }
+        }
+        if value == nil { failureKind = nil; failureMessage = nil }
+        defaults.set(failureKind?.storageName, forKey: Self.failureKindKey)
+        defaults.set(failureMessage, forKey: Self.failureMessageKey)
     }
     private static func classify(_ error: Error) -> Failure {
         guard let core = error as? CoreError else { return .network }
@@ -427,5 +479,36 @@ import Observation
         case .Busy: return .busy
         default: return .network
         }
+    }
+}
+
+extension SyncFailureKind {
+    /// A stable name for defaults; the generated enum has no raw value.
+    var storageName: String {
+        switch self {
+        case .unreachable: "unreachable"
+        case .unauthorized: "unauthorized"
+        case .serverError: "serverError"
+        case .timedOut: "timedOut"
+        case .encryptionPasswordMissing: "encryptionPasswordMissing"
+        case .encryptionPasswordWrong: "encryptionPasswordWrong"
+        case .remoteFileDamaged: "remoteFileDamaged"
+        case .incompatible: "incompatible"
+        case .nothingToStartFrom: "nothingToStartFrom"
+        case .conflict: "conflict"
+        case .cancelled: "cancelled"
+        case .uploadIncomplete: "uploadIncomplete"
+        case .other: "other"
+        }
+    }
+
+    static let allStored: [SyncFailureKind] = [
+        .unreachable, .unauthorized, .serverError, .timedOut, .encryptionPasswordMissing, .encryptionPasswordWrong,
+        .remoteFileDamaged, .incompatible, .nothingToStartFrom, .conflict, .cancelled, .uploadIncomplete, .other,
+    ]
+
+    init?(storageName: String) {
+        guard let kind = Self.allStored.first(where: { $0.storageName == storageName }) else { return nil }
+        self = kind
     }
 }

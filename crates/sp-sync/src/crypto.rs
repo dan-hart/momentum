@@ -48,28 +48,40 @@ pub fn encrypt(plain: &str, password: &str) -> Result<String, String> {
     Ok(B64.encode(buf))
 }
 
-pub fn decrypt(data: &str, password: &str) -> Result<String, String> {
-    let buf = B64.decode(data.trim()).map_err(|e| e.to_string())?;
+/// A file that cannot be decrypted is either not what it should be or locked with
+/// another password; the two need different remedies, so they are told apart.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DecryptError {
+    /// Not valid base64, too short, or not UTF-8 after decryption: a damaged copy.
+    Damaged(String),
+    /// Well-formed, but the authentication tag rejects this password.
+    WrongPassword,
+}
+
+pub fn decrypt(data: &str, password: &str) -> Result<String, DecryptError> {
+    let buf = B64
+        .decode(data.trim())
+        .map_err(|e| DecryptError::Damaged(e.to_string()))?;
     if buf.len() >= SALT + IV + 16 {
         if let Ok(key) = derive(password, &buf[..SALT]) {
             if let Ok(pt) = Aes256Gcm::new_from_slice(&key)
                 .unwrap()
                 .decrypt(&Nonce::try_from(&buf[SALT..SALT + IV]).unwrap(), &buf[SALT + IV..])
             {
-                return String::from_utf8(pt).map_err(|e| e.to_string());
+                return String::from_utf8(pt).map_err(|e| DecryptError::Damaged(e.to_string()));
             }
         }
     }
     if buf.len() < IV + 16 {
-        return Err("encrypted data is too short".into());
+        return Err(DecryptError::Damaged("encrypted data is too short".into()));
     }
     let mut key = [0u8; 32];
     pbkdf2::pbkdf2_hmac::<sha2::Sha256>(password.as_bytes(), password.as_bytes(), 1000, &mut key);
     let pt = Aes256Gcm::new_from_slice(&key)
         .unwrap()
         .decrypt(&Nonce::try_from(&buf[..IV]).unwrap(), &buf[IV..])
-        .map_err(|_| "wrong encryption password".to_string())?;
-    String::from_utf8(pt).map_err(|e| e.to_string())
+        .map_err(|_| DecryptError::WrongPassword)?;
+    String::from_utf8(pt).map_err(|e| DecryptError::Damaged(e.to_string()))
 }
 
 #[cfg(test)]

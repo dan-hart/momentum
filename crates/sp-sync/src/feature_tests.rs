@@ -166,7 +166,9 @@ fn wrong_password_and_unknown_versions_are_reported() {
     let mut wrong = cfg(&dav, true);
     wrong.encrypt_key = Some("nope".into());
     let (mut b, _db) = store(false);
-    assert!(matches!(sync(&wrong, &mut b), Err(SyncError::Decrypt(_))));
+    let error = sync(&wrong, &mut b).unwrap_err();
+    assert!(matches!(error, SyncError::WrongEncryptionPassword));
+    assert_eq!(error.kind(), SyncFailureKind::EncryptionPasswordWrong);
     let mut none = cfg(&dav, false);
     none.encrypt_key = None;
     assert!(matches!(sync(&none, &mut b), Err(SyncError::Encrypted)));
@@ -317,4 +319,99 @@ fn missing_collection_is_created_before_retrying_upload() {
     let (mut peer, _peer_dir) = store(false);
     assert!(sync(&cfg(&dav, false), &mut peer).unwrap().downloaded);
     assert_eq!(titles(&peer), ["New folder task"]);
+}
+
+#[test]
+fn a_cut_off_upload_is_reported_and_never_replaces_the_previous_copy() {
+    let dav = MockDav::start();
+    let (mut a, _da) = store(true);
+    add(&mut a, "first");
+    sync(&cfg(&dav, false), &mut a).unwrap();
+    let before = dav.raw("/remote.php/dav/files/u/sp/sync-data.json").unwrap();
+    let headers = dav.last_put_headers.lock().unwrap().clone();
+    assert_eq!(
+        headers.get("x-expected-entity-length").map(String::as_str),
+        Some(before.len().to_string().as_str())
+    );
+    assert!(headers
+        .get("oc-checksum")
+        .is_some_and(|c| c.starts_with("SHA1:") && c.len() == 45));
+
+    add(&mut a, "second");
+    dav.keep_only_next_put.store(before.len() / 2, Ordering::SeqCst);
+    let error = sync(&cfg(&dav, false), &mut a).unwrap_err();
+    assert!(matches!(error, SyncError::UploadIncomplete { kept, sent } if kept < sent));
+    assert_eq!(error.kind(), SyncFailureKind::UploadIncomplete);
+    assert_eq!(a.pending.len(), 1, "the edit stays pending for the next exchange");
+    // The mock, like a streaming proxy, kept the partial body; the client reported it
+    // instead of clearing its pending edit or trusting the returned ETag.
+    assert_ne!(dav.raw("/remote.php/dav/files/u/sp/sync-data.json").unwrap(), before);
+    assert_ne!(a.meta.last_etag.as_deref(), None);
+}
+
+#[test]
+fn a_damaged_server_copy_is_told_apart_from_a_wrong_password_and_can_be_replaced() {
+    let dav = MockDav::start();
+    let (mut a, _da) = store(true);
+    add(&mut a, "kept on a");
+    sync(&cfg(&dav, true), &mut a).unwrap();
+    let (mut b, _db) = store(false);
+    sync(&cfg(&dav, true), &mut b).unwrap();
+    add(&mut b, "pending on b");
+
+    // Truncate the encrypted body to a length no base64 text can have.
+    let path = "/remote.php/dav/files/u/sp/sync-data.json";
+    let mut damaged = dav.raw(path).unwrap();
+    let body_start = damaged.windows(2).position(|w| w == b"__").unwrap() + 2;
+    // A padded base64 body is a multiple of four; drop three bytes so no decoder accepts it.
+    let cut = body_start + ((damaged.len() - body_start) / 4) * 4 - 3;
+    damaged.truncate(cut);
+    dav.set_raw(path, damaged.clone());
+
+    let error = sync(&cfg(&dav, true), &mut a).unwrap_err();
+    assert!(matches!(error, SyncError::Decrypt(_)), "{error}");
+    assert_eq!(error.kind(), SyncFailureKind::RemoteFileDamaged);
+    assert!(matches!(sync(&cfg(&dav, true), &mut b), Err(SyncError::Decrypt(_))));
+
+    add(&mut a, "edited on a while damaged");
+    let report = replace_remote(&cfg(&dav, true), &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true).unwrap();
+    assert!(report.uploaded && !report.downloaded);
+    assert_eq!(dav.copies.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        dav.raw("/remote.php/dav/files/u/sp/sync-data.json.damaged").unwrap(),
+        damaged
+    );
+    assert!(a.pending.is_empty());
+    assert_eq!(titles(&a), vec!["edited on a while damaged", "kept on a"]);
+
+    // The other device downloads the replacement and re-applies its own pending edit.
+    let report = sync(&cfg(&dav, true), &mut b).unwrap();
+    assert!(report.downloaded && report.uploaded);
+    assert_eq!(
+        titles(&b),
+        vec!["edited on a while damaged", "kept on a", "pending on b"]
+    );
+    sync(&cfg(&dav, true), &mut a).unwrap();
+    assert_eq!(titles(&a), titles(&b));
+}
+
+#[test]
+fn replace_remote_refuses_a_fresh_device_and_works_without_a_server_copy() {
+    let dav = MockDav::start();
+    let (mut fresh, _d) = store(false);
+    assert!(matches!(
+        replace_remote(&cfg(&dav, false), &mut fresh, DEFAULT_EXCHANGE_TIMEOUT, || true),
+        Err(SyncError::FreshState)
+    ));
+    let (mut a, _da) = store(true);
+    add(&mut a, "only here");
+    replace_remote(&cfg(&dav, false), &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true).unwrap();
+    assert_eq!(
+        dav.copies.load(Ordering::SeqCst),
+        0,
+        "nothing to park when the file is absent"
+    );
+    let (mut b, _db) = store(false);
+    sync(&cfg(&dav, false), &mut b).unwrap();
+    assert_eq!(titles(&b), vec!["only here"]);
 }

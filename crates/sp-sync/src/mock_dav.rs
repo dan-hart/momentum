@@ -19,6 +19,12 @@ pub struct MockDav {
     pub fail_next_put: Arc<AtomicBool>,
     pub missing_collection: Arc<AtomicBool>,
     pub collections: Arc<AtomicUsize>,
+    /// When non-zero, the next PUT stores only this many bytes and still answers 2xx,
+    /// like a proxy that streams a cut-off body through to the server.
+    pub keep_only_next_put: Arc<AtomicUsize>,
+    /// Headers of the most recent PUT, lower-cased, for asserting the upload guards.
+    pub last_put_headers: Arc<Mutex<HashMap<String, String>>>,
+    pub copies: Arc<AtomicUsize>,
 }
 
 fn etag(body: &[u8]) -> String {
@@ -40,7 +46,11 @@ impl MockDav {
         let fail_next_put = Arc::new(AtomicBool::new(false));
         let missing_collection = Arc::new(AtomicBool::new(false));
         let collections = Arc::new(AtomicUsize::new(0));
+        let keep_only_next_put = Arc::new(AtomicUsize::new(0));
+        let last_put_headers: Arc<Mutex<HashMap<String, String>>> = Default::default();
+        let copies = Arc::new(AtomicUsize::new(0));
         let (missing, created) = (missing_collection.clone(), collections.clone());
+        let (keep_only, put_headers, copied) = (keep_only_next_put.clone(), last_put_headers.clone(), copies.clone());
         let (f, p, g, pf, reject, fail) = (
             files.clone(),
             puts.clone(),
@@ -100,6 +110,28 @@ impl MockDav {
                                     None => (404, vec![], vec![]),
                                 }
                             }
+                            "HEAD" => match files.get(&path) {
+                                Some(b) => (
+                                    200,
+                                    vec![format!("OC-ETag: {}", etag(b)), format!("X-Size: {}", b.len())],
+                                    vec![],
+                                ),
+                                None => (404, vec![], vec![]),
+                            },
+                            "COPY" => {
+                                copied.fetch_add(1, Ordering::SeqCst);
+                                let destination = headers
+                                    .get("destination")
+                                    .and_then(|d| d.find("/remote.php").map(|i| d[i..].to_string()));
+                                match (files.get(&path).cloned(), destination) {
+                                    (Some(b), Some(dest)) => {
+                                        files.insert(dest, b);
+                                        (201, vec![], vec![])
+                                    }
+                                    (None, _) => (404, vec![], vec![]),
+                                    (_, None) => (400, vec![], vec![]),
+                                }
+                            }
                             "MKCOL" => {
                                 created.fetch_add(1, Ordering::SeqCst);
                                 missing.store(false, Ordering::SeqCst);
@@ -112,12 +144,24 @@ impl MockDav {
                                     (404, vec![], vec![])
                                 } else if path == folder || path == "/remote.php/dav/files/u/" {
                                     (207, vec![], vec![])
+                                } else if let Some(b) = files.get(&path) {
+                                    let xml = format!(
+                                        "<?xml version=\"1.0\"?><d:multistatus xmlns:d=\"DAV:\"><d:response><d:href>{path}</d:href><d:propstat><d:prop><d:getcontentlength>{}</d:getcontentlength><d:getetag>{}</d:getetag></d:prop></d:propstat></d:response></d:multistatus>",
+                                        b.len(),
+                                        etag(b).replace('"', "&quot;")
+                                    );
+                                    (207, vec![], xml.into_bytes())
                                 } else {
                                     (404, vec![], vec![])
                                 }
                             }
                             "PUT" => {
                                 p.fetch_add(1, Ordering::SeqCst);
+                                *put_headers.lock().unwrap() = headers.clone();
+                                let keep = keep_only.swap(0, Ordering::SeqCst);
+                                if keep > 0 {
+                                    body.truncate(keep);
+                                }
                                 let cur = files.get(&path).cloned();
                                 let if_match = headers.get("if-match").cloned();
                                 let none_match = headers.get("if-none-match").cloned();
@@ -150,14 +194,21 @@ impl MockDav {
                     412 => "Precondition Failed",
                     _ => "Error",
                 };
-                let mut resp = format!(
-                    "HTTP/1.1 {status} {reason}\r\nConnection: close\r\nContent-Length: {}\r\n",
-                    payload.len()
-                );
+                let mut resp = format!("HTTP/1.1 {status} {reason}\r\nConnection: close\r\n");
+                let mut declared = None;
                 for h in extra {
+                    if let Some(size) = h.strip_prefix("X-Size: ") {
+                        declared = Some(size.to_string());
+                        continue;
+                    }
                     resp.push_str(&h);
                     resp.push_str("\r\n");
                 }
+                // A HEAD answer declares the stored size; every other answer its own body.
+                resp.push_str(&format!(
+                    "Content-Length: {}\r\n",
+                    declared.unwrap_or_else(|| payload.len().to_string())
+                ));
                 resp.push_str("\r\n");
                 let _ = stream.write_all(resp.as_bytes());
                 let _ = stream.write_all(&payload);
@@ -174,6 +225,9 @@ impl MockDav {
             fail_next_put,
             missing_collection,
             collections,
+            keep_only_next_put,
+            last_put_headers,
+            copies,
         }
     }
     pub fn file_count(&self) -> usize {
@@ -181,5 +235,9 @@ impl MockDav {
     }
     pub fn raw(&self, path: &str) -> Option<Vec<u8>> {
         self.files.lock().unwrap().get(path).cloned()
+    }
+    /// Overwrite a stored file directly, e.g. to simulate a copy damaged on the server.
+    pub fn set_raw(&self, path: &str, body: Vec<u8>) {
+        self.files.lock().unwrap().insert(path.to_string(), body);
     }
 }

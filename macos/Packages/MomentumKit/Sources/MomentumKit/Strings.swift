@@ -338,6 +338,69 @@ public enum Strings {
         }
     }
 
+    // MARK: Sync failures
+
+    /// One plain sentence naming what went wrong, for people who do not know what a
+    /// WebDAV server or a base64 body is. The core's own message stays behind Details.
+    public static func syncFailureHeadline(_ kind: SyncFailureKind) -> String {
+        switch kind {
+        case .unreachable: return String(localized: "Momentum can’t reach your server", bundle: .module)
+        case .unauthorized: return String(localized: "The server didn’t accept your login", bundle: .module)
+        case .serverError: return String(localized: "The server ran into a problem", bundle: .module)
+        case .timedOut: return String(localized: "Sync took too long to finish", bundle: .module)
+        case .encryptionPasswordMissing: return String(localized: "The sync file is encrypted", bundle: .module)
+        case .encryptionPasswordWrong: return String(localized: "The encryption password doesn’t match", bundle: .module)
+        case .remoteFileDamaged: return String(localized: "The copy on the server is damaged", bundle: .module)
+        case .incompatible: return String(localized: "The copy on the server needs a newer Momentum", bundle: .module)
+        case .nothingToStartFrom: return String(localized: "Nothing to sync yet", bundle: .module)
+        case .conflict: return String(localized: "Another device is syncing at the same time", bundle: .module)
+        case .cancelled: return String(localized: "Sync was interrupted", bundle: .module)
+        case .uploadIncomplete: return String(localized: "The upload didn’t arrive whole", bundle: .module)
+        case .other: return String(localized: "Sync couldn’t finish", bundle: .module)
+        }
+    }
+
+    /// What to do about it. Mentions the control by its name on the platform.
+    public static func syncFailureRemedy(_ kind: SyncFailureKind) -> String {
+        switch kind {
+        case .unreachable:
+            return String(localized: "Check that this device is online and that the server address is right, then try again. Your tasks are safe on this device.", bundle: .module)
+        case .unauthorized:
+            return String(localized: "Check the user name and app password in the sync settings. An app password comes from your Nextcloud security settings.", bundle: .module)
+        case .serverError:
+            return String(localized: "The server answered with an error. Try again in a few minutes; if it keeps happening, check the server itself.", bundle: .module)
+        case .timedOut:
+            return String(localized: "The connection is slow or unstable. Try again on a faster connection, or turn on compression in the sync settings to make the transfer smaller.", bundle: .module)
+        case .encryptionPasswordMissing:
+            return String(localized: "Enter the encryption password you use on your other devices in the sync settings.", bundle: .module)
+        case .encryptionPasswordWrong:
+            return String(localized: "Enter the same encryption password you use on your other devices. A different password on one device makes the file unreadable there.", bundle: .module)
+        case .remoteFileDamaged:
+            return String(localized: "No device can read the copy on the server. On the device with your most recent tasks, choose Replace Server Copy; the damaged copy is kept on the server as sync-data.json.damaged.", bundle: .module)
+        case .incompatible:
+            return String(localized: "Update Momentum on this device. If another app wrote the file, turn off its newer sync format.", bundle: .module)
+        case .nothingToStartFrom:
+            return String(localized: "This device has no tasks yet and the server has no copy. Sync from a device that has your tasks first, or import a backup here.", bundle: .module)
+        case .conflict:
+            return String(localized: "Two devices uploaded at the same moment. Wait a moment and try again.", bundle: .module)
+        case .cancelled:
+            return String(localized: "Try again.", bundle: .module)
+        case .uploadIncomplete:
+            return String(localized: "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Try again on a steadier connection.", bundle: .module)
+        case .other:
+            return String(localized: "Try again. If it keeps failing, the details below say what the server or this device reported.", bundle: .module)
+        }
+    }
+
+    /// The failure kind carried by a core error, if it is a sync failure.
+    public static func syncFailureKind(_ e: Error) -> SyncFailureKind? {
+        guard let c = e as? CoreError else { return nil }
+        switch c {
+        case .Actionable(let kind, _), .Transient(let kind, _): return kind
+        case .NotConfigured, .Busy, .Io, .Invalid, .Nearby: return nil
+        }
+    }
+
     /// The Edit menu's "Undo <this>" name for a change.
     public static func undoName(_ m: Message) -> String {
         switch m {
@@ -360,8 +423,9 @@ public enum Strings {
         if let c = e as? CoreError {
             switch c {
             case .NotConfigured: return String(localized: "Nextcloud sync is not configured", bundle: .module)
-            case .Actionable(let message), .Transient(let message), .Io(let message),
-                 .Invalid(let message), .Nearby(let message):
+            case .Actionable(_, let message), .Transient(_, let message):
+                return message
+            case .Io(let message), .Invalid(let message), .Nearby(let message):
                 return message
             case .Busy: return String(localized: "A sync is already running", bundle: .module)
             }

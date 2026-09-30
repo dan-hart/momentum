@@ -2293,3 +2293,127 @@ msgstr "Kompakt"
 
 #~ msgid "Sync with Nextcloud"
 #~ msgstr "Mit Nextcloud synchronisieren"
+
+#: crates/app/src/messages.rs
+msgid "Momentum can’t reach your server"
+msgstr "Momentum erreicht deinen Server nicht"
+
+#: crates/app/src/messages.rs
+msgid "The server didn’t accept your login"
+msgstr "Der Server hat deine Anmeldung nicht akzeptiert"
+
+#: crates/app/src/messages.rs
+msgid "The server ran into a problem"
+msgstr "Der Server hat ein Problem gemeldet"
+
+#: crates/app/src/messages.rs
+msgid "Sync took too long to finish"
+msgstr "Die Synchronisierung hat zu lange gedauert"
+
+#: crates/app/src/messages.rs
+msgid "The sync file is encrypted"
+msgstr "Die Sync-Datei ist verschlüsselt"
+
+#: crates/app/src/messages.rs
+msgid "The encryption password doesn’t match"
+msgstr "Das Verschlüsselungspasswort passt nicht"
+
+#: crates/app/src/messages.rs
+msgid "The copy on the server is damaged"
+msgstr "Die Kopie auf dem Server ist beschädigt"
+
+#: crates/app/src/messages.rs
+msgid "The copy on the server needs a newer Momentum"
+msgstr "Die Kopie auf dem Server braucht ein neueres Momentum"
+
+#: crates/app/src/messages.rs
+msgid "Nothing to sync yet"
+msgstr "Noch nichts zu synchronisieren"
+
+#: crates/app/src/messages.rs
+msgid "Another device is syncing at the same time"
+msgstr "Ein anderes Gerät synchronisiert gerade gleichzeitig"
+
+#: crates/app/src/messages.rs
+msgid "Sync was interrupted"
+msgstr "Die Synchronisierung wurde unterbrochen"
+
+#: crates/app/src/messages.rs
+msgid "The upload didn’t arrive whole"
+msgstr "Der Upload ist nicht vollständig angekommen"
+
+#: crates/app/src/messages.rs
+msgid "Sync couldn’t finish"
+msgstr "Die Synchronisierung konnte nicht abgeschlossen werden"
+
+#: crates/app/src/messages.rs
+msgid "Check that this computer is online and that the server address is right, then retry. Your tasks are safe on this computer."
+msgstr "Prüfe, ob dieser Computer online ist und die Serveradresse stimmt, und versuche es dann erneut. Deine Aufgaben sind auf diesem Computer sicher."
+
+#: crates/app/src/messages.rs
+msgid "Check the user name and app password in Preferences. An app password comes from your Nextcloud security settings."
+msgstr "Prüfe Benutzername und App-Passwort in den Einstellungen. Ein App-Passwort erstellst du in den Sicherheitseinstellungen von Nextcloud."
+
+#: crates/app/src/messages.rs
+msgid "The server answered with an error. Retry in a few minutes; if it keeps happening, check the server itself."
+msgstr "Der Server hat mit einem Fehler geantwortet. Versuche es in ein paar Minuten erneut; wenn es weiter passiert, prüfe den Server selbst."
+
+#: crates/app/src/messages.rs
+msgid "The connection is slow or unstable. Retry on a faster connection, or turn on “Compress the sync file” in Preferences to make the transfer smaller."
+msgstr "Die Verbindung ist langsam oder instabil. Versuche es über eine schnellere Verbindung erneut oder schalte „Sync-Datei komprimieren“ in den Einstellungen ein, damit weniger übertragen wird."
+
+#: crates/app/src/messages.rs
+msgid "Enter the encryption password you use on your other devices in Preferences."
+msgstr "Gib in den Einstellungen das Verschlüsselungspasswort ein, das du auf deinen anderen Geräten verwendest."
+
+#: crates/app/src/messages.rs
+msgid "Enter the same encryption password you use on your other devices. A different password on one device makes the file unreadable there."
+msgstr "Gib dasselbe Verschlüsselungspasswort ein wie auf deinen anderen Geräten. Ein anderes Passwort auf einem Gerät macht die Datei dort unlesbar."
+
+#: crates/app/src/messages.rs
+msgid "No device can read the copy on the server. On the device with your most recent tasks, choose Replace Server Copy; the damaged copy is kept on the server as sync-data.json.damaged."
+msgstr "Kein Gerät kann die Kopie auf dem Server lesen. Wähle auf dem Gerät mit deinen neuesten Aufgaben „Serverkopie ersetzen“; die beschädigte Kopie bleibt als sync-data.json.damaged auf dem Server."
+
+#: crates/app/src/messages.rs
+msgid "Update Momentum on this computer. If another app wrote the file, turn off its newer sync format."
+msgstr "Aktualisiere Momentum auf diesem Computer. Wenn eine andere App die Datei geschrieben hat, schalte dort das neuere Sync-Format aus."
+
+#: crates/app/src/messages.rs
+msgid "This computer has no tasks yet and the server has no copy. Sync from a device that has your tasks first, or import a backup here."
+msgstr "Dieser Computer hat noch keine Aufgaben und auf dem Server gibt es keine Kopie. Synchronisiere zuerst von einem Gerät mit deinen Aufgaben oder importiere hier ein Backup."
+
+#: crates/app/src/messages.rs
+msgid "Two devices uploaded at the same moment. Wait a moment and retry."
+msgstr "Zwei Geräte haben im selben Moment hochgeladen. Warte kurz und versuche es erneut."
+
+#: crates/app/src/messages.rs
+msgid "Retry."
+msgstr "Versuche es erneut."
+
+#: crates/app/src/messages.rs
+msgid "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Retry on a steadier connection."
+msgstr "Der Server hat nur einen Teil der Datei behalten; die vorherige Kopie ist unverändert und deine Änderungen warten weiter hier. Versuche es über eine stabilere Verbindung erneut."
+
+#: crates/app/src/messages.rs
+msgid "Retry. If it keeps failing, the details below say what the server or this computer reported."
+msgstr "Versuche es erneut. Wenn es weiter fehlschlägt, steht unten in den Details, was der Server oder dieser Computer gemeldet hat."
+
+#: crates/app/src/messages.rs
+msgid "Replace Server Copy…"
+msgstr "Serverkopie ersetzen …"
+
+#: crates/app/src/messages.rs
+msgid "Replace the copy on the server with this computer’s tasks?"
+msgstr "Die Kopie auf dem Server durch die Aufgaben dieses Computers ersetzen?"
+
+#: crates/app/src/messages.rs
+msgid "Other devices will download this computer’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged."
+msgstr "Andere Geräte laden beim nächsten Sync die Aufgaben dieses Computers und fügen ihre noch wartenden Änderungen hinzu. Die beschädigte Kopie bleibt als sync-data.json.damaged auf dem Server."
+
+#: crates/app/src/messages.rs
+msgid "Replace Server Copy"
+msgstr "Serverkopie ersetzen"
+
+#: crates/app/src/messages.rs
+msgid "Server copy replaced"
+msgstr "Serverkopie ersetzt"

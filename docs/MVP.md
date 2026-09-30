@@ -500,6 +500,14 @@ the op format with.
 
 - Remote path: `<server>/remote.php/dav/files/<user>/<folder>/sync-data.json`, HTTP
   Basic auth with an app password.
+- Upload guards (B-092): every PUT carries `OC-Checksum: SHA1:…` and
+  `X-Expected-Entity-Length`, which Nextcloud verifies, and the client reads the stored
+  size back with a Depth-0 PROPFIND (`getcontentlength`); a mismatch is reported as
+  `UploadIncomplete` and the pending edits stay. A cut-off body is never the sync file.
+- Budgets: a foreground exchange may take 300 s overall (20 s to connect, 45 s to the
+  first response byte); an iOS background wake passes 25 s. A damaged server copy is
+  recovered with `replace_remote`, which copies it aside as `sync-data.json.damaged`
+  and publishes one device's full data set.
 - File body: prefix `pf_` + `C` if gzip + `E` if encrypted + `2__`, then the payload.
   Payload = JSON → optional gzip+base64 → optional encryption.
 - JSON envelope (version 2): `{version:2, syncVersion, schemaVersion:4, vectorClock,

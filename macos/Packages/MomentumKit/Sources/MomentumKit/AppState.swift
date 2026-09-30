@@ -78,6 +78,8 @@ public final class AppState {
     public private(set) var isSyncing = false
     public private(set) var nearbySyncing = false
     public private(set) var syncError: String?
+    /// The typed reason behind `syncError`, when the core classified it.
+    public private(set) var syncFailureKind: SyncFailureKind?
     public private(set) var selectedSyncMethod: SyncMethod = .off
     public var syncInProgress: Bool { isSyncing || nearbySyncing }
     /// The main window is on screen. Automatic sync may pause while it is not.
@@ -221,6 +223,7 @@ public final class AppState {
             syncDebounce?.cancel()
             nearbySyncing = false
             syncError = nil
+            syncFailureKind = nil
             banner = nil
         }
         if p.core != engine.preferences() {
@@ -707,8 +710,24 @@ public final class AppState {
             return
         }
         guard !isSyncing else { return }
+        runNextcloud(settings) { engine in try engine.syncNextcloud(settings: settings) }
+    }
+
+    /// Publish this Mac's tasks as the server copy, keeping the damaged copy on the
+    /// server as sync-data.json.damaged. Offered only for a damaged server copy, after
+    /// the person confirmed that this Mac's tasks should win.
+    public func replaceServerCopy() {
+        guard !isDemo, !isSyncing, let settings = prefs.nextcloud(keychain: keychain) else { return }
+        runNextcloud(settings) { engine in
+            try engine.replaceRemoteSyncFile(settings: settings, cancellation: SyncCancellation())
+        }
+    }
+
+    private func runNextcloud(_ settings: NextcloudSettings,
+                              _ work: @escaping @Sendable (Engine) throws -> SyncReport) {
         isSyncing = true
         syncError = nil
+        syncFailureKind = nil
         syncIsSlow = false
         // Say what is happening right away, but only animate if it takes a while.
         Task { [weak self] in
@@ -718,7 +737,7 @@ public final class AppState {
         let engine = self.engine
         Task { [weak self] in
             let result = await Task.detached(priority: .utility) { () -> Result<SyncReport, Error> in
-                do { return .success(try engine.syncNextcloud(settings: settings)) } catch { return .failure(error) }
+                do { return .success(try work(engine)) } catch { return .failure(error) }
             }.value
             guard let self else { return }
             self.isSyncing = false
@@ -733,14 +752,16 @@ public final class AppState {
                 }
             case .failure(let e):
                 self.syncError = Strings.error(e)
+                self.syncFailureKind = Strings.syncFailureKind(e)
+                let headline = self.syncFailureKind.map(Strings.syncFailureHeadline) ?? Strings.error(e)
                 switch e {
                 case CoreError.Actionable, CoreError.NotConfigured:
                     // A problem the user can fix: a banner that stays, not a toast.
-                    self.banner = String(localized: "Sync needs attention: \(Strings.error(e))", bundle: .module)
+                    self.banner = String(localized: "Sync needs attention: \(headline)", bundle: .module)
                 case CoreError.Busy:
                     break // another cycle is running; it will report
                 default:
-                    self.toast(String(localized: "Sync failed: \(Strings.error(e))", bundle: .module))
+                    self.toast(String(localized: "Sync failed: \(headline)", bundle: .module))
                 }
             }
             self.applyP2pSetting()

@@ -834,6 +834,16 @@
         }
       }
     },
+    "Another device is syncing at the same time": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein anderes Gerät synchronisiert gerade gleichzeitig"
+          }
+        }
+      }
+    },
     "Archive": {
       "localizations": {
         "de": {
@@ -880,6 +890,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Änderung"
+          }
+        }
+      }
+    },
+    "Check that this device is online and that the server address is right, then try again. Your tasks are safe on this device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe, ob dieses Gerät online ist und die Serveradresse stimmt, und versuche es dann erneut. Deine Aufgaben sind auf diesem Gerät sicher."
+          }
+        }
+      }
+    },
+    "Check the user name and app password in the sync settings. An app password comes from your Nextcloud security settings.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe Benutzername und App-Passwort in den Sync-Einstellungen. Ein App-Passwort erstellst du in den Sicherheitseinstellungen von Nextcloud."
           }
         }
       }
@@ -1064,6 +1094,26 @@
         }
       }
     },
+    "Enter the encryption password you use on your other devices in the sync settings.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib in den Sync-Einstellungen das Verschlüsselungspasswort ein, das du auf deinen anderen Geräten verwendest."
+          }
+        }
+      }
+    },
+    "Enter the same encryption password you use on your other devices. A different password on one device makes the file unreadable there.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib dasselbe Verschlüsselungspasswort ein wie auf deinen anderen Geräten. Ein anderes Passwort auf einem Gerät macht die Datei dort unlesbar."
+          }
+        }
+      }
+    },
     "Evening": {
       "extractionState": "manual",
       "localizations": {
@@ -1111,6 +1161,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kopplung läuft…"
+          }
+        }
+      }
+    },
+    "Momentum can’t reach your server": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum erreicht deinen Server nicht"
           }
         }
       }
@@ -1276,6 +1336,16 @@
         }
       }
     },
+    "No device can read the copy on the server. On the device with your most recent tasks, choose Replace Server Copy; the damaged copy is kept on the server as sync-data.json.damaged.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Gerät kann die Kopie auf dem Server lesen. Wähle auf dem Gerät mit deinen neuesten Aufgaben „Serverkopie ersetzen“; die beschädigte Kopie bleibt als sync-data.json.damaged auf dem Server."
+          }
+        }
+      }
+    },
     "No estimate": {
       "extractionState": "manual",
       "localizations": {
@@ -1373,6 +1443,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nichts für heute Abend geplant"
+          }
+        }
+      }
+    },
+    "Nothing to sync yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch nichts zu synchronisieren"
           }
         }
       }
@@ -1804,6 +1884,16 @@
         }
       }
     },
+    "Sync couldn’t finish": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung konnte nicht abgeschlossen werden"
+          }
+        }
+      }
+    },
     "Sync failed: %@": {
       "localizations": {
         "de": {
@@ -1860,6 +1950,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronisierung erfordert Aufmerksamkeit: Nextcloud-Synchronisierung ist nicht eingerichtet"
+          }
+        }
+      }
+    },
+    "Sync took too long to finish": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung hat zu lange gedauert"
+          }
+        }
+      }
+    },
+    "Sync was interrupted": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung wurde unterbrochen"
           }
         }
       }
@@ -2044,6 +2154,46 @@
         }
       }
     },
+    "The connection is slow or unstable. Try again on a faster connection, or turn on compression in the sync settings to make the transfer smaller.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Verbindung ist langsam oder instabil. Versuche es über eine schnellere Verbindung erneut oder schalte in den Sync-Einstellungen die Komprimierung ein, damit weniger übertragen wird."
+          }
+        }
+      }
+    },
+    "The copy on the server is damaged": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Kopie auf dem Server ist beschädigt"
+          }
+        }
+      }
+    },
+    "The copy on the server needs a newer Momentum": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Kopie auf dem Server braucht ein neueres Momentum"
+          }
+        }
+      }
+    },
+    "The encryption password doesn’t match": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Verschlüsselungspasswort passt nicht"
+          }
+        }
+      }
+    },
     "The other device declined. Check the code and try again.": {
       "localizations": {
         "de": {
@@ -2060,6 +2210,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Rest des Tages gehört dir."
+          }
+        }
+      }
+    },
+    "The server answered with an error. Try again in a few minutes; if it keeps happening, check the server itself.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat mit einem Fehler geantwortet. Versuche es in ein paar Minuten erneut; wenn es weiter passiert, prüfe den Server selbst."
+          }
+        }
+      }
+    },
+    "The server didn’t accept your login": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat deine Anmeldung nicht akzeptiert"
+          }
+        }
+      }
+    },
+    "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Try again on a steadier connection.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat nur einen Teil der Datei behalten; die vorherige Kopie ist unverändert und deine Änderungen warten weiter hier. Versuche es über eine stabilere Verbindung erneut."
+          }
+        }
+      }
+    },
+    "The server ran into a problem": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat ein Problem gemeldet"
+          }
+        }
+      }
+    },
+    "The sync file is encrypted": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Sync-Datei ist verschlüsselt"
+          }
+        }
+      }
+    },
+    "The upload didn’t arrive whole": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Upload ist nicht vollständig angekommen"
+          }
+        }
+      }
+    },
+    "This device has no tasks yet and the server has no copy. Sync from a device that has your tasks first, or import a backup here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät hat noch keine Aufgaben und auf dem Server gibt es keine Kopie. Synchronisiere zuerst von einem Gerät mit deinen Aufgaben oder importiere hier ein Backup."
           }
         }
       }
@@ -2134,12 +2354,42 @@
         }
       }
     },
+    "Try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versuche es erneut."
+          }
+        }
+      }
+    },
+    "Try again. If it keeps failing, the details below say what the server or this device reported.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versuche es erneut. Wenn es weiter fehlschlägt, steht unten in den Details, was der Server oder dieses Gerät gemeldet hat."
+          }
+        }
+      }
+    },
     "Turn on nearby sync in Settings first.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Aktiviere zuerst die Synchronisierung mit Geräten in der Nähe in den Einstellungen."
+          }
+        }
+      }
+    },
+    "Two devices uploaded at the same moment. Wait a moment and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwei Geräte haben im selben Moment hochgeladen. Warte kurz und versuche es erneut."
           }
         }
       }
@@ -2192,6 +2442,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bis zu 15 Min."
+          }
+        }
+      }
+    },
+    "Update Momentum on this device. If another app wrote the file, turn off its newer sync format.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisiere Momentum auf diesem Gerät. Wenn eine andere App die Datei geschrieben hat, schalte dort das neuere Sync-Format aus."
           }
         }
       }

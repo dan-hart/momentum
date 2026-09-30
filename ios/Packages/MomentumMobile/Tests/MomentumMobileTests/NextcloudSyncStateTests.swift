@@ -32,7 +32,7 @@ import Testing
         await fixture.ready()
         let failing = Task { await fixture.state.testConnection() }
         await fixture.connectionTest.waitUntilRunning()
-        fixture.connectionTest.finish(.failure(CoreError.Transient(message: "offline fixture")))
+        fixture.connectionTest.finish(.failure(CoreError.Transient(kind: .other, message: "offline fixture")))
         await failing.value
         guard case .failure(let message) = fixture.state.connectionTest else {
             Issue.record("Expected connection-test failure")
@@ -150,13 +150,13 @@ import Testing
         #expect(fixture.state.backgroundSyncPossible)
 
         let running = Task { await fixture.state.syncInBackground() }
-        await fixture.operation.waitUntilRunning()
+        await fixture.backgroundOperation.waitUntilRunning()
         #expect(fixture.state.isSyncing)
-        fixture.operation.finish(.success(SyncReport(downloaded: true, uploaded: false, opsUploaded: 0)))
+        fixture.backgroundOperation.finish(.success(SyncReport(downloaded: true, uploaded: false, opsUploaded: 0)))
         #expect(await running.value, "a completed exchange reports a commit")
         #expect(!fixture.state.isSyncing)
         #expect(fixture.state.failure == nil)
-        #expect(await fixture.factory.count == 1)
+        #expect(await fixture.backgroundFactory.count == 1, "a wake uses the background operation with its shorter budget")
 
         fixture.state.setLowPowerMode(true)
         #expect(!fixture.state.backgroundSyncPossible)
@@ -164,7 +164,7 @@ import Testing
         fixture.state.setLowPowerMode(false)
         await fixture.state.select(.off)
         #expect(await !fixture.state.syncInBackground())
-        #expect(await fixture.factory.count == 1, "Low Power Mode and Off never start an exchange")
+        #expect(await fixture.backgroundFactory.count == 1, "Low Power Mode and Off never start an exchange")
     }
 
     @Test func backgroundExchangeWithoutAutomaticSyncIsNotPossible() async {
@@ -174,7 +174,7 @@ import Testing
         await fixture.state.select(.nextcloud)
         #expect(!fixture.state.backgroundSyncPossible, "the saved connection's automatic switch gates the wake")
         #expect(await !fixture.state.syncInBackground())
-        #expect(await fixture.factory.count == 0)
+        #expect(await fixture.backgroundFactory.count == 0)
     }
 
     @Test func expiringWakeCancelsTheBackgroundExchangeWithoutRecordingAFailure() async {
@@ -183,10 +183,10 @@ import Testing
         await fixture.state.load()
         await fixture.state.select(.nextcloud)
         let running = Task { await fixture.state.syncInBackground() }
-        await fixture.operation.waitUntilRunning()
+        await fixture.backgroundOperation.waitUntilRunning()
         running.cancel()
-        await fixture.operation.waitUntilCancelled()
-        fixture.operation.finish(.failure(CancellationError()))
+        await fixture.backgroundOperation.waitUntilCancelled()
+        fixture.backgroundOperation.finish(.failure(CancellationError()))
         #expect(await !running.value)
         await fixture.state.drain()
         #expect(!fixture.state.isSyncing)
@@ -374,11 +374,57 @@ import Testing
         fixture.state.didCommit = { commits += 1 }
         let syncing = Task { await fixture.state.syncNow() }
         await fixture.operation.waitUntilRunning()
-        fixture.operation.finish(.failure(CoreError.Transient(message: "offline fixture")))
+        fixture.operation.finish(.failure(CoreError.Transient(kind: .other, message: "offline fixture")))
         await syncing.value
         #expect(fixture.state.failure == .network)
+        #expect(fixture.state.failureKind == .other)
+        #expect(fixture.state.failureMessage == "offline fixture")
+        #expect(fixture.state.lastAttemptAt != nil, "a retry is acknowledged even when it fails again")
         #expect(commits == 0)
-        #expect(fixture.makeState().failure == .network)
+        let reopened = fixture.makeState()
+        #expect(reopened.failure == .network)
+        #expect(reopened.failureKind == .other)
+        #expect(reopened.failureMessage == "offline fixture")
+    }
+
+    @Test func aDamagedServerCopyIsNamedAndCanBeReplacedFromThisDevice() async {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        await fixture.ready()
+        var commits = 0
+        fixture.state.didCommit = { commits += 1 }
+        #expect(!fixture.state.canReplaceServerCopy, "offered only for a damaged server copy")
+        let syncing = Task { await fixture.state.syncNow() }
+        await fixture.operation.waitUntilRunning()
+        fixture.operation.finish(.failure(CoreError.Actionable(
+            kind: .remoteFileDamaged, message: "the sync file on the server could not be read: Invalid input length: 7")))
+        await syncing.value
+        #expect(fixture.state.failure == .connection)
+        #expect(fixture.state.failureKind == .remoteFileDamaged)
+        #expect(fixture.state.canReplaceServerCopy)
+        #expect(commits == 0)
+
+        let replacing = Task { await fixture.state.replaceServerCopy() }
+        await fixture.replaceOperation.waitUntilRunning()
+        #expect(fixture.state.isSyncing)
+        fixture.replaceOperation.finish(.success(SyncReport(downloaded: false, uploaded: true, opsUploaded: 0)))
+        await replacing.value
+        #expect(fixture.state.failure == nil)
+        #expect(fixture.state.failureKind == nil)
+        #expect(!fixture.state.canReplaceServerCopy)
+        #expect(commits == 1, "a replacement commits like an exchange")
+        #expect(await fixture.factory.count == 1, "the ordinary exchange factory was not used for the replacement")
+    }
+
+    @Test func aBackgroundWakeUsesTheBackgroundOperation() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        await fixture.ready()
+        let wake = Task { await fixture.state.syncInBackground() }
+        await fixture.backgroundOperation.waitUntilRunning()
+        fixture.backgroundOperation.finish(.success(SyncReport(downloaded: true, uploaded: false, opsUploaded: 0)))
+        #expect(await wake.value)
+        #expect(await fixture.factory.count == 0, "the foreground factory stays idle during a wake")
     }
 
     @Test func providerSelectionSerializesNextcloudAndLibreSyncOwnership() async {
@@ -429,9 +475,13 @@ import Testing
     let defaults: UserDefaults
     let store: ConnectionMemory
     let operation = ControlledSyncOperation()
+    let backgroundOperation = ControlledSyncOperation()
+    let replaceOperation = ControlledSyncOperation()
     let connectionTest = ControlledConnectionTestOperation()
     let clock = ControlledDelay()
     let factory: SyncFactory
+    let backgroundFactory: SyncFactory
+    let replaceFactory: SyncFactory
     let connectionTestFactory: ConnectionTestFactory
     let connection: NextcloudConnection
     lazy var state = makeState()
@@ -445,11 +495,15 @@ import Testing
         self.connection = connection
         store = ConnectionMemory(connection)
         factory = SyncFactory(operation: operation)
+        backgroundFactory = SyncFactory(operation: backgroundOperation)
+        replaceFactory = SyncFactory(operation: replaceOperation)
         connectionTestFactory = ConnectionTestFactory(operation: connectionTest)
     }
     func makeState(allowed: Bool = true) -> NextcloudSyncState {
         let state = NextcloudSyncState(defaults: defaults, persistence: store, allowed: allowed, sleep: { [clock] in try await clock.sleep($0) })
         state.connect(makeOperation: { [factory] _ in await factory.make() },
+                      makeBackgroundOperation: { [backgroundFactory] _ in await backgroundFactory.make() },
+                      makeReplaceOperation: { [replaceFactory] _ in await replaceFactory.make() },
                       makeConnectionTest: { [connectionTestFactory] _ in await connectionTestFactory.make() },
                       status: {
             SyncStatus(syncing: false, pendingOps: 1, lastNextcloudMs: 0,

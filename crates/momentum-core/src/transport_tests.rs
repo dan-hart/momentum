@@ -52,6 +52,8 @@ impl PausedDav {
             };
             let response = sp_sync::encode(&file, false, None).unwrap();
             let mut first = true;
+            // The size a HEAD reports: the last upload's, or the served file's before one.
+            let mut stored_len = response.len();
             while !stopped.load(Ordering::SeqCst) {
                 let (mut stream, _) = match listener.accept() {
                     Ok(pair) => pair,
@@ -72,9 +74,6 @@ impl PausedDav {
                     request.push(byte[0]);
                 }
                 let head = String::from_utf8(request).unwrap();
-                if head.starts_with("PUT ") {
-                    uploads.fetch_add(1, Ordering::SeqCst);
-                }
                 let length = head
                     .lines()
                     .find_map(|line| {
@@ -85,6 +84,10 @@ impl PausedDav {
                     .unwrap_or(0);
                 let mut body = vec![0; length];
                 stream.read_exact(&mut body).unwrap();
+                if head.starts_with("PUT ") {
+                    uploads.fetch_add(1, Ordering::SeqCst);
+                    stored_len = length;
+                }
                 if first {
                     // The held first request is an exchange's download or a connection
                     // probe's PROPFIND; either way the fixture waits to be released.
@@ -98,8 +101,17 @@ impl PausedDav {
                         return;
                     }
                 }
+                // The upload guard reads the stored size back with HEAD, so it must
+                // report the last upload's length without a body of its own.
+                // The upload guard reads the stored size back with a PROPFIND on the
+                // file, so that answer carries the last upload's length.
+                let propfind = format!(
+                    "<d:multistatus xmlns:d=\"DAV:\"><d:response><d:prop><d:getcontentlength>{stored_len}</d:getcontentlength><d:getetag>&quot;fixture&quot;</d:getetag></d:prop></d:response></d:multistatus>"
+                );
                 let (status, body) = if head.starts_with("GET ") {
                     ("200 OK", response.as_str())
+                } else if head.starts_with("PROPFIND ") && head.contains("sync-data.json") {
+                    ("207 Multi-Status", propfind.as_str())
                 } else {
                     ("204 No Content", "")
                 };

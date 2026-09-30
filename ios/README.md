@@ -61,7 +61,13 @@ transport or use personal sync credentials.
    uploading or downloading tasks. A missing Momentum folder is accepted when the
    authenticated account root is reachable because the first sync can create it.
 5. Choose **Sync Now**. Check **Last Successful Sync** and **Pending Changes**.
-   If an exchange fails, correct the connection, save it and choose **Try Again**.
+   If an exchange fails, the Sync screen names the problem in one sentence (for
+   example "The copy on the server is damaged" or "Sync took too long to finish"),
+   says what to do, shows when it last tried, and keeps the technical message
+   behind **Details**. Choose **Try Again** after correcting the connection. When
+   the copy on the server is damaged, **Replace Server Copy…** publishes this
+   device's tasks after confirmation and keeps the damaged file on the server as
+   `sync-data.json.damaged`.
 
 When sync is enabled, task lists end with one compact status link such as **Last
 synced just now**, **Syncing…**, or **Sync needs attention**. Tap it to open Sync

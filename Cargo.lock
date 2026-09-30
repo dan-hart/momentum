@@ -3001,6 +3001,7 @@ dependencies = [
  "pbkdf2 0.13.0",
  "serde",
  "serde_json",
+ "sha1",
  "sha2 0.11.0",
  "sp-model",
  "sp-oplog",

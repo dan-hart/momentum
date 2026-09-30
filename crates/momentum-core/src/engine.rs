@@ -1970,6 +1970,33 @@ impl Engine {
         self.sync_nextcloud_cancellable(settings, SyncCancellation::new())
     }
 
+    /// One exchange within an explicit budget in milliseconds. A foreground sync passes
+    /// a generous budget so a large file over a slow link completes; a system background
+    /// wake passes what the OS allows. Stalls are bounded per phase inside the core.
+    pub fn sync_nextcloud_with_budget(
+        &self,
+        settings: NextcloudSettings,
+        cancellation: Arc<SyncCancellation>,
+        timeout_ms: u64,
+    ) -> Result<SyncReport, CoreError> {
+        self.nextcloud_exchange(settings, cancellation, "Sync", |cfg, snapshot, is_current| {
+            sp_sync::exchange_guarded(cfg, snapshot, std::time::Duration::from_millis(timeout_ms), is_current)
+        })
+    }
+
+    /// Publish this device's full data set as the server copy, parking the unreadable
+    /// copy as `sync-data.json.damaged` first. The recovery for a damaged server file;
+    /// the caller has confirmed that this device's tasks should win.
+    pub fn replace_remote_sync_file(
+        &self,
+        settings: NextcloudSettings,
+        cancellation: Arc<SyncCancellation>,
+    ) -> Result<SyncReport, CoreError> {
+        self.nextcloud_exchange(settings, cancellation, "Replacement", |cfg, snapshot, is_current| {
+            sp_sync::replace_remote(cfg, snapshot, sp_sync::DEFAULT_EXCHANGE_TIMEOUT, is_current)
+        })
+    }
+
     /// Read-only authenticated WebDAV probe. `timeout_ms` is explicit so native tests
     /// exercise the same Swift → UniFFI → Rust → HTTP path without a production wait.
     pub fn test_nextcloud_connection_cancellable(
@@ -1980,6 +2007,7 @@ impl Engine {
     ) -> Result<(), CoreError> {
         if !cancellation.begin() {
             return Err(CoreError::Transient {
+                kind: SyncFailureKind::Cancelled,
                 message: "Connection test was cancelled or already used".into(),
             });
         }
@@ -1999,6 +2027,7 @@ impl Engine {
             !cancellation.is_cancelled()
         })
         .map_err(|error| CoreError::Transient {
+            kind: SyncFailureKind::from(error.kind()),
             message: error.to_string(),
         })
     }
@@ -2010,96 +2039,13 @@ impl Engine {
         settings: NextcloudSettings,
         cancellation: Arc<SyncCancellation>,
     ) -> Result<SyncReport, CoreError> {
-        if !cancellation.begin() {
-            return Err(CoreError::Transient {
-                message: "Sync operation was cancelled or already used".into(),
-            });
-        }
-        let _operation = SyncOperation(&cancellation);
-        let cfg = sp_sync::NextcloudCfg {
-            server_url: settings.server_url,
-            user_name: settings.user_name,
-            password: settings.password,
-            folder: settings.folder,
-            compress: settings.compress,
-            encrypt_key: settings.encryption_password.filter(|k| !k.is_empty()),
-        };
-        if !cfg.is_complete() {
-            return Err(CoreError::NotConfigured);
-        }
-        // Serialize provider admission with nearby start/stop and restore.
-        #[cfg(feature = "p2p")]
-        let nearby = self.p2p.lock().unwrap_or_else(|e| e.into_inner());
-        #[cfg(feature = "p2p")]
-        if nearby.is_some() {
-            return Err(CoreError::Busy);
-        }
-        let (mut snapshot, generation, original_ops) = {
-            let g = self.lock();
-            // Reserve and capture the generation under one lock: cancellation
-            // must not slip between admission and taking the exchange snapshot.
-            if self.syncing.swap(true, Ordering::SeqCst) {
-                return Err(CoreError::Busy);
-            }
-            let ids: HashSet<String> = g.store.pending.iter().map(|p| p.op.id.clone()).collect();
-            (g.store.clone(), g.sync_generation, ids)
-        };
-        let _lease = SyncLease(&self.syncing);
-        #[cfg(feature = "p2p")]
-        drop(nearby);
-        let result = sp_sync::exchange_guarded(&cfg, &mut snapshot, sp_sync::DEFAULT_EXCHANGE_TIMEOUT, || {
-            !cancellation.is_cancelled() && self.lock().sync_generation == generation
-        });
-        match result {
-            Ok(r) => {
-                let mut g = self.lock();
-                if g.sync_generation != generation || !cancellation.begin_commit() {
-                    return Err(CoreError::Transient {
-                        message: "Sync was cancelled or superseded by a data replacement".into(),
-                    });
-                }
-                // Identify concurrent edits by stable operation IDs, never an array offset.
-                let live: Vec<_> = g
-                    .store
-                    .pending
-                    .iter()
-                    .filter(|p| !original_ops.contains(&p.op.id))
-                    .cloned()
-                    .collect();
-                for p in &live {
-                    sp_oplog::apply(&mut snapshot.state, &p.action);
-                }
-                snapshot.pending.extend(live);
-                snapshot.meta.vector_clock =
-                    sp_oplog::merge_clocks(&snapshot.meta.vector_clock, &g.store.meta.vector_clock);
-                // These local claims can change while the HTTP exchange is in flight.
-                snapshot.meta.last_summary_day = g.store.meta.last_summary_day.clone();
-                snapshot.meta.last_nearby_ms = g.store.meta.last_nearby_ms;
-                snapshot.meta.p2p_bootstrapped = g.store.meta.p2p_bootstrapped;
-                snapshot.meta.last_nextcloud_ms = now_ms();
-                snapshot.save()?;
-                g.store = snapshot;
-                g.invalidate();
-                g.spawn_repeats();
-                Ok(SyncReport {
-                    downloaded: r.downloaded,
-                    uploaded: r.uploaded,
-                    ops_uploaded: r.ops_uploaded as u32,
-                })
-            }
-            Err(e) => {
-                use sp_sync::SyncError::*;
-                let message = e.to_string();
-                Err(
-                    if matches!(e, Encrypted | Decrypt(_) | Schema(_) | Version(_) | FreshState) {
-                        CoreError::Actionable { message }
-                    } else {
-                        CoreError::Transient { message }
-                    },
-                )
-            }
-        }
+        self.sync_nextcloud_with_budget(
+            settings,
+            cancellation,
+            sp_sync::DEFAULT_EXCHANGE_TIMEOUT.as_millis() as u64,
+        )
     }
+
     /// Invalidate the current Nextcloud exchange before its next request or commit.
     /// Returns whether an active exchange was signalled, not whether its I/O stopped.
     /// An in-flight HTTP request retains the shared whole-exchange deadline; await
@@ -2276,6 +2222,109 @@ impl Engine {
     }
     pub fn is_syncing(&self) -> bool {
         self.syncing.load(Ordering::SeqCst)
+    }
+
+    /// Admission, snapshot, guarded network work and commit shared by a sync exchange
+    /// and a server-copy replacement. `run` receives the snapshot and a currency check.
+    fn nextcloud_exchange(
+        &self,
+        settings: NextcloudSettings,
+        cancellation: Arc<SyncCancellation>,
+        what: &str,
+        run: impl FnOnce(
+            &sp_sync::NextcloudCfg,
+            &mut Store,
+            &dyn Fn() -> bool,
+        ) -> Result<sp_sync::Report, sp_sync::SyncError>,
+    ) -> Result<SyncReport, CoreError> {
+        if !cancellation.begin() {
+            return Err(CoreError::Transient {
+                kind: SyncFailureKind::Cancelled,
+                message: format!("{what} operation was cancelled or already used"),
+            });
+        }
+        let _operation = SyncOperation(&cancellation);
+        let cfg = sp_sync::NextcloudCfg {
+            server_url: settings.server_url,
+            user_name: settings.user_name,
+            password: settings.password,
+            folder: settings.folder,
+            compress: settings.compress,
+            encrypt_key: settings.encryption_password.filter(|k| !k.is_empty()),
+        };
+        if !cfg.is_complete() {
+            return Err(CoreError::NotConfigured);
+        }
+        // Serialize provider admission with nearby start/stop and restore.
+        #[cfg(feature = "p2p")]
+        let nearby = self.p2p.lock().unwrap_or_else(|e| e.into_inner());
+        #[cfg(feature = "p2p")]
+        if nearby.is_some() {
+            return Err(CoreError::Busy);
+        }
+        let (mut snapshot, generation, original_ops) = {
+            let g = self.lock();
+            // Reserve and capture the generation under one lock: cancellation
+            // must not slip between admission and taking the exchange snapshot.
+            if self.syncing.swap(true, Ordering::SeqCst) {
+                return Err(CoreError::Busy);
+            }
+            let ids: HashSet<String> = g.store.pending.iter().map(|p| p.op.id.clone()).collect();
+            (g.store.clone(), g.sync_generation, ids)
+        };
+        let _lease = SyncLease(&self.syncing);
+        #[cfg(feature = "p2p")]
+        drop(nearby);
+        let is_current = || !cancellation.is_cancelled() && self.lock().sync_generation == generation;
+        let result = run(&cfg, &mut snapshot, &is_current);
+        match result {
+            Ok(r) => {
+                let mut g = self.lock();
+                if g.sync_generation != generation || !cancellation.begin_commit() {
+                    return Err(CoreError::Transient {
+                        kind: SyncFailureKind::Cancelled,
+                        message: format!("{what} was cancelled or superseded by a data replacement"),
+                    });
+                }
+                // Identify concurrent edits by stable operation IDs, never an array offset.
+                let live: Vec<_> = g
+                    .store
+                    .pending
+                    .iter()
+                    .filter(|p| !original_ops.contains(&p.op.id))
+                    .cloned()
+                    .collect();
+                for p in &live {
+                    sp_oplog::apply(&mut snapshot.state, &p.action);
+                }
+                snapshot.pending.extend(live);
+                snapshot.meta.vector_clock =
+                    sp_oplog::merge_clocks(&snapshot.meta.vector_clock, &g.store.meta.vector_clock);
+                // These local claims can change while the HTTP exchange is in flight.
+                snapshot.meta.last_summary_day = g.store.meta.last_summary_day.clone();
+                snapshot.meta.last_nearby_ms = g.store.meta.last_nearby_ms;
+                snapshot.meta.p2p_bootstrapped = g.store.meta.p2p_bootstrapped;
+                snapshot.meta.last_nextcloud_ms = now_ms();
+                snapshot.save()?;
+                g.store = snapshot;
+                g.invalidate();
+                g.spawn_repeats();
+                Ok(SyncReport {
+                    downloaded: r.downloaded,
+                    uploaded: r.uploaded,
+                    ops_uploaded: r.ops_uploaded as u32,
+                })
+            }
+            Err(e) => {
+                let kind = SyncFailureKind::from(e.kind());
+                let message = e.to_string();
+                Err(if kind.is_actionable() {
+                    CoreError::Actionable { kind, message }
+                } else {
+                    CoreError::Transient { kind, message }
+                })
+            }
+        }
     }
 }
 

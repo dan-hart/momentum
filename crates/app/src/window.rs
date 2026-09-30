@@ -96,6 +96,7 @@ mod imp {
         pub syncing: Cell<bool>,
         pub nearby_syncing: Cell<bool>,
         pub sync_error: RefCell<Option<String>>,
+        pub sync_failure_kind: Cell<Option<momentum_core::SyncFailureKind>>,
         #[template_child]
         pub sync_retry: TemplateChild<gtk::Button>,
         pub archive_shown: Cell<u32>,
@@ -163,6 +164,7 @@ mod imp {
                 syncing: Cell::new(false),
                 nearby_syncing: Cell::new(false),
                 sync_error: Default::default(),
+                sync_failure_kind: Cell::new(None),
                 sync_retry: Default::default(),
                 archive_shown: Cell::new(100),
                 selecting: Cell::new(false),
@@ -1189,24 +1191,54 @@ impl MomentumWindow {
     }
 
     pub fn set_sync_error(&self, error: Option<String>) {
-        *self.imp().sync_error.borrow_mut() = error;
+        self.set_sync_failure(error, None);
+    }
+
+    /// Remember the last failure: the core's own words for Details, and its kind for
+    /// the plain-language heading, remedy and the Replace Server Copy offer.
+    pub fn set_sync_failure(&self, error: Option<String>, kind: Option<momentum_core::SyncFailureKind>) {
+        let imp = self.imp();
+        *imp.sync_error.borrow_mut() = error;
+        imp.sync_failure_kind.set(kind);
         self.update_sync_button();
     }
 
-    fn show_sync_error(&self) {
-        let Some(error) = self.imp().sync_error.borrow().clone() else {
-            return;
+    /// The failure kind carried by a core error, if it is a sync failure.
+    fn sync_failure_kind_of(error: &momentum_core::CoreError) -> Option<momentum_core::SyncFailureKind> {
+        use momentum_core::CoreError;
+        match error {
+            CoreError::Actionable { kind, .. } | CoreError::Transient { kind, .. } => Some(*kind),
+            _ => None,
+        }
+    }
+
+    /// Build the "sync needs attention" dialog: the heading names the problem, the
+    /// body says what to do, and the core's own words follow as details.
+    pub fn sync_error_dialog(&self) -> Option<adw::AlertDialog> {
+        let error = self.imp().sync_error.borrow().clone()?;
+        let kind = self.imp().sync_failure_kind.get();
+        let heading = kind
+            .map(crate::messages::sync_failure_headline)
+            .unwrap_or_else(|| gettext("Sync needs attention"));
+        let body = match kind {
+            Some(kind) => format!(
+                "{}\n\n{}: {error}",
+                crate::messages::sync_failure_remedy(kind),
+                gettext("Details")
+            ),
+            None => error,
         };
-        let dialog = adw::AlertDialog::builder()
-            .heading(gettext("Sync needs attention"))
-            .body(error)
-            .build();
+        let dialog = adw::AlertDialog::builder().heading(heading).body(body).build();
         crate::typography::register_interface_root(&dialog);
         dialog.add_responses(&[
             ("close", &gettext("Close")),
             ("preferences", &gettext("Preferences")),
             ("retry", &gettext("Retry")),
         ]);
+        if kind == Some(momentum_core::SyncFailureKind::RemoteFileDamaged) {
+            dialog.add_responses(&[("replace", &gettext("Replace Server Copy…"))]);
+            dialog.set_response_appearance("replace", adw::ResponseAppearance::Destructive);
+        }
         dialog.set_close_response("close");
         dialog.connect_response(
             None,
@@ -1217,12 +1249,90 @@ impl MomentumWindow {
                     match response {
                         "retry" => w.sync(),
                         "preferences" => crate::prefs::MomentumPrefs::default().present(Some(&w)),
+                        "replace" => w.confirm_replace_server_copy(),
                         _ => {}
                     }
                 }
             ),
         );
+        Some(dialog)
+    }
+
+    fn show_sync_error(&self) {
+        if let Some(dialog) = self.sync_error_dialog() {
+            dialog.present(Some(self));
+        }
+    }
+
+    /// Ask before publishing this computer's tasks over the damaged server copy.
+    fn confirm_replace_server_copy(&self) {
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Replace the copy on the server with this computer’s tasks?"))
+            .body(gettext(
+                "Other devices will download this computer’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged.",
+            ))
+            .build();
+        crate::typography::register_interface_root(&dialog);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancel")),
+            ("replace", &gettext("Replace Server Copy")),
+        ]);
+        dialog.set_response_appearance("replace", adw::ResponseAppearance::Destructive);
+        dialog.set_close_response("cancel");
+        dialog.set_default_response(Some("cancel"));
+        dialog.connect_response(
+            Some("replace"),
+            glib::clone!(
+                #[weak(rename_to = w)]
+                self,
+                move |_, _| w.replace_server_copy()
+            ),
+        );
         dialog.present(Some(self));
+    }
+
+    /// Publish this computer's tasks as the server copy; the core parks the damaged
+    /// copy first. Same thread, secrets and result handling as a sync cycle.
+    pub fn replace_server_copy(&self) {
+        let imp = self.imp();
+        if std::env::var_os("MOMENTUM_DEMO").is_some() || crate::prefs::sync_method(&imp.settings) != "nextcloud" {
+            return;
+        }
+        if imp.syncing.replace(true) {
+            return;
+        }
+        self.update_sync_button();
+        let mut settings = self.nextcloud_settings();
+        let engine = self.engine();
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            async move {
+                let result = gio::spawn_blocking(move || {
+                    settings.password = crate::keyring::get("nextcloud").unwrap_or_default();
+                    settings.encryption_password = crate::keyring::get("encryption");
+                    engine.replace_remote_sync_file(settings, momentum_core::SyncCancellation::new())
+                })
+                .await
+                .unwrap();
+                let imp = w.imp();
+                imp.syncing.set(false);
+                match result {
+                    Ok(_) => {
+                        w.set_sync_error(None);
+                        w.refresh();
+                        w.update_sync_button();
+                        w.toast(&gettext("Server copy replaced"));
+                    }
+                    Err(e) => {
+                        tracing::warn!("replace server copy failed: {e}");
+                        let kind = Self::sync_failure_kind_of(&e);
+                        w.set_sync_failure(Some(e.to_string()), kind);
+                    }
+                }
+                w.update_background_status();
+            }
+        ));
     }
 
     fn import_cli_config(&self) {
@@ -3518,7 +3628,8 @@ impl MomentumWindow {
                     Err(CoreError::Busy) => w.update_sync_button(),
                     Err(e) => {
                         tracing::warn!("sync failed: {e}");
-                        w.set_sync_error(Some(e.to_string()));
+                        let kind = Self::sync_failure_kind_of(&e);
+                        w.set_sync_failure(Some(e.to_string()), kind);
                     }
                 }
                 w.update_background_status();

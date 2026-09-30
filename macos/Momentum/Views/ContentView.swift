@@ -296,6 +296,7 @@ extension FocusedValues {
 struct SyncStatusBar: SwiftUI.View {
     @Environment(AppState.self) private var state
     @State private var showDetails = false
+    @State private var confirmReplace = false
 
     var body: some SwiftUI.View {
         HStack(spacing: 10) {
@@ -316,13 +317,13 @@ struct SyncStatusBar: SwiftUI.View {
             Spacer(minLength: 8)
             if state.syncError != nil {
                 Button(String(localized: "Details")) { showDetails.toggle() }
-                    .popover(isPresented: $showDetails) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(String(localized: "Sync needs attention")).font(.headline)
-                            Text(state.syncError ?? "").textSelection(.enabled)
-                            Text(String(localized: "Your tasks are saved on this Mac."))
-                                .foregroundStyle(.secondary)
-                        }.padding(20).frame(width: 340, alignment: .leading)
+                    .popover(isPresented: $showDetails) { SyncFailurePopover(confirmReplace: $confirmReplace) }
+                    .confirmationDialog(String(localized: "Replace the copy on the server with this Mac’s tasks?"),
+                                        isPresented: $confirmReplace, titleVisibility: .visible) {
+                        Button(String(localized: "Replace Server Copy")) { state.replaceServerCopy() }
+                        Button(String(localized: "Cancel"), role: .cancel) {}
+                    } message: {
+                        Text(String(localized: "Other devices will download this Mac’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged."))
                     }
             }
             if state.syncAvailable {
@@ -332,5 +333,43 @@ struct SyncStatusBar: SwiftUI.View {
         }
         .controlSize(.small)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// What went wrong in plain words, what to do, and the core's own message behind
+/// a disclosure for anyone who wants it.
+struct SyncFailurePopover: SwiftUI.View {
+    @Environment(AppState.self) private var state
+    @Binding var confirmReplace: Bool
+    @State private var showRaw = false
+
+    var body: some SwiftUI.View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let kind = state.syncFailureKind {
+                Text(Strings.syncFailureHeadline(kind)).font(.headline)
+                    .accessibilityIdentifier("sync-failure-headline")
+                Text(Strings.syncFailureRemedy(kind))
+                    .fixedSize(horizontal: false, vertical: true)
+                if kind == .remoteFileDamaged {
+                    Button(String(localized: "Replace Server Copy…")) { confirmReplace = true }
+                        .accessibilityIdentifier("sync-replace-server-copy")
+                }
+                DisclosureGroup(String(localized: "Details"), isExpanded: $showRaw) {
+                    Text(state.syncError ?? "").textSelection(.enabled)
+                        .font(.callout).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                Text(String(localized: "Sync needs attention")).font(.headline)
+                Text(state.syncError ?? "").textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(String(localized: "Your tasks are saved on this Mac."))
+                .foregroundStyle(.secondary)
+            Button(String(localized: "Try Again")) { state.sync() }
+                .disabled(state.syncInProgress)
+        }
+        .padding(20)
+        .frame(width: 360, alignment: .leading)
     }
 }

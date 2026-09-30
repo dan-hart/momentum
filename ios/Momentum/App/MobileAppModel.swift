@@ -233,6 +233,8 @@ struct FeedbackToast: Identifiable, Equatable {
             startupFailure = nil
             notifications.connect(worker: opened)
             sync.connect(makeOperation: { await opened.nextcloudOperation(settings: $0) },
+                         makeBackgroundOperation: { await opened.nextcloudBackgroundOperation(settings: $0) },
+                         makeReplaceOperation: { await opened.nextcloudReplaceOperation(settings: $0) },
                          makeConnectionTest: { await opened.nextcloudConnectionTestOperation(settings: $0) },
                          status: { await opened.syncStatus() })
             let nearbyRuntime = await opened.nearbyRuntime(

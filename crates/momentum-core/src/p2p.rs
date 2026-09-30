@@ -286,7 +286,10 @@ impl Runtime {
                 cycle_id: None,
                 error: Some(message.clone()),
             });
-            return Err(CoreError::Actionable { message });
+            return Err(CoreError::Actionable {
+                kind: crate::SyncFailureKind::Other,
+                message,
+            });
         }
         match self.p2p.sync_all() {
             Ok(ticket) => {
@@ -301,7 +304,10 @@ impl Runtime {
                     cycle_id: None,
                     error: Some(message.clone()),
                 });
-                Err(CoreError::Transient { message })
+                Err(CoreError::Transient {
+                    kind: crate::SyncFailureKind::Other,
+                    message,
+                })
             }
         }
     }
@@ -540,6 +546,7 @@ fn apply_received(
         // cannot commit after stop returns or after a restore starts replacing data.
         if stopped.load(Ordering::SeqCst) {
             return Err(CoreError::Transient {
+                kind: crate::SyncFailureKind::Other,
                 message: "Nearby sync was stopped".into(),
             });
         }

@@ -2178,3 +2178,127 @@ msgstr ""
 #: data/resources/ui/window.blp:150
 msgid "Compact"
 msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Momentum can’t reach your server"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The server didn’t accept your login"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The server ran into a problem"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Sync took too long to finish"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The sync file is encrypted"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The encryption password doesn’t match"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The copy on the server is damaged"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The copy on the server needs a newer Momentum"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Nothing to sync yet"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Another device is syncing at the same time"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Sync was interrupted"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The upload didn’t arrive whole"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Sync couldn’t finish"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Check that this computer is online and that the server address is right, then retry. Your tasks are safe on this computer."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Check the user name and app password in Preferences. An app password comes from your Nextcloud security settings."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The server answered with an error. Retry in a few minutes; if it keeps happening, check the server itself."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The connection is slow or unstable. Retry on a faster connection, or turn on “Compress the sync file” in Preferences to make the transfer smaller."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Enter the encryption password you use on your other devices in Preferences."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Enter the same encryption password you use on your other devices. A different password on one device makes the file unreadable there."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "No device can read the copy on the server. On the device with your most recent tasks, choose Replace Server Copy; the damaged copy is kept on the server as sync-data.json.damaged."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Update Momentum on this computer. If another app wrote the file, turn off its newer sync format."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "This computer has no tasks yet and the server has no copy. Sync from a device that has your tasks first, or import a backup here."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Two devices uploaded at the same moment. Wait a moment and retry."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Retry."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Retry on a steadier connection."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Retry. If it keeps failing, the details below say what the server or this computer reported."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Replace Server Copy…"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Replace the copy on the server with this computer’s tasks?"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Other devices will download this computer’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged."
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Replace Server Copy"
+msgstr ""
+
+#: crates/app/src/messages.rs
+msgid "Server copy replaced"
+msgstr ""

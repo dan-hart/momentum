@@ -152,6 +152,49 @@ performed for this handoff.
 
 ## Dated handoffs
 
+### 2026-09-29 evening — B-092: a cut-off upload locked every device out; repair, guards, plain-language failures (F-028/F-054)
+
+- **Incident:** the user's phone (cellular, Tailscale relay) hit the 30 s exchange
+  deadline mid-upload; Nextcloud behind a streaming nginx stored the 4.85 MB partial
+  body; the Mac then failed with "Invalid input length: 4849657". Full account in
+  BUGS B-092. The phone's nine edits stayed pending, so nothing was lost.
+- **Repair:** corrupt file and both stores backed up under the Mac's Momentum
+  `backups/before-replace-2026-09-29/`; the Mac app was quit, `mo sync --replace-remote`
+  (new) published the Mac's copy as version 84 with the damaged copy parked as
+  `sync-data.json.damaged`; the phone (Debug build with the fixed core) downloaded it,
+  re-applied its edits and published version 85 at 19:38 CDT; the Mac downloaded 85.
+  Server, Mac and phone metadata agree (same ETag).
+- **Core:** upload guards (`OC-Checksum`, `X-Expected-Entity-Length`, PROPFIND size
+  read-back → `UploadIncomplete`), 300 s foreground / 25 s background budgets with
+  20 s connect and 45 s first-byte limits, `Decrypt` vs `WrongEncryptionPassword`,
+  `SyncFailureKind` on `CoreError::Actionable`/`Transient`, `replace_remote`,
+  `Engine::sync_nextcloud_with_budget` and `replace_remote_sync_file`. The first
+  read-back used HEAD and reported "kept 0 bytes" against the real server (nginx answers
+  HEAD without Content-Length); PROPFIND replaced it. `sha1` is now a direct dependency
+  of sp-sync (already in the graph through other crates).
+- **Apps:** MomentumKit `Strings.syncFailureHeadline/Remedy` shared by macOS and iOS;
+  macOS popover with headline, remedy, Details disclosure, Try Again and Replace Server
+  Copy… (confirmation); Linux dialog with the same and a `replace` response plus a confirm
+  dialog, 31 German strings; iOS failure section with headline, remedy, Trying again…/Last
+  tried, Try Again, Replace Server Copy… (confirmation) and Details; background wakes use
+  the 25 s budget through `nextcloudBackgroundOperation`.
+- **Checks:** sp-sync 18 passed; core 141 passed (transport fixture answers PROPFIND);
+  workspace tests excluding the GTK app pass; GTK app and tests compile
+  (`cargo check -p momentum --tests`; the new dialog test runs in CI's Flatpak jobs);
+  Mac package 141 passed (strings coverage test added); iOS fast lane 157 passed; iOS
+  `SyncSettingsIntegrationTests` 12 passed on the iPhone 18 Pro iOS 27.2 simulator (the
+  failure section is mounted on its own as `SyncFailureSection`: the whole form only
+  materializes the rows that fit its viewport); Mac Debug build passed. Catalogs synced
+  from instrumented builds: MomentumKit 186/186, Mac app 320 keys, iOS 379/379 German.
+- **Installed:** signed Mac release 0.4.3 replaced `/Applications/Momentum.app` (previous
+  copy kept in the session scratchpad) and synced on relaunch; phone Debug build 0.4.3
+  (403) installed; its launch waits for the phone to be unlocked. Live: the phone synced
+  version 85 with the fixed core before the UX build.
+- **Remaining:** live check of the new failure section and the desktop popover/dialog
+  with a real failure (no failure exists now that sync works); recommend turning on
+  Compress Sync File on both devices (user's setting; not changed); Linux runtime
+  unverified here.
+
 ### 2026-09-29 — iOS sync badge in the toolbar, round Add button; Morning first in Morning & Night (F-019/F-020/F-028/F-037)
 
 - **Core:** Morning & Night groups now order Morning → Today → Evening (`group_order`);

@@ -2244,6 +2244,16 @@
         }
       }
     },
+    "Other devices will download this Mac’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere Geräte laden beim nächsten Sync die Aufgaben dieses Mac und fügen ihre noch wartenden Änderungen hinzu. Die beschädigte Kopie bleibt als sync-data.json.damaged auf dem Server."
+          }
+        }
+      }
+    },
     "Pairing code": {
       "localizations": {
         "de": {
@@ -2530,6 +2540,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wiederholen…"
+          }
+        }
+      }
+    },
+    "Replace Server Copy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serverkopie ersetzen"
+          }
+        }
+      }
+    },
+    "Replace Server Copy…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serverkopie ersetzen …"
+          }
+        }
+      }
+    },
+    "Replace the copy on the server with this Mac’s tasks?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Kopie auf dem Server durch die Aufgaben dieses Mac ersetzen?"
           }
         }
       }

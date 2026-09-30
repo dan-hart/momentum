@@ -56,25 +56,7 @@ struct SyncSettings: View {
                 connectionTest
             }
             if let failure = state.failure {
-                Section {
-                    Label("Sync Needs Attention", systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90")
-                        .font(.headline)
-                        .accessibilityFocused($failureFocused)
-                        .accessibilityIdentifier("sync-error")
-                    Text(failure.explanation).fixedSize(horizontal: false, vertical: true)
-                    Button {
-                        Task {
-                            switch failure {
-                            case .credentialsRead: await state.load()
-                            case .credentialsWrite: await state.save()
-                            default: await state.syncNow()
-                            }
-                        }
-                    } label: { SettingsLabel("Try Again", symbol: "arrow.clockwise") }
-                    .disabled(state.loading || state.saving || state.isSyncing ||
-                              (failure != .credentialsRead && failure != .credentialsWrite && !state.canSync))
-                    .accessibilityIdentifier("sync-retry")
-                }
+                SyncFailureSection(state: state, failure: failure, focus: $failureFocused)
             }
         }
         .navigationTitle("Sync")
@@ -282,6 +264,87 @@ extension NextcloudSyncState.Failure {
         case .connection: "Check your server address, app password, encryption password, and the sync file’s compatibility, then try again."
         case .network: "Sync couldn’t finish. Check your connection and server, then try again. Your local changes are safe."
         case .busy: "Another exchange is finishing. Wait a moment, then try again."
+        }
+    }
+}
+
+/// What went wrong in one sentence, what to do, a visible retry, and the core's own
+/// words behind Details. A damaged server copy also offers Replace Server Copy.
+struct SyncFailureSection: View {
+    @Bindable var state: NextcloudSyncState
+    let failure: NextcloudSyncState.Failure
+    var focus: AccessibilityFocusState<Bool>.Binding? = nil
+    @State private var confirmReplace = false
+    @State private var showFailureDetails = false
+
+    var body: some View {
+        Section {
+            headline
+            Group {
+                if let kind = state.failureKind {
+                    Text(Strings.syncFailureRemedy(kind))
+                } else {
+                    Text(failure.explanation)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            if state.isSyncing {
+                ProgressView("Trying again…").accessibilityIdentifier("sync-retry-progress")
+            } else if let at = state.lastAttemptAt {
+                Text("Last tried \(at, format: .relative(presentation: .named))")
+                    .font(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                    .accessibilityIdentifier("sync-last-attempt")
+            }
+            Button {
+                Task {
+                    switch failure {
+                    case .credentialsRead: await state.load()
+                    case .credentialsWrite: await state.save()
+                    default: await state.syncNow()
+                    }
+                }
+            } label: { SettingsLabel("Try Again", symbol: "arrow.clockwise") }
+            .disabled(state.loading || state.saving || state.isSyncing ||
+                      (failure != .credentialsRead && failure != .credentialsWrite && !state.canSync))
+            .accessibilityIdentifier("sync-retry")
+            if state.canReplaceServerCopy {
+                Button(role: .destructive) { confirmReplace = true } label: {
+                    SettingsLabel("Replace Server Copy…", symbol: "arrow.up.doc.on.clipboard")
+                }
+                .disabled(state.isSyncing || !state.canSync)
+                .accessibilityIdentifier("sync-replace-server-copy")
+                .confirmationDialog("Replace the copy on the server with this device’s tasks?",
+                                    isPresented: $confirmReplace, titleVisibility: .visible) {
+                    Button("Replace Server Copy", role: .destructive) { Task { await state.replaceServerCopy() } }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Your other devices will download this device’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged.")
+                }
+            }
+            if let message = state.failureMessage {
+                DisclosureGroup("Details", isExpanded: $showFailureDetails) {
+                    Text(message).font(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("sync-failure-details")
+                }
+                .accessibilityIdentifier("sync-failure-details-toggle")
+            }
+        } footer: {
+            Text("Your tasks are safe on this device until sync succeeds.")
+                .foregroundStyle(AccentTheme.secondaryText)
+        }
+    }
+
+    @ViewBuilder private var headline: some View {
+        let label = Label(state.failureKind.map(Strings.syncFailureHeadline) ?? String(localized: "Sync Needs Attention"),
+                          systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90")
+            .font(.headline)
+            .accessibilityIdentifier("sync-error")
+        if let focus {
+            label.accessibilityFocused(focus)
+        } else {
+            label
         }
     }
 }
