@@ -152,6 +152,52 @@ performed for this handoff.
 
 ## Dated handoffs
 
+### 2026-10-01 — Linux app running natively on macOS; B-094 finalize abort
+
+- **Native GTK on this Mac:** `gobject-introspection` and `adwaita-icon-theme` installed
+  with Homebrew (gtk4 4.24 and libadwaita 1.10 were present); Blueprint from a scratch
+  virtualenv; resources, schemas and `MESON_RESOURCES_FILE` wired as TESTING.md now
+  documents. The app runs in demo mode with the system accent and every icon; the only
+  app-bundled icons are `archive-symbolic` and `tag-symbolic`, the rest come from the
+  Adwaita theme GNOME and the Flatpak runtime always carry.
+- **B-094:** closing that window aborted the process: `MomentumWindow::drop` touched
+  the tag popover after finalization. Unparenting moved to `ObjectImpl::dispose`; GTK
+  test `closing_a_window_finalizes_it_without_a_panic` added. GTK tests cannot run
+  natively (GTK must own the main thread on macOS), so the test runs in CI.
+- **Checks:** `cargo check -p momentum --tests` passes; iOS `ViewRenderingTests` 40
+  passed; Mac package 142 passed earlier today. Native GTK app relaunched with the fix.
+
+### 2026-09-30 — B-093: macOS crash when the last Today task is completed
+
+- **Diagnosis:** crash report `Momentum-2026-09-30-180335.ips` (and a twin from
+  2026-09-29 19:38 during a sync download): SwiftUI's outline-list coordinator
+  asserted while AppKit finished a row diff. The user's Mac archives completed tasks
+  at once and groups Today by tag, so the last completion empties the listing and the
+  view swapped the `List` for the empty state mid-diff. A scan of a copy of the user's
+  store confirmed Today has no sections and no all-done panel afterwards.
+- **Fix:** `TaskListView` keeps the `List` mounted with the empty state as an overlay;
+  sections are keyed by `SectionIdentity` (kind + group) instead of their offset; the
+  all-done panel and Show More live in sections of their own.
+- **Checks:** Mac package 142 passed (new identity test); Debug build; a demo verify
+  copy driven over the CLI socket with the user's preferences completed 28 Today tasks
+  to empty and refilled the list without crashing (the socket path never crashed before
+  the fix either; the animated checkbox/Space paths could not be replayed because the
+  screen was locked — macOS refuses synthetic input then). Signed release reinstalled
+  in `/Applications`.
+- **Mock test (2026-10-01):** demo copies (`MOMENTUM_DEMO=1`, temp store, `.verify`
+  bundle id, `auto-archive`/`group-by tag` written to that defaults domain) driven in the
+  background with the computer-use `app_*` tools and `mo --data-dir`. Pre-fix build:
+  checkbox on the last task, checkbox during thirty socket inserts, and 28 socket
+  completions all survived, so the user's exact trigger (an exchange on another thread,
+  a selection-update guard in the trace) was not reproduced. Fixed build: the checkbox
+  gesture ends in a clean empty state and the list refills. iOS `ViewRenderingTests`
+  40 passed with the new empty-Today test on the iOS 27.2 simulator; the GTK test
+  compiles (`cargo check -p momentum --tests`) and runs in CI. Native GTK on macOS: Homebrew gtk4 and
+  libadwaita build the app; blueprint needs `gobject-introspection` (not installed) and
+  Broadway is absent, so GTK UI tests stay on CI; see the memory note.
+- **Pending:** the user's own gesture on their data cannot be replayed without their
+  store; if the crash recurs, the next report's selection and sync state will decide.
+
 ### 2026-09-29 evening — B-092: a cut-off upload locked every device out; repair, guards, plain-language failures (F-028/F-054)
 
 - **Incident:** the user's phone (cellular, Tailscale relay) hit the 30 s exchange

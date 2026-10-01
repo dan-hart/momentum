@@ -195,6 +195,13 @@ mod imp {
     }
 
     impl ObjectImpl for MomentumWindow {
+        /// Widgets parented by hand are given up here, while they are still alive.
+        fn dispose(&self) {
+            if self.tag_popover.parent().is_some() {
+                self.tag_popover.unparent();
+            }
+        }
+
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
@@ -222,11 +229,11 @@ mod imp {
     impl WidgetImpl for MomentumWindow {}
     impl Drop for MomentumWindow {
         fn drop(&mut self) {
+            // Only non-GTK teardown belongs here: by the time the Rust value drops, GTK
+            // has finalized the widgets, and touching one panics inside finalization,
+            // which cannot unwind and aborts the process (B-094).
             self.engine.p2p_stop();
             self.engine.stop_cli_server();
-            if self.tag_popover.parent().is_some() {
-                self.tag_popover.unparent();
-            }
         }
     }
     impl WindowImpl for MomentumWindow {

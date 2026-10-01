@@ -2249,3 +2249,50 @@ fn a_damaged_server_copy_gets_a_plain_heading_a_remedy_and_a_replace_offer() {
         assert_eq!(dialog.body().as_str(), "legacy text");
     });
 }
+
+#[test]
+fn completing_the_last_today_task_with_immediate_archive_and_tag_groups_empties_cleanly() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        let settings = &win.imp().settings;
+        settings.set_boolean("auto-archive", true).unwrap();
+        settings.set_string("group-by", "tag").unwrap();
+        pump();
+        assert!(shown(&*win.imp().task_box) && !shown(&*win.imp().empty));
+        let mut guard = 0;
+        while let Some(id) = row_ids(&win).into_iter().next() {
+            ActionGroupExt::activate_action(&win, "ctx-done", Some(&id.to_variant()));
+            pump();
+            guard += 1;
+            assert!(guard < 100, "every completion removes its row");
+        }
+        assert!(row_ids(&win).is_empty(), "immediate archive leaves no rows behind");
+        assert!(
+            shown(&*win.imp().empty) && !shown(&*win.imp().task_box),
+            "the empty state takes over"
+        );
+        // Rows can come back after the list emptied, as a sync download would bring them.
+        win.add_task("Back again");
+        pump();
+        assert_eq!(row_ids(&win).len(), 1);
+        assert!(shown(&*win.imp().task_box) && !shown(&*win.imp().empty));
+        settings.set_boolean("auto-archive", false).unwrap();
+        settings.set_string("group-by", "morning-night").unwrap();
+    });
+}
+
+#[test]
+fn closing_a_window_finalizes_it_without_a_panic() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        win.imp().settings.set_boolean("run-in-background", false).unwrap();
+        // Open the tag popover once so it has a parent to give up on dispose.
+        win.add_task("Tag me #home");
+        pump();
+        win.close();
+        pump_ms(200);
+        // Finalization runs on the GTK thread; a panic there cannot unwind and would
+        // abort this process, so reaching here is the assertion.
+        assert!(!win.is_visible());
+    });
+}

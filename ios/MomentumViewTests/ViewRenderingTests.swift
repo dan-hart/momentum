@@ -257,6 +257,51 @@ import XCTest
             .frame.isEmpty)
     }
 
+    /// B-093 on macOS: emptying Today with immediate archiving and tag grouping must
+    /// not crash the list. The iOS list keeps its empty state inside the List, and this
+    /// drives the same transition, then refills the list as a sync download would.
+    func testEmptyingTodayWithImmediateArchiveAndTagGroupsKeepsTheListAlive() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let defaultsName = "momentum-empty-today-tests-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName); try? FileManager.default.removeItem(at: directory) }
+        defaults.set(true, forKey: PrefKey.autoArchive)
+        defaults.set("tag", forKey: PrefKey.groupBy)
+        let seed = await EngineWorker.open(directory: directory)
+        for title in ["Water the plants #home", "Call the bank #errands", "Plain task"] {
+            _ = await seed.perform(.add(title, .today))
+        }
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.foreground()
+        let mounted = try HostingFixture.mount(
+            NavigationStack { TaskScreen(view: .today) }.environment(model).environment(model.sync),
+            defaults: defaults, defaultsName: defaultsName, animationsEnabled: true
+        )
+        defer { mounted.unmount() }
+        try await mounted.wait(until: "the seeded rows are on screen") {
+            mounted.hasAccessibilityElement(label: "Plain task")
+        }
+        let ids = await model.worker!.snapshot(view: .today, query: "", archiveLimit: 100).listing.sections.flatMap { section in
+            section.rows.compactMap { row -> String? in
+                if case .task(let task) = row { return task.id }
+                return nil
+            }
+        }
+        XCTAssertEqual(ids.count, 3)
+        for id in ids {
+            await model.perform(.complete([id], true))
+            await mounted.settle()
+        }
+        try await mounted.wait(until: "the empty state replaces the last row") {
+            mounted.accessibilityLabels().contains { $0.hasPrefix("Nothing planned for today") }
+        }
+        XCTAssertFalse(mounted.hasAccessibilityElement(label: "Plain task"))
+        await model.perform(.add("Back again", .today))
+        try await mounted.wait(until: "a new row arrives after the list emptied") {
+            mounted.hasAccessibilityElement(label: "Back again")
+        }
+    }
+
     func testInitialTaskSnapshotDoesNotAnimate() async throws {
         let today = try await taskScreenSnapshotFixture(view: .today, reduceMotion: false)
         defer { today.mounted.unmount(); today.cleanup() }

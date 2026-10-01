@@ -341,3 +341,28 @@ and [checked update/delete handling](https://developer.apple.com/documentation/s
 It uses After First Unlock This Device Only for the planned bounded background-sync
 path, without migrating secrets to another device. Tests never erase a simulator
 or access production Keychain accounts.
+
+## Running the Linux app natively on macOS
+
+Homebrew's GTK 4 and libadwaita link the GTK app on macOS, so the Linux UI can be
+tried here without a VM: `brew install gtk4 libadwaita adwaita-icon-theme
+gobject-introspection` (the icon theme supplies every standard symbolic icon; the app
+bundles only its own two), `pip install blueprint-compiler` in a virtualenv, then:
+
+```sh
+export DYLD_LIBRARY_PATH=/opt/homebrew/lib GI_TYPELIB_PATH=/opt/homebrew/lib/girepository-1.0
+OUT=/tmp/gtk-assets; mkdir -p "$OUT/ui" "$OUT/schemas"
+blueprint-compiler batch-compile "$OUT" data/resources data/resources/ui/*.blp
+glib-compile-resources --sourcedir="$OUT" --sourcedir=data/resources \
+  --target="$OUT/resources.gresource" data/resources/resources.gresource.xml
+sed 's/@app-id@/io.github.dan_hart.Momentum.Devel/g; s/@gettext-package@/momentum/g' \
+  data/io.github.dan_hart.Momentum.gschema.xml.in > "$OUT/schemas/io.github.dan_hart.Momentum.Devel.gschema.xml"
+glib-compile-schemas "$OUT/schemas"
+touch crates/app/src/config.rs
+MESON_RESOURCES_FILE="$OUT/resources.gresource" cargo build -p momentum
+GSETTINGS_SCHEMA_DIR="$OUT/schemas" GSETTINGS_BACKEND=memory MOMENTUM_DEMO=1 target/debug/momentum
+```
+
+`cargo check -p momentum --tests` works too, but the GTK UI tests do not run natively:
+macOS requires GTK on the process main thread and the harness runs it on a worker
+thread. They stay on `build-aux/run-tests.sh` under Broadway (CI's Flatpak jobs).

@@ -13,6 +13,23 @@ import Testing
 
 @MainActor
 @Suite struct ViewsAndSections {
+    @Test func everyListingGivesEachSectionADistinctIdentity() {
+        let h = Harness()
+        for view in [MomentumCore.View.today, .upcoming, .archive, .search] {
+            h.state.go(to: view)
+            let ids = h.state.listing.sectionIdentities
+            #expect(Set(ids).count == ids.count, "\(view): \(ids)")
+        }
+        // Completing what is left of Today must not reuse Today's identity for Completed.
+        h.state.go(to: .today)
+        let before = Set(h.state.listing.sectionIdentities)
+        for id in h.state.allRowIds { h.state.setDone(id, true) }
+        let after = h.state.listing.sectionIdentities
+        #expect(Set(after).count == after.count)
+        #expect(after.allSatisfy { $0.kind == .completed } || after.isEmpty, "\(after)")
+        #expect(before.intersection(after).isEmpty, "the emptied day sections and Completed never share an identity")
+    }
+
     @Test func todayUsesOneLayerOfDayPeriodGroups() {
         let h = Harness()
         #expect(h.state.view == .today)

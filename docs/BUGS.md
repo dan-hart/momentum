@@ -2197,6 +2197,71 @@ their explicit manual acceptance boundaries.
   verifies its task appears. The complete lane passes 156 portable tests plus 95 native
   view/integration tests with two intentional opt-in skips on both supported runtimes.
 
+## B-094 — closing the Linux window aborted the process from a panic during finalization
+
+- **Severity:** Medium. **Feature:** F-024. **Status:** Implemented; GTK regression test
+  added (runs in CI's Flatpak jobs). Found on 2026-10-01 while running the GTK app
+  natively on macOS, where closing the window does not end the process.
+- **Reported behavior:** closing the window aborted with "thread caused non-unwinding
+  panic" (`momentum-2026-10-01-102019.ips`): `MomentumWindow`'s `Drop` asked the tag
+  popover for its parent after GTK had finalized the widget, the gtk-rs instance check
+  panicked, and a panic inside `g_object_unref` cannot unwind.
+- **Expected:** closing a window finalizes it quietly; on GNOME this usually coincides
+  with quitting, which is why it went unnoticed.
+- **Fix:** the popover is unparented in `ObjectImpl::dispose`, while widgets are alive;
+  `Drop` keeps only the engine teardown. `closing_a_window_finalizes_it_without_a_panic`
+  opens the popover's parent, closes the window and pumps the loop.
+- **Note:** GTK tests cannot run natively on macOS: GTK there must own the process main
+  thread, and the test harness runs GTK on a worker thread, which Linux permits.
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Implemented — fix and test; CI runtime | Not applicable — SwiftUI app; the native GTK run is a developer convenience | Not applicable | Not applicable |
+
+## B-093 — the macOS app crashed when the last Today task was completed
+
+- **Severity:** High. **Features:** F-003/F-019. **Status:** Fixed (structural); the
+  exact user gesture could not be replayed here because the screen was locked, so the
+  live checkbox check is recorded as pending in PROGRESS.
+- **Reported behavior:** completing the last task of Today crashed the Mac app
+  (2026-09-30 18:03 CDT, release 0.4.3). A crash with the same signature happened on
+  2026-09-29 19:38 CDT on 0.4.1 while a sync download replaced the listing.
+- **Crash:** `EXC_BREAKPOINT` in `ViewListTree.visitItem` called from
+  `OutlineListCoordinator.outlineView(_:child:ofItem:)` while AppKit's
+  `NSTableView.endUpdates` estimated row heights inside SwiftUI's
+  `OutlineListCoordinator.diffRows`: the outline view asked for a row SwiftUI's list
+  tree no longer had.
+- **Cause:** the user archives completed tasks immediately and groups Today by tag.
+  Completing the last task removes the last section and, with nothing left, the core
+  returns an empty listing; the view then replaced the whole `List` with the
+  empty-state view in the same animated update that removed the final rows, while
+  the sections were identified by offset (`id: \.offset`) so a Completed section and
+  the day section it replaced looked like the same item, and loose top-level rows
+  (the all-done panel, Show More) sat beside sections. The socket-driven path without
+  animation never crashed in a demo copy; the checkbox and Space paths animate.
+- **Fix:** the `List` stays mounted and the empty state is an overlay; every section is
+  identified by `SectionIdentity` (kind + group, `MomentumKit/Listing.swift`); the
+  all-done panel and Show More are sections of their own. A MomentumKit test asserts
+  every listing's section identities are distinct and that emptying Today never
+  reuses a day section's identity for Completed.
+- **Evidence (2026-10-01, throwaway demo copies with the user's two preferences, driven
+  in the background through the CLI socket and the accessibility checkbox):** a
+  pre-fix build survived ticking the last checkbox, ticking it while thirty rows were
+  inserted through the socket, and socket-driven completion of 28 rows, so the exact
+  trigger on the user's Mac (a Nextcloud exchange was running on another thread at
+  crash time, and the diff ran inside a selection-update guard) was not replayed; the
+  fixed build takes the same checkbox gesture to a clean empty state and refills.
+  Mac package 142 passed (new identity test). iOS: `ViewRenderingTests` drives the same
+  transition (immediate archive, tag groups, three tasks completed to empty, one added
+  back) on the UIKit-backed list, whose empty state already lives inside the List.
+  Linux: the GTK list is rebuilt row by row with the empty page toggled by visibility;
+  the new GTK test completes every Today row the same way and refills; it compiles
+  here and runs in CI's Flatpak jobs. Signed macOS release reinstalled.
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Implemented — not an outline view; GTK regression test added (runs in CI) | Implemented — structural fix; fixed demo copy verified by checkbox; the user's exact trigger not replayed | Implemented — UIKit-backed List; view-lane regression test drives the same transition | Not applicable — no app |
+
 ## B-092 — a cut-off Nextcloud upload was stored as the sync file and locked every device out
 
 - **Severity:** High. **Features:** F-028/F-054. **Status:** Fixed in the core; the

@@ -6,6 +6,12 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- macOS: completing the last task of Today (with completed tasks archived immediately)
+  could crash the app while the list emptied; the list now stays in place and shows the
+  empty state over it, and its sections keep stable identities across updates
+- Linux: closing the window no longer aborts the process when it is finalized
+
 ## [0.4.4] - 2026-09-30
 
 ### Fixed

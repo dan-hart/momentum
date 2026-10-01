@@ -15,18 +15,20 @@ struct TaskListView: SwiftUI.View {
 
     var body: some SwiftUI.View {
         @Bindable var state = state
+        // The List stays mounted while a listing empties out (B-093): AppKit's outline
+        // view is still diffing the last rows away when SwiftUI would otherwise tear it
+        // down, and it crashes asking for a row that is gone. The empty state is an
+        // overlay, and every top-level item is a Section with a stable identity.
         Group {
-            if let empty = state.listing.empty {
-                let copy = Strings.empty(empty, modifier: state.modifier.symbol, syncConfigured: state.prefs.syncConfigured)
-                EmptyTaskListView(copy: copy)
-            } else {
                 List(selection: $state.selection) {
                     if let allDone = state.listing.allDone {
-                        AllDoneView(allDone: allDone)
-                            .listRowSeparator(.hidden)
-                            .selectionDisabled()
+                        Section {
+                            AllDoneView(allDone: allDone)
+                                .listRowSeparator(.hidden)
+                                .selectionDisabled()
+                        }
                     }
-                    ForEach(Array(state.listing.sections.enumerated()), id: \.offset) { _, section in
+                    ForEach(state.listing.sections, id: \.identity) { section in
                         Section {
                             ForEach(section.rows, id: \.rowId) { row in
                                 rowView(row)
@@ -57,15 +59,23 @@ struct TaskListView: SwiftUI.View {
                         }
                     }
                     if state.listing.moreAvailable > 0 {
-                        Button(String(localized: "Show More (\(state.listing.moreAvailable) remaining)")) {
-                            state.showMoreArchive()
+                        Section {
+                            Button(String(localized: "Show More (\(state.listing.moreAvailable) remaining)")) {
+                                state.showMoreArchive()
+                            }
+                            .buttonStyle(.borderless)
+                            .frame(maxWidth: .infinity)
+                            .selectionDisabled()
                         }
-                        .buttonStyle(.borderless)
-                        .frame(maxWidth: .infinity)
-                        .selectionDisabled()
                     }
                 }
                 .listStyle(.inset)
+                .overlay {
+                    if let empty = state.listing.empty {
+                        let copy = Strings.empty(empty, modifier: state.modifier.symbol, syncConfigured: state.prefs.syncConfigured)
+                        EmptyTaskListView(copy: copy)
+                    }
+                }
                 // Multi-item drag: every selected row lifts when one of them is dragged,
                 // and the payload is one TaskTransfer per task in list order.
                 .dragContainer(for: TaskTransfer.self) { ids in state.dragPayload(for: ids) }
@@ -105,7 +115,6 @@ struct TaskListView: SwiftUI.View {
                     }
                     return .handled
                 }
-            }
         }
         // Empty and populated lists occupy the same space, keeping quick-add at the top.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
