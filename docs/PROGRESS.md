@@ -152,6 +152,28 @@ performed for this handoff.
 
 ## Dated handoffs
 
+### 2026-10-01 — Public docs refresh: previews, status, sync guidance
+
+- **Screenshots:** all previews recaptured from the 0.4.5 sources in preview mode, light
+  appearance: macOS Today (disposable Debug copy, window capture), iOS Today and
+  Upcoming (iPhone 18 Pro simulator, iOS 27.2), Linux Today, Coming Up and New Task
+  rendered by the GTK app's own capture hook through the native macOS build at
+  1100×760. The Nearby Devices image was retired: preview mode starts no transport.
+  The hook gained `MOMENTUM_SCREENSHOT_SIZE` and now clears the backdrop state before
+  rendering, so a capture launched from a terminal is not dimmed.
+- **README:** previews section, platform status dated October 1, a "What's new in
+  0.4" list, a condensed "How it is built", sync guidance (cadence, plain-language
+  failures, Replace Server Copy, compression), the native-macOS build pointer, and the
+  note that the Homebrew cask can lag a release. Screenshot notes rewritten; macOS and
+  iOS READMEs updated for the current apps; PLAN.md marked historical.
+- **Observed while capturing:** the Linux sidebar header truncates "Momentum" to
+  "Mom…" at a 250 px sidebar on the macOS build's font metrics; worth a look on GNOME.
+  The Homebrew tap's cask and `momentum-cli` formula are still at 0.4.0 because the
+  release workflow's tap job has no token; the README now says the release zip is
+  canonical.
+- **Checks:** relative Markdown links verified by script; `cargo check -p momentum`;
+  the capture hook ran for every Linux image.
+
 ### 2026-10-01 — Linux app running natively on macOS; B-094 finalize abort
 
 - **Native GTK on this Mac:** `gobject-introspection` and `adwaita-icon-theme` installed

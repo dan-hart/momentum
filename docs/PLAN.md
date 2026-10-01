@@ -1,5 +1,10 @@
 # Native GNOME client for Super Productivity — implementation plan
 
+> Historical: the research and plan that started the project (September 2026). The
+> apps have since shipped on Linux, macOS and iOS; current direction lives in
+> [AGENTS.md](../AGENTS.md), status in [FEATURES.md](FEATURES.md) and
+> [PROGRESS.md](PROGRESS.md).
+
 Researched 2026-09-07 against Super Productivity v18.21.2 and GNOME 50 (GNOME 51 ships 2026-09-16).
 
 ## 1. What we are dealing with upstream

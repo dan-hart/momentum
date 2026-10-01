@@ -90,7 +90,8 @@ item per task, onto the sidebar or a Manual Order position.
 The main window is a single `Window` scene: a Dock click, `openWindow`, the menu bar item
 and the ⌃⌥M shortcut all reopen the same window, never a second copy. Coming Up is always
 one section per day (Tomorrow, then weekday names, then dates) and its Group By choice is
-disabled; the other views keep the selected grouping.
+disabled; the other views keep the selected grouping. **View › Layout** switches between
+Regular and Compact rows.
 
 ## Fonts
 
@@ -121,7 +122,13 @@ syncs anything pending; Sync Now always works. Existing nearby-sync users migrat
 users migrate to Nextcloud. Preview mode never starts either transport.
 
 The main window and Sync settings show the selected service, in-progress spinner, last
-successful exchange, and persistent error details with Retry—even for an empty list.
+successful exchange, and a persistent failure with Retry, even for an empty list. A
+failure is named in plain words ("The copy on the server is damaged", "Sync took too long
+to finish") with what to do next and the core's own message behind Details; when no
+device can read the server copy, **Replace Server Copy…** publishes this Mac's tasks after
+confirmation and keeps the damaged file on the server as `sync-data.json.damaged`.
+Uploads carry a checksum and expected length and the stored size is read back, so a
+cut-off transfer is reported rather than accepted as the sync file.
 LibreSync listens on TCP 52345 and discovers over Bonjour (`_libresync._tcp`), which is why the
 app declares the local network usage description and is not sandboxed — a sandboxed app
 could not share `~/Library/Application Support/momentum` with the command line.

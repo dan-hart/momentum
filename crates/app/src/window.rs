@@ -1024,6 +1024,13 @@ impl MomentumWindow {
             if std::env::var_os("MOMENTUM_SCREENSHOT_NARROW").is_some() {
                 self.set_default_size(360, 720);
             }
+            // `MOMENTUM_SCREENSHOT_SIZE=WIDTHxHEIGHT` picks the window size for a capture.
+            if let Some(size) = std::env::var("MOMENTUM_SCREENSHOT_SIZE").ok().and_then(|v| {
+                let (w, h) = v.split_once('x')?;
+                Some((w.trim().parse::<i32>().ok()?, h.trim().parse::<i32>().ok()?))
+            }) {
+                self.set_default_size(size.0, size.1);
+            }
             if std::env::var_os("MOMENTUM_SCREENSHOT_SELECT").is_some() {
                 let ids: Vec<String> = imp
                     .rows

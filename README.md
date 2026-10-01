@@ -14,141 +14,124 @@
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/Linux-GTK_4_%2B_libadwaita-343A40?style=for-the-badge&amp;logo=linux&amp;logoColor=FCC624&amp;labelColor=202124" alt="Linux: GTK 4 and libadwaita"></a>
   <a href="macos/README.md"><img src="https://img.shields.io/badge/macOS-native-343A40?style=for-the-badge&amp;logo=apple&amp;logoColor=white&amp;labelColor=202124" alt="Native macOS app"></a>
-  <a href="ios/README.md"><img src="https://img.shields.io/badge/iOS_26_%26_27-in_development-343A40?style=for-the-badge&amp;logo=apple&amp;logoColor=FF6600&amp;labelColor=202124" alt="iOS 26 and 27: in development"></a>
+  <a href="ios/README.md"><img src="https://img.shields.io/badge/iOS_26_%26_27-native,_build_from_source-343A40?style=for-the-badge&amp;logo=apple&amp;logoColor=FF6600&amp;labelColor=202124" alt="iOS 26 and 27: native app, build from source"></a>
 </p>
 
 <p align="center">
   <strong>Plan your day. Native task planning, one shared core, and your data under your control.</strong>
 </p>
 
-Momentum is an offline-first task planner with native interfaces for Linux and
-macOS, an iOS/iPadOS app in development, and Android planned. Core task management
-works without an account or internet connection. One Rust engine owns task rules,
-queries, persistence, recurrence, undo and sync; each app owns its native interface
-and system integrations.
+Momentum is an offline-first task planner with native apps for Linux, macOS and
+iOS/iPadOS, and Android planned. Core task management works without an account or
+internet connection. One Rust engine owns task rules, queries, persistence,
+recurrence, undo and sync; each app owns its native interface and system
+integrations.
 
 Momentum is GPL-3.0-or-later and remains free to build, compile, self-host and use
 from source. There are no ads, tracking or analytics. Pricing for future official
 distributions is undecided; no subscription or tipping integration is implemented.
 
-## Native previews
+## Previews
 
-These macOS and iOS captures use the built-in sample data in **preview mode**, with
-sync disabled. They show development builds, not a claim of completed platform
-parity or accessibility acceptance. Capture details are in the
+Captured on **October 1, 2026** from the 0.4.5 sources with the built-in sample data in
+**preview mode**, sync off, light appearance. They are development builds, not a claim
+of completed parity or accessibility acceptance. Capture details, including how the
+Linux views were rendered on a Mac, are in the
 [screenshot notes](data/resources/screenshots/README.md).
 
 ### macOS
 
 <p align="center">
-  <img src="data/resources/screenshots/macos-preview.png" width="900" alt="Momentum macOS preview: Today, project and tag sidebar, grouped sample tasks, quick entry, and the Preview mode · Sync is off footer">
+  <img src="data/resources/screenshots/macos-preview.png" width="900" alt="Momentum macOS: Today grouped into Morning, Today and Evening, the projects and tags sidebar, quick entry, the customizable toolbar, and the Preview mode · Sync is off footer">
 </p>
 
 ### iOS
 
 <p align="center">
-  <img src="data/resources/screenshots/ios-preview.png" width="320" alt="Momentum iOS preview: sample tasks in Today, orange actions, and the Today, Upcoming, Search and Settings tab bar">
+  <img src="data/resources/screenshots/ios-preview.png" width="300" alt="Momentum iOS: Today grouped into Morning, Today and Evening, the round Add button, the View Options menu, and the Today, Upcoming, Search and Settings tab bar">
+  &nbsp;&nbsp;
+  <img src="data/resources/screenshots/ios-upcoming.png" width="300" alt="Momentum iOS: Upcoming grouped by day, Tomorrow, then weekday names">
 </p>
 
-<details>
-<summary>Linux preview</summary>
+### Linux
 
 <p align="center">
-  <img src="data/resources/screenshots/today.png" width="720" alt="Momentum Linux Today view with sample tasks">
+  <img src="data/resources/screenshots/today.png" width="900" alt="Momentum Linux: Today grouped into Morning, Today and Evening with the GNOME sidebar and the Create Task button">
 </p>
 
-The Linux image is an earlier preview; current grouping behavior is described below.
+<p align="center">
+  <img src="data/resources/screenshots/coming-up.png" width="440" alt="Momentum Linux: Coming Up grouped by day">
+  &nbsp;
+  <img src="data/resources/screenshots/new-task.png" width="440" alt="Momentum Linux: the New Task dialog with project, due day, time, reminder, estimate, tags and notes">
+</p>
 
-</details>
-
-## Platform status · September 18, 2026
+## Platform status · October 1, 2026
 
 | Platform | Native app | Current status |
 |---|---|---|
-| Linux | Rust, GTK 4 and libadwaita | Established MVP. Recent sync/grouping changes still have Linux runtime checks outstanding. |
-| macOS | SwiftUI with AppKit and system services | Established MVP with local builds and scoped native acceptance. Some integrations and real-device sync checks remain open. |
-| iOS / iPadOS | Swift and SwiftUI through UniFFI | In progress for iOS 26 and 27. Core task flows and Settings run natively; full macOS feature parity is the completion target. |
+| Linux | Rust, GTK 4 and libadwaita | Established. Ships as a signed Flatpak repository and bundles from every release. GTK UI tests run headless in CI; the app also builds and runs natively on a Mac for development. |
+| macOS | SwiftUI with AppKit and system services | Established. Single main window, customizable toolbar, multi-item drag, menu bar item, Spotlight, Shortcuts, Keychain and the bundled `mo`. Distributed as a signed zip on every release. |
+| iOS / iPadOS | Swift and SwiftUI through UniFFI | Native app for iOS 26 and 27 with Today, Upcoming, Search and Settings, Nextcloud and LibreSync, background sync and the Shortcuts actions. Built from source and tested on a real iPhone; no store distribution yet. |
 | Android | Planned native frontend to the same Rust core | No app implementation yet. |
 
 The [feature ledger](docs/FEATURES.md), [known issues](docs/BUGS.md) and
-[progress log](docs/PROGRESS.md) distinguish implementation from verification.
-See the [iOS parity checklist](docs/IOS-PARITY-CHECKLIST.md) for the remaining work.
-Current iOS sync delivery includes Nextcloud and LibreSync. The ledger keeps hosted
-Nextcloud and separate-device Bonjour acceptance visible instead of treating local
-simulator transport as proof of those system boundaries.
+[progress log](docs/PROGRESS.md) distinguish implementation from verification, per
+platform. The [iOS parity checklist](docs/IOS-PARITY-CHECKLIST.md) lists what the iOS
+app still lacks against the desktop baseline.
 
-## Decisions and updates · September 16–18, 2026
+## What's new in 0.4
+
+The [changelog](CHANGELOG.md) has every release. Since 0.4.0:
+
+- **Sync that survives bad connections.** Every upload carries a checksum and expected
+  length, the stored size is read back, and a cut-off transfer is reported rather than
+  trusted. A large sync file over a slow or relayed link gets minutes, not seconds.
+- **Sync failures in plain words.** "The copy on the server is damaged", "Sync took
+  too long to finish", "The encryption password doesn't match": one sentence, what to
+  do, the technical message behind Details, and a working Try Again. A damaged server
+  copy can be replaced from the device that has your latest tasks.
+- **Every list on every platform:** Coming Up grouped by day; Morning, then Today,
+  then Evening in the default grouping; a Move To menu with the next weekdays by name;
+  a Compact layout; and View Options on each iOS list.
+- **macOS:** a customizable toolbar, one main window, dragging a whole selection at
+  once, and sync that keeps running in the background by choice.
+- **iOS:** pull to refresh, background sync, Liquid Glass headers, a sync status badge
+  in the toolbar, a round Add button, and the sidebar beside the list in landscape on
+  larger iPhones.
+
+## How it is built
 
 - **Share behavior, keep interfaces native.** Linux calls the Rust engine directly;
-  Apple apps use generated UniFFI bindings and reusable Swift support. Layout,
-  navigation, gestures, accessibility and OS services belong to each platform.
-- **Four iOS tabs:** Today, Upcoming, Search and Settings. Projects, tags,
-  Morning/Evening and Archive are reached through Lists. Settings is organized into
-  Task Lists, Appearance, Notifications, Sync, Backups and About.
-- **A consistent mobile appearance.** The default accent remains exactly `#FF6600`
-  in light and dark mode. All filled default-orange buttons use white text and
-  symbols; Increase Contrast is the only exception and uses calculated ink. Settings
-  offers AsNeeded's nine curated DHFlatUIColors choices in one list without country
-  groupings. SF Symbols, restrained motion/haptics and a full-bleed app icon are part
-  of the native design. Custom colors adapt for contrast; exact orange still has
-  known foreground-contrast limitations.
-- **Native Mac controls.** SwiftUI/AppKit navigation, system font selection with
-  separate content/interface sizes, centered task controls, Keychain storage,
-  Spotlight and Shortcuts integrations, a menu bar item and the bundled `mo` CLI.
-  Integration-specific verification limits remain in the platform ledger.
-- **Shared Apple automation.** iOS uses the Mac App Intents for create, find,
-  complete/reopen, plan Today and open, with the same task parameters and Rust rules.
-  URL entry and actual Shortcuts Create Task pass on iOS 26.5 and 27; other system
-  actions and background/locked-device acceptance remain open. See the
-  [automation guide](ios/README.md#automation).
-- **One grouping layer.** Morning & Night is the default. Project, first tag, time
-  estimate or None replaces that grouping; completed tasks stay separate. Saved
-  grouping choices are preserved. See [Grouping](docs/GROUPING.md).
-- **Optional sync, one provider at a time.** Off, Nextcloud or LibreSync on desktop;
-  switching preserves tasks and saved connections. iOS now has native Nextcloud
-  setup, checked Keychain storage, manual/foreground automatic sync and persistent
-  recovery actions. Native loopback WebDAV checks cover convergence, encrypted files,
-  conflict retry and cancellation. Connection validation requires HTTPS outside
-  localhost and preserves the previous Keychain record after invalid input.
-  Hosted-server acceptance remains open. iOS also exposes LibreSync pairing,
-  discovery, linked-device management, manual sync and recovery. Disposable peers
-  converge through the real Swift/UniFFI/Rust transport on iOS 26.5 and 27;
-  separate-device Bonjour interaction remains open.
-- **Native iOS backups.** Export JSON through Files, or select a compatible backup
-  and explicitly confirm replacement. Failed imports preserve existing tasks and
-  keep the selected backup available for retry.
-- **Notifications on your terms.** Morning summary is opt-in, with a configurable
-  local time initially set to 08:00. iOS has bounded reminder/summary planning,
-  notification controls and shared badge-count rules. Simulator delivery/actions
-  pass, and the background handler is covered directly; a scheduler-originated wake
-  remains a system acceptance boundary.
-- **Low Power Mode respects the battery.** iOS pauses automatic Nextcloud, Spotlight
-  and discretionary notification refresh work while keeping manual sync, local edits
-  and scheduled notifications available. Automatic work resumes with normal power.
+  Apple apps use generated UniFFI bindings and a reusable Swift package for wording and
+  preferences. Layout, navigation, gestures, accessibility and OS services belong to
+  each platform. No web views, no cross-platform UI toolkit.
+- **One grouping layer.** Morning & Night is the default; project, first tag, time
+  estimate or None replaces it. Coming Up is always one section per day. Completed
+  tasks stay separate. See [Grouping](docs/GROUPING.md).
+- **Optional sync, one provider at a time.** Off, Nextcloud or LibreSync. Only the
+  selected provider runs; switching preserves tasks and saved connections. Secrets live
+  in the platform keychain. Sync compatibility with Super Productivity's file format
+  and encryption is preserved while a future independent format stays undecided.
+- **Privacy by construction.** No ads, tracking or analytics. Preview mode uses sample
+  data in a temporary directory and never starts a transport.
 - **Accessibility is required and still being verified.** The
-  [iOS audit](docs/audits/2026-09-16-ios-accessibility.md) covers source review and
-  native iPhone/iPad checks. Contrast, accessibility-size layout, task targets,
-  feedback, subtask semantics and keyboard action routing have focused regressions.
-  Voice Control and Switch Control retain live system acceptance; VoiceOver was
-  explicitly excluded from the current completion scope.
-- **Preserve compatibility while planning v2.** Current Super Productivity data and
-  Nextcloud interoperability remain in place. An independent future format,
-  migrations and continued interoperability have not been decided.
-- **Open-source freedom remains.** Optional official-distribution subscriptions
-  and tipping are future ideas, including RevenueCat on Apple platforms. Pricing,
-  entitlements and rollout are undecided; no billing SDK is being added now, and
-  self-built/self-hosted use stays free.
+  [accessibility guide](docs/ACCESSIBILITY.md) and the
+  [iOS audit](docs/audits/2026-09-16-ios-accessibility.md) record the approach and the
+  remaining gaps; a passing build is not acceptance.
+- **Free to build and self-host.** GPL-3.0-or-later. Pricing for official
+  distributions, subscriptions and tipping are future ideas with nothing decided and no
+  billing code in the tree.
 
 ## Task-planning highlights
 
-These describe the established desktop baseline. iOS capability and acceptance
-vary by feature; use the platform ledger above for exact scope.
+These describe the desktop baseline; the iOS app covers most of it with native
+equivalents. The [feature ledger](docs/FEATURES.md) gives exact per-platform scope.
 
-- **Today, Morning, Tonight, Coming Up, projects and tags.** Today is the plan, with a
-  morning section for tasks tagged "Morning" and an evening one for "Evening" in the default grouping.
-  Those sidebar entries appear only on days that use them. Coming Up shows the next
-  7 or 30 days using your selected grouping, with dates on task rows. Projects and
-  tags are one click away in the desktop sidebar.
+- **Today, Morning, Tonight, Coming Up, projects and tags.** Today is the plan: Morning
+  first, then Today, then Evening in the default grouping, from the "Morning" and
+  "Evening" tags. Those sidebar entries appear only on days that use them. Coming Up
+  shows the next 7 or 30 days, one section per day. Projects and tags are one click
+  away in the sidebar.
 - **Guided task creation.** Title, project, due day with a calendar, estimate, tag chips
   and notes in one dialog. Or type `Fix the bug #work 1h 30m` into the quick-add box, with
   `#` autocomplete for your tags.
@@ -168,7 +151,11 @@ vary by feature; use the platform ledger above for exact scope.
   grouped and instant.
 - **Drag and drop, multi-select, bulk edit.** Drop a task on a project, a tag, Today or
   Tonight. Ctrl+click or the select toggle to pick several, then drag them together or
-  mark done, plan, move, tag or delete them in one go, with a single Undo.
+  mark done, plan, move, tag or delete them in one go, with a single Undo. The context
+  menu's Move To offers Morning or Tonight, Tomorrow, the next two weekdays by name,
+  Next Week and a project.
+- **Regular or Compact rows.** View Options › Layout tightens every list when you want
+  more on screen.
 - **Keyboard first.** Standard GNOME shortcuts, a shortcuts dialog, context menus on
   everything, and system-wide shortcuts through the GlobalShortcuts portal.
 - **Undo, not confirmation.** Delete, done, archive, moves and tag drops all get an Undo
@@ -177,11 +164,6 @@ vary by feature; use the platform ledger above for exact scope.
 - **Native, adaptive, accessible.** Sidebar collapses on narrow windows, light and dark
   follow the system, accent color follows your setting, controls carry accessible labels,
   and Preferences offers a native font chooser with separate content and interface sizes.
-
-<p align="center">
-  <img src="data/resources/screenshots/new-task.png" width="360" alt="New Task dialog">
-  <img src="data/resources/screenshots/devices.png" width="360" alt="Nearby Devices dialog">
-</p>
 
 ## Install
 
@@ -193,7 +175,9 @@ brew install --cask dan-hart/tap/momentum
 
 The cask installs the app and puts its `mo` command line on your PATH. The same
 `Momentum-vX.Y.Z-macos.zip` is attached to every
-[release](https://github.com/dan-hart/momentum/releases/latest). Momentum needs macOS 26.
+[release](https://github.com/dan-hart/momentum/releases/latest), which is always the
+newest build; the cask can lag a release until the tap is updated. Momentum needs
+macOS 26.
 To build it yourself instead (Xcode 27 and a Rust toolchain):
 
 ```sh
@@ -241,8 +225,16 @@ attaches `mo-vX.Y.Z-{macos-universal,linux-x86_64,linux-aarch64}.tar.gz`.
    folder, and the encryption password.
 3. Press <kbd>Ctrl</kbd>+<kbd>R</kbd>. The first sync only downloads, so it is safe to try.
 
-The last sync time shows under the task list. Sync also runs at startup and every five
-minutes while the switch is on.
+The last sync time shows under the task list. Automatic sync uploads edits ten seconds
+after they settle, polls every two and a half minutes while the switch is on, and
+runs at startup.
+
+**When sync fails,** the app says what went wrong in one sentence and what to do, and
+keeps the technical message behind Details. If no device can read the copy on the
+server, choose **Replace Server Copy** on the device with your latest tasks; the
+damaged file is kept on the server as `sync-data.json.damaged` and the other devices
+re-apply their own pending edits on their next sync. Large sync files travel better
+with **Compress the sync file** turned on, especially over a relayed connection.
 
 ### Set up iOS sync
 
@@ -252,11 +244,12 @@ folder and encryption password on every device. Remote servers require HTTPS; HT
 accepted only for an isolated localhost fixture. **Sync Now**, last successful sync,
 pending changes and error recovery are available on this screen.
 
-Automatic sync runs while Momentum is open. Leaving the app stops the exchange;
-Low Power Mode pauses automatic checks but keeps Sync Now available. Local changes
-stay on the device for the next sync. Choosing **Off** preserves your
-tasks and saved connection. See the [iOS sync guide](ios/README.md#nextcloud-sync)
-for verification limits.
+Automatic sync runs while Momentum is open, and **Sync in the background** lets iOS
+wake the app now and then for one exchange. Pull down any list to sync right away. Low
+Power Mode pauses automatic checks but keeps Sync Now available. Local changes stay on
+the device for the next sync. Choosing **Off** preserves your tasks and saved
+connection. See the [iOS sync guide](ios/README.md#nextcloud-sync) for verification
+limits.
 
 ### Sync desktop devices nearby
 
@@ -375,7 +368,9 @@ flatpak run org.flatpak.Builder --user --install --force-clean flatpak_app_relea
   build-aux/io.github.dan_hart.Momentum.json
 ```
 
-Or open the folder in GNOME Builder and press Run.
+Or open the folder in GNOME Builder and press Run. On a Mac, the GTK app also builds
+and runs natively against Homebrew's GTK 4 and libadwaita for development; the recipe
+is in [docs/TESTING.md](docs/TESTING.md#running-the-linux-app-natively-on-macos).
 
 ### Repository layout
 
@@ -421,17 +416,18 @@ retry and encryption with nothing else running.
 ### Reproducible screenshots
 
 Apple preview launch and capture commands are in the
-[screenshot notes](data/resources/screenshots/README.md). For Linux:
+[screenshot notes](data/resources/screenshots/README.md). For Linux, the app renders
+its own window to a file and quits:
 
 ```sh
 MOMENTUM_DEMO=1 MOMENTUM_SCREENSHOT=$PWD/data/resources/screenshots/today.png \
+  MOMENTUM_SCREENSHOT_SIZE=1100x760 ADW_DEBUG_COLOR_SCHEME=prefer-light \
   flatpak run io.github.dan_hart.Momentum.Devel
 ```
 
 Add `MOMENTUM_SCREENSHOT_DIALOG=1`, `MOMENTUM_SCREENSHOT_UPCOMING=1` or
-`MOMENTUM_SCREENSHOT_SEARCH=query` for the other views, `MOMENTUM_SCREENSHOT_DEVICES=1` with
-`MOMENTUM_SCREENSHOT_DELAY=8` for the Nearby Devices dialog. Demo mode never syncs (the
-devices screenshot runs a node in the demo's temporary directory only).
+`MOMENTUM_SCREENSHOT_SEARCH=query` for the other views. The capture renders as the
+active window even when launched from a terminal. Demo mode never syncs.
 
 ## How it works with Super Productivity
 

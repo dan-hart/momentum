@@ -1,9 +1,14 @@
 # Momentum for iOS
 
 Native SwiftUI client of the shared Rust engine. Minimum iOS/iPadOS 26; development
-uses Xcode 27 and XcodeGen. Implementation is in progress; see the
-[parity checklist](../docs/IOS-PARITY-CHECKLIST.md) and [progress ledger](../docs/PROGRESS.md)
-for actual verification and remaining features.
+uses Xcode 27 and XcodeGen. The app has Today, Upcoming, Search and Settings tabs with
+projects, tags, Morning/Evening and the archive behind Lists; View Options on every list
+(grouping, sorting, the Upcoming range and a Compact layout); pull to refresh; Nextcloud
+and LibreSync with background sync; backups; notifications; and the shared Shortcuts
+actions. It is built from source and tested on a real iPhone; there is no store
+distribution yet. The [parity checklist](../docs/IOS-PARITY-CHECKLIST.md) and
+[progress ledger](../docs/PROGRESS.md) record verification and the remaining gaps
+against the desktop apps.
 
 Current mobile sync choices are Off, Nextcloud, and LibreSync. Only the selected
 provider owns the shared store or runs transport work.

@@ -12,18 +12,29 @@ use gtk::{gdk, glib};
 pub fn screenshot(win: &gtk::Window, path: std::path::PathBuf, delay: u32) {
     let win = win.clone();
     glib::timeout_add_seconds_local_once(delay, move || {
-        let paintable = gtk::WidgetPaintable::new(Some(&win));
+        // Render as the active window: a capture launched from a terminal (or on
+        // macOS, where the process never becomes the active app) would otherwise
+        // show the dimmed backdrop styling. Styles settle on the next frame, so
+        // the render waits a moment after the state change.
+        win.unset_state_flags(gtk::StateFlags::BACKDROP);
+        glib::timeout_add_local_once(std::time::Duration::from_millis(150), move || render(&win, &path));
+    });
+}
+
+fn render(win: &gtk::Window, path: &std::path::Path) {
+    {
+        let paintable = gtk::WidgetPaintable::new(Some(win));
         let snapshot = gtk::Snapshot::new();
         let (w, h) = (win.width() as f64, win.height() as f64);
         paintable.snapshot(&snapshot, w, h);
         if let (Some(node), Some(renderer)) = (snapshot.to_node(), win.native().and_then(|n| n.renderer())) {
             let tex = renderer.render_texture(&node, Some(&gtk::graphene::Rect::new(0.0, 0.0, w as f32, h as f32)));
-            match tex.save_to_png(&path) {
+            match tex.save_to_png(path) {
                 Ok(()) => tracing::info!("screenshot saved to {}", path.display()),
                 Err(e) => tracing::error!("screenshot failed: {e}"),
             }
         }
-        let _ = gdk::Display::default();
-        win.application().map(|a| a.quit());
-    });
+    }
+    let _ = gdk::Display::default();
+    win.application().map(|a| a.quit());
 }

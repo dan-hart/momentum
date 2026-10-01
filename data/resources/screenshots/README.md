@@ -1,64 +1,72 @@
 # Momentum preview screenshots
 
-The root README's Apple screenshots were captured on **September 16, 2026** from
-local development builds based on `7ec82e9` (dirty `task/ios-app`). Both use the
-shared engine's built-in sample tasks. They do not show personal tasks or accounts.
+All images were captured on **October 1, 2026** from the 0.4.5 sources, each app's
+built-in sample tasks in preview mode, sync off, light appearance. They show no
+personal tasks or accounts and were not composited or retouched. README display
+widths preserve the original aspect ratios.
 
 | Image | Capture |
 |---|---|
-| `macos-preview.png` | Native macOS Today window, light appearance, built from this worktree. The footer confirms “Preview mode · Sync is off.” |
-| `ios-preview.png` | iPhone simulator, iOS 27, Today with the floating Add task button, light appearance, ordinary Dynamic Type, exact default #FF6600 accent. |
+| `macos-preview.png` | Native macOS Today window, 2000×1400 window capture of a disposable Debug copy launched with `MOMENTUM_DEMO=1 MOMENTUM_PREVIEW_APPEARANCE=light`. |
+| `ios-preview.png`, `ios-upcoming.png` | iPhone 18 Pro simulator, iOS 27.2, the Today and Upcoming tabs, launched with `--demo`, standard 9:41 status bar override. |
+| `today.png`, `coming-up.png`, `new-task.png` | The GTK app's own window render (`MOMENTUM_SCREENSHOT`), 1100×760, light scheme. Rendered by the native macOS build of the Linux app, which draws the same libadwaita widgets; `today.png` and `coming-up.png` are also the Flathub screenshots. |
 
-The iOS status bar uses the simulator's standard 9:41 / full-battery override.
-Images are native window/device captures; task content and UI were not composited
-or retouched. README display widths preserve the original aspect ratios.
-The existing Linux screenshots predate this update and remain historical previews.
-
-## Capture another macOS preview
+## macOS
 
 Build with the [macOS guide](../../../macos/README.md), then use a disposable copy
-of the app bundle with a separate bundle identifier/preferences domain if you
-already run Momentum normally. A local ad-hoc signature is sufficient for that
-preview copy. Do not replace your installed app or use your personal store.
+of the app bundle with its own bundle identifier so your installed app and its
+preferences stay untouched. An ad-hoc signature is enough for the copy.
 
 ```sh
-# Point at the isolated preview app bundle.
-MACOS_PREVIEW_APP=/path/to/MomentumPreview.app
-open -n -a "$MACOS_PREVIEW_APP" --env MOMENTUM_DEMO=1 \
-  --env MOMENTUM_PREVIEW_APPEARANCE=light
+PREVIEW=/tmp/MomentumPreview.app
+ditto build/macos-debug/Build/Products/Debug/Momentum.app "$PREVIEW"
+plutil -replace CFBundleIdentifier -string com.codedbydan.Momentum.verify "$PREVIEW/Contents/Info.plist"
+codesign --force --deep -s - "$PREVIEW"
+open -g --env MOMENTUM_DEMO=1 --env MOMENTUM_PREVIEW_APPEARANCE=light -a "$PREVIEW"
+screencapture -x -o -l "$WINDOW_ID" macos-preview.png    # window id from CGWindowListCopyWindowInfo
 ```
 
-`MOMENTUM_DEMO` creates sample tasks in the temporary `momentum-demo` directory
-and disables sync. `MOMENTUM_PREVIEW_APPEARANCE` is a Debug-only appearance override.
-Launch without extra app arguments for the initial window: during this capture,
-argument-bearing launches did not present it. Check the Preview mode footer before
-capturing the window. Use macOS window capture, excluding other apps and the desktop.
+`MOMENTUM_DEMO` seeds sample tasks in the temporary `momentum-demo` directory and
+disables sync; `MOMENTUM_PREVIEW_APPEARANCE` is a Debug-only appearance override.
+The native GTK capture uses the same temporary directory, so do not run both at once.
 
-```sh
-screencapture -x -o -l "$MACOS_PREVIEW_WINDOW" macos-preview.png
-```
-
-## Capture another iOS preview
+## iOS
 
 Build with the [iOS guide](../../../ios/README.md) and use a dedicated simulator.
-`--demo` selects a disposable preview store and preferences domain; sync and live
-system notifications are disabled. Never seed a personal device for screenshots.
+`--demo` selects a disposable preview store and preferences; sync and live system
+notifications are disabled.
 
 ```sh
-# Set these to your dedicated simulator ID and built simulator app path.
-xcrun simctl install "$IOS_PREVIEW_DEVICE" "$IOS_PREVIEW_APP"
-xcrun simctl ui "$IOS_PREVIEW_DEVICE" appearance light
-xcrun simctl launch "$IOS_PREVIEW_DEVICE" com.codedbydan.Momentum.ios --demo \
+xcrun simctl install "$SIM" build/ios/Build/Products/Debug-iphonesimulator/Momentum.app
+xcrun simctl ui "$SIM" appearance light
+xcrun simctl launch "$SIM" com.codedbydan.Momentum.ios --demo \
   -AppleLanguages '(en)' -AppleLocale en_US \
   -UIPreferredContentSizeCategoryName UICTContentSizeCategoryL
-xcrun simctl status_bar "$IOS_PREVIEW_DEVICE" override --time '9:41' \
+xcrun simctl status_bar "$SIM" override --time '9:41' \
   --dataNetwork wifi --wifiMode active --wifiBars 3 \
   --batteryState discharging --batteryLevel 100
-# Wait for sample tasks to appear before capture.
-xcrun simctl io "$IOS_PREVIEW_DEVICE" screenshot ios-preview.png
-xcrun simctl status_bar "$IOS_PREVIEW_DEVICE" clear
+xcrun simctl io "$SIM" screenshot ios-preview.png      # then tap Upcoming for ios-upcoming.png
+xcrun simctl status_bar "$SIM" clear
 ```
 
-Preview screenshots are documentation evidence, not feature-parity or
-accessibility acceptance. See the [feature ledger](../../../docs/FEATURES.md) and
+## Linux
+
+The app renders its own window and quits; no desktop capture tool is involved, so the
+image has no window decorations and the same pixels on any compositor.
+
+```sh
+MOMENTUM_DEMO=1 MOMENTUM_SCREENSHOT=$PWD/data/resources/screenshots/today.png \
+  MOMENTUM_SCREENSHOT_SIZE=1100x760 ADW_DEBUG_COLOR_SCHEME=prefer-light \
+  flatpak run io.github.dan_hart.Momentum.Devel
+```
+
+`MOMENTUM_SCREENSHOT_UPCOMING=1` and `MOMENTUM_SCREENSHOT_DIALOG=1` produce the other
+two; `MOMENTUM_SCREENSHOT_DELAY` (seconds) waits for the view to settle. On a Mac the
+same variables work with the native build described in
+[docs/TESTING.md](../../../docs/TESTING.md#running-the-linux-app-natively-on-macos).
+The Nearby Devices dialog needs LibreSync selected and a running node, which preview
+mode does not start, so it is no longer pictured.
+
+Preview screenshots are documentation evidence, not feature-parity or accessibility
+acceptance. See the [feature ledger](../../../docs/FEATURES.md) and the
 [iOS audit](../../../docs/audits/2026-09-16-ios-accessibility.md) for those limits.

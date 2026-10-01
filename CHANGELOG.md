@@ -6,6 +6,12 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- README and screenshot notes refreshed: October 2026 previews of all three apps, the
+  current platform status, what changed in 0.4, and how sync failures and recovery work
+- Linux: `MOMENTUM_SCREENSHOT_SIZE=WIDTHxHEIGHT` sizes a capture, and captures render
+  as the active window even when launched from a terminal
+
 ## [0.4.5] - 2026-10-01
 
 ### Fixed
