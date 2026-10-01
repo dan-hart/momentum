@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-01
+
 ### Fixed
 - macOS: completing the last task of Today (with completed tasks archived immediately)
   could crash the app while the list emptied; the list now stays in place and shows the
