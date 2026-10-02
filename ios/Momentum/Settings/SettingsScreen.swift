@@ -28,6 +28,9 @@ struct SettingsScreen: View {
                     SettingsLabel("Sync", symbol: "arrow.trianglehead.2.clockwise.rotate.90",
                                   subtitle: "Connect devices and keep tasks up to date")
                 }.accessibilityIdentifier("settings-sync")
+                NavigationLink { RemindersSettings() } label: {
+                    SettingsLabel("Apple Reminders", symbol: "checklist", subtitle: "Import from a reminders list")
+                }.accessibilityIdentifier("settings-reminders")
                 NavigationLink { BackupSettings() } label: {
                     SettingsLabel("Backups", symbol: "externaldrive.fill", subtitle: "Save or restore your tasks")
                 }.accessibilityIdentifier("settings-backups")

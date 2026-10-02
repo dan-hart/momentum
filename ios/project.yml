@@ -57,6 +57,7 @@ targets:
     info:
       path: Momentum/Info.plist
       properties:
+        NSRemindersFullAccessUsageDescription: "Momentum imports reminders from the list you choose. Your Apple Reminders are never changed."
         CFBundleDisplayName: Momentum
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"

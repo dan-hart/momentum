@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-09-28. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-10-02. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in
@@ -2324,3 +2324,11 @@ their explicit manual acceptance boundaries.
 | Unaffected — one GTK window by design | Implemented — reproduced by report; scripted reopen shows one window | Not applicable — single scene | Not applicable — no app |
 
 - **Remaining:** a manual Dock click on the installed app after the next release.
+
+## 2026-10-02 — F-055 verification assessment
+
+No reproduced existing product defect was identified by the Apple Reminders work.
+The initial sandboxed Rust run could not bind test sockets; the unsandboxed isolated
+workspace suite passed. EventKit background delivery and identifier-reset boundaries
+are documented feature limitations, not newly invented bugs. Native permission and
+assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).

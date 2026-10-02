@@ -502,6 +502,16 @@
         }
       }
     },
+    "Allow Reminders access in iOS Settings to import your list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erlaube den Zugriff auf Erinnerungen in den iOS-Einstellungen, um deine Liste zu importieren."
+          }
+        }
+      }
+    },
     "Allow badges in iOS Settings to show the task count on the app icon.": {
       "localizations": {
         "de": {
@@ -582,6 +592,26 @@
         }
       }
     },
+    "Apple Reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Erinnerungen"
+          }
+        }
+      }
+    },
+    "Apple Reminders is unavailable in this preview or test session.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Erinnerungen ist in dieser Vorschau oder Testsitzung nicht verfügbar."
+          }
+        }
+      }
+    },
     "Archive": {
       "localizations": {
         "de": {
@@ -632,12 +662,32 @@
         }
       }
     },
+    "Automatic import checks your chosen list while Momentum is active and when you reopen it. iOS does not guarantee imports while Momentum is closed. Later edits or completions in either app are not synchronized.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der automatische Import prüft deine ausgewählte Liste, während Momentum aktiv ist und wenn du es erneut öffnest. iOS garantiert keine Importe, wenn Momentum geschlossen ist. Spätere Änderungen oder Erledigungen in einer der Apps werden nicht synchronisiert."
+          }
+        }
+      }
+    },
     "Automatic sync is paused in Low Power Mode.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Die automatische Synchronisierung ist im Stromsparmodus pausiert."
+          }
+        }
+      }
+    },
+    "Automatically Import New Reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Erinnerungen automatisch importieren"
           }
         }
       }
@@ -732,6 +782,16 @@
         }
       }
     },
+    "Checking Reminders…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerungen werden geprüft …"
+          }
+        }
+      }
+    },
     "Checking…": {
       "localizations": {
         "de": {
@@ -768,6 +828,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Andere Datei wählen"
+          }
+        }
+      }
+    },
+    "Choose a List": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste auswählen"
           }
         }
       }
@@ -892,6 +962,16 @@
         }
       }
     },
+    "Connect Apple Reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Erinnerungen verbinden"
+          }
+        }
+      }
+    },
     "Connect devices and keep tasks up to date": {
       "localizations": {
         "de": {
@@ -983,6 +1063,7 @@
       }
     },
     "Create ${taskTitle} for ${planning}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1496,6 +1577,7 @@
       }
     },
     "Find tasks in ${scope}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1621,6 +1703,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sicherung importieren"
+          }
+        }
+      }
+    },
+    "Import Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt importieren"
+          }
+        }
+      }
+    },
+    "Import from a reminders list": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus einer Erinnerungsliste importieren"
+          }
+        }
+      }
+    },
+    "Import incomplete reminders into Inbox. Titles, notes, links, and due days are copied. Times, alerts, subtasks, and repeat rules are not copied. Apple Reminders stays unchanged.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importiere unerledigte Erinnerungen in den Eingang. Titel, Notizen, Links und Fälligkeitstage werden kopiert. Uhrzeiten, Hinweise, Unteraufgaben und Wiederholungsregeln werden nicht kopiert. Apple Erinnerungen bleibt unverändert."
+          }
+        }
+      }
+    },
+    "Imported %lld new reminders.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Imported %lld new reminder."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Imported %lld new reminders."
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld neue Erinnerung importiert."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld neue Erinnerungen importiert."
+                }
+              }
+            }
           }
         }
       }
@@ -1805,6 +1957,16 @@
         }
       }
     },
+    "List Unavailable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste nicht verfügbar"
+          }
+        }
+      }
+    },
     "List options": {
       "extractionState": "stale",
       "localizations": {
@@ -1952,6 +2114,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Momentum Standard bleibt in jeder Darstellung orange. Eigene Farben werden für gut lesbare Texte und Bedienelemente angepasst."
+          }
+        }
+      }
+    },
+    "Momentum could not save a reminder. Retry Import Now.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum konnte eine Erinnerung nicht speichern. Versuche „Jetzt importieren“ erneut."
           }
         }
       }
@@ -2247,6 +2419,16 @@
         }
       }
     },
+    "No reminders lists are available. Create a list in Apple Reminders, then return here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es sind keine Erinnerungslisten verfügbar. Erstelle eine Liste in Apple Erinnerungen und kehre dann hierher zurück."
+          }
+        }
+      }
+    },
     "No tasks found.": {
       "localizations": {
         "de": {
@@ -2348,6 +2530,7 @@
       }
     },
     "Open ${task}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2518,6 +2701,7 @@
       }
     },
     "Plan ${tasks} for today": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2593,6 +2777,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vorheriger Tab"
+          }
+        }
+      }
+    },
+    "Previously imported reminders are skipped, even if you delete their Momentum tasks. Turning this off keeps imported tasks and your selected list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereits importierte Erinnerungen werden übersprungen, auch wenn du ihre Momentum-Aufgaben löschst. Beim Ausschalten bleiben importierte Aufgaben und deine ausgewählte Liste erhalten."
           }
         }
       }
@@ -2687,12 +2881,32 @@
         }
       }
     },
+    "Reminders List": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerungsliste"
+          }
+        }
+      }
+    },
     "Reminders and morning summary": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Erinnerungen und Morgenübersicht"
+          }
+        }
+      }
+    },
+    "Reminders could not be loaded. Try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerungen konnten nicht geladen werden. Versuche es erneut."
           }
         }
       }
@@ -3019,6 +3233,7 @@
       }
     },
     "Set ${tasks} completed to ${completed}": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3612,6 +3827,16 @@
         }
       }
     },
+    "The selected list is unavailable. Choose another list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die ausgewählte Liste ist nicht verfügbar. Wähle eine andere Liste."
+          }
+        }
+      }
+    },
     "The tag could not be saved.": {
       "extractionState": "stale",
       "localizations": {
@@ -3835,6 +4060,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Neuer Versuch …"
+          }
+        }
+      }
+    },
+    "Turn Off Automatic Import": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatischen Import ausschalten"
           }
         }
       }
@@ -4096,6 +4331,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "„%@“ ersetzt alle Aufgaben auf diesem Gerät. Nicht synchronisierte Änderungen gehen verloren. Dies kann nicht rückgängig gemacht werden."
+          }
+        }
+      }
+    },
+    "What Gets Imported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was wird importiert?"
           }
         }
       }

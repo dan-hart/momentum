@@ -1013,6 +1013,28 @@ impl Engine {
     /// Creates a task and returns its own ID while holding the store lock, so concurrent
     /// automation requests never have to infer identity from the latest pending action.
     pub fn create_task_with_id(&self, draft: TaskDraft, view: View) -> TaskCreation {
+        self.create_task_with_source(draft, view, None, vec![])
+    }
+
+    /// One-way platform import. Provenance is saved with the task in the existing
+    /// extensible model, under the same commit lock as creation (including archives).
+    pub fn import_task_once(&self, source_id: String, draft: TaskDraft, source_aliases: Vec<String>) -> TaskCreation {
+        if source_id.trim().is_empty() {
+            return TaskCreation {
+                outcome: Outcome::none(),
+                id: None,
+            };
+        }
+        self.create_task_with_source(draft, View::project(INBOX_PROJECT_ID), Some(source_id), source_aliases)
+    }
+
+    fn create_task_with_source(
+        &self,
+        draft: TaskDraft,
+        view: View,
+        source: Option<String>,
+        aliases: Vec<String>,
+    ) -> TaskCreation {
         if draft.title.trim().is_empty() {
             return TaskCreation {
                 outcome: Outcome::none(),
@@ -1020,12 +1042,55 @@ impl Engine {
             };
         }
         self.try_edit(|g| {
+            if let Some(source) = &source {
+                let identities: Vec<&str> = std::iter::once(source.as_str())
+                    .chain(aliases.iter().map(String::as_str))
+                    .collect();
+                let matches = |key: Option<&Value>, alias_keys: Option<&Value>| {
+                    key.and_then(Value::as_str).is_some_and(|id| identities.contains(&id))
+                        || alias_keys.and_then(Value::as_array).is_some_and(|keys| {
+                            keys.iter().filter_map(Value::as_str).any(|id| identities.contains(&id))
+                        })
+                };
+                let live = g.store.state.task.iter().any(|t| {
+                    matches(
+                        t.extra.get("momentumImportSource"),
+                        t.extra.get("momentumImportAliases"),
+                    )
+                });
+                let archived = ["archiveYoung", "archiveOld"].into_iter().any(|tier| {
+                    g.store
+                        .state
+                        .rest
+                        .get(tier)
+                        .and_then(|v| v.get("task"))
+                        .and_then(|v| v.get("entities"))
+                        .and_then(Value::as_object)
+                        .is_some_and(|tasks| {
+                            tasks
+                                .values()
+                                .any(|t| matches(t.get("momentumImportSource"), t.get("momentumImportAliases")))
+                        })
+                });
+                if live || archived {
+                    return TaskCreation {
+                        outcome: Outcome::none(),
+                        id: None,
+                    };
+                }
+            }
             let project = if draft.project_id.is_empty() {
                 g.project_for(&view)
             } else {
                 draft.project_id.clone()
             };
             let mut t = Task::new(draft.title.trim(), &project);
+            if let Some(source) = &source {
+                t.extra.insert("momentumImportSource".into(), json!(source));
+                if !aliases.is_empty() {
+                    t.extra.insert("momentumImportAliases".into(), json!(aliases));
+                }
+            }
             t.due_with_time = draft
                 .time
                 .and_then(|c| local_ms(&draft.due_day.clone().unwrap_or_else(today_str), c.hour, c.minute));

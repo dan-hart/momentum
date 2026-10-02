@@ -86,6 +86,7 @@ struct FeedbackToast: Identifiable, Equatable {
     let testing: Bool
     let platformCapabilities: MobilePlatformCapabilities
     let allowsBackgroundNotificationRefresh: Bool
+    let reminders: RemindersImport
     let notifications: MobileNotifications
     let sync: NextcloudSyncState
     private let isolatedDirectory: URL?
@@ -156,6 +157,7 @@ struct FeedbackToast: Identifiable, Equatable {
     }
 
     init(isolatedDirectory: URL? = nil, defaults isolatedDefaults: UserDefaults? = nil,
+         remindersSource injectedReminders: (any RemindersSource)? = nil,
          spotlight injectedSpotlight: (any MobileSpotlightIndexing)? = nil,
          spotlightDebounce: Duration = .seconds(2),
          initialLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled,
@@ -199,6 +201,7 @@ struct FeedbackToast: Identifiable, Equatable {
             defaults.removePersistentDomain(forName: "momentum-ios-ui-tests")
         }
         Preferences.register(defaults)
+        reminders = RemindersImport(source: injectedReminders ?? (!testing && !demo ? EventKitRemindersSource() : nil), defaults: defaults)
         notifications = MobileNotifications(isolated: !mode.allowsSystemNotifications, defaults: defaults)
         allowsBackgroundNotificationRefresh = mode.allowsBackgroundNotificationRefresh
         let syncState = NextcloudSyncState(defaults: defaults, persistence: NextcloudConnectionStore(),
@@ -232,6 +235,8 @@ struct FeedbackToast: Identifiable, Equatable {
             worker = opened
             startupFailure = nil
             notifications.connect(worker: opened)
+            reminders.connectImporter { item in try await opened.importReminder(item) }
+            reminders.didImport = { [weak self] in self?.refreshAfterEdit() }
             sync.connect(makeOperation: { await opened.nextcloudOperation(settings: $0) },
                          makeBackgroundOperation: { await opened.nextcloudBackgroundOperation(settings: $0) },
                          makeReplaceOperation: { await opened.nextcloudReplaceOperation(settings: $0) },
@@ -260,6 +265,7 @@ struct FeedbackToast: Identifiable, Equatable {
     func foreground() async {
         await start()
         await worker?.refreshForForeground()
+        await reminders.reactivate()
         await sync.load()
         await sync.refreshStatus()
         revision += 1
@@ -433,6 +439,7 @@ struct FeedbackToast: Identifiable, Equatable {
 
     func setForeground(_ foreground: Bool) {
         foregroundActive = foreground
+        reminders.setForeground(foreground)
         if !foreground {
             spotlightRefresh?.cancel()
             spotlightRefresh = nil

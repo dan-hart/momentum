@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-09-29. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-10-02. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -4862,3 +4862,35 @@ change. Never include private tasks, credentials or machine-specific server addr
   MomentumKit passes 136 tests in 32 suites with its opt-in nearby test skipped. Final
   independent spec/code review found no blocking or material issue. Linux native runtime
   verification remains unavailable because Flatpak is not installed on this Mac.
+
+## 2026-10-02 — F-055 Apple Reminders import
+
+Based on clean `main` at `766064b`. Dan subsequently authorized a feature branch,
+commit, push and draft PR; merge/release remains unauthorized. Implementation
+and CLI verification used a private workspace copy on the connected Mac. The missing LibreSync path dependency was prepared in the private build copy from
+the repository's pinned `v0.6.0` tag. The project lockfile is unchanged.
+
+- iOS: Settings → Apple Reminders, explicitly initiated full-access authorization,
+  list selection, one-time import, and automatic foreground/reactivation import off
+  by default. Denial/revocation, missing/empty lists, save recovery, cancellation and
+  change coalescing use synthetic fixtures; demo/test launches have no EventKit source.
+- Shared core: transactional `import_task_once` reuses ordinary task-creation rules,
+  persists hashed provenance through the existing extensible Task model and checks
+  live tasks plus both archive tiers. No model migration or generated-file editing.
+- macOS: existing package compatibility passes. Integration remains Planned: AppState
+  owns a distinct engine/lifecycle and importing MomentumMobile would add an unsuitable
+  desktop dependency. Linux and Android integration intentionally excluded.
+- Automated evidence: `cargo test --workspace --exclude momentum --all-features --all-targets` passed (one existing
+  ignored test); `swift test` MomentumMobile passed 165 tests and MomentumKit passed
+  142; debug Apple builder regenerated Mac/device/simulator FFI slices; iOS simulator
+  SDK app build passed; German catalog validation passed 395/395 active entries.
+- Native hosted evidence: 2/2 RemindersIntegrationTests passed on a dedicated iOS 27
+  simulator, proving synthetic app-refresh/change handling, German accessible button
+  roles/geometry, and light/dark AX5 renderings. Test-only assertions initially assumed
+  UIKit identifiers; the public accessibility surface instead exposes localized labels.
+  Layout review moved the long mapping explanation into a collapsed native disclosure.
+  The test simulator was shut down/deleted without activating PetTV or Simulator.app.
+- Remaining acceptance: system authorization prompts/revocation and spoken
+  VoiceOver/physical-device behavior are not verified. No personal Reminders were read,
+  imported or enabled in development. See [APPLE-REMINDERS.md](APPLE-REMINDERS.md) for
+  mapping, source identity limits and official Apple references.

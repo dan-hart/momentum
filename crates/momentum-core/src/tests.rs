@@ -2484,3 +2484,112 @@ fn move_to_day_targets_any_day_and_names_it_in_the_message() {
     );
     assert!(!e.move_to_day(vec![id], "not a day".into()).changed);
 }
+
+#[test]
+fn reminder_import_is_atomic_persistent_and_preserves_archived_provenance() {
+    let (e, dir) = empty();
+    let draft = TaskDraft {
+        title: "Synthetic reminder".into(),
+        project_id: "".into(),
+        due_day: Some("2026-10-03".into()),
+        time: None,
+        reminder_minutes_before: None,
+        estimate_ms: 0.0,
+        notes: "Synthetic notes".into(),
+        tag_ids: vec![],
+        new_tags: vec![],
+    };
+    let imported = e.import_task_once("synthetic-source".into(), draft.clone(), vec![]);
+    assert!(imported.outcome.changed);
+    let id = imported.id.unwrap();
+    assert_eq!(task(&e, &id).project_id, INBOX_PROJECT_ID);
+    assert_eq!(task(&e, &id).due_day.as_deref(), Some("2026-10-03"));
+    assert_eq!(task(&e, &id).notes.as_deref(), Some("Synthetic notes"));
+    assert!(
+        !e.import_task_once("server-source".into(), draft.clone(), vec!["synthetic-source".into()])
+            .outcome
+            .changed,
+        "a newly assigned server identity must still match the original local identity"
+    );
+    let mut changed = draft.clone();
+    changed.title = "Changed source title".into();
+    assert!(
+        !e.import_task_once("synthetic-source".into(), changed, vec![])
+            .outcome
+            .changed
+    );
+    assert_eq!(task(&e, &id).title, "Synthetic reminder");
+    e.bulk_done(vec![id.clone()]);
+    e.archive_done();
+    assert!(
+        !e.import_task_once("synthetic-source".into(), draft.clone(), vec![])
+            .outcome
+            .changed
+    );
+    drop(e);
+    let reopened = Engine::open(dir.path().join("empty").to_string_lossy().into_owned());
+    assert!(
+        !reopened
+            .import_task_once("synthetic-source".into(), draft.clone(), vec![])
+            .outcome
+            .changed
+    );
+    assert!(
+        !reopened
+            .import_task_once("".into(), draft.clone(), vec![])
+            .outcome
+            .changed
+    );
+    let mut blank = draft.clone();
+    blank.title = "  ".into();
+    assert!(
+        !reopened
+            .import_task_once("new-source".into(), blank, vec![])
+            .outcome
+            .changed
+    );
+    assert!(
+        reopened
+            .import_task_once("new-source".into(), draft, vec![])
+            .outcome
+            .changed
+    );
+}
+
+#[test]
+fn concurrent_reminder_imports_create_only_one_task() {
+    let (engine, _dir) = empty();
+    let workers: Vec<_> = (0..8)
+        .map(|_| {
+            let engine = engine.clone();
+            std::thread::spawn(move || {
+                engine
+                    .import_task_once(
+                        "same-synthetic-source".into(),
+                        TaskDraft {
+                            title: "One reminder".into(),
+                            project_id: "".into(),
+                            due_day: None,
+                            time: None,
+                            reminder_minutes_before: None,
+                            estimate_ms: 0.0,
+                            notes: "".into(),
+                            tag_ids: vec![],
+                            new_tags: vec![],
+                        },
+                        vec![],
+                    )
+                    .outcome
+                    .changed
+            })
+        })
+        .collect();
+    assert_eq!(
+        workers
+            .into_iter()
+            .map(|w| w.join().unwrap())
+            .filter(|changed| *changed)
+            .count(),
+        1
+    );
+}
