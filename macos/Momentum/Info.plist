@@ -46,6 +46,8 @@
 	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Dan Hart. GPL-3.0-or-later.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Momentum reads your selected reminders list to import incomplete reminders as independent tasks. Apple Reminders stays unchanged.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Momentum syncs with your other devices on the local network.</string>
 	<key>NSPrincipalClass</key>

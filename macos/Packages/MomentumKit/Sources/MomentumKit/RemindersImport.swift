@@ -20,7 +20,9 @@ public struct ReminderImportItem: Sendable, Equatable {
 }
 
 public enum RemindersPermission: Sendable { case notDetermined, allowed, denied }
-public enum RemindersImportIssue: Error, Equatable { case permission, missingList, fetch, save, unavailable }
+public enum RemindersImportIssue: Error, Equatable, Sendable { case permission, missingList, fetch, save, unavailable }
+
+public enum RemindersFeedback: Equatable, Sendable { case result(Int), issue(RemindersImportIssue) }
 
 /// Only value snapshots leave the native adapter. The importer never writes to EventKit.
 @MainActor public protocol RemindersSource: AnyObject {
@@ -39,10 +41,13 @@ public enum RemindersImportIssue: Error, Equatable { case permission, missingLis
     public private(set) var busy = false
     public private(set) var issue: RemindersImportIssue?
     public private(set) var lastImportCount: Int?
+    public private(set) var feedback: RemindersFeedback?
+    public private(set) var feedbackRevision = 0
     public var didImport: (@MainActor () -> Void)?
     private let source: (any RemindersSource)?
     private let defaults: UserDefaults
     private var importer: (@Sendable (ReminderImportItem) async throws -> Bool)?
+    private var reconciler: (@Sendable (ReminderImportItem) async throws -> Bool)?
     private var foreground = false
     private var rerun = false
     private var generation = 0
@@ -56,12 +61,14 @@ public enum RemindersImportIssue: Error, Equatable { case permission, missingLis
         automatic = defaults.bool(forKey: Self.autoKey)
         source?.didChange = { [weak self] in
             guard let self, self.foreground, self.automatic else { return }
-            Task { await self.refresh(importNew: true) }
+            Task { await self.refreshAutomatically() }
         }
     }
 
-    public func connectImporter(_ importer: @escaping @Sendable (ReminderImportItem) async throws -> Bool) {
+    public func connectImporter(_ importer: @escaping @Sendable (ReminderImportItem) async throws -> Bool,
+                                reconcile: (@Sendable (ReminderImportItem) async throws -> Bool)? = nil) {
         self.importer = importer
+        self.reconciler = reconcile
     }
 
     /// The only path that may present the OS prompt. Called by the Connect button.
@@ -83,14 +90,14 @@ public enum RemindersImportIssue: Error, Equatable { case permission, missingLis
         defaults.set(id, forKey: Self.listKey)
         lastImportCount = nil
         issue = nil
-        if automatic && foreground { Task { await refresh(importNew: true) } }
+        if automatic && foreground { Task { await refreshAutomatically() } }
     }
 
     public func setAutomatic(_ enabled: Bool) {
         generation += 1
         automatic = enabled
         defaults.set(enabled, forKey: Self.autoKey)
-        if enabled && foreground { Task { await refresh(importNew: true) } }
+        if enabled && foreground { Task { await refreshAutomatically() } }
     }
 
     public func setForeground(_ active: Bool) {
@@ -99,7 +106,7 @@ public enum RemindersImportIssue: Error, Equatable { case permission, missingLis
     }
 
     public func reactivate() async {
-        if automatic { await refresh(importNew: true) }
+        if automatic { await refreshAutomatically() }
         else if source?.permission != .allowed && !selectedListID.isEmpty {
             connected = false; lists = []; issue = .permission
         }
@@ -107,8 +114,29 @@ public enum RemindersImportIssue: Error, Equatable { case permission, missingLis
     public func loadLists() async { await refresh(importNew: false) }
     public func importNow() async { await refresh(importNew: true) }
 
+    public func retry() async {
+        switch issue {
+        case .fetch, .save: await importNow()
+        case .missingList: await loadLists()
+        default: break
+        }
+    }
+
+    private func refreshAutomatically() async {
+        // Recheck when queued work actually executes; the app may have resigned active.
+        guard foreground, automatic else { return }
+        await refresh(importNew: true)
+    }
+
     private func refresh(importNew: Bool) async {
         if busy { rerun = rerun || importNew; return }
+        feedback = nil
+        defer {
+            // Publish one terminal event per attempt, including identical repeated results.
+            // A partial import followed by an error must focus the recovery message.
+            if let issue { feedback = .issue(issue); feedbackRevision += 1 }
+            else if importNew, let count = lastImportCount { feedback = .result(count); feedbackRevision += 1 }
+        }
         guard let source else { issue = .unavailable; return }
         guard source.permission == .allowed else {
             connected = false
@@ -123,7 +151,7 @@ public enum RemindersImportIssue: Error, Equatable { case permission, missingLis
             busy = false
             if rerun {
                 rerun = false
-                Task { await self.refresh(importNew: self.automatic && self.foreground) }
+                Task { await self.refreshAutomatically() }
             }
         }
         lists = source.lists()
@@ -145,6 +173,15 @@ public enum RemindersImportIssue: Error, Equatable { case permission, missingLis
                 }
                 guard !Task.isCancelled else { return }
                 let identities = [item.sourceID] + item.sourceAliases
+                // Reconcile even with fresh local history: synced tasks may already exist.
+                // Reconciliation never creates or resurrects deleted/undone tasks.
+                if let reconciler, try await reconciler(item) { didImport?() }
+                // Worker reconciliation can suspend; settings/lifecycle may change meanwhile.
+                guard generation == version else { return }
+                guard source.permission == .allowed else {
+                    connected = false; lists = []; issue = .permission; return
+                }
+                guard !Task.isCancelled else { return }
                 if identities.contains(where: imported.contains) {
                     imported.formUnion(identities)
                     defaults.set(Array(imported), forKey: Self.historyKey)

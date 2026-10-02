@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Opt-in real-framework regression. Use only a fresh, empty simulator.
 import EventKit
+import MomentumKit
 import MomentumMobile
 import XCTest
 

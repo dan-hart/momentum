@@ -4919,3 +4919,64 @@ Xcode's iOS 27 simulator SDK compiles the corrected production adapter/test host
 Rust/task semantics and macOS integration are unchanged by B-095; prior core and
 macOS results still apply. New-head CI and physical-device acceptance are tracked
 separately.
+
+
+## 2026-10-02 — PR #4 review fixes — F-055 / B-096 / B-097 / B-098
+
+Scope: Dan authorized correcting the review items and resolving their threads after
+fixes. Implementation/verification below covers the dirty review-fix worktree based
+on `f49160b`; it will be published as the next commit on `task/apple-reminders-import`.
+No merge, tag, release, personal reminder access, or production data change.
+
+- **Retry (B-096):** shared typed recovery retries real fetch/save work; missing-list
+  recovery reloads inventory. Hosted iOS acceptance activates the production Try Again
+  accessibility action and waits for the asynchronous import, rather than construction
+  or rendering alone.
+- **Identity (B-097):** Rust reconciles new source identities atomically through ordinary
+  task-update operations. Local/archive records, reopen, remote replay, failed-save
+  rollback, aliases-only records and concurrent local upgrades have regressions.
+  Reconciliation neither creates missing tasks nor consumes undo. Archive restore
+  retains provenance learned after its snapshot, including subtasks. Both native apps
+  wake refresh/index/sync on metadata changes without counting them as new imports.
+  Existing sync conflict semantics and documented cross-device identifier limitations
+  remain; this does not claim universal distributed deduplication.
+- **Accessibility (B-098):** one localized terminal announcement per attempt, including
+  repeated identical results/errors; a failure takes precedence over partial success.
+  Native view injection verifies actual repeated announcement delivery and recovery.
+  Spoken VoiceOver behavior remains unverified.
+- **macOS scope:** added native Settings → Apple Reminders with popup list selection,
+  explicit Connect permission, import/automatic/recovery/results, privacy explanation
+  and English/German resources. The existing MomentumKit package now owns the reusable
+  value adapter/coordinator; no new dependency, format, or shared widget toolkit.
+  AppState supplies detached Rust calls and the existing refresh/index/sync path;
+  NSApplication activation/resignation and shutdown control automatic importing.
+  iOS keeps its native EngineWorker/Settings wiring. Automatic jobs recheck active state
+  at execution and after asynchronous reconciliation; backgrounding, disabling,
+  reselection, permission revocation and cancellation have suspended-worker regressions.
+- **Automated evidence:** `cargo test --workspace --exclude momentum --all-features
+  --all-targets` passes 293 tests (one existing ignored); `cargo fmt --check` passes.
+  Existing builder regenerates macOS, iOS device and simulator FFI slices. Full
+  MomentumKit suite passes 164 tests; portable MomentumMobile suite passes 158 after
+  coordinator/callback tests move to MomentumKit. Three hosted RemindersIntegrationTests
+  pass on disposable iOS 27, including actual Retry actions and repeated localized
+  announcements. Shipping macOS Debug and iOS simulator SDK app builds pass.
+  Compiler-based catalog validation passes: macOS app 330/330 German entries,
+  MomentumKit 186/186, iOS 395/395; permission catalogs also pass.
+- **Native live evidence:** the exact production Mac RemindersSettings view was compiled
+  into a disposable, separately identified host with synthetic source, temporary store
+  and isolated preferences. Live accessibility/UI inspection verified popup selection,
+  enabled Import Now, Imported 1 → repeat Imported 0, automatic On/Off, and keyboard
+  expansion of the mapping disclosure. This did not launch or alter the installed
+  Momentum app, instantiate EventKit, read personal reminders or request permission.
+- **Reviews:** independent specification and code-quality reviews pass for Rust,
+  shared/iOS Swift and native macOS scope. Diff whitespace and documentation links
+  checked. The missing pinned LibreSync v0.6.0 build source was recreated only in the
+  existing ignored path; lockfile and tracked dependencies are unchanged.
+- **Limits/status:** F-055 stays Implemented on macOS/iOS. Real permission prompting and
+  revocation, spoken VoiceOver, physical-device delivery/background behavior and the
+  corrected phone crash report/over-install remain unverified or previously deferred.
+  Linux shared reducer compatibility is tested; Linux native runtime is not inferred
+  from this Mac. Linux/Android have no EventKit integration. Native network sync was not
+  exercised. The disposable simulator/host are closed after testing.
+- **Next:** observe CI on the published exact head, resolve the four corrected review
+  threads, and retain the above native acceptance limits. No merge/release requested.

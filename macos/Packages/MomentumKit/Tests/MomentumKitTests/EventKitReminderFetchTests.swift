@@ -2,7 +2,7 @@
 import Dispatch
 import EventKit
 import Testing
-@testable import MomentumMobile
+@testable import MomentumKit
 
 @Suite @MainActor struct EventKitReminderFetchTests {
     @Test func frameworkCompletionCanArriveOnBackgroundQueue() async {

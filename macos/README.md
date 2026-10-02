@@ -216,3 +216,14 @@ The generated Momentum scheme refreshes shared Rust APIs before compiling depend
 Swift packages. Before running standalone Swift package tests, run
 `macos/scripts/build-core.sh --debug` so their generated bindings are current. No personal
 signing identity or team is committed to the project defaults.
+
+
+## Apple Reminders import
+
+Settings → Apple Reminders offers a one-time import or optional automatic one-way
+import from one selected list. Connect is the only permission request; automatic
+import starts off and runs while Momentum is active. Imported tasks are independent
+Inbox tasks; Apple Reminders is never modified. Fetch/save failures have a real retry,
+and results/errors receive localized accessibility announcements. See
+[the import contract](../docs/APPLE-REMINDERS.md) for mapping, source identity and
+cross-device limits, and [PROGRESS](../docs/PROGRESS.md) for dated verification.

@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import Accessibility
-import MomentumMobile
+import AppKit
 import MomentumKit
 import SwiftUI
 
-struct RemindersSettings: View {
-    @Environment(MobileAppModel.self) private var model
-    @Environment(\.openURL) private var openURL
+struct RemindersSettings: SwiftUI.View {
+    @Environment(AppState.self) private var model
     var announce: (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
     private var state: RemindersImport { model.reminders }
 
-    var body: some View {
+    var body: some SwiftUI.View {
         Form {
             Section {
                 if !state.connected {
@@ -25,7 +24,7 @@ struct RemindersSettings: View {
                         }
                         ForEach(state.lists) { list in Text(verbatim: list.title).tag(list.id) }
                     }
-                    .pickerStyle(.navigationLink)
+                    .pickerStyle(.menu)
                     .disabled(state.busy)
                     .accessibilityIdentifier("reminders-list")
                     Button("Import Now") { Task { await state.importNow() } }
@@ -37,7 +36,7 @@ struct RemindersSettings: View {
                     if state.lists.isEmpty { Text("No reminders lists are available. Create a list in Apple Reminders, then return here.") }
                 }
             } footer: {
-                Text("Automatic import checks your chosen list while Momentum is active and when you reopen it. iOS does not guarantee imports while Momentum is closed. Later edits or completions in either app are not synchronized.")
+                Text("Automatic import checks your chosen list while Momentum is active and when you return to it. Imports pause when another app is active or Momentum is closed. Later edits or completions in either app are not synchronized.")
             }
             Section {
                 DisclosureGroup("What Gets Imported") {
@@ -60,8 +59,10 @@ struct RemindersSettings: View {
                     Text(message(for: issue)).foregroundStyle(.secondary)
                         .accessibilityIdentifier("reminders-error")
                     if issue == .permission {
-                        Button("Open iOS Settings") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                        Button("Open System Settings") {
+                            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.systempreferences") {
+                                NSWorkspace.shared.openApplication(at: url, configuration: .init(), completionHandler: nil)
+                            }
                         }
                     } else if issue != .unavailable {
                         Button("Try Again") { Task { await state.retry() } }
@@ -71,9 +72,7 @@ struct RemindersSettings: View {
                 Text("Previously imported reminders are skipped, even if you delete their Momentum tasks. Turning this off keeps imported tasks and your selected list.")
             }
         }
-        .navigationTitle("Apple Reminders")
-        .navigationBarTitleDisplayMode(.inline)
-        .momentumNavigationCanvas()
+        .formStyle(.grouped)
         .task { await state.loadLists() }
         .onChange(of: state.feedbackRevision) { _, _ in
             // An announcement is an event, so repeated identical attempts are spoken too.
@@ -88,7 +87,7 @@ struct RemindersSettings: View {
 
     private func message(for issue: RemindersImportIssue) -> LocalizedStringResource {
         switch issue {
-        case .permission: "Allow Reminders access in iOS Settings to import your list."
+        case .permission: "Allow Reminders access in System Settings → Privacy & Security → Reminders to import your list."
         case .missingList: "The selected list is unavailable. Choose another list."
         case .fetch: "Reminders could not be loaded. Try again."
         case .save: "Momentum could not save a reminder. Retry Import Now."

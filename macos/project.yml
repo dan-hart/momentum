@@ -81,6 +81,7 @@ targets:
         NSPrincipalClass: NSApplication
         NSSupportsAutomaticTermination: false
         NSSupportsSuddenTermination: false
+        NSRemindersFullAccessUsageDescription: "Momentum reads your selected reminders list to import incomplete reminders as independent tasks. Apple Reminders stays unchanged."
         NSLocalNetworkUsageDescription: "Momentum syncs with your other devices on the local network."
         NSBonjourServices: ["_libresync._tcp"]
         NSUserNotificationsUsageDescription: "Reminders and a morning summary of the day's tasks."

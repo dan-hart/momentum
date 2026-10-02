@@ -235,7 +235,8 @@ struct FeedbackToast: Identifiable, Equatable {
             worker = opened
             startupFailure = nil
             notifications.connect(worker: opened)
-            reminders.connectImporter { item in try await opened.importReminder(item) }
+            reminders.connectImporter({ item in try await opened.importReminder(item) },
+                                      reconcile: { item in try await opened.reconcileReminder(item) })
             reminders.didImport = { [weak self] in self?.refreshAfterEdit() }
             sync.connect(makeOperation: { await opened.nextcloudOperation(settings: $0) },
                          makeBackgroundOperation: { await opened.nextcloudBackgroundOperation(settings: $0) },

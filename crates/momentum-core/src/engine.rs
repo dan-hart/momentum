@@ -313,6 +313,84 @@ impl Inner {
     fn update_task(&mut self, id: &str, changes: Map<String, Value>) {
         self.dispatch(Action::UpdateTask { id: id.into(), changes });
     }
+    /// Learn additional identities without changing task content or undo history.
+    fn reconcile_import(&mut self, source: &str, aliases: &[String]) -> (bool, Outcome) {
+        let identities: Vec<&str> = std::iter::once(source)
+            .chain(aliases.iter().map(String::as_str))
+            .filter(|id| !id.trim().is_empty())
+            .collect();
+        let matches = |key: Option<&Value>, keys: Option<&Value>| {
+            key.and_then(Value::as_str).is_some_and(|id| identities.contains(&id))
+                || keys
+                    .and_then(Value::as_array)
+                    .is_some_and(|keys| keys.iter().filter_map(Value::as_str).any(|id| identities.contains(&id)))
+        };
+        let mut candidates: Vec<(String, Value, Option<Value>)> = self
+            .store
+            .state
+            .task
+            .iter()
+            .filter(|t| {
+                matches(
+                    t.extra.get("momentumImportSource"),
+                    t.extra.get("momentumImportAliases"),
+                )
+            })
+            .map(|t| {
+                (
+                    t.id.clone(),
+                    t.extra.get("momentumImportSource").cloned().unwrap_or(Value::Null),
+                    t.extra.get("momentumImportAliases").cloned(),
+                )
+            })
+            .collect();
+        for tier in ["archiveYoung", "archiveOld"] {
+            if let Some(tasks) = self
+                .store
+                .state
+                .rest
+                .get(tier)
+                .and_then(|v| v.get("task"))
+                .and_then(|v| v.get("entities"))
+                .and_then(Value::as_object)
+            {
+                candidates.extend(
+                    tasks
+                        .iter()
+                        .filter(|(_, t)| matches(t.get("momentumImportSource"), t.get("momentumImportAliases")))
+                        .map(|(id, t)| {
+                            (
+                                id.clone(),
+                                t["momentumImportSource"].clone(),
+                                t.get("momentumImportAliases").cloned(),
+                            )
+                        }),
+                );
+            }
+        }
+        let matched = !candidates.is_empty();
+        let mut changed = false;
+        for (id, primary, existing) in candidates {
+            let mut keys: Vec<String> = existing
+                .as_ref()
+                .and_then(Value::as_array)
+                .map(|keys| keys.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+                .unwrap_or_default();
+            let before = keys.clone();
+            for identity in &identities {
+                if primary.as_str() != Some(identity) && !keys.iter().any(|key| key == identity) {
+                    keys.push((*identity).to_owned());
+                }
+            }
+            if keys != before {
+                let mut changes = Map::new();
+                changes.insert("momentumImportAliases".into(), json!(keys));
+                self.update_task(&id, changes);
+                changed = true;
+            }
+        }
+        (matched, if changed { Outcome::changed() } else { Outcome::none() })
+    }
     /// With auto-archive on, moves just-completed top-level tasks (and their subtasks) to
     /// the archive, like Archive Completed does. Returns the restore batch.
     fn auto_archive(&mut self, ids: &[String]) -> Option<Vec<Action>> {
@@ -1028,6 +1106,14 @@ impl Engine {
         self.create_task_with_source(draft, View::project(INBOX_PROJECT_ID), Some(source_id), source_aliases)
     }
 
+    /// Reconciles known source identities only; missing/deleted tasks remain absent.
+    pub fn reconcile_import_source(&self, source_id: String, source_aliases: Vec<String>) -> Outcome {
+        if source_id.trim().is_empty() {
+            return Outcome::none();
+        }
+        self.edit(|g| g.reconcile_import(&source_id, &source_aliases).1)
+    }
+
     fn create_task_with_source(
         &self,
         draft: TaskDraft,
@@ -1043,40 +1129,9 @@ impl Engine {
         }
         self.try_edit(|g| {
             if let Some(source) = &source {
-                let identities: Vec<&str> = std::iter::once(source.as_str())
-                    .chain(aliases.iter().map(String::as_str))
-                    .collect();
-                let matches = |key: Option<&Value>, alias_keys: Option<&Value>| {
-                    key.and_then(Value::as_str).is_some_and(|id| identities.contains(&id))
-                        || alias_keys.and_then(Value::as_array).is_some_and(|keys| {
-                            keys.iter().filter_map(Value::as_str).any(|id| identities.contains(&id))
-                        })
-                };
-                let live = g.store.state.task.iter().any(|t| {
-                    matches(
-                        t.extra.get("momentumImportSource"),
-                        t.extra.get("momentumImportAliases"),
-                    )
-                });
-                let archived = ["archiveYoung", "archiveOld"].into_iter().any(|tier| {
-                    g.store
-                        .state
-                        .rest
-                        .get(tier)
-                        .and_then(|v| v.get("task"))
-                        .and_then(|v| v.get("entities"))
-                        .and_then(Value::as_object)
-                        .is_some_and(|tasks| {
-                            tasks
-                                .values()
-                                .any(|t| matches(t.get("momentumImportSource"), t.get("momentumImportAliases")))
-                        })
-                });
-                if live || archived {
-                    return TaskCreation {
-                        outcome: Outcome::none(),
-                        id: None,
-                    };
+                let (matched, outcome) = g.reconcile_import(source, &aliases);
+                if matched {
+                    return TaskCreation { outcome, id: None };
                 }
             }
             let project = if draft.project_id.is_empty() {

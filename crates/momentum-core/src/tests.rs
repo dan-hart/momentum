@@ -2506,9 +2506,9 @@ fn reminder_import_is_atomic_persistent_and_preserves_archived_provenance() {
     assert_eq!(task(&e, &id).due_day.as_deref(), Some("2026-10-03"));
     assert_eq!(task(&e, &id).notes.as_deref(), Some("Synthetic notes"));
     assert!(
-        !e.import_task_once("server-source".into(), draft.clone(), vec!["synthetic-source".into()])
-            .outcome
-            .changed,
+        e.import_task_once("server-source".into(), draft.clone(), vec!["synthetic-source".into()])
+            .id
+            .is_none(),
         "a newly assigned server identity must still match the original local identity"
     );
     let mut changed = draft.clone();
@@ -2592,4 +2592,189 @@ fn concurrent_reminder_imports_create_only_one_task() {
             .count(),
         1
     );
+}
+
+#[test]
+fn reminder_identity_upgrade_survives_reopen_without_duplicate_or_undo() {
+    let (e, dir) = empty();
+    let draft = TaskDraft {
+        title: "Identity reminder".into(),
+        project_id: "".into(),
+        due_day: None,
+        time: None,
+        reminder_minutes_before: None,
+        estimate_ms: 0.0,
+        notes: "original".into(),
+        tag_ids: vec![],
+        new_tags: vec![],
+    };
+    let id = e.import_task_once("local".into(), draft.clone(), vec![]).id.unwrap();
+    let result = e.import_task_once("external".into(), draft.clone(), vec!["local".into()]);
+    assert!(result.id.is_none());
+    assert!(result.outcome.changed, "identity upgrade must persist and wake sync");
+    assert!(result.outcome.undo.is_none());
+    drop(e);
+    let reopened = Engine::open(dir.path().join("empty").to_string_lossy().into_owned());
+    assert!(reopened.import_task_once("external".into(), draft, vec![]).id.is_none());
+    assert_eq!(task(&reopened, &id).notes.as_deref(), Some("original"));
+}
+
+#[test]
+fn reminder_reconciliation_updates_archives_but_never_resurrects_deleted_tasks() {
+    let (e, _dir) = empty();
+    let draft = TaskDraft {
+        title: "Archive reminder".into(),
+        project_id: "".into(),
+        due_day: None,
+        time: None,
+        reminder_minutes_before: None,
+        estimate_ms: 0.0,
+        notes: "".into(),
+        tag_ids: vec![],
+        new_tags: vec![],
+    };
+    let id = e.import_task_once("local".into(), draft.clone(), vec![]).id.unwrap();
+    e.bulk_done(vec![id.clone()]);
+    e.archive_done();
+    let archived_snapshot = e.with_store(|s| s.state.clone());
+    let before = e.with_store(|s| s.pending.len());
+    let result = e.reconcile_import_source("external".into(), vec!["local".into()]);
+    assert!(result.changed);
+    assert!(result.undo.is_none());
+    e.with_store(|s| {
+        assert!(s.state.task.entities.get(&id).is_none());
+        assert!(
+            s.state.rest["archiveYoung"]["task"]["entities"][&id]["momentumImportAliases"]
+                .as_array()
+                .unwrap()
+                .contains(&serde_json::json!("external"))
+        );
+        assert_eq!(s.pending.len(), before + 1);
+    });
+    assert!(e
+        .import_task_once("external".into(), draft.clone(), vec![])
+        .id
+        .is_none());
+    let pending = e.with_store(|s| s.pending.last().unwrap().clone());
+    let receiver_dir = tempfile::tempdir().unwrap();
+    let mut receiver = sp_store::Store::load(receiver_dir.path().to_owned());
+    receiver.state = archived_snapshot;
+    assert!(receiver.apply_remote(pending.op, pending.action));
+    receiver.save().unwrap();
+    let remote = Engine::open(receiver_dir.path().to_string_lossy().into_owned());
+    assert!(remote
+        .import_task_once("external".into(), draft.clone(), vec![])
+        .id
+        .is_none());
+    assert!(
+        remote.with_store(|s| s.state.task.entities.is_empty()),
+        "archived receiver must not resurrect tasks"
+    );
+    assert!(!e.reconcile_import_source("missing".into(), vec![]).changed);
+    e.undo(); // metadata reconciliation must leave archive undo available
+    assert!(e.with_store(|s| s.state.task.entities.contains_key(&id)));
+    assert!(
+        e.import_task_once("external".into(), draft, vec![]).id.is_none(),
+        "Undo must retain learned identity"
+    );
+    e.delete_task(id);
+    assert!(
+        !e.reconcile_import_source("external".into(), vec!["local".into()])
+            .changed
+    );
+    assert_eq!(e.with_store(|s| s.state.task.entities.len()), 0);
+}
+
+#[test]
+fn reminder_reconciliation_rolls_back_failed_save_and_replays_on_another_device() {
+    let (e, dir) = empty();
+    e.add_task("Existing task".into(), View::project(INBOX_PROJECT_ID));
+    let id = id_of(&e, "Existing task");
+    e.with_store_mut(|store| {
+        let mut changes = serde_json::Map::new();
+        changes.insert("momentumImportAliases".into(), serde_json::json!(["local"]));
+        store.dispatch(Action::UpdateTask {
+            id: id.clone(),
+            changes,
+        });
+    });
+    let done = e.set_done(id.clone(), true);
+    let snapshot = e.with_store(|s| s.state.clone());
+    let before = e.with_store(|s| s.pending.len());
+    let blocked = dir.path().join("empty/pending.json.tmp");
+    std::fs::create_dir(&blocked).unwrap();
+    assert!(matches!(
+        e.reconcile_import_source("external".into(), vec!["local".into()])
+            .message,
+        Some(Message::SaveFailed { .. })
+    ));
+    e.with_store(|s| {
+        assert_eq!(s.pending.len(), before);
+        assert_eq!(s.state.task.entities[&id].extra, snapshot.task.entities[&id].extra);
+    });
+    std::fs::remove_dir(&blocked).unwrap();
+    assert!(
+        e.reconcile_import_source("external".into(), vec!["local".into()])
+            .changed
+    );
+    let pending = e.with_store(|s| s.pending.last().unwrap().clone());
+    let receiver_dir = tempfile::tempdir().unwrap();
+    let mut receiver = sp_store::Store::load(receiver_dir.path().to_owned());
+    receiver.state = snapshot;
+    assert!(receiver.apply_remote(pending.op, pending.action));
+    receiver.save().unwrap();
+    let remote = Engine::open(receiver_dir.path().to_string_lossy().into_owned());
+    let draft = TaskDraft {
+        title: "Remote duplicate".into(),
+        project_id: "".into(),
+        due_day: None,
+        time: None,
+        reminder_minutes_before: None,
+        estimate_ms: 0.0,
+        notes: "".into(),
+        tag_ids: vec![],
+        new_tags: vec![],
+    };
+    assert!(remote.import_task_once("external".into(), draft, vec![]).id.is_none());
+    assert!(
+        e.undo_batch(done.undo.unwrap()).changed,
+        "metadata must not consume completion undo"
+    );
+    assert!(
+        !e.reconcile_import_source("external".into(), vec!["local".into()])
+            .changed
+    );
+}
+
+#[test]
+fn concurrent_reminder_identity_upgrades_preserve_every_alias() {
+    let (e, _dir) = empty();
+    let draft = TaskDraft {
+        title: "One task".into(),
+        project_id: "".into(),
+        due_day: None,
+        time: None,
+        reminder_minutes_before: None,
+        estimate_ms: 0.0,
+        notes: "".into(),
+        tag_ids: vec![],
+        new_tags: vec![],
+    };
+    e.import_task_once("local".into(), draft.clone(), vec![]);
+    let workers: Vec<_> = (0..8)
+        .map(|n| {
+            let engine = e.clone();
+            std::thread::spawn(move || engine.reconcile_import_source(format!("external-{n}"), vec!["local".into()]))
+        })
+        .collect();
+    for worker in workers {
+        assert!(worker.join().unwrap().changed);
+    }
+    for n in 0..8 {
+        assert!(e
+            .import_task_once(format!("external-{n}"), draft.clone(), vec![])
+            .id
+            .is_none());
+    }
+    assert_eq!(e.with_store(|s| s.state.task.entities.len()), 1);
 }

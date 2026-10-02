@@ -64,6 +64,7 @@ public final class AppState {
     public let keychain: Keychain
     public let dataDir: URL
     public let isDemo: Bool
+    public let reminders: RemindersImport
 
     public private(set) var view: View = .today
     public private(set) var listing: Listing
@@ -124,12 +125,14 @@ public final class AppState {
                 defaults: UserDefaults = .standard,
                 keychain: Keychain = Keychain(),
                 services: Bool = true,
-                isDemo: Bool = false) {
+                isDemo: Bool = false,
+                remindersSource: (any RemindersSource)? = nil) {
         Preferences.register(defaults)
         self.engine = engine
         self.defaults = defaults
         self.keychain = keychain
         self.isDemo = isDemo
+        self.reminders = RemindersImport(source: isDemo ? nil : remindersSource, defaults: defaults)
         self.dataDir = URL(fileURLWithPath: engine.dataDir())
         let p = Preferences(defaults)
         if !isDemo { p.readCliConfig(from: self.dataDir) }
@@ -145,6 +148,23 @@ public final class AppState {
         self.todayOpenCount = engine.todayOpenCount()
         _ = engine.spawnRepeats()
         refresh()
+        reminders.connectImporter { item in
+            try await Task.detached(priority: .utility) {
+                let result = engine.importTaskOnce(sourceId: item.sourceID, draft: TaskDraft(
+                    title: item.title, projectId: "", dueDay: item.dueDay, time: nil,
+                    reminderMinutesBefore: nil, estimateMs: 0, notes: item.notes,
+                    tagIds: [], newTags: []), sourceAliases: item.sourceAliases)
+                if case .saveFailed = result.outcome.message { throw RemindersImportIssue.save }
+                return result.id != nil
+            }.value
+        } reconcile: { item in
+            try await Task.detached(priority: .utility) {
+                let result = engine.reconcileImportSource(sourceId: item.sourceID, sourceAliases: item.sourceAliases)
+                if case .saveFailed = result.message { throw RemindersImportIssue.save }
+                return result.changed
+            }.value
+        }
+        reminders.didImport = { [weak self] in self?.changed() }
         if services {
             startServices()
         }
@@ -152,6 +172,7 @@ public final class AppState {
 
     /// Timers, the store-file watch, the `mo` socket, nearby sync and the first sync.
     public func startServices() {
+        setApplicationActive(NSApplication.shared.isActive)
         updateDockBadge()
         prefs.writeCliConfig(to: dataDir)
         fileWatcher = FileWatcher(file: dataDir.appendingPathComponent("pending.json")) { [weak self] in
@@ -203,7 +224,17 @@ public final class AppState {
         }
     }
 
+    /// Apple Reminders automatic import follows application activation, including Settings.
+    /// Closing a window or keeping the app alive in the menu bar is not active access.
+    @discardableResult
+    public func setApplicationActive(_ active: Bool) -> Task<Void, Never>? {
+        reminders.setForeground(active && !isDemo)
+        guard active && !isDemo else { return nil }
+        return Task { await reminders.reactivate() }
+    }
+
     public func stopServices() {
+        reminders.setForeground(false)
         tickTimer?.invalidate()
         periodicSync?.invalidate()
         syncDebounce?.cancel()

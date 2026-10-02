@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import MomentumCore
+import MomentumKit
 import MomentumMobile
 import SwiftUI
 import XCTest
@@ -7,10 +8,16 @@ import XCTest
 @MainActor private final class HostedRemindersFixture: RemindersSource {
     var permission = RemindersPermission.allowed
     var didChange: (@MainActor () -> Void)?
+    var error: RemindersImportIssue?
+    var fetches = 0
     var items = [ReminderImportItem(sourceID: "hosted-source", title: "Synthetic imported task", notes: "Synthetic note")]
     func requestPermission() async throws -> Bool { true }
     func lists() -> [ReminderList] { [ReminderList(id: "hosted-list", title: "Synthetic Reminders List")] }
-    func incompleteReminders(in listID: String) async throws -> [ReminderImportItem] { items }
+    func incompleteReminders(in listID: String) async throws -> [ReminderImportItem] {
+        fetches += 1
+        if let error { throw error }
+        return items
+    }
 }
 
 @MainActor final class RemindersIntegrationTests: XCTestCase {
@@ -65,6 +72,42 @@ import XCTest
                 attachment.lifetime = .keepAlways
                 self.add(attachment)
             }
+        }
+    }
+
+    func testSettingsAnnounceRepeatedFailuresAndRetrySuccessfulImport() async throws {
+        try await withModel { model, source, defaults, name in
+            await model.reminders.loadLists()
+            model.reminders.selectList("hosted-list")
+            var announcements: [String] = []
+            let mounted = try HostingFixture.mount(
+                NavigationStack { RemindersSettings(announce: { announcements.append($0) }) }.environment(model),
+                defaults: defaults, defaultsName: name, size: CGSize(width: 320, height: 900))
+            defer { mounted.unmount() }
+            await mounted.settle()
+            source.error = .fetch
+            await model.reminders.importNow()
+            await mounted.settle()
+            XCTAssertEqual(announcements.count, 1)
+            let first = try XCTUnwrap(announcements.first)
+            XCTAssertEqual(first, String(localized: "Reminders could not be loaded. Try again."))
+            XCTAssertTrue(mounted.activateAccessibilityElement(label: "Try Again"))
+            let deadline = ContinuousClock().now.advanced(by: .seconds(5))
+            while (source.fetches < 2 || model.reminders.busy) && ContinuousClock().now < deadline { await Task.yield() }
+            XCTAssertFalse(model.reminders.busy)
+            await mounted.settle()
+            XCTAssertEqual(announcements, [first, first], "Repeated failures must announce again without a success announcement")
+            XCTAssertEqual(source.fetches, 2)
+            source.error = nil
+            XCTAssertTrue(mounted.activateAccessibilityElement(label: "Try Again"))
+            let recoveryDeadline = ContinuousClock().now.advanced(by: .seconds(5))
+            while (source.fetches < 3 || model.reminders.busy) && ContinuousClock().now < recoveryDeadline { await Task.yield() }
+            XCTAssertFalse(model.reminders.busy)
+            await mounted.settle()
+            XCTAssertEqual(model.reminders.lastImportCount, 1)
+            XCTAssertEqual(source.fetches, 3)
+            XCTAssertEqual(announcements.last, String(localized: "Imported \(1) new reminders."))
+            XCTAssertEqual(announcements.count, 3)
         }
     }
 
