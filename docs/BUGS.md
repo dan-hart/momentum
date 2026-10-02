@@ -2332,3 +2332,30 @@ The initial sandboxed Rust run could not bind test sockets; the unsandboxed isol
 workspace suite passed. EventKit background delivery and identifier-reset boundaries
 are documented feature limitations, not newly invented bugs. Native permission and
 assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
+
+## B-095 — Apple Reminders import traps in a background EventKit callback
+
+- **Severity:** High. **Feature:** F-055. **Status:** Implemented on iOS; physical-device confirmation deferred.
+- **Reported:** importing a reminder on the installed iOS app crashes. The phone is
+  unavailable; its crash report has not been retrieved.
+- **Reproduced:** original PR head `4a40345` traps with `EXC_BREAKPOINT`/`SIGTRAP`
+  when real EventKit returns one synthetic reminder in a fresh iOS 27 simulator.
+  The stack enters Swift's actor-executor check from the nested projection closure
+  on `com.apple.eventkit.reminders.search`.
+- **Expected:** callbacks may arrive on EventKit's queue and safely return immutable
+  snapshots to the main-actor import coordinator.
+- **Cause/fix:** the legacy Objective-C completion inherits main-actor isolation
+  through the nested map closure. Use an explicitly `@Sendable` completion and a
+  `nonisolated` projection; no EventKit objects cross into the resumed caller.
+- **Regression:** the same nonempty real EventKit fixture passes with the correction;
+  three portable tests cover background success/failure and synchronous completion.
+  The real-framework regression is simulator-only and opt-in, touches only its own
+  UUID-named synthetic list, and never requests permission.
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Unaffected — no adapter | Unaffected — integration deferred | Implemented; reproduced/fixed in isolated iOS 27 simulator | Not applicable — no app |
+
+- **Remaining:** compare the phone's crash report and over-install the corrected
+  signed app when the device is reachable. Simulator evidence does not establish
+  the cause or resolution of the reported physical-device crash.

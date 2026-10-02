@@ -152,3 +152,26 @@ xcodebuild -project ios/Momentum.xcodeproj \
 
 Use a simulator dedicated to isolated test data. A simulator result is a repeatable regression
 boundary; it is not a physical-device launch or energy measurement.
+
+## Opt-in real EventKit callback regression
+
+`EventKitRemindersIntegrationTests` skips by default, before opening an EventKit
+store. Use only a newly created empty simulator with no Apple account or personal
+reminders. Build the `MomentumFastTests` host, install that test host on the fresh
+simulator, and grant **only** `com.codedbydan.Momentum.TestHost` Reminders permission
+with `simctl privacy`. Never grant production-app or personal-device access for this
+test. The fixture creates a UUID-named local list, fetches only that list, and removes
+it afterward. Delete the disposable simulator after testing, including after a crash.
+
+```sh
+TEST_RUNNER_MOMENTUM_REMINDERS_NATIVE_FIXTURE=1 xcodebuild \
+  -project ios/Momentum.xcodeproj -scheme MomentumFastTests \
+  -destination 'platform=iOS Simulator,id=YOUR_FRESH_EMPTY_TEST_SIMULATOR' \
+  -only-testing:MomentumViewTests/EventKitRemindersIntegrationTests test
+```
+
+The real nonempty EventKit callback reproduced B-095's Swift actor-check trap on
+`4a40345` and passes after correction. The portable `EventKitReminderFetchTests`
+exercise success/failure callbacks on a background queue and synchronous completion
+without opening EventKit or requesting access. Neither lane proves physical-device
+behavior, system permission prompts, revocation UI or background delivery.

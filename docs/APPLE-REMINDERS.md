@@ -66,8 +66,13 @@ Tests use synthetic source snapshots and UUID-isolated stores/preferences. Defau
 preview/demo/test models never instantiate EventKit. CLI builds do not request personal
 data access. Native hosted tests inject a fake source into the production model and
 Settings view. Real permission prompting, system revocation, spoken accessibility,
-physical-device suspension and actual EventKit delivery require a later approved
-isolated system acceptance pass. macOS integration is deferred because it would need
+physical-device suspension require a later approved
+isolated system acceptance pass. A simulator-only opt-in regression creates one
+UUID-named local list and synthetic reminder, exercises actual EventKit fetching,
+and deletes its own list. It reproduced B-095 on `4a40345` and passes with an
+explicit Sendable callback and nonisolated snapshot projection. It establishes no
+physical-device or background-delivery claim. See [iOS testing](../ios/TESTING.md).
+macOS integration is deferred because it would need
 separate desktop engine/lifecycle wiring or relocating the mobile integration package;
 existing shared-core compatibility is tested.
 

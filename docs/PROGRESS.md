@@ -4894,3 +4894,28 @@ the repository's pinned `v0.6.0` tag. The project lockfile is unchanged.
   VoiceOver/physical-device behavior are not verified. No personal Reminders were read,
   imported or enabled in development. See [APPLE-REMINDERS.md](APPLE-REMINDERS.md) for
   mapping, source identity limits and official Apple references.
+
+## 2026-10-02 — B-095 EventKit callback crash
+
+Dan authorized fixing and pushing the reported import crash to PR #4, now ready
+for review. The original `4a40345` production adapter reproduces SIGTRAP in a fresh
+isolated iOS 27 simulator with one synthetic reminder. The sanitized stack identifies
+Swift actor checking inside the callback projection on EventKit's search queue.
+Explicit Sendable completion plus nonisolated value projection passes the same real
+fixture. No personal Reminders were fetched; only the test host on the new empty
+simulator received test permission. Three permission-free callback regressions and
+an opt-in, simulator-only real EventKit regression protect this boundary.
+
+The phone is away from the home network. Device report retrieval and corrected
+signed over-install are user-approved deferrals until it is reachable; no reconnect
+prompts, pairing changes, merge or release. The physical report's cause/resolution
+is still unconfirmed. Original feature CI passed all seven checks on `4a40345`;
+this correction requires checks on its new exact head.
+
+Local correction validation: 168/168 MomentumMobile tests pass; 3/3 hosted tests
+pass (one real EventKit fixture and both existing Reminders integration/layout
+checks). The native regression skips before EventKit access without explicit opt-in.
+Xcode's iOS 27 simulator SDK compiles the corrected production adapter/test host.
+Rust/task semantics and macOS integration are unchanged by B-095; prior core and
+macOS results still apply. New-head CI and physical-device acceptance are tracked
+separately.
