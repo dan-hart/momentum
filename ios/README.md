@@ -163,3 +163,12 @@ Both `momentum://` and `superproductivity://` support `add`/`create-task` with
 `complete-task?title=…`. Percent-encode parameter values. URL creation follows the
 desktop convention: without `due`, the task is unscheduled. Receiving a URL while
 Momentum is open preserves the selected tab.
+
+## Apple Reminders
+
+Settings → Apple Reminders offers optional one-time import and automatic one-way
+import from a selected list, disabled by default. Connect explicitly requests access.
+Only incomplete reminders are imported into Inbox; Apple Reminders remains unchanged.
+Automatic import checks while Momentum is active and when it reopens. iOS does not
+guarantee imports while Momentum is closed. See [mapping, verification and identity
+limits](../docs/APPLE-REMINDERS.md).

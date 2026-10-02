@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-09-28. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-10-02. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in
@@ -2324,3 +2324,88 @@ their explicit manual acceptance boundaries.
 | Unaffected — one GTK window by design | Implemented — reproduced by report; scripted reopen shows one window | Not applicable — single scene | Not applicable — no app |
 
 - **Remaining:** a manual Dock click on the installed app after the next release.
+
+## 2026-10-02 — F-055 verification assessment
+
+No reproduced existing product defect was identified by the Apple Reminders work.
+The initial sandboxed Rust run could not bind test sockets; the unsandboxed isolated
+workspace suite passed. EventKit background delivery and identifier-reset boundaries
+are documented feature limitations, not newly invented bugs. Native permission and
+assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
+
+## B-095 — Apple Reminders import traps in a background EventKit callback
+
+- **Severity:** High. **Feature:** F-055. **Status:** Implemented on iOS; physical-device confirmation deferred.
+- **Reported:** importing a reminder on the installed iOS app crashes. The phone is
+  unavailable; its crash report has not been retrieved.
+- **Reproduced:** original PR head `4a40345` traps with `EXC_BREAKPOINT`/`SIGTRAP`
+  when real EventKit returns one synthetic reminder in a fresh iOS 27 simulator.
+  The stack enters Swift's actor-executor check from the nested projection closure
+  on `com.apple.eventkit.reminders.search`.
+- **Expected:** callbacks may arrive on EventKit's queue and safely return immutable
+  snapshots to the main-actor import coordinator.
+- **Cause/fix:** the legacy Objective-C completion inherits main-actor isolation
+  through the nested map closure. Use an explicitly `@Sendable` completion and a
+  `nonisolated` projection; no EventKit objects cross into the resumed caller.
+- **Regression:** the same nonempty real EventKit fixture passes with the correction;
+  three portable tests cover background success/failure and synchronous completion.
+  The real-framework regression is simulator-only and opt-in, touches only its own
+  UUID-named synthetic list, and never requests permission.
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Unaffected — no adapter | Unaffected — integration deferred | Implemented; reproduced/fixed in isolated iOS 27 simulator | Not applicable — no app |
+
+- **Remaining:** compare the phone's crash report and over-install the corrected
+  signed app when the device is reachable. Simulator evidence does not establish
+  the cause or resolution of the reported physical-device crash.
+
+
+## B-096 — Apple Reminders recovery reloads lists without retrying import
+
+- **Severity:** High. **Feature:** F-055. **Source:** PR #4 review, confirmed at
+  `f49160b` by an isolated production-coordinator probe on 2026-10-02.
+- **Reproduction:** fail reminder fetch or task persistence, then choose Try Again.
+  The old action called `loadLists()`, clearing the issue without fetching/saving again.
+- **Expected/fix:** shared typed retry dispatches fetch/save issues to `importNow()`;
+  a missing list reloads only the list inventory. Both native Apple Settings use it.
+- **Platforms:** iOS/macOS Implemented; the original runtime defect was confirmed in
+  the iOS coordinator, while macOS first gains the corrected integration in this change.
+  Linux/Android Not applicable: no EventKit integration.
+- **Evidence:** regression covers fetch retry, save retry and missing-list inventory
+  recovery with UUID-isolated preferences and synthetic sources. See the PR #4
+  review-fix handoff in [PROGRESS.md](PROGRESS.md) for final checks and limits.
+
+## B-097 — reminder identity upgrades remain only in device-local history
+
+- **Severity:** Medium. **Feature:** F-055. **Source:** PR #4 review, confirmed at
+  `f49160b` by a synthetic production-coordinator probe on 2026-10-02.
+- **Reproduction:** import a local-only reminder, then refetch it with a server ID and
+  its original local alias. The history shortcut skipped the core, leaving synchronized
+  task provenance unable to match that server ID on another device.
+- **Expected/fix:** reconcile identities into matching live/archive tasks through
+  ordinary durable task-update operations; keep task content and undo intact. A history
+  hit only reconciles and never recreates a deleted/undone task. Archive restore must
+  retain identities learned after the archive snapshot was captured. Metadata changes
+  notify native sync without incrementing the count of newly created tasks.
+- **Platforms:** iOS/macOS Implemented. Linux consumes compatible provenance updates
+  through the shared reducer; its native EventKit UI is Not applicable. Android Planned
+  for consuming shared task/sync data; EventKit integration is Not applicable.
+- **Evidence:** core/coordinator regressions and consumer checks are recorded in the
+  PR #4 review-fix handoff in [PROGRESS.md](PROGRESS.md). Identifier resets, differing
+  Exchange IDs and simultaneous independent imports retain the documented limitations
+  in [APPLE-REMINDERS.md](APPLE-REMINDERS.md).
+
+## B-098 — Apple Reminders terminal results have no explicit accessibility delivery
+
+- **Severity:** High. **Feature:** F-055. **Source:** PR #4 source review on 2026-10-02.
+- **Assessment:** missing explicit result/error delivery is confirmed in the original
+  iOS view. The reported vanished-focus/spoken behavior was not reproduced live.
+- **Expected/fix:** deliver a terminal accessible result or recovery message after
+  each attempt, including repeated identical outcomes. A partial import followed by
+  failure delivers the error rather than announcing an incomplete success.
+- **Platforms:** iOS/macOS Implemented; macOS first gains this integration in the same
+  change. Linux/Android Not applicable: no EventKit integration.
+- **Evidence:** coordinator feedback-event and native view checks are recorded in the
+  PR #4 review-fix handoff in [PROGRESS.md](PROGRESS.md). Spoken VoiceOver acceptance
+  remains separate and must not be inferred from accessible labels or unit tests.

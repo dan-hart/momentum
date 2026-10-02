@@ -82,6 +82,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return !Self.showMainWindow()
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        Self.shared?.setApplicationActive(true)
+    }
+
+    func applicationWillResignActive(_ notification: Notification) {
+        Self.shared?.setApplicationActive(false)
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         Self.shared?.stopServices()
     }

@@ -583,3 +583,37 @@ fn repeat_cfg_lifecycle() {
     assert!(d.task_repeat_cfg.entities.is_empty());
     assert!(d.task.entities[&t.id].repeat_cfg_id.is_none());
 }
+
+#[test]
+fn archived_task_updates_accept_only_import_provenance_and_preserve_archive_tier() {
+    let mut d = AppData::default();
+    for tier in ["archiveYoung", "archiveOld"] {
+        d.rest.insert(
+            tier.into(),
+            json!({"task": {"ids": [tier], "entities": {tier: {
+                "id": tier, "title": "Archived", "momentumImportSource": "local"
+            }}}}),
+        );
+        apply(
+            &mut d,
+            &Action::UpdateTask {
+                id: tier.into(),
+                changes: changes(&[("title", json!("Changed"))]),
+            },
+        );
+        assert_eq!(d.rest[tier]["task"]["entities"][tier]["title"], "Archived");
+        apply(
+            &mut d,
+            &Action::UpdateTask {
+                id: tier.into(),
+                changes: changes(&[("momentumImportAliases", json!(["external"]))]),
+            },
+        );
+        assert_eq!(
+            d.rest[tier]["task"]["entities"][tier]["momentumImportAliases"],
+            json!(["external"])
+        );
+        assert_eq!(d.rest[tier]["task"]["ids"], json!([tier]));
+        assert!(d.task.entities.is_empty());
+    }
+}

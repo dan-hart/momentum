@@ -374,6 +374,26 @@ pub fn apply(d: &mut AppData, action: &Action) {
         }
         UpdateTask { id, changes } => {
             let Some(old) = d.task.entities.get(id).cloned() else {
+                // Imported-source identity upgrades must reach archived tasks too.
+                // Keep unrelated late edits ignored and never restore a missing task.
+                if !changes.is_empty()
+                    && changes
+                        .keys()
+                        .all(|key| key == "momentumImportSource" || key == "momentumImportAliases")
+                {
+                    for tier in ["archiveYoung", "archiveOld"] {
+                        if let Some(task) = d
+                            .rest
+                            .get_mut(tier)
+                            .and_then(|v| v.get_mut("task"))
+                            .and_then(|v| v.get_mut("entities"))
+                            .and_then(|v| v.get_mut(id))
+                            .and_then(Value::as_object_mut)
+                        {
+                            task.extend(changes.clone());
+                        }
+                    }
+                }
                 return;
             };
             let mut t: Task = merge_into(&old, changes);
@@ -529,9 +549,50 @@ pub fn apply(d: &mut AppData, action: &Action) {
             }
         }
         RestoreTask { task, sub_tasks } => {
+            // Undo snapshots predate identities learned while a task was archived.
+            // Preserve only that metadata; restore the user's original task content.
+            let preserve_provenance = |original: &Task| {
+                let mut restored = original.clone();
+                let mut keys: Vec<Value> = restored
+                    .extra
+                    .get("momentumImportAliases")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                for tier in ["archiveYoung", "archiveOld"] {
+                    if let Some(current) = d
+                        .rest
+                        .get(tier)
+                        .and_then(|v| v.get("task"))
+                        .and_then(|v| v.get("entities"))
+                        .and_then(|v| v.get(&original.id))
+                    {
+                        for key in current.get("momentumImportSource").into_iter().chain(
+                            current
+                                .get("momentumImportAliases")
+                                .and_then(Value::as_array)
+                                .into_iter()
+                                .flatten(),
+                        ) {
+                            if key.is_string()
+                                && restored.extra.get("momentumImportSource") != Some(key)
+                                && !keys.contains(key)
+                            {
+                                keys.push(key.clone());
+                            }
+                        }
+                    }
+                }
+                if !keys.is_empty() {
+                    restored.extra.insert("momentumImportAliases".into(), json!(keys));
+                }
+                restored
+            };
+            let task = preserve_provenance(task);
+            let sub_tasks: Vec<Task> = sub_tasks.iter().map(preserve_provenance).collect();
             for k in ["archiveYoung", "archiveOld"] {
                 if let Some(store) = d.rest.get_mut(k).and_then(|a| a.get_mut("task")) {
-                    for t in std::iter::once(task).chain(sub_tasks.iter()) {
+                    for t in std::iter::once(&task).chain(sub_tasks.iter()) {
                         if let Some(e) = store["entities"].as_object_mut() {
                             e.remove(&t.id);
                         }
@@ -552,7 +613,7 @@ pub fn apply(d: &mut AppData, action: &Action) {
                     bottom: true,
                 },
             );
-            for s in sub_tasks {
+            for s in &sub_tasks {
                 apply(
                     d,
                     &AddSubTask {

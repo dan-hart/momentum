@@ -3366,6 +3366,246 @@
           }
         }
       }
+    },
+    "Choose a List": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste auswählen"
+          }
+        }
+      }
+    },
+    "The selected list is unavailable. Choose another list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die ausgewählte Liste ist nicht verfügbar. Wähle eine andere Liste."
+          }
+        }
+      }
+    },
+    "List Unavailable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Reminders List": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerungsliste"
+          }
+        }
+      }
+    },
+    "What Gets Imported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was wird importiert?"
+          }
+        }
+      }
+    },
+    "Apple Reminders is unavailable in this preview or test session.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Erinnerungen ist in dieser Vorschau oder Testsitzung nicht verfügbar."
+          }
+        }
+      }
+    },
+    "Checking Reminders…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerungen werden geprüft …"
+          }
+        }
+      }
+    },
+    "Automatically Import New Reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Erinnerungen automatisch importieren"
+          }
+        }
+      }
+    },
+    "Connect Apple Reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Erinnerungen verbinden"
+          }
+        }
+      }
+    },
+    "No reminders lists are available. Create a list in Apple Reminders, then return here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es sind keine Erinnerungslisten verfügbar. Erstelle eine Liste in Apple Erinnerungen und kehre dann hierher zurück."
+          }
+        }
+      }
+    },
+    "Import incomplete reminders into Inbox. Titles, notes, links, and due days are copied. Times, alerts, subtasks, and repeat rules are not copied. Apple Reminders stays unchanged.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importiere unerledigte Erinnerungen in den Eingang. Titel, Notizen, Links und Fälligkeitstage werden kopiert. Uhrzeiten, Hinweise, Unteraufgaben und Wiederholungsregeln werden nicht kopiert. Apple Erinnerungen bleibt unverändert."
+          }
+        }
+      }
+    },
+    "Import Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt importieren"
+          }
+        }
+      }
+    },
+    "Reminders could not be loaded. Try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerungen konnten nicht geladen werden. Versuche es erneut."
+          }
+        }
+      }
+    },
+    "Momentum could not save a reminder. Retry Import Now.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum konnte eine Erinnerung nicht speichern. Versuche „Jetzt importieren“ erneut."
+          }
+        }
+      }
+    },
+    "Previously imported reminders are skipped, even if you delete their Momentum tasks. Turning this off keeps imported tasks and your selected list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereits importierte Erinnerungen werden übersprungen, auch wenn du ihre Momentum-Aufgaben löschst. Beim Ausschalten bleiben importierte Aufgaben und deine ausgewählte Liste erhalten."
+          }
+        }
+      }
+    },
+    "Turn Off Automatic Import": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatischen Import ausschalten"
+          }
+        }
+      }
+    },
+    "Allow Reminders access in System Settings → Privacy & Security → Reminders to import your list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erlaube den Zugriff auf Erinnerungen unter Systemeinstellungen → Datenschutz & Sicherheit → Erinnerungen, um deine Liste zu importieren."
+          }
+        }
+      }
+    },
+    "Automatic import checks your chosen list while Momentum is active and when you return to it. Imports pause when another app is active or Momentum is closed. Later edits or completions in either app are not synchronized.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der automatische Import prüft deine ausgewählte Liste, während Momentum aktiv ist und wenn du zur App zurückkehrst. Ist eine andere App aktiv oder Momentum geschlossen, pausiert der Import. Spätere Änderungen oder Erledigungen in einer der Apps werden nicht synchronisiert."
+          }
+        }
+      }
+    },
+    "Apple Reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Erinnerungen"
+          }
+        }
+      }
+    },
+    "Imported %lld new reminders.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Imported %lld new reminder."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Imported %lld new reminders."
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld neue Erinnerung importiert."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld neue Erinnerungen importiert."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Open System Settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systemeinstellungen öffnen"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

@@ -18,6 +18,8 @@ struct SettingsView: SwiftUI.View {
                 .tabItem { Label(String(localized: "Fonts"), systemImage: "textformat") }
             SyncSettings()
                 .tabItem { Label(String(localized: "Sync"), systemImage: "arrow.triangle.2.circlepath") }
+            RemindersSettings()
+                .tabItem { Label(String(localized: "Apple Reminders"), systemImage: "list.bullet") }
             BackupSettings()
                 .tabItem { Label(String(localized: "Backup"), systemImage: "externaldrive") }
         }

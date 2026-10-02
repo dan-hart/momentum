@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-09-29. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-10-02. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -4862,3 +4862,121 @@ change. Never include private tasks, credentials or machine-specific server addr
   MomentumKit passes 136 tests in 32 suites with its opt-in nearby test skipped. Final
   independent spec/code review found no blocking or material issue. Linux native runtime
   verification remains unavailable because Flatpak is not installed on this Mac.
+
+## 2026-10-02 — F-055 Apple Reminders import
+
+Based on clean `main` at `766064b`. Dan subsequently authorized a feature branch,
+commit, push and draft PR; merge/release remains unauthorized. Implementation
+and CLI verification used a private workspace copy on the connected Mac. The missing LibreSync path dependency was prepared in the private build copy from
+the repository's pinned `v0.6.0` tag. The project lockfile is unchanged.
+
+- iOS: Settings → Apple Reminders, explicitly initiated full-access authorization,
+  list selection, one-time import, and automatic foreground/reactivation import off
+  by default. Denial/revocation, missing/empty lists, save recovery, cancellation and
+  change coalescing use synthetic fixtures; demo/test launches have no EventKit source.
+- Shared core: transactional `import_task_once` reuses ordinary task-creation rules,
+  persists hashed provenance through the existing extensible Task model and checks
+  live tasks plus both archive tiers. No model migration or generated-file editing.
+- macOS: existing package compatibility passes. Integration remains Planned: AppState
+  owns a distinct engine/lifecycle and importing MomentumMobile would add an unsuitable
+  desktop dependency. Linux and Android integration intentionally excluded.
+- Automated evidence: `cargo test --workspace --exclude momentum --all-features --all-targets` passed (one existing
+  ignored test); `swift test` MomentumMobile passed 165 tests and MomentumKit passed
+  142; debug Apple builder regenerated Mac/device/simulator FFI slices; iOS simulator
+  SDK app build passed; German catalog validation passed 395/395 active entries.
+- Native hosted evidence: 2/2 RemindersIntegrationTests passed on a dedicated iOS 27
+  simulator, proving synthetic app-refresh/change handling, German accessible button
+  roles/geometry, and light/dark AX5 renderings. Test-only assertions initially assumed
+  UIKit identifiers; the public accessibility surface instead exposes localized labels.
+  Layout review moved the long mapping explanation into a collapsed native disclosure.
+  The test simulator was shut down/deleted without activating PetTV or Simulator.app.
+- Remaining acceptance: system authorization prompts/revocation and spoken
+  VoiceOver/physical-device behavior are not verified. No personal Reminders were read,
+  imported or enabled in development. See [APPLE-REMINDERS.md](APPLE-REMINDERS.md) for
+  mapping, source identity limits and official Apple references.
+
+## 2026-10-02 — B-095 EventKit callback crash
+
+Dan authorized fixing and pushing the reported import crash to PR #4, now ready
+for review. The original `4a40345` production adapter reproduces SIGTRAP in a fresh
+isolated iOS 27 simulator with one synthetic reminder. The sanitized stack identifies
+Swift actor checking inside the callback projection on EventKit's search queue.
+Explicit Sendable completion plus nonisolated value projection passes the same real
+fixture. No personal Reminders were fetched; only the test host on the new empty
+simulator received test permission. Three permission-free callback regressions and
+an opt-in, simulator-only real EventKit regression protect this boundary.
+
+The phone is away from the home network. Device report retrieval and corrected
+signed over-install are user-approved deferrals until it is reachable; no reconnect
+prompts, pairing changes, merge or release. The physical report's cause/resolution
+is still unconfirmed. Original feature CI passed all seven checks on `4a40345`;
+this correction requires checks on its new exact head.
+
+Local correction validation: 168/168 MomentumMobile tests pass; 3/3 hosted tests
+pass (one real EventKit fixture and both existing Reminders integration/layout
+checks). The native regression skips before EventKit access without explicit opt-in.
+Xcode's iOS 27 simulator SDK compiles the corrected production adapter/test host.
+Rust/task semantics and macOS integration are unchanged by B-095; prior core and
+macOS results still apply. New-head CI and physical-device acceptance are tracked
+separately.
+
+
+## 2026-10-02 — PR #4 review fixes — F-055 / B-096 / B-097 / B-098
+
+Scope: Dan authorized correcting the review items and resolving their threads after
+fixes. Implementation/verification below covers the dirty review-fix worktree based
+on `f49160b`; it will be published as the next commit on `task/apple-reminders-import`.
+No merge, tag, release, personal reminder access, or production data change.
+
+- **Retry (B-096):** shared typed recovery retries real fetch/save work; missing-list
+  recovery reloads inventory. Hosted iOS acceptance activates the production Try Again
+  accessibility action and waits for the asynchronous import, rather than construction
+  or rendering alone.
+- **Identity (B-097):** Rust reconciles new source identities atomically through ordinary
+  task-update operations. Local/archive records, reopen, remote replay, failed-save
+  rollback, aliases-only records and concurrent local upgrades have regressions.
+  Reconciliation neither creates missing tasks nor consumes undo. Archive restore
+  retains provenance learned after its snapshot, including subtasks. Both native apps
+  wake refresh/index/sync on metadata changes without counting them as new imports.
+  Existing sync conflict semantics and documented cross-device identifier limitations
+  remain; this does not claim universal distributed deduplication.
+- **Accessibility (B-098):** one localized terminal announcement per attempt, including
+  repeated identical results/errors; a failure takes precedence over partial success.
+  Native view injection verifies actual repeated announcement delivery and recovery.
+  Spoken VoiceOver behavior remains unverified.
+- **macOS scope:** added native Settings → Apple Reminders with popup list selection,
+  explicit Connect permission, import/automatic/recovery/results, privacy explanation
+  and English/German resources. The existing MomentumKit package now owns the reusable
+  value adapter/coordinator; no new dependency, format, or shared widget toolkit.
+  AppState supplies detached Rust calls and the existing refresh/index/sync path;
+  NSApplication activation/resignation and shutdown control automatic importing.
+  iOS keeps its native EngineWorker/Settings wiring. Automatic jobs recheck active state
+  at execution and after asynchronous reconciliation; backgrounding, disabling,
+  reselection, permission revocation and cancellation have suspended-worker regressions.
+- **Automated evidence:** `cargo test --workspace --exclude momentum --all-features
+  --all-targets` passes 293 tests (one existing ignored); `cargo fmt --check` passes.
+  Existing builder regenerates macOS, iOS device and simulator FFI slices. Full
+  MomentumKit suite passes 164 tests; portable MomentumMobile suite passes 158 after
+  coordinator/callback tests move to MomentumKit. Three hosted RemindersIntegrationTests
+  pass on disposable iOS 27, including actual Retry actions and repeated localized
+  announcements. Shipping macOS Debug and iOS simulator SDK app builds pass.
+  Compiler-based catalog validation passes: macOS app 330/330 German entries,
+  MomentumKit 186/186, iOS 395/395; permission catalogs also pass.
+- **Native live evidence:** the exact production Mac RemindersSettings view was compiled
+  into a disposable, separately identified host with synthetic source, temporary store
+  and isolated preferences. Live accessibility/UI inspection verified popup selection,
+  enabled Import Now, Imported 1 → repeat Imported 0, automatic On/Off, and keyboard
+  expansion of the mapping disclosure. This did not launch or alter the installed
+  Momentum app, instantiate EventKit, read personal reminders or request permission.
+- **Reviews:** independent specification and code-quality reviews pass for Rust,
+  shared/iOS Swift and native macOS scope. Diff whitespace and documentation links
+  checked. The missing pinned LibreSync v0.6.0 build source was recreated only in the
+  existing ignored path; lockfile and tracked dependencies are unchanged.
+- **Limits/status:** F-055 stays Implemented on macOS/iOS. Real permission prompting and
+  revocation, spoken VoiceOver, physical-device delivery/background behavior and the
+  corrected phone crash report/over-install remain unverified or previously deferred.
+  Linux shared reducer compatibility is tested; Linux native runtime is not inferred
+  from this Mac. Linux/Android have no EventKit integration. Native network sync was not
+  exercised. The disposable simulator/host are closed after testing.
+- **Next:** observe CI on the published exact head, resolve the four corrected review
+  threads, and retain the above native acceptance limits. No merge/release requested.

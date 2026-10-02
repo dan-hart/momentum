@@ -32,7 +32,8 @@ struct MomentumApp: App {
             engine = Self.openStore()
         }
         // The services wait for the delegate to attach notifications and Spotlight.
-        let s = AppState(engine: engine, services: false, isDemo: isDemo)
+        let s = AppState(engine: engine, services: false, isDemo: isDemo,
+                         remindersSource: isDemo ? nil : EventKitRemindersSource())
         _state = State(initialValue: s)
         AppDelegate.shared = s
     }
