@@ -4980,3 +4980,75 @@ No merge, tag, release, personal reminder access, or production data change.
   exercised. The disposable simulator/host are closed after testing.
 - **Next:** observe CI on the published exact head, resolve the four corrected review
   threads, and retain the above native acceptance limits. No merge/release requested.
+
+
+## 2026-10-02 — dip17pm crash investigation and corrected installation (B-095 / F-055)
+
+- **Scope/revision:** began on dirty `task/apple-reminders-import`, base `f49160b`.
+  Inherited source changes were committed separately as `200f686` during this
+  investigation; this task did not commit or push. Preserved inherited Rust
+  provenance/recovery and shared Apple-adapter changes.
+  No additional production-code change was needed: the installed app predated the
+  existing callback correction. Local ledger updates only; no commit/push/release.
+- **Confirmed cause:** read the first October 1 evening and latest October 2
+  12:17 CDT physical Momentum crash reports. Both show `EXC_BREAKPOINT`/`SIGTRAP`
+  through `_dispatch_assert_queue_fail` and `_swift_task_checkIsolatedSwift` in the
+  nested `EventKitRemindersSource.incompleteReminders(in:)` projection, on
+  `com.apple.eventkit.reminders.search`. This matches the earlier isolated B-095
+  reproduction, rather than a new failure in the corrected Sendable adapter.
+  Raw reports remain outside tracked files; no private identifiers or task data
+  were added to these records.
+- **Verification:** regenerated Rust/UniFFI device, simulator and Mac artifacts;
+  three shared callback tests, thirteen shared import/date tests and the mobile
+  engine-import regression pass. Three native RemindersIntegrationTests pass on
+  the available iOS 27 acceptance simulator (isolated test host, synthetic source);
+  the stale PR-review simulator destination was unavailable, so no tests ran there.
+  Xcode 27 production iOS Debug build passes with
+  development signing. Logs are local `/tmp/momentum-crash-*.log` files.
+- **Physical action/evidence:** over-installed the signed production app as 0.4.5
+  (405), preserving its existing container through ordinary app replacement.
+  CoreDevice confirms installation and foreground launch. Repeated process
+  inspection shows the same process remains alive; the system crash-log list
+  remains at its twelve pre-install reports. This proves install/launch/process
+  survival, not manually initiated Import Now results or UI visibility.
+- **Status/limits:** B-095's physical crash cause is confirmed and corrected binary
+  installed. F-055 remains Implemented on both Apple platforms; explicit manual
+  import, permission/revocation, spoken VoiceOver and longer-use acceptance remain
+  open. Linux/Android have no EventKit adapter. No personal data was inspected or
+  changed for test fixtures, and no device permissions/settings were changed.
+
+
+## 2026-10-02 — PR #4 branch rerun on dip17pm (B-095 / F-055)
+
+- **Revision:** `task/apple-reminders-import`, `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`;
+  inherited uncommitted ledger updates preserved. The committed shared EventKit
+  adapter retains the explicit Sendable callback and nonisolated snapshot projection
+  from B-095. No additional source fix was required.
+- **Automated/live evidence:** Xcode 27 development-signed production iOS Debug build
+  and strict signature verification passed. Regenerated shared Rust/UniFFI artifacts.
+  Over-installed 0.4.5 (405), then launched with CoreDevice. Installed-app and process
+  readback confirmed the replacement app running; the crash-log inventory remained
+  at twelve older reports, latest 2026-10-02 12:17 CDT. Build log:
+  `/tmp/momentum-pr4-device-build.log`; install/launch JSON:
+  `/tmp/momentum-pr4-device-install.json` and `/tmp/momentum-pr4-device-launch.json`.
+- **Limits:** install and process launch verified; manual Import Now, permission
+  recovery, spoken VoiceOver and longer-use acceptance remain open. F-055 stays
+  Implemented. Existing app data preserved through ordinary replacement. No merge,
+  release or additional commit/push performed.
+
+
+## 2026-10-02 — 0.4.6 release preparation (F-055 / B-095–B-098)
+
+- **Base:** merged PR #4, `fff159dd9f04a881ab0e3b590fe3905758c4f924`.
+  Release scope includes native Apple Reminders import, callback/retry/accessibility/
+  identity fixes and the existing Unreleased documentation/screenshot changes.
+- **Local release gate:** the opt-in MomentumKit NearbySyncTests passed on this Mac
+  on 2026-10-02: one test, temporary nodes, bidirectional task exchange and unlink.
+  Executed on `200f686`, whose tracked tree matches the merged base. Log:
+  `/tmp/momentum-046-nearby.log`. This does not prove physical discovery or Linux/Mac
+  interoperability.
+- **Publication gate:** user authorized 0.4.6 after all CI jobs finish successfully.
+  Await post-merge CI, then CI on the version/notes commit, before pushing the tag.
+  The release workflow must pass and publish its expected assets before reporting
+  publication complete. F-055 remains Implemented; previously recorded manual import,
+  permission/revocation, spoken VoiceOver and longer-use limits remain open.

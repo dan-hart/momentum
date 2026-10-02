@@ -6,6 +6,17 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-10-02
+
+### Added
+- macOS and iOS: optional one-way import from a selected Apple Reminders list, with
+  manual import and off-by-default automatic import while Momentum is active
+
+### Fixed
+- Apple Reminders: prevent a crash when EventKit returns reminders on a background queue
+- Apple Reminders: retry failed fetches and saves, announce import results to assistive
+  technology, and retain newly discovered reminder identities to avoid duplicate imports
+
 ### Changed
 - README and screenshot notes refreshed: October 2026 previews of all three apps, the
   current platform status, what changed in 0.4, and how sync failures and recovery work

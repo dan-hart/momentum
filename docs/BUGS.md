@@ -2335,9 +2335,13 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 
 ## B-095 — Apple Reminders import traps in a background EventKit callback
 
-- **Severity:** High. **Feature:** F-055. **Status:** Implemented on iOS; physical-device confirmation deferred.
-- **Reported:** importing a reminder on the installed iOS app crashes. The phone is
-  unavailable; its crash report has not been retrieved.
+- **Severity:** High. **Feature:** F-055. **Status:** Implemented on iOS; physical crash signature confirmed and corrected build installed; manual import acceptance remains open.
+- **Reported:** importing a reminder on the installed iOS app crashes. On 2026-10-02,
+  the first 2026-10-01 evening report and latest 2026-10-02 12:17 CDT report were
+  retrieved from the paired phone. Both identify the old non-Sendable nested
+  projection in `EventKitRemindersSource.incompleteReminders(in:)`, with
+  `_dispatch_assert_queue_fail` and `_swift_task_checkIsolatedSwift` on
+  `com.apple.eventkit.reminders.search` (`EXC_BREAKPOINT` / `SIGTRAP`).
 - **Reproduced:** original PR head `4a40345` traps with `EXC_BREAKPOINT`/`SIGTRAP`
   when real EventKit returns one synthetic reminder in a fresh iOS 27 simulator.
   The stack enters Swift's actor-executor check from the nested projection closure
@@ -2354,11 +2358,15 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 
 | Linux | macOS | iOS | Android |
 |---|---|---|---|
-| Unaffected — no adapter | Unaffected — integration deferred | Implemented; reproduced/fixed in isolated iOS 27 simulator | Not applicable — no app |
+| Unaffected — no adapter | Uses corrected shared adapter; callback tests pass | Implemented; simulator regression passes; physical cause confirmed, corrected app installed/launched | Not applicable — no app |
 
-- **Remaining:** compare the phone's crash report and over-install the corrected
-  signed app when the device is reachable. Simulator evidence does not establish
-  the cause or resolution of the reported physical-device crash.
+- **2026-10-02 device follow-up:** the existing correction in `f49160b`, retained
+  in the dirty `task/apple-reminders-import` checkout after the shared-adapter move,
+  was development-signed and over-installed as 0.4.5 (405). Launch succeeded.
+  Current regression/build and post-launch evidence is recorded in PROGRESS.
+- **Remaining:** explicit manual Import Now, permission/revocation and longer-use
+  acceptance on the phone. Process survival and absent new reports do not prove
+  a manually initiated import or its resulting task content.
 
 
 ## B-096 — Apple Reminders recovery reloads lists without retrying import
