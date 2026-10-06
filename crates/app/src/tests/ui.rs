@@ -1144,6 +1144,13 @@ fn preferences_rows_are_bound_to_settings() {
         imp.auto_archive_row.set_active(true);
         assert!(settings().boolean("auto-archive"));
         imp.auto_archive_row.set_active(false);
+        assert!(
+            !imp.completion_sound_row.is_active(),
+            "the completion sound is off until asked for"
+        );
+        imp.completion_sound_row.set_active(true);
+        assert!(settings().boolean("completion-sound"));
+        imp.completion_sound_row.set_active(false);
         let choices = crate::modifier::choices();
         let super_idx = choices.iter().position(|(k, _)| *k == "super").unwrap();
         imp.modifier_row.set_selected(super_idx as u32);

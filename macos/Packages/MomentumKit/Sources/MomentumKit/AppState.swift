@@ -112,6 +112,8 @@ public final class AppState {
 
     public weak var notifier: Notifier?
     public weak var indexer: SearchIndexer?
+    /// Plays the completion chime; nil in tests and before the app attaches one.
+    public weak var sounds: SoundPlayer?
 
     public var prefs: Preferences { Preferences(defaults) }
     public var isSearching: Bool { view == .search }
@@ -427,6 +429,9 @@ public final class AppState {
                 completed = false
             }
             toast(Strings.message(m), undo: o.undo, celebratesCompletion: completed)
+            if completed, prefs.completionSound {
+                sounds?.playCompletion()
+            }
         }
         if o.syncNow, prefs.syncConfigured {
             sync()

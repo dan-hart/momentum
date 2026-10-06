@@ -2417,3 +2417,12 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Evidence:** coordinator feedback-event and native view checks are recorded in the
   PR #4 review-fix handoff in [PROGRESS.md](PROGRESS.md). Spoken VoiceOver acceptance
   remains separate and must not be inferred from accessible labels or unit tests.
+
+## 2026-10-06 — F-056 sound verification assessment
+
+No product defect was reproduced in the sound setting/completion paths. Tests prove
+that the default is off, the enabled switch is respected, disabling takes effect,
+reopen/undo stay silent, and bulk completion produces one sound request. Native
+SwiftPM's uncompiled localization resources are a build-backend limitation; the
+full Xcode-backend package suite passes. Audible output and the documented iOS
+non-app completion scope remain explicitly unverified/limited, not claimed as fixed.

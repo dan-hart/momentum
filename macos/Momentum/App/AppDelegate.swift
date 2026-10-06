@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let spotlight = SpotlightIndexer()
         self.spotlight = spotlight
         state.indexer = spotlight
+        state.sounds = CompletionSound.shared
         // Everything the app reaches outside itself is attached: start the services now.
         state.startServices()
         MomentumShortcuts.updateAppShortcutParameters()

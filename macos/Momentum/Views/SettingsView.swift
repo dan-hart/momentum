@@ -31,6 +31,7 @@ struct SettingsView: SwiftUI.View {
 private struct GeneralSettings: SwiftUI.View {
     @Environment(AppState.self) private var state
     @AppStorage(PrefKey.autoArchive) private var autoArchive = false
+    @AppStorage(PrefKey.completionSound) private var completionSound = false
     @AppStorage(PrefKey.colorfulLabels) private var colorful = true
     @AppStorage(PrefKey.runInBackground) private var background = false
     @AppStorage(PrefKey.showInMenuBar) private var menuBar = false
@@ -57,6 +58,9 @@ private struct GeneralSettings: SwiftUI.View {
             Section(String(localized: "Tasks")) {
                 Toggle(String(localized: "Archive completed tasks immediately"), isOn: $autoArchive)
                 Text(String(localized: "A task you complete goes straight to the archive. Undo brings it back."))
+                    .appFont(.caption).foregroundStyle(.secondary)
+                Toggle(String(localized: "Play a sound when a task is completed"), isOn: $completionSound)
+                Text(String(localized: "A short chime when you mark a task done."))
                     .appFont(.caption).foregroundStyle(.secondary)
             }
             Section(String(localized: "Notifications")) {

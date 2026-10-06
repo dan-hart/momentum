@@ -14,6 +14,7 @@ mod quick_add;
 mod repeat_dialog;
 mod search_provider;
 mod shortcuts;
+mod sound;
 mod task_form;
 mod typography;
 mod window;

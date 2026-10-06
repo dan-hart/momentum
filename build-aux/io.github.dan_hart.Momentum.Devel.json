@@ -13,6 +13,7 @@
         "--share=network",
         "--socket=fallback-x11",
         "--socket=wayland",
+        "--socket=pulseaudio",
         "--device=dri",
         "--env=RUST_LOG=momentum=debug,sp_p2p=debug,libresync=debug,mdns_sd=info",
         "--env=G_MESSAGES_DEBUG=none",

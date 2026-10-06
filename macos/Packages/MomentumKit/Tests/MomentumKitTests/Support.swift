@@ -33,6 +33,7 @@ final class Harness {
     let state: AppState
     let notifier = RecordingNotifier()
     let indexer = RecordingIndexer()
+    let sounds = RecordingSoundPlayer()
 
     init(demo: Bool = true) {
         suiteName = "momentum-tests-\(UUID().uuidString)"
@@ -44,6 +45,7 @@ final class Harness {
                          services: false)
         state.notifier = notifier
         state.indexer = indexer
+        state.sounds = sounds
     }
 
     deinit {
@@ -89,6 +91,13 @@ final class RecordingNotifier: Notifier {
 final class RecordingIndexer: SearchIndexer {
     var indexed: [[TaskBrief]] = []
     func reindex(_ tasks: [TaskBrief]) { indexed.append(tasks) }
+}
+
+/// Counts chimes instead of playing them.
+@MainActor
+final class RecordingSoundPlayer: SoundPlayer {
+    var completions = 0
+    func playCompletion() { completions += 1 }
 }
 
 extension SectionKind {

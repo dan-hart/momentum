@@ -28,6 +28,8 @@ public enum PrefKey {
     public static let showInMenuBar = "show-in-menu-bar"
     public static let modifierKey = "modifier-key"
     public static let autoArchive = "auto-archive"
+    /// Play the bundled chime when a change completes tasks. Off by default on every platform.
+    public static let completionSound = "completion-sound"
     public static let morningSummaryEnabled = "morning-summary-enabled"
     public static let morningSummaryHour = "morning-summary-hour"
     public static let morningSummaryMinute = "morning-summary-minute"
@@ -140,6 +142,7 @@ public struct Preferences {
             PrefKey.dockBadgeMode: DockBadgeMode.dueToday.rawValue,
             PrefKey.modifierKey: "command",
             PrefKey.autoArchive: false,
+            PrefKey.completionSound: false,
             PrefKey.morningSummaryEnabled: false,
             PrefKey.morningSummaryHour: 8,
             PrefKey.morningSummaryMinute: 0,
@@ -178,6 +181,7 @@ public struct Preferences {
     public var backgroundSync: Bool { defaults.bool(forKey: PrefKey.backgroundSync) }
     public var p2pEnabled: Bool { syncMethod == .libresync }
     public var colorful: Bool { defaults.bool(forKey: PrefKey.colorfulLabels) }
+    public var completionSound: Bool { defaults.bool(forKey: PrefKey.completionSound) }
     public var runInBackground: Bool { defaults.bool(forKey: PrefKey.runInBackground) }
     public var showInMenuBar: Bool { defaults.bool(forKey: PrefKey.showInMenuBar) }
     public var dockBadgeMode: DockBadgeMode {

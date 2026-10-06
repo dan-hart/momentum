@@ -82,6 +82,11 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         title: _("Archive completed tasks immediately");
         subtitle: _("A completed task goes straight to the archive and syncs. Undo brings it back.");
       }
+
+      Adw.SwitchRow completion_sound_row {
+        title: _("Play a sound when a task is completed");
+        subtitle: _("A short chime when you mark a task done. Off by default.");
+      }
     }
 
     Adw.PreferencesGroup {

@@ -342,6 +342,16 @@
         }
       }
     },
+    "A short chime when you mark a task done.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein kurzer Klang, wenn du eine Aufgabe als erledigt markierst."
+          }
+        }
+      }
+    },
     "A task you complete goes straight to the archive. Undo brings it back.": {
       "localizations": {
         "de": {
@@ -2330,6 +2340,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Für heute planen"
+          }
+        }
+      }
+    },
+    "Play a sound when a task is completed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Erledigen einer Aufgabe einen Ton abspielen"
           }
         }
       }

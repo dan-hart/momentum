@@ -8,5 +8,7 @@
     <file compressed="true">style.css</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/tag-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/archive-symbolic.svg</file>
+    <!-- Kenney "Interface Sounds" confirmation_001, CC0-1.0 (see NOTICE.md) -->
+    <file>sounds/task-complete.wav</file>
   </gresource>
 </gresources>

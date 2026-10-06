@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-10-02. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-10-06. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -5052,3 +5052,80 @@ No merge, tag, release, personal reminder access, or production data change.
   The release workflow must pass and publish its expected assets before reporting
   publication complete. F-055 remains Implemented; previously recorded manual import,
   permission/revocation, spoken VoiceOver and longer-use limits remain open.
+
+## 2026-10-05 — F-056 optional completion sound
+
+Based on clean `main` at `3e762d3` (0.4.6) in worktree branch
+`task/task-completion-sound-8bf089`; local changes only, no commit authorized yet.
+
+- Asset: Kenney "Interface Sounds" `confirmation_001` (CC0-1.0), chosen from the four
+  confirmation clips by pitch analysis as the warm, mid-register rising chime (G–D–G–D,
+  0.29 s); converted to 16-bit mono WAV (25 KB) and bundled twice (gresource and the
+  MomentumKit resource bundle). `LICENSES/CC0-1.0.txt`, REUSE.toml annotation and a
+  NOTICE.md section record the origin.
+- Shared decision: one key, `completion-sound`, default false everywhere; the chime is
+  gated on the core's four completion `Message` variants, so bulk completions chime once
+  and reopen/undo never do.
+- Linux: GSettings key, Preferences › Tasks `SwitchRow`, `crates/app/src/sound.rs`
+  (`gtk::MediaFile::for_resource`, error logged via tracing), hook in `Window::apply`,
+  `--socket=pulseaudio` in all three Flatpak manifests, German po entries (non-fuzzy),
+  new logic test and prefs binding assertion. `cargo check -p momentum --tests` passes on
+  this Mac; Blueprint, strict schema and gresource compile and the resource path
+  resolves. GTK tests not run (no Broadway here); no Linux runtime or audio heard.
+- macOS: `PrefKey.completionSound`, `Preferences.completionSound`, `SoundPlayer`
+  protocol, `CompletionSound` (AudioToolbox system sound), `AppState.sounds` injected by
+  AppDelegate, Settings › General › Tasks toggle with caption, German catalog entries.
+  `swift test` MomentumKit: 165 passed including the new chime and defaults tests.
+  `xcodegen` + Debug `xcodebuild` succeeded; `task-complete.wav` is inside
+  `MomentumKit_MomentumKit.bundle`; `localize.py --sync --import-gettext` then
+  `--require-complete`: 332/332 app, 186/186 package, 3/3 InfoPlist, 5/5 AppShortcuts
+  (the sync's key reordering was not kept; the hand-edited catalog is JSON-equal to it).
+  A scratch Swift check confirmed `AudioServicesCreateSystemSoundID` accepts the clip
+  without playing it. Caption kept to "A short chime when you mark a task done." because
+  the alert-volume behaviour was not verified live.
+- iOS: Settings › Text & Feedback › Completion sound (footer notes the Ring/Silent
+  switch); RootView plays on the `completionFeedback` change through
+  `InteractionFeedbackPolicy`; German catalog entries; the hosted label test now also
+  asserts "Completion sound" / "Ton beim Erledigen". `ios/scripts/test.py prepare` +
+  `fast`: 158 passed; `views --filter …testHapticFeedbackSettingUsesFullScopeLabelInEnglishAndGerman`
+  passed on the iOS 27.0 iPhone 18 Pro simulator (iOS 18 devices fail the test host's
+  deployment target); `ios/scripts/localize.py`: 397/397. Simulator left shut down.
+- Not verified: the chime has not been heard live on any platform (no app was activated
+  on this Mac); GTK tests and Linux runtime; Flathub review of the new PulseAudio socket;
+  Linux behaviour without a GTK media backend beyond the logged error path.
+- Next: hear it once per platform with the switch on and off; run `build-aux/test.sh`
+  on Linux; commit when authorized.
+
+## 2026-10-06 — F-056 sound-only main publication and patch release
+
+Dan authorized committing/pushing the completion-sound changes to main and cutting
+one normal patch release if none was underway. Refreshed main is `3e762d3` (0.4.6),
+latest published release is 0.4.6, and no release run was active. A separate checkout
+snapshots only F-056; the external worktree's F-057 share-sheet/core/App Group changes
+and the older Reminders worktree's ledger edits remain untouched. No accounts,
+credentials, legal terms or App Store submission were added.
+
+- Checked code scope: completion-sound defaults off and persists locally; single and
+  bulk completion chime once, reopening/undo are silent. The Mac regression now also
+  proves switching back off is respected; a fresh preferences object reads both values.
+- Isolated local checks: 166 MomentumKit tests pass with the documented Xcode resource
+  backend; 158 MomentumMobile tests pass; the required opt-in nearby-sync loopback test
+  passes. Native SwiftPM failed two localization-resource tests because it does not
+  compile the catalog; the proper backend passes them. Linux app/tests type-check,
+  project Rust formatting and Mac/iOS German completeness checks pass (332/332,
+  186/186, 397/397). The iOS simulator SDK app build passes.
+- AudioToolbox accepted the bundled WAV and returned its system-playback completion
+  callback on this Mac, without launching Momentum or reading tasks. Audible output is
+  not independently confirmed; iOS/Linux audible and device behavior remain unverified.
+- Scope limits remain: iOS notification Done/URL/Shortcuts completions and `mo done`
+  do not chime. No physical-device installation, personal task access or permission grant.
+- Publication/release outcome and exact-head CI must be confirmed from Actions; normal
+  release workflow publishes desktop/CLI assets, Homebrew and Flatpak, not an iOS IPA.
+
+Final local native checks before publication: Mac and iOS simulator app builds pass
+and both contain the bundled WAV. Three hosted iOS 27 Settings/feedback tests pass.
+The initial combined run timed out waiting for keyboard selection commands; that
+broader test passes on clean `3e762d3`, on the sound branch alone, and in the combined
+retry. The timeout is retained as a test-flakiness observation, not a concealed pass.
+Strict ASP preflight and staged secret scan pass; the display keyword acknowledgement
+covers existing Wayland manifest context, with no OS display configuration changed.

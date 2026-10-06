@@ -25,6 +25,15 @@ source file. At the time of writing these are:
 
 Momentum is not affiliated with or endorsed by the Super Productivity project.
 
+## Completion sound
+
+The optional task-completion chime (`data/resources/sounds/task-complete.wav` and
+`macos/Packages/MomentumKit/Sources/MomentumKit/Resources/task-complete.wav`) is
+`confirmation_001` from [Interface Sounds](https://kenney.nl/assets/interface-sounds)
+by Kenney (www.kenney.nl), released under Creative Commons Zero
+(`LICENSES/CC0-1.0.txt`). It was converted from Ogg Vorbis to 16-bit mono WAV without
+other changes. Credit is not required by the license; it is given here with thanks.
+
 ## LibreSync
 
 Sync with nearby devices (`crates/sp-p2p`) links against

@@ -952,6 +952,16 @@
         }
       }
     },
+    "Completion sound": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ton beim Erledigen"
+          }
+        }
+      }
+    },
     "Compress Sync File": {
       "localizations": {
         "de": {
@@ -3762,6 +3772,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Das App-Kennzeichen konnte nicht aktualisiert werden. Aktualisiere den Zeitplan, um es erneut zu versuchen."
+          }
+        }
+      }
+    },
+    "The completion sound is a short chime when you mark a task done. It follows the Ring/Silent switch.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Ton beim Erledigen ist ein kurzer Klang, wenn du eine Aufgabe als erledigt markierst. Er richtet sich nach dem Schalter „Klingeln/Lautlos“."
           }
         }
       }

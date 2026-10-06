@@ -58,6 +58,28 @@ import Testing
         #expect(h.state.toasts.last?.celebratesCompletion == false)
     }
 
+    @Test func theCompletionChimePlaysOnlyWhenAskedForAndOnlyForCompletions() {
+        let h = Harness()
+        let id = h.id("Write release notes for 0.1")
+        h.state.setDone(id, true)
+        #expect(h.sounds.completions == 0, "off by default")
+        h.state.undo()
+        h.defaults.set(true, forKey: PrefKey.completionSound)
+        h.state.setDone(id, true)
+        #expect(h.sounds.completions == 1)
+        h.state.setDone(id, false)
+        #expect(h.sounds.completions == 1, "reopening is silent")
+        h.state.undo()
+        #expect(h.sounds.completions == 1, "undo is silent")
+        h.state.toggleDone([id, h.id("Test with Orca and high contrast")])
+        #expect(h.sounds.completions == 2, "a bulk completion chimes once")
+        h.defaults.set(false, forKey: PrefKey.completionSound)
+        h.state.setDone(id, false)
+        h.state.setDone(id, true)
+        #expect(h.sounds.completions == 2, "turning the switch back off is respected immediately")
+        #expect(CompletionSound.url != nil, "the clip ships with the package")
+    }
+
     @Test func aToastsUndoButtonRevertsThatChangeAndOnlyOnce() throws {
         let h = Harness()
         let first = h.id("Write release notes for 0.1")
