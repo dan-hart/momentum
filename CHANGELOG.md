@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-10-06
+
 ### Added
 - Optional task-completion sound, off by default, in Linux Preferences, macOS Settings
   and iOS Settings. A short bundled chime plays for completion; reopen and undo are silent.
