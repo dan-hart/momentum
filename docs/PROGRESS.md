@@ -5181,3 +5181,31 @@ Same worktree and base as F-056 above; local changes only.
   were not created; nothing was pushed or committed.
 - Next after that: decide whether a "Today" switch belongs in the sheet; consider a
   macOS share extension over the same inbox.
+
+## 2026-10-07 — B-099 background sync re-arm and window-return catch-up
+
+Branch `task/background-sync-refresh` from the 0.4.8 bump (PR #6); local changes only
+until Dan merges. Investigation prompted by "background sync doesn't update the UI the
+next time it runs" on iOS.
+
+- Finding: the refresh plumbing was sound on every platform (commit → `didCommit` →
+  `revision` on iOS; unconditional `refresh()` after a Nextcloud exchange on macOS and
+  Linux). The iOS defect was in scheduling: `syncInBackground` never re-armed the
+  foreground poll and ignored a foreground return during the wake (B-033 again, on the
+  F-049 path), and a 25 s budget timeout on a large sync file was shown as a failure.
+  Desktops with background sync on skipped both the redraw and the catch-up on window
+  return; the Mac also had no App Nap opt-out while windowless.
+- Shared core: `PERIODIC_SYNC_MS` and `window_return_sync_due` (FFI), one rule for
+  both desktops; bindings regenerated through `ios/scripts/test.py prepare`.
+- iOS: background exchange ends through `schedule(after:)` like `run()`; timeout
+  not recorded. macOS: `setMainWindowVisible(true)` redraws, catches up by the rule,
+  and `keepsRunningInBackground` holds a `ProcessInfo` activity while hidden with
+  automatic background sync configured. Linux: `sync_availability_changed` redraws
+  and catches up by the rule.
+- Evidence (2026-10-07, this worktree): core 153 tests incl. `window_return_tests`;
+  MomentumKit 170 incl. `theWindowsReturnRedrawsAndDecidesCatchUpFromTheSharedRule`;
+  MomentumMobile `NextcloudSyncStateTests` 27 incl. the two new cases, which fail
+  within 2 s against the unfixed `syncInBackground` ("Expectation failed: rearmed",
+  and the budget timeout recorded as a failure) and pass with the fix; GTK app
+  type-checks with tests; rustfmt and whitespace clean. Not verified: a real
+  background wake on a device, GTK runtime, and the App Nap effect.

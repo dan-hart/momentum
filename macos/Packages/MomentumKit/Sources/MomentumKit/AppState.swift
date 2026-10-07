@@ -214,16 +214,40 @@ public final class AppState {
         prefs.autoSync && (mainWindowVisible || prefs.backgroundSync)
     }
 
-    /// The app reports its main window appearing and closing. Coming back after a pause
-    /// catches up on anything automatic sync skipped.
+    /// The app reports its main window appearing and closing. Coming back shows what the
+    /// background exchanges produced and catches up when none could run, or when the
+    /// idle cycle was missed while hidden (the shared core decides).
     public func setMainWindowVisible(_ visible: Bool) {
         guard visible != mainWindowVisible else { return }
         mainWindowVisible = visible
-        let catchUp = visible && !prefs.backgroundSync
         applyP2pSetting()
-        if catchUp, automaticSyncAllowed, prefs.syncConfigured {
+        updateBackgroundActivity()
+        guard visible else { return }
+        refresh()
+        let due = windowReturnSyncDue(backgroundSync: prefs.backgroundSync,
+                                      lastSyncMs: syncStatus.lastNextcloudMs, nowMs: nowMs())
+        if due, automaticSyncAllowed, prefs.syncConfigured, !isSyncing {
             sync()
         }
+    }
+
+    /// Whether the process currently declines App Nap so the windowless sync timers keep
+    /// their cadence. Held only while hidden with automatic background sync configured.
+    public private(set) var keepsRunningInBackground = false
+    private var backgroundActivity: NSObjectProtocol?
+
+    private func updateBackgroundActivity() {
+        let wanted = !mainWindowVisible && !isDemo && automaticSyncAllowed && prefs.syncConfigured
+        guard wanted != keepsRunningInBackground else { return }
+        if wanted {
+            backgroundActivity = ProcessInfo.processInfo.beginActivity(
+                options: .userInitiatedAllowingIdleSystemSleep,
+                reason: "Momentum syncs tasks while its window is closed")
+        } else if let token = backgroundActivity {
+            ProcessInfo.processInfo.endActivity(token)
+            backgroundActivity = nil
+        }
+        keepsRunningInBackground = wanted
     }
 
     /// Apple Reminders automatic import follows application activation, including Settings.
@@ -245,6 +269,11 @@ public final class AppState {
         defaultsObserver = nil
         engine.stopCliServer()
         engine.p2pStop()
+        if let token = backgroundActivity {
+            ProcessInfo.processInfo.endActivity(token)
+            backgroundActivity = nil
+            keepsRunningInBackground = false
+        }
     }
 
     /// A preference changed somewhere (Settings, `defaults write`): re-read the ones the
@@ -268,6 +297,7 @@ public final class AppState {
         updateDockBadge()
         p.writeCliConfig(to: dataDir)
         applyP2pSetting()
+        updateBackgroundActivity()
         syncStatus = engine.syncStatus()
     }
 

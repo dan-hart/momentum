@@ -6,6 +6,15 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- iOS: after a background sync wake, automatic sync could stop until the next edit or
+  pull-to-refresh, so remote changes stayed out of sight; opening the app during a wake
+  now retries at once and the idle cycle is re-armed. A wake that runs out of its time
+  budget no longer shows as a sync failure
+- macOS and Linux: with background sync on, bringing the window back now redraws the list
+  and syncs when the idle cycle was missed while hidden; macOS keeps its background sync
+  timers on cadence by declining App Nap while syncing without a window
+
 ## [0.4.8] - 2026-10-07
 
 ### Added
