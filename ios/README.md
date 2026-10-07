@@ -31,6 +31,17 @@ The shared builder regenerates UniFFI and publishes one XCFramework containing M
 iOS device, and simulator libraries. The generated Xcode project and binary artifacts
 are ignored. Device installation requires normal local signing configuration.
 
+The app embeds the `MomentumShare` share extension. Both targets declare the App Group
+`group.com.codedbydan.Momentum` under `entitlements.properties` in `project.yml`; XcodeGen
+writes `Momentum/Momentum.entitlements` and `MomentumShare/MomentumShare.entitlements`
+from those properties on every generate, so edit the spec, not the files. The extension
+leaves shared items in the group container and the app imports them when it next comes to
+the foreground. Simulator builds embed the group without any provisioning. Device builds
+need the group and both App IDs registered on the signing team (Xcode automatic signing
+with a team, or `asc web app-groups`), otherwise the wildcard team profile is rejected
+with "doesn't support the App Group". The extension links the Rust core only for drafting
+the title and notes and never opens the task store.
+
 ## Isolated verification
 
 Use the [fast iOS testing guide](TESTING.md) for the incremental package lane,

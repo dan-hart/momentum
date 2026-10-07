@@ -90,6 +90,8 @@ struct FeedbackToast: Identifiable, Equatable {
     let notifications: MobileNotifications
     let sync: NextcloudSyncState
     private let isolatedDirectory: URL?
+    /// Where the share extension leaves items for the app; nil when no App Group is available.
+    private let sharedInboxDirectory: URL?
     private let spotlight: (any MobileSpotlightIndexing)?
     private let spotlightDebounce: Duration
     private var spotlightRefresh: Task<Void, Never>?
@@ -162,6 +164,7 @@ struct FeedbackToast: Identifiable, Equatable {
          spotlightDebounce: Duration = .seconds(2),
          initialLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled,
          platformCapabilities injectedPlatformCapabilities: MobilePlatformCapabilities? = nil,
+         sharedInbox injectedSharedInbox: URL? = nil,
          feedbackSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
          announceFeedback: @escaping @MainActor (AttributedString) -> Void = {
              AccessibilityNotification.Announcement($0).post()
@@ -169,6 +172,10 @@ struct FeedbackToast: Identifiable, Equatable {
         precondition((isolatedDirectory == nil) == (isolatedDefaults == nil), "An isolated store must have isolated preferences")
         self.isolatedDirectory = isolatedDirectory
         self.announceFeedback = announceFeedback
+        // Isolated and demo runs never read the real inbox; they only see an injected folder.
+        sharedInboxDirectory = injectedSharedInbox
+            ?? (isolatedDirectory == nil && !ProcessInfo.processInfo.arguments.contains("--demo")
+                ? SharedTaskInbox.defaultDirectory() : nil)
         self.feedbackSleep = feedbackSleep
         platformCapabilities = injectedPlatformCapabilities
             ?? MobilePlatformCapabilities(isPad: UIDevice.current.userInterfaceIdiom == .pad)
@@ -266,12 +273,35 @@ struct FeedbackToast: Identifiable, Equatable {
     func foreground() async {
         await start()
         await worker?.refreshForForeground()
+        await importSharedTasks()
         await reminders.reactivate()
         await sync.load()
         await sync.refreshStatus()
         revision += 1
         await notifications.refresh()
         scheduleSpotlight(immediate: true)
+    }
+
+    /// Turns what the share extension left behind into Inbox tasks. Each item is created at
+    /// most once; an item whose save fails stays in the inbox for the next foreground.
+    @discardableResult func importSharedTasks() async -> Int {
+        guard let worker, let directory = sharedInboxDirectory else { return 0 }
+        var created = 0
+        for item in SharedTaskInbox.pending(in: directory) {
+            do {
+                if try await worker.importSharedTask(item) == .created { created += 1 }
+                SharedTaskInbox.remove(item, in: directory)
+            } catch {
+                break
+            }
+        }
+        if created > 0 {
+            showFeedback(created == 1
+                ? String(localized: "Added a shared task to Inbox")
+                : String(localized: "Added \(created) shared tasks to Inbox"))
+            refreshAfterEdit()
+        }
+        return created
     }
 
     var shouldScheduleNotificationBackgroundRefresh: Bool {

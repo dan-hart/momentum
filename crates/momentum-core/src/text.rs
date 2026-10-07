@@ -321,9 +321,255 @@ pub fn notes_preview(notes: &str) -> Option<String> {
     })
 }
 
+/// Longest title a shared item may produce; longer ones are cut at a word boundary.
+const SHARED_TITLE_MAX: usize = 120;
+
+fn is_http_url(s: &str) -> bool {
+    s.starts_with("https://") || s.starts_with("http://")
+}
+
+/// The first web address in free text, without the punctuation a sentence may wrap it in.
+fn first_url(text: &str) -> Option<String> {
+    text.split_whitespace()
+        .find(|w| is_http_url(w))
+        .map(|w| {
+            w.trim_end_matches(['.', ',', ';', ':', '!', '?', ')', ']', '>', '"', '\''])
+                .to_string()
+        })
+        .filter(|w| w.len() > "https://".len())
+}
+
+/// Whitespace collapsed, wrapping quotes and trailing punctuation gone, cut to a sensible
+/// length. `None` when nothing readable is left.
+pub fn normalize_shared_title(raw: &str) -> Option<String> {
+    let collapsed = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut s = collapsed.as_str();
+    loop {
+        let before = s;
+        s = s.trim_matches(|c: char| c.is_whitespace() || matches!(c, '"' | '“' | '”' | '‘' | '’' | '«' | '»'));
+        s = s.trim_end_matches(|c: char| {
+            matches!(c, '.' | ',' | ';' | ':' | '!' | '?' | '-' | '–' | '—' | '|' | '·' | '•')
+        });
+        if s == before {
+            break;
+        }
+    }
+    if s.is_empty() {
+        return None;
+    }
+    if s.chars().count() <= SHARED_TITLE_MAX {
+        return Some(s.to_string());
+    }
+    let head: String = s.chars().take(SHARED_TITLE_MAX).collect();
+    let cut = head
+        .rfind(' ')
+        .filter(|&i| i >= SHARED_TITLE_MAX / 2)
+        .unwrap_or(head.len());
+    Some(format!("{}…", head[..cut].trim_end()))
+}
+
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// A readable title for a bare link: the last path segment as words, then the site.
+/// `https://kenney.nl/assets/interface-sounds` becomes "Interface sounds – kenney.nl";
+/// an address with no usable path, or an opaque id, gives just the site.
+pub fn title_from_url(url: &str) -> Option<String> {
+    let rest = url.trim().trim_start_matches("https://").trim_start_matches("http://");
+    let rest = rest.split(['?', '#']).next().unwrap_or("");
+    let mut parts = rest.split('/');
+    let host = parts
+        .next()
+        .unwrap_or("")
+        .trim_start_matches("www.")
+        .split('@')
+        .last()
+        .unwrap_or("");
+    let host = host.split(':').next().unwrap_or("").to_ascii_lowercase();
+    if host.is_empty() {
+        return None;
+    }
+    let segment = parts
+        .filter(|p| !p.is_empty())
+        .last()
+        .map(percent_decode)
+        .unwrap_or_default();
+    // Drop a file extension of up to five letters or digits.
+    let segment = match segment.rfind('.') {
+        Some(i) if segment.len() - i <= 6 && segment[i + 1..].chars().all(|c| c.is_ascii_alphanumeric()) => {
+            &segment[..i]
+        }
+        _ => segment.as_str(),
+    };
+    let words: Vec<&str> = segment
+        .split(|c: char| c == '-' || c == '_' || c == '+' || c.is_whitespace())
+        .filter(|w| !w.is_empty())
+        .collect();
+    let readable = !words.is_empty()
+        && words.iter().any(|w| w.chars().any(|c| c.is_alphabetic()))
+        && !(words.len() == 1 && words[0].chars().any(|c| c.is_ascii_digit()))
+        && words.iter().map(|w| w.len()).sum::<usize>() >= 3;
+    if !readable {
+        return Some(host);
+    }
+    let mut phrase = words.join(" ");
+    if let Some(first) = phrase.chars().next() {
+        if first.is_lowercase() {
+            phrase = first.to_uppercase().collect::<String>() + &phrase[first.len_utf8()..];
+        }
+    }
+    Some(format!("{phrase} – {host}"))
+}
+
+/// One task from what another app shared. The title comes from the first of: the item's
+/// own title, the first readable line of the text, the link itself. The notes start with
+/// the link; the shared text follows when it says more than the title does.
+pub fn shared_task_draft(title: Option<&str>, text: Option<&str>, url: Option<&str>) -> SharedTaskDraft {
+    let text = text.map(str::trim).filter(|t| !t.is_empty());
+    let url = url
+        .map(str::trim)
+        .filter(|u| is_http_url(u))
+        .map(str::to_string)
+        .or_else(|| text.and_then(first_url));
+    let is_the_url = |s: &str| {
+        url.as_deref()
+            .is_some_and(|u| s.trim().trim_end_matches('/') == u.trim_end_matches('/'))
+    };
+    let from_title = title.filter(|t| !is_the_url(t)).and_then(normalize_shared_title);
+    let from_text = text
+        .and_then(|t| {
+            t.lines()
+                .map(str::trim)
+                .find(|l| !l.is_empty() && !is_the_url(l) && !is_http_url(l))
+        })
+        .and_then(normalize_shared_title);
+    let title = from_title
+        .clone()
+        .or_else(|| from_text.clone())
+        .or_else(|| url.as_deref().and_then(title_from_url))
+        .unwrap_or_default();
+    let mut notes = Vec::new();
+    if let Some(u) = &url {
+        notes.push(u.clone());
+    }
+    if let Some(t) = text {
+        let says_more = !is_the_url(t) && normalize_shared_title(t).as_deref() != Some(title.as_str());
+        if says_more {
+            notes.push(t.to_string());
+        }
+    }
+    SharedTaskDraft {
+        title,
+        notes: notes.join("\n\n"),
+        url,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_titles_are_normalized() {
+        assert_eq!(
+            normalize_shared_title("  Read   this\n later.  "),
+            Some("Read this later".into())
+        );
+        assert_eq!(
+            normalize_shared_title("“Quoted headline” – "),
+            Some("Quoted headline".into())
+        );
+        assert_eq!(normalize_shared_title(" ... "), None);
+        let long = "word ".repeat(40);
+        let t = normalize_shared_title(&long).unwrap();
+        assert!(t.ends_with('…') && t.chars().count() <= SHARED_TITLE_MAX + 1, "{t}");
+        assert_eq!(
+            normalize_shared_title("Ends with a question?"),
+            Some("Ends with a question".into())
+        );
+    }
+
+    #[test]
+    fn titles_from_links_read_like_words() {
+        assert_eq!(
+            title_from_url("https://kenney.nl/assets/interface-sounds"),
+            Some("Interface sounds – kenney.nl".into())
+        );
+        assert_eq!(title_from_url("https://www.example.com/"), Some("example.com".into()));
+        assert_eq!(
+            title_from_url("https://github.com/dan-hart/momentum"),
+            Some("Momentum – github.com".into())
+        );
+        assert_eq!(
+            title_from_url("https://www.nytimes.com/2026/10/05/tech/some-long-story.html?ref=x#top"),
+            Some("Some long story – nytimes.com".into())
+        );
+        assert_eq!(title_from_url("https://youtu.be/dQw4w9WgXcQ"), Some("youtu.be".into()));
+        assert_eq!(
+            title_from_url("https://example.com/items/12345"),
+            Some("example.com".into())
+        );
+        assert_eq!(
+            title_from_url("https://de.wikipedia.org/wiki/K%C3%B6ln"),
+            Some("Köln – de.wikipedia.org".into())
+        );
+    }
+
+    #[test]
+    fn shared_link_with_page_title_puts_the_link_first_in_notes() {
+        let d = shared_task_draft(
+            Some(" Interface Sounds · Kenney "),
+            None,
+            Some("https://kenney.nl/assets/interface-sounds"),
+        );
+        assert_eq!(d.title, "Interface Sounds · Kenney");
+        assert_eq!(d.notes, "https://kenney.nl/assets/interface-sounds");
+        assert_eq!(d.url.as_deref(), Some("https://kenney.nl/assets/interface-sounds"));
+    }
+
+    #[test]
+    fn shared_bare_link_gets_a_title_from_the_address() {
+        let d = shared_task_draft(None, Some("https://kenney.nl/assets/interface-sounds"), None);
+        assert_eq!(d.title, "Interface sounds – kenney.nl");
+        assert_eq!(d.notes, "https://kenney.nl/assets/interface-sounds");
+        // Safari sometimes repeats the address as the text; it must not become the title or notes twice.
+        let d = shared_task_draft(
+            Some("https://kenney.nl/assets/interface-sounds/"),
+            Some("https://kenney.nl/assets/interface-sounds"),
+            Some("https://kenney.nl/assets/interface-sounds"),
+        );
+        assert_eq!(d.title, "Interface sounds – kenney.nl");
+        assert_eq!(d.notes, "https://kenney.nl/assets/interface-sounds");
+    }
+
+    #[test]
+    fn shared_text_keeps_the_whole_selection_in_notes() {
+        let text = "Remember to call the dentist.\nThe number is on the fridge, see https://example.com/clinic.";
+        let d = shared_task_draft(None, Some(text), None);
+        assert_eq!(d.title, "Remember to call the dentist");
+        assert_eq!(d.url.as_deref(), Some("https://example.com/clinic"));
+        assert_eq!(d.notes, format!("https://example.com/clinic\n\n{text}"));
+        let short = shared_task_draft(None, Some("Buy milk"), None);
+        assert_eq!(short.title, "Buy milk");
+        assert_eq!(short.notes, "", "a one-line selection is the title, not a note as well");
+        assert_eq!(shared_task_draft(None, None, None), SharedTaskDraft::default());
+        assert_eq!(shared_task_draft(Some("  "), Some(" \n "), Some("ftp://x")).title, "");
+    }
 
     #[test]
     fn estimates_parse_and_format_both_ways() {

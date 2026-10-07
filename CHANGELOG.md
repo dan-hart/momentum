@@ -6,6 +6,11 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- iOS: share a link or text to Momentum from any app's share sheet. The sheet shows a
+  normalized title to edit and adds the task to Inbox with the link first in its notes when
+  Momentum next opens; the app and its extension now share an App Group
+
 ## [0.4.7] - 2026-10-06
 
 ### Added
