@@ -276,6 +276,10 @@ cross-app drag, scheduler and locked-device checks retain their explicit system 
   App-owned system clipboard input creates two separate Today tasks and a URL task whose
   Notes retain the original URL on iOS 26.5/27. B-064 fixes URL/paragraph imports that
   previously discarded Today/project/tag/day-period context.
+- [ ] Share sheet from another app creates one Inbox task with a normalized title and the
+  link first in Notes (F-057). The extension, inbox hand-off and foreground import are
+  covered by package and hosted tests; driving the real share sheet from another app
+  remains manual.
 - [ ] External text/URL drop exercises a real cross-app native payload.
   Production `Transferable` decoding now passes real `NSItemProvider` text and URL unit
   boundaries; the spatial drag gesture from another app remains manual.

@@ -48,6 +48,12 @@ targets:
       - package: MomentumCore
       - package: MomentumKit
       - package: MomentumMobile
+      - target: MomentumShare
+    # XcodeGen regenerates the entitlements file from these properties on every generate.
+    entitlements:
+      path: Momentum/Momentum.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.codedbydan.Momentum]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.codedbydan.Momentum.ios
@@ -87,6 +93,40 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSHumanReadableCopyright: "© 2026 Dan Hart. GPL-3.0-or-later."
+  # Share sheet entry: writes one file per shared item into the App Group inbox; the app
+  # imports it on its next foreground. The extension never opens the task store.
+  MomentumShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: MomentumShare
+      - path: Momentum/Resources/Localizable.xcstrings
+    dependencies:
+      - package: MomentumCore
+      - package: MomentumKit
+    # XcodeGen regenerates the entitlements file from these properties on every generate.
+    entitlements:
+      path: MomentumShare/MomentumShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.codedbydan.Momentum]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codedbydan.Momentum.ios.Share
+        OTHER_LDFLAGS: "$(inherited) -lresolv"
+        SKIP_INSTALL: true
+    info:
+      path: MomentumShare/Info.plist
+      properties:
+        CFBundleDisplayName: Momentum
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ShareViewController"
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
   MomentumTestHost:
     type: application
     platform: iOS
@@ -190,6 +230,7 @@ schemes:
     build:
       targets:
         Momentum: all
+        MomentumShare: all
       preActions:
         - name: Prepare Apple core
           settingsTarget: Momentum

@@ -64,6 +64,11 @@ pub fn hash_word_at(text: String, cursor: u32) -> Option<HashWord> {
 pub fn complete_hash_word(text: String, cursor: u32, name: String) -> Option<CompletedText> {
     text::complete_hash_word(&text, cursor, &name)
 }
+/// Content shared from another app (a share sheet, a service), drafted into one task.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn shared_task_draft(title: Option<String>, text: Option<String>, url: Option<String>) -> SharedTaskDraft {
+    text::shared_task_draft(title.as_deref(), text.as_deref(), url.as_deref())
+}
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn day_label(day: String) -> DayLabel {
     text::day_label(&day)

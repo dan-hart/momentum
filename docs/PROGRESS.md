@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-10-06. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-10-07. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -5129,3 +5129,55 @@ broader test passes on clean `3e762d3`, on the sound branch alone, and in the co
 retry. The timeout is retained as a test-flakiness observation, not a concealed pass.
 Strict ASP preflight and staged secret scan pass; the display keyword acknowledgement
 covers existing Wayland manifest context, with no OS display configuration changed.
+
+## 2026-10-05 — F-057 iOS share sheet
+
+Same worktree and base as F-056 above; local changes only.
+
+- Shared core: `SharedTaskDraft` record and `text::shared_task_draft` (title from the
+  item's own title, else the first readable text line, else the link; whitespace, quote
+  and trailing-punctuation cleanup; 120-character word-boundary cut; link first in notes,
+  longer selection below). Exposed as the free FFI function `shared_task_draft`; bindings
+  regenerated through `ios/scripts/test.py prepare`. `cargo test -p momentum-core
+  --features ffi`: 152 passed, 1 ignored; `mo` and the GTK app compile against it.
+- MomentumKit: `SharedTaskInbox` / `SharedTaskItem` (atomic JSON files in the App Group
+  folder, oldest first, unreadable files kept); 2 tests.
+- MomentumMobile: `EngineWorker.importSharedTask` over `import_task_once` with identity
+  `share:v1:<uuid>`; test proves once-only across a relaunch and Inbox placement.
+- App: `MobileAppModel.importSharedTasks()` runs in `foreground()`, removes imported
+  files, keeps items whose save failed, and toasts the count; isolated/demo models only
+  read an injected inbox. Hosted `SharedTaskIntegrationTests` covers two items, the
+  toast, the notes, and a repeated drain adding nothing.
+- Extension: `ios/MomentumShare` (principal `ShareViewController`, `SharedPayload`
+  loader for `public.url` and `public.plain-text`, SwiftUI `ShareComposeView` with
+  Cancel/Add and an Inbox footnote), activation rule one web URL or text, App Group
+  entitlements on both targets, registered in `ios/project.yml` and the `Momentum`
+  scheme. German entries added for the five new strings (Add/Title/Notes/New Task
+  already existed).
+- Verification: core 152 tests (5 new); MomentumKit 2 inbox tests; MomentumMobile fast
+  lane 159 (1 new); hosted `SharedTaskIntegrationTests` passed on the iOS 27.0 iPhone 18
+  Pro simulator; `xcodebuild` of the `Momentum` scheme for the simulator succeeded with
+  `MomentumShare.appex` embedded; iOS catalog 402/402 German. Live: the built app was
+  installed on that simulator, Momentum showed up in Safari's share sheet for a kenney.nl
+  page and the compose sheet opened, but with the message that Momentum can't receive
+  shared items, because the simulator build (ad-hoc, `ENTITLEMENTS_ALLOWED=NO`) carried
+  no App Group entitlement; a rebuild with the local team did not change that without
+  provisioning updates. The app was uninstalled and the simulator shut down afterwards.
+- Later the same day: the "can't receive shared items" result was caused by the two
+  entitlements files being regenerated as empty dictionaries by `xcodegen generate`
+  (a `path`-only `entitlements` entry); the group is now declared under
+  `entitlements.properties` in `ios/project.yml`. A simulator rebuild then embedded the
+  group, and the full flow passed live on the iOS 27.0 iPhone 18 Pro simulator: Safari
+  share sheet → Momentum compose sheet (title "Interface Sounds · Kenney", link in Notes)
+  → Add → one JSON file in the App Group container → launching Momentum drained it →
+  Search shows the task in Inbox with notes. The test app was uninstalled and the
+  simulator shut down afterwards.
+- Account (with Dan's approval, through `asc`): the App Group
+  `group.com.codedbydan.Momentum` was registered on the signing team, both App IDs
+  (`com.codedbydan.Momentum.ios`, `com.codedbydan.Momentum.ios.Share`) were created,
+  and the group was assigned to each; the App Groups capability is confirmed on both.
+  Creating bundle IDs over the API needs an Admin-role key; Developer is refused. Device
+  builds still need development profiles (a certificate and a registered device), which
+  were not created; nothing was pushed or committed.
+- Next after that: decide whether a "Today" switch belongs in the sheet; consider a
+  macOS share extension over the same inbox.

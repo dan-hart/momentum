@@ -492,6 +492,26 @@
         }
       }
     },
+    "Added %lld shared tasks to Inbox": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld geteilte Aufgaben zum Eingang hinzugefügt"
+          }
+        }
+      }
+    },
+    "Added a shared task to Inbox": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine geteilte Aufgabe zum Eingang hinzugefügt"
+          }
+        }
+      }
+    },
     "All Tasks": {
       "localizations": {
         "de": {
@@ -2128,6 +2148,26 @@
         }
       }
     },
+    "Momentum adds the task to Inbox when it next opens.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum fügt die Aufgabe beim nächsten Öffnen dem Eingang hinzu."
+          }
+        }
+      }
+    },
+    "Momentum can’t receive shared items on this device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum kann auf diesem Gerät keine geteilten Inhalte empfangen."
+          }
+        }
+      }
+    },
     "Momentum could not save a reminder. Retry Import Now.": {
       "localizations": {
         "de": {
@@ -2485,6 +2525,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notizen"
+          }
+        }
+      }
+    },
+    "Nothing here can become a task.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daraus lässt sich keine Aufgabe erstellen."
           }
         }
       }
