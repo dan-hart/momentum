@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-10-07
+
 ### Added
 - iOS: share a link or text to Momentum from any app's share sheet. The sheet shows a
   normalized title to edit and adds the task to Inbox with the link first in its notes when
