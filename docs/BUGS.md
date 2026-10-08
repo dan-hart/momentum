@@ -2418,6 +2418,32 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   PR #4 review-fix handoff in [PROGRESS.md](PROGRESS.md). Spoken VoiceOver acceptance
   remains separate and must not be inferred from accessible labels or unit tests.
 
+## B-099 — a background sync exchange never re-arms automatic sync (iOS); desktops skip the catch-up when the window returns
+
+- **Severity:** High. **Features:** F-049/F-025. **Affected:** iOS, reproduced in code
+  and by a new package test; macOS and Linux assessed from code, not reproduced live.
+- **Reproduction (iOS):** with Sync in the background on, let a background wake start
+  an exchange and open Momentum before it finishes. Expected: the exchange's result
+  shows and automatic sync continues. Actual: the foreground return was remembered
+  but the wake's completion scheduled nothing, so no automatic exchange ran again
+  until a local edit, a pull-to-refresh or another background/foreground cycle; edits
+  made during the wake also missed the 10 s upload. A wake that hit its 25 s budget
+  was recorded as a network failure.
+- **Cause/fix:** `syncInBackground` ended without the `schedule(after:)` hand-off that
+  `run()` has (B-033's fix had only reached the foreground path). It now ends through
+  the same scheduling, resets the retry flag at admission, and treats a budget
+  timeout like an expired wake: not recorded, the next foreground exchange reports
+  its own result. macOS/Linux: with background sync on, a returning window neither
+  redrew nor synced; now it always redraws and syncs when the shared core rule
+  `window_return_sync_due` says the idle cycle was missed (or background sync is
+  off). macOS additionally declines App Nap while hidden with automatic background
+  sync configured, so the 150 s timer keeps its cadence.
+- **Regression:** iOS `foregroundReturnDuringABackgroundWakeRetriesAtOnceAndReArmsTheCycle`
+  and `aWakeThatRunsOutOfBudgetIsNotAFailureAndTheForegroundRetries`; core
+  `window_return_tests`; macOS `theWindowsReturnRedrawsAndDecidesCatchUpFromTheSharedRule`.
+  Linux wiring compiles; GTK runtime not exercised here. Remaining: a real background
+  wake on a device, and the App Nap effect observed only by reasoning.
+
 ## 2026-10-06 — F-056 sound verification assessment
 
 No product defect was reproduced in the sound setting/completion paths. Tests prove

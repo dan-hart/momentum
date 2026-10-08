@@ -2193,11 +2193,22 @@ impl MomentumWindow {
     }
 
     /// The window was shown or hidden, or the background-sync preference changed: the
-    /// LibreSync transport follows, and a window coming back after a pause catches up.
+    /// LibreSync transport follows. A window coming back shows what the background
+    /// exchanges produced and catches up when none could run or the idle cycle was
+    /// missed while hidden (the shared core decides).
     fn sync_availability_changed(&self) {
-        let catch_up = self.is_visible() && !self.imp().settings.boolean("background-sync");
+        let imp = self.imp();
         self.p2p_apply_setting();
-        if catch_up && self.automatic_sync_allowed() && self.sync_configured() && !self.imp().syncing.get() {
+        if !self.is_visible() {
+            return;
+        }
+        self.refresh();
+        let due = momentum_core::window_return_sync_due(
+            imp.settings.boolean("background-sync"),
+            imp.engine.sync_status().last_nextcloud_ms,
+            momentum_core::now_ms(),
+        );
+        if due && self.automatic_sync_allowed() && self.sync_configured() && !imp.syncing.get() {
             self.sync();
         }
     }

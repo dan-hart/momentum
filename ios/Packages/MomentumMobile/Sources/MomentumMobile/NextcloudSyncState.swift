@@ -356,6 +356,7 @@ import Observation
         scheduled?.cancel(); scheduled = nil
         isSyncing = true
         editsDuringSync = false
+        foregroundRetry = false
         let admittedGeneration = generation
         let exchange = Task<Bool, Never> {
             let next = await makeOperation(saved.settings)
@@ -377,6 +378,10 @@ import Observation
                     committed = true
                 } catch is CancellationError {
                     // The wake expired or the provider changed; the core kept its state.
+                } catch CoreError.Transient(kind: .timedOut, message: _) {
+                    // The wake's fixed budget ran out, which a large file over a slow link
+                    // does. Not a failure to show: the next foreground exchange gets the
+                    // full budget and reports its own result.
                 } catch {
                     record(Self.classify(error), from: error)
                 }
@@ -387,6 +392,10 @@ import Observation
             isSyncing = false
             isStopping = false
             active = nil
+            // Same hand-off as a foreground exchange: a return to the foreground while
+            // the wake ran retries at once, edits made meanwhile upload in 10 s, and
+            // otherwise the idle cycle is re-armed (no-op while still in the background).
+            schedule(after: foregroundRetry ? .zero : editsDuringSync ? .seconds(10) : .seconds(150))
             return committed
         }
         active = Task { _ = await exchange.value }

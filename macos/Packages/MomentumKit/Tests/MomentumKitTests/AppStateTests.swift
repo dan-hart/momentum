@@ -627,6 +627,19 @@ import Testing
         h.state.setMainWindowVisible(true)
         #expect(h.state.mainWindowVisible, "reporting the same state twice is harmless")
     }
+
+    @Test func theWindowsReturnRedrawsAndDecidesCatchUpFromTheSharedRule() {
+        let h = Harness()
+        h.state.setMainWindowVisible(false)
+        let before = h.notifier.badges.count
+        h.state.setMainWindowVisible(true)
+        #expect(h.notifier.badges.count == before + 1, "coming back rebuilds the listing and the badge")
+        #expect(!h.state.keepsRunningInBackground, "no sync is configured, so nothing holds the process awake")
+        let now = nowMs()
+        #expect(windowReturnSyncDue(backgroundSync: false, lastSyncMs: now - 1_000, nowMs: now))
+        #expect(!windowReturnSyncDue(backgroundSync: true, lastSyncMs: now - 1_000, nowMs: now))
+        #expect(windowReturnSyncDue(backgroundSync: true, lastSyncMs: now - 150_000, nowMs: now))
+    }
 }
 
 @MainActor

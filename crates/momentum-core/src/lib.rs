@@ -87,6 +87,18 @@ pub fn today() -> String {
 pub fn now_ms() -> u64 {
     sp_model::now_ms()
 }
+/// The idle automatic-sync cycle every desktop and mobile app runs, in milliseconds.
+pub const PERIODIC_SYNC_MS: u64 = 150_000;
+
+/// Whether a window coming back should sync right away rather than wait for the next
+/// cycle. With background sync off nothing ran while it was hidden, so always. With it
+/// on, the timer may have been held back (App Nap, a sleeping laptop), so only when the
+/// last successful exchange is older than one cycle, or there has never been one.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn window_return_sync_due(background_sync: bool, last_sync_ms: u64, now_ms: u64) -> bool {
+    !background_sync || last_sync_ms == 0 || now_ms.saturating_sub(last_sync_ms) >= PERIODIC_SYNC_MS
+}
+
 /// `YYYY-MM-DD` shifted by `days`.
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn day_offset(day: String, days: i64) -> String {
@@ -98,6 +110,34 @@ pub fn day_offset(day: String, days: i64) -> String {
 
 #[cfg(feature = "ffi")]
 uniffi::setup_scaffolding!("momentum");
+
+#[cfg(test)]
+mod window_return_tests {
+    use super::*;
+
+    #[test]
+    fn a_window_coming_back_syncs_when_nothing_could_have_run_or_the_cycle_was_missed() {
+        let now = 10 * PERIODIC_SYNC_MS;
+        assert!(
+            window_return_sync_due(false, now - 1_000, now),
+            "background sync off: nothing ran meanwhile"
+        );
+        assert!(window_return_sync_due(true, 0, now), "never synced");
+        assert!(
+            !window_return_sync_due(true, now - 1_000, now),
+            "a fresh background exchange: wait for the cycle"
+        );
+        assert!(!window_return_sync_due(true, now - PERIODIC_SYNC_MS + 1, now));
+        assert!(
+            window_return_sync_due(true, now - PERIODIC_SYNC_MS, now),
+            "one full cycle without an exchange"
+        );
+        assert!(
+            !window_return_sync_due(true, now + 5_000, now),
+            "a clock that went backwards is not a missed cycle"
+        );
+    }
+}
 
 #[cfg(test)]
 mod notification_tests;
