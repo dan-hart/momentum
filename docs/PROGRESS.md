@@ -5,8 +5,10 @@ and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
 
-Android integration is prepared on `task/android-native` at
-`/Users/danhart/.codex/worktrees/android-native/momentum`. The original Android
+Android integration was merged into local `main` through handoff commit `0839ecd`
+in `/Users/danhart/.codex/worktrees/sync-release-0-4-9/momentum`. The isolated
+`task/android-native` worktree at `/Users/danhart/.codex/worktrees/android-native/momentum`
+is retained with acceptance artifacts. The original Android
 checkpoint was committed as `e1f007e`, then its 30 bug IDs were disambiguated as
 B-105–134 in `c4bc5da` because main independently assigned B-099–104. Main
 `7c583a6` (0.4.9) was integrated in merge commit `e99b9eb`; release packaging
@@ -5982,3 +5984,13 @@ next time it runs" on iOS.
   Next release should bump the unified version normally; this work leaves 0.4.9
   and its existing tags unchanged. Final handoff documentation follows the packaged
   source checkpoint without changing its verified production code.
+- **Post-merge verification:** local main fast-forwards to `0839ecd` and keeps its
+  pre-existing untracked `target` intact. Its tracked files are clean; version
+  check and actionlint pass, and 267 relative Markdown targets/anchors across 20
+  changed files resolve. The merged checkout's Python suite runs 45 cases: 44
+  pass, one generated-binding fixture skips because this checkout has no Android
+  host generator yet. That same case passed in the complete 45-pass Android
+  worktree suite and its generated Kotlin/JVM/native lanes. The final documentation
+  successor records this completed merge; production code remains identical to
+  the clean packaged checkpoint. Primary branch/HEAD/status/file hashes remain
+  unchanged. Nothing is pushed, tagged or published.
