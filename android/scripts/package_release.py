@@ -43,7 +43,9 @@ def verify_badging(badging, version):
     for key, value in expected.items():
         if f"{key}='{value}'" not in package:
             raise ValueError(f"APK {key} does not match the release")
-    if "sdkVersion:'26'" not in badging or "targetSdkVersion:'37'" not in badging:
+    minimum = re.findall(r"^(?:minSdkVersion|sdkVersion):'(\d+)'$", badging, re.MULTILINE)
+    target = re.findall(r"^targetSdkVersion:'(\d+)'$", badging, re.MULTILINE)
+    if minimum != ["26"] or target != ["37"]:
         raise ValueError("APK SDK metadata does not match the Android baseline")
     if "application-debuggable" in badging:
         raise ValueError("Debuggable APK cannot be packaged as a release")

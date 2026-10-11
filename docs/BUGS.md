@@ -3478,7 +3478,7 @@ non-app completion scope remain explicitly unverified/limited, not claimed as fi
   AtomicFile's base-to-backup rename/replacement. The
   [AtomicFile contract](https://developer.android.com/reference/android/util/AtomicFile)
   requires caller mutual exclusion.
-- **Fix/status:** Implemented; fresh native verification is in progress. Explicit
+- **Fix/status:** Verified for the controlled persistence and recovery scope. Explicit
   persistence cancels and joins the pending autosave before entering the draft lock,
   then writes the current accepted draft. The delayed job uses a private writer to
   avoid self-joining; cancellation propagates instead of becoming a UI error.
@@ -3489,4 +3489,29 @@ non-app completion scope remain explicitly unverified/limited, not claimed as fi
   `android/rust-target/integration-main-api26-full.log` records 119 passes, six
   expected skips and two failures. That artifact predates the B-135/B-136 fixes.
   Final artifact identities and results are recorded in PROGRESS.
+- **Final regression evidence:** corrected app
+  `96afa07123f1167c54855fafb8d449b212fb859c797b0d31c3877909a528b920`, test
+  `3e784cda2db4584b3d4c3f76874538094485ad725f7a93803f934945c540a436`:
+  both former API26 failures pass unchanged in the focused two-case run (12.268s)
+  and the complete API26/API37 runs. API26 has 121 passes/six expected skips/zero
+  failures (179.198s); API37 has 134 passes/three expected skips/zero failures
+  (193.974s), with 91 JVM passes. Ordinary task/preferences/capture/draft files
+  remain byte-identical; API37's derived system-search receipt timestamp changes.
 - **Remaining:** broader physical low-memory/process-failure and lifecycle acceptance.
+
+## B-137 — Android release metadata validator expects an obsolete aapt2 label
+
+- **Severity:** Medium; future Android release job blocked. **Feature:** F-060.
+  **Affected:** Android release packaging only; installed apps are unaffected.
+- **Reproduction/cause:** the first clean committed-source build succeeds with
+  release APK/AAB, JVM tests and lint, then packaging refuses valid API26 metadata.
+  Pinned Build Tools 37's `aapt2 dump badging` prints `minSdkVersion:'26'`; the
+  initial fixture/parser expected the older `sdkVersion:'26'` label. Recorded in
+  `android/rust-target/integration-clean-source-package-first.log`.
+- **Fix/status:** Implemented; full clean packaging is being rerun. Parse the
+  actual current minimum-SDK line and retain support for the legacy label. Require
+  exactly one minimum/target value, 26/37. Wrong versions/IDs/SDKs/debuggable
+  artifacts remain rejected. The behavioral metadata fixture uses real current
+  output spelling and covers the legacy spelling explicitly.
+- **Remaining:** fresh local packaging result and first hosted tagged workflow;
+  store admission and official-key signing/update acceptance remain separate.

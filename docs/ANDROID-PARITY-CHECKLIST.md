@@ -83,6 +83,10 @@ Linux/F-Droid build have separate evidence and limits below. See [source/build d
 | F-054 | Implemented | Android reuses shared upload-integrity checks, typed damaged-copy handling and exchange budget; native cancellation token drains work on policy changes. | Fresh shared and native cut-off upload/stalled request/failure/repair tests, bounded worker behavior, actual server fixture and existing consumers after core edits. |
 
 
+## New main capabilities and release integration
+
+| Feature | Android status | Capability and native difference | Remaining acceptance |
+|---|---|---|---|
 | F-056 | Planned | Main added an off-by-default completion sound on Linux/Apple. Android has no completion-sound setting/player yet. | Implement a native resource/player adapter and localized setting reusing core completion messages; verify Off, complete/reopen/Undo and lifecycle. |
 | F-057 | In progress | Android accepts text/plain share and PROCESS_TEXT into a retained, user-confirmed capture draft. Main's newer Rust sharedTaskDraft and Inbox-once share-inbox contract is available through regenerated bindings but not wired to Android. | Preserve existing draft/context behavior. Decide/adapt the explicit shared-link/title normalization and Inbox import contract, then test cross-app cold/warm sharing and once-only persistence. |
 | F-058 | Implemented | Main's faster sync and failure-retaining Rust changes are integrated; Android uses the same generated core with Keystore, selected-provider lifecycle, typed status and retry. | Fresh post-integration native transport/recovery lanes; controlled core timings do not establish physical/server/background Android performance. |

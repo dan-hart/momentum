@@ -41,14 +41,15 @@ class ReleaseToolsTests(unittest.TestCase):
 
     def badging(self):
         return ("package: name='com.codedbydan.momentum' versionCode='4009' versionName='0.4.9'\n"
-                "sdkVersion:'26'\ntargetSdkVersion:'37'\n")
+                "minSdkVersion:'26'\ntargetSdkVersion:'37'\n")
 
     def test_metadata_refuses_wrong_version_id_sdk_and_debug_artifacts(self):
         good = self.badging()
         self.package.verify_badging(good, "0.4.9")
+        self.package.verify_badging(good.replace("minSdkVersion", "sdkVersion"), "0.4.9")
         for bad in [good.replace("4009", "4005"), good.replace("0.4.9", "0.4.5"),
                     good.replace("com.codedbydan.momentum", "other.app"),
-                    good.replace("sdkVersion:'26'", "sdkVersion:'28'"),
+                    good.replace("minSdkVersion:'26'", "minSdkVersion:'28'"),
                     good.replace("targetSdkVersion:'37'", "targetSdkVersion:'36'"),
                     good + "application-debuggable\n"]:
             with self.subTest(badging=bad), self.assertRaises(ValueError):
