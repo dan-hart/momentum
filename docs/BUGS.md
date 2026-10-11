@@ -3508,10 +3508,13 @@ non-app completion scope remain explicitly unverified/limited, not claimed as fi
   Pinned Build Tools 37's `aapt2 dump badging` prints `minSdkVersion:'26'`; the
   initial fixture/parser expected the older `sdkVersion:'26'` label. Recorded in
   `android/rust-target/integration-clean-source-package-first.log`.
-- **Fix/status:** Implemented; full clean packaging is being rerun. Parse the
+- **Fix/status:** Verified for local clean-source packaging; first hosted execution remains open. Parse the
   actual current minimum-SDK line and retain support for the legacy label. Require
   exactly one minimum/target value, 26/37. Wrong versions/IDs/SDKs/debuggable
   artifacts remain rejected. The behavioral metadata fixture uses real current
   output spelling and covers the legacy spelling explicitly.
-- **Remaining:** fresh local packaging result and first hosted tagged workflow;
-  store admission and official-key signing/update acceptance remain separate.
+- **Evidence:** clean committed `c24b114` packaging succeeds, including fresh APK/AAB,
+  JVM tests/release lint, all native alignment checks, matching source and seven
+  verified artifact digests. See the 2026-10-11 PROGRESS handoff.
+- **Remaining:** first hosted tagged workflow; store admission and official-key
+  signing/update acceptance remain separate.

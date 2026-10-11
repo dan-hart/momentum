@@ -8,9 +8,11 @@ and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 Android integration is prepared on `task/android-native` at
 `/Users/danhart/.codex/worktrees/android-native/momentum`. The original Android
 checkpoint was committed as `e1f007e`, then its 30 bug IDs were disambiguated as
-B-105–134 in `c4bc5da` because main independently assigned B-099–104. Current main
-`7c583a6` (0.4.9) is integrated for fresh verification; existing Apple and sync/storage
-source is preserved. The user explicitly authorized a local merge to main, README
+B-105–134 in `c4bc5da` because main independently assigned B-099–104. Main
+`7c583a6` (0.4.9) was integrated in merge commit `e99b9eb`; release packaging
+was verified from clean checkpoint `c24b114`. Existing Apple and sync/storage source
+is preserved, with the bounded shared parser correction B-135. The final handoff
+records the user-authorized local main merge and verification scope. The user explicitly authorized a local merge to main, README
 updates and Android release-process integration on 2026-10-11. No push, tag, actual
 release or store submission is authorized. The primary checkout remains on
 `task/sync-performance-recovery` with its inherited changes preserved. Historical
@@ -41,7 +43,7 @@ performed for this handoff.
 | Linux | Established native GTK4/libadwaita MVP using shared Rust engine | Full SDK/GTK tests and broad isolated GNOME Wayland acceptance ran 2026-09-17. Typography, automation and Background Apps count parity are Implemented; remaining feature-specific native gates are listed below. |
 | macOS | Established SwiftUI/AppKit MVP using UniFFI/shared core | Local build/tests and many native flows recorded; specific deferred/unverified checks below. |
 | iOS | In progress in `task/ios-app`; approved native SwiftUI architecture and real shared Rust core | Four-tab offline workflows build and have scoped iOS 26.5/27 native evidence. Nextcloud and LibreSync are implemented; real simulator notification delivery/actions and App Intents pass. Unit coverage exercises the production background handler, IME boundary, external payload decoding and keyboard fallbacks. Hosted TLS, scheduler-originated execution, separate-device Bonjour and remaining manual system interactions stay open. |
-| Android | In progress on `task/android-native`; native Kotlin/Compose/Material 3 app using generated UniFFI and the shared Rust engine | Offline task/editor/list flows, optional Nextcloud/LibreSync, private backups, native reminders and opt-in task counts exist. Frozen gate11h source has 91 passing JVM tests, release APK/AAB, zero lint errors and strict 16 KiB native packaging. Controlled API26↔API37 LibreSync pairing/offline convergence/reopen and native minified SAF replacement pass. B-128 removes the large-emoji layout stall, B-129 protects native text Undo/source ownership, B-133 prevents nondurable edits, and B-134 streams private records within their unchanged bounds. Fresh full native/minified checks are being recorded below; oversized imported-task editing still requires an approved private-draft format design. Physical accessibility, external-server/scheduler checks, optional automation and independent store-builder gates remain explicit in [Android checklist](ANDROID-PARITY-CHECKLIST.md). |
+| Android | In progress on `task/android-native`; native Kotlin/Compose/Material 3 app using generated UniFFI and the shared Rust engine | Offline task/editor/list flows, optional Nextcloud/LibreSync, private backups, native reminders and opt-in task counts exist. Frozen gate11h source has 91 passing JVM tests, release APK/AAB, zero lint errors and strict 16 KiB native packaging. Controlled API26↔API37 LibreSync pairing/offline convergence/reopen and native minified SAF replacement pass. B-128 removes the large-emoji layout stall, B-129 protects native text Undo/source ownership, B-133 prevents nondurable edits, and B-134 streams private records within their unchanged bounds. Post-integration full native/minified and clean-source packaging checks pass for the dated handoff scope below; oversized imported-task editing still requires an approved private-draft format design. Physical accessibility, external-server/scheduler checks, optional automation and independent store-builder gates remain explicit in [Android checklist](ANDROID-PARITY-CHECKLIST.md). |
 
 ## Current priorities
 
@@ -53,8 +55,10 @@ performed for this handoff.
   private autosave before explicit flush. All 323 Rust tests, 331 Apple package
   tests, 91 Android JVM tests and 45 release/source-tool tests pass. The two API26
   draft failures pass after the correction with unchanged acceptance assertions.
-  Full final native suites and clean committed-source packaging are in progress;
-  their actual results and artifact identities will be recorded in the handoff.
+  Both complete final native suites pass (255 passes/nine expected skips), as do
+  clean committed-source APK/AAB/source packaging, seven artifact checksums and
+  minified runtime on API26/API37. The dated handoff records exact source/artifact
+  identities, B-137 metadata correction and remaining hosted/store/device gates.
 - Gate11h API26/API37 native acceptance passes after B-133's exact admission
   before editable publication and B-134's format-preserving streamed private I/O.
   Current minified/runtime evidence is linked in the final handoff below. The first API26 near-limit fixture exposed a real 48 MiB recovery
@@ -5899,3 +5903,82 @@ next time it runs" on iOS.
   Plan for Today. Date rules, undo behavior and shipping app code are unchanged.
 - The corrected test type-checks locally; its Linux runtime result and the new exact-head
   CI/macOS gates remain required before the 0.4.9 tag. No failed check is waived.
+
+
+## 2026-10-11 — Android main integration and release process
+
+- **Authority/scope:** user requested local merge to main, README updates and Android
+  release integration. Android's isolated branch/worktree is retained with ignored
+  acceptance artifacts; the primary `task/sync-performance-recovery` checkout's
+  branch, HEAD, status and all 23 inherited file hashes remain unchanged. No push,
+  tag, actual GitHub release, official signing or store submission occurred.
+- **Integration:** `e99b9eb` combines Android with main `7c583a6` (0.4.9). Apple
+  frontend and sync/storage source from main is preserved; B-135 fixes the shared
+  malformed-percent/Unicode crash, B-136 fixes explicit Android draft publication,
+  and B-137 corrects current aapt2 metadata validation. Existing main B-099–104
+  remain intact; Android's previous 30 IDs were shifted to B-105–134. All 104 main
+  bug sections remain verbatim, with 137 unique final bug IDs and all 60 feature
+  IDs assessed in the Android checklist.
+- **README/distribution:** Android overview, actual synthetic API37 screenshots
+  (explicit pre-integration 0.4.5 capture), build instructions, platform limits and
+  APK/AAB install/signing guidance. F-060 makes the exact-tag Android reusable job
+  a required GitHub Release dependency. It builds/tests/lints a fresh committed
+  snapshot and attaches APK/AAB, matching pinned source, notices, R8 mapping,
+  provenance and all-asset checksums. Ordinary CI remains read-only without
+  signing/upload. Absent keys produce labelled unsigned files; partial keys fail.
+  APK and every signed AAB payload must match the configured certificate; stale
+  outputs, untracked local inputs, debug keys and unsigned appended payload fail.
+  Temporary validation keys/products never enter uploaded distribution assets.
+- **Automated evidence:** 323 Rust passes/zero failures/five existing opt-in
+  benchmark ignores (`integration-final-rust-tests.log`); regenerated macOS host
+  and iOS device/simulator core; 170 MomentumKit plus 161 MomentumMobile passes;
+  unsigned macOS arm64 Debug and iOS simulator app builds pass. The initial generic
+  Mac Debug destination requested x86_64 against host-only core; the appropriate
+  host destination succeeds. The CI-owned Rustfmt package list passes without
+  changing original pinned LibreSync formatting. Release version check, 45 Python
+  release/source regressions (including actual disposable signed-JAR mismatch/
+  tamper/unsigned-entry rejection), actionlint 1.7.12 on both changed workflows,
+  Markdown targets/anchors and whitespace checks pass. Logs are retained under
+  `android/rust-target/integration-*`.
+- **Final debug/native source:** `e99b9eb`, clean at native execution; app
+  `96afa07123f1167c54855fafb8d449b212fb859c797b0d31c3877909a528b920`, test
+  `3e784cda2db4584b3d4c3f76874538094485ad725f7a93803f934945c540a436`.
+  91 JVM passes. API26: 127 run, 121 pass, six expected skips, zero failures,
+  179.198 seconds; API37: 137 run, 134 pass, three expected skips, zero failures,
+  193.974 seconds. `integration-main-final-native-results.json` records source,
+  per-lane logs and unchanged ordinary task/preferences/capture/draft files.
+  The initial two API26 failures and focused repeats remain recorded under B-136.
+- **Clean package source:** `c24b11454152c2ae3ae1860a00891202ba6ee9a1`; Kotlin/core
+  code is identical to the native checkpoint. Fresh build succeeds in 2m19s with
+  JVM tests/release lint; APK and actual AAB-generated APK pass LOAD/RELRO/ZIP
+  alignment for all eight libraries across arm64-v8a/x86_64.
+  `integration-release-assets` contains seven products plus SHA256SUMS; all seven
+  digests verify. The 19,226-file source archive matches committed task/parser/
+  build inputs and resolves 406 Cargo packages offline/locked using its relocatable
+  vendor config. `integration-release-package-validation.json` records the checks.
+  Unsigned APK SHA-256:
+  `91370b57652d6c44295bf592ac9ba28b4730e9809644de4f0c47683654190cd5`; AAB:
+  `335809ea4da77cbee601c1be3b45f7547cfd0949430a3b87850224e6232e26d0`; source:
+  `46ffc7b8ece300ac2b7c15ec96cb63494eed524d757773e34ccba0f5a311cff3`.
+- **Actual minified package runtime:** AAB above, universal fixture APK
+  `c4fa4e84595ff54798fe93763528fe9b6eb9f3b77be481521ff16eac97b16120`, signed only
+  with the matching local debug fixture. Installed APK readback matches on both
+  owned AVDs; 0.4.9/code4009/debuggable=false. Native Today/task UI is visible, core
+  library mapped, same process remains alive, no new app crash. Native AT_PAGESZ
+  is 4096 on API26 and 16384 on API37. Cold launch 172/206ms respectively. Ordinary
+  task/preferences/capture/draft bytes remain unchanged; only API37's derived
+  system-search receipt timestamp changes. Evidence/synthetic screenshots:
+  `integration-main-release-runtime-artifacts.json` and per-API runtime records.
+  Both emulator reservations are released.
+- **Review/status/remaining:** independent integration/release review has no
+  remaining Critical/Important findings after fixes. F-060 is Implemented with
+  verified local gates; first hosted Linux/tagged workflow, official-key signing/
+  upgrade continuity, physical accessibility/release QA and independent F-Droid
+  builder/admission remain outstanding. No Linux GTK runtime or universal Mac
+  release validation is claimed from this Mac integration. Android parity remains
+  In progress: new F-056 completion sound and F-057 shared-link/Inbox contract,
+  existing large-draft format decision, manual OS/server/scheduler/device scopes
+  and optional unapproved AppFunctions proposal retain explicit checklist gaps.
+  Next release should bump the unified version normally; this work leaves 0.4.9
+  and its existing tags unchanged. Final handoff documentation follows the packaged
+  source checkpoint without changing its verified production code.
