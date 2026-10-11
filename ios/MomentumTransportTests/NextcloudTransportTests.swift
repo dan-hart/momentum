@@ -6,6 +6,31 @@ import XCTest
 
 /// Actual iOS Swift -> UniFFI -> Rust -> HTTP -> disk exchanges, not a mocked adapter.
 @MainActor final class NextcloudTransportTests: XCTestCase {
+    func testValidatedPollAndTransientRetryUseTheRealCore() async throws {
+        let fixture = try await TransportFixture()
+        defer { fixture.close() }
+        let worker = try await fixture.worker("validated-poll", fullBackup: true)
+        _ = await worker.perform(.add("Queued offline", .today))
+        let upload = try await fixture.exchange(worker, fixture.connection)
+        XCTAssertTrue(upload.uploaded)
+        let bytes = fixture.server.downloadedBytes
+        let poll = try await fixture.exchange(worker, fixture.connection)
+        XCTAssertFalse(poll.downloaded)
+        XCTAssertFalse(poll.uploaded)
+        XCTAssertEqual(fixture.server.notModified, 1)
+        XCTAssertEqual(fixture.server.downloadedBytes, bytes)
+
+        _ = await worker.perform(.add("Survives a transient failure", .today))
+        fixture.server.failGETs = 2
+        let retry = try await fixture.exchange(worker, fixture.connection)
+        XCTAssertTrue(retry.uploaded)
+        let peer = try await fixture.worker("validated-peer")
+        _ = try await fixture.exchange(peer, fixture.connection)
+        let tasks = await peer.snapshot(view: .today).tasks
+        XCTAssertEqual(tasks.count, 2)
+        XCTAssertTrue(tasks.contains { $0.title == "Survives a transient failure" })
+    }
+
     func testConnectionProbeIsReadOnlyAndAcceptsAMissingFolder() async throws {
         let fixture = try await TransportFixture()
         defer { fixture.close() }

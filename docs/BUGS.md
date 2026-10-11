@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-10-02. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-10-10. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in
@@ -2452,3 +2452,65 @@ reopen/undo stay silent, and bulk completion produces one sound request. Native
 SwiftPM's uncompiled localization resources are a build-backend limitation; the
 full Xcode-backend package suite passes. Audible output and the documented iOS
 non-app completion scope remain explicitly unverified/limited, not claimed as fixed.
+
+## B-100 — unverifiable Nextcloud uploads can be acknowledged
+
+- **Severity:** High. **Features:** F-054/F-058. **Impact:** reproduced in isolated
+  Rust WebDAV regression tests; native occurrence not independently reproduced.
+- **Reproduction:** PUT returns success but the verification read returns 404, or an
+  existing file's GET omits its ETag. The original code could acknowledge an absent
+  copy or overwrite without a precondition. Review also found that trusting a missing
+  PUT validator or a different verification validator could cache an unadopted copy.
+- **Expected/fix:** require strong overwrite preconditions, actual stored length and
+  matching PUT/PROPFIND validators. Keep edits queued on missing/mismatched evidence;
+  do not replay a PUT with uncertain effects. Recovery wording no longer promises the
+  earlier server copy survived a partial write.
+- **Platforms:** Linux/macOS/iOS Implemented through the shared core; Android Planned
+  when its native consumer exists. Shared reproduction is not an OS-specific runtime claim.
+- **Evidence:** missing size, missing download/upload/verification validators, different
+  validator and partial-upload regressions pass. Native gates and limits: F-058 in
+  [PROGRESS.md](PROGRESS.md); [benchmark scope](SYNC-PERFORMANCE.md).
+
+## B-101 — failed LibreSync journal writes suppress retry
+
+- **Severity:** High. **Feature:** F-058. **Impact:** reproduced in isolated adapter
+  tests by making the journal scratch path unwritable.
+- **Reproduction:** receive an operation or publish a snapshot while the journal save
+  fails. The original code mutated seen/inbox/dirty flags first, so another delivery
+  could be discarded or a failed snapshot treated as published. Local publication also
+  swallowed journal errors and serialized the entire backlog once per operation.
+- **Expected/fix:** persist a staged journal before publishing memory changes, batch
+  pending operations once, skip unchanged journal writes and surface errors with retry.
+  Successful writes sync both the file and its parent directory.
+- **Platforms:** Linux/macOS/iOS Implemented; shared reproduction confirmed, native
+  failure injection not performed. Android Planned for the eventual core consumer.
+- **Evidence:** inbound redelivery after failed save, snapshot retry, batch persistence,
+  no-op adapter load and reentrant engine error callback pass. Two real Rust LibreSync
+  peers converge. Remaining native/physical checks are recorded under F-058.
+
+## B-102 — a same-version server replacement is ignored
+
+- **Severity:** High. **Feature:** F-058. **Impact:** reproduced in the Rust fixture.
+- **Reproduction:** replace the remote sync file with different task data/ETag while
+  retaining its numeric sync version. The original comparison ignored the replacement.
+- **Expected/fix:** adopt changed remote data when either version or ETag changes;
+  permit body-free polling only for a successfully validated engine session without
+  pending edits and with unchanged connection/options/version/validator.
+- **Platforms:** Linux/macOS/iOS Implemented through Rust; Android Planned. No real
+  server incident or platform-specific reproduction is claimed.
+- **Evidence:** replacement adoption and cache invalidation regressions pass. A paused
+  no-change exchange also preserves concurrent edits, vector clocks, undo and disk.
+  See [F-058 evidence](SYNC-PERFORMANCE.md) and native limits in PROGRESS.
+
+## B-103 — corrupt gzip lacks damaged-copy recovery
+
+- **Severity:** Medium. **Features:** F-028/F-058. **Impact:** reproduced by decoding
+  an invalid compressed fixture, without modifying any user or hosted server data.
+- **Reproduction:** a syntactically prefixed compressed sync file has invalid gzip
+  bytes. The decoder returned generic I/O failure, hiding damaged-copy replacement.
+- **Expected/fix:** classify compressed decoding failure as RemoteFileDamaged,
+  preserving the existing explicit replacement/backup workflow and pending edits.
+- **Platforms:** Linux/macOS/iOS Implemented through shared classification; Android
+  Planned. Native spoken/action acceptance remains unverified.
+- **Evidence:** invalid-gzip classification regression passes; replacement and encrypted
+  damage regressions remain green. Native gates are recorded in PROGRESS.

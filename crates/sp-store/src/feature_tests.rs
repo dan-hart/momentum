@@ -41,6 +41,26 @@ fn dispatch_applies_persists_and_queues_one_op() {
     assert_eq!(reloaded.pending.len(), 1, "pending survives a restart");
     assert_eq!(reloaded.meta.vector_clock, s.meta.vector_clock);
 }
+
+#[test]
+fn sync_timestamp_write_preserves_tasks_and_pending_and_reports_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::load(dir.path().to_path_buf());
+    add(&mut store, "keep pending");
+    let state = std::fs::read(dir.path().join("state.json")).unwrap();
+    let pending = std::fs::read(dir.path().join("pending.json")).unwrap();
+    let before = std::fs::read(dir.path().join("meta.json")).unwrap();
+    std::fs::create_dir(dir.path().join("meta.json.tmp")).unwrap();
+    assert!(store.record_nextcloud_success(42).is_err());
+    assert_eq!(store.meta.last_nextcloud_ms, 0);
+    assert_eq!(std::fs::read(dir.path().join("meta.json")).unwrap(), before);
+    std::fs::remove_dir(dir.path().join("meta.json.tmp")).unwrap();
+    store.record_nextcloud_success(42).unwrap();
+    assert_eq!(Store::load(dir.path().to_path_buf()).meta.last_nextcloud_ms, 42);
+    assert_eq!(std::fs::read(dir.path().join("state.json")).unwrap(), state);
+    assert_eq!(std::fs::read(dir.path().join("pending.json")).unwrap(), pending);
+    assert_eq!(store.pending.len(), 1);
+}
 #[test]
 fn corrupt_files_fall_back_to_a_fresh_store() {
     let dir = tempfile::tempdir().unwrap();

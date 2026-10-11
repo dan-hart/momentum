@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-Updated: 2026-10-07. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-10-10. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
@@ -33,6 +33,28 @@ performed for this handoff.
 | Android | Upcoming; no native app foundation yet | Plan native frontend/platform services and bindings around shared Rust core; scope/order to be agreed. |
 
 ## Current priorities
+
+### 2026-10-10 — sync performance and recovery on all platforms
+
+- F-058 / B-100–B-103: sync work is integrated on task/sync-release-0-4-9
+  from current main (13f469d); the original checkout and inherited notes are preserved.
+  [Measured workloads and repeatable commands](SYNC-PERFORMANCE.md) define the
+  10×/2×/2× targets and distinguish transport timings from full native acceptance.
+- Shared Rust now validates idle Nextcloud polls, commits metadata alone for unchanged
+  exchanges, retries safe transient reads within the existing deadline, requires verified
+  upload validators/size, adopts same-version replacements and classifies corrupt gzip.
+  LibreSync batches journals and retains failed receipts/snapshots for retry. English/German
+  recovery copy is updated in GTK and the catalog shared by both Apple clients.
+- Recorded local measurements: complete shared-engine idle Nextcloud polls 11.6× faster
+  (transport alone 87.2×), LibreSync backlog publication 243.9× faster, the specified fault matrix 10/20 → 20/20 successful exchanges,
+  and worst one-fault recovery 263 ms. These do not establish general production rates.
+- No format migration, dependency upgrade, provider-policy change or personal-store test.
+  Dan authorized merging to main and releasing patch 0.4.9 after the local handoff.
+  Android has no app in this checkout; native integration and
+  equivalent lifecycle/credential/status/recovery acceptance remain Planned.
+- Remaining: disposable hosted TLS and separate-device/physical/background performance,
+  Linux native runtime checks, and spoken recovery-message acceptance. Automated build/test
+  results are recorded in the dated handoff below. Existing unrelated deferrals remain.
 
 ### 2026-09-16 — iOS implementation
 
@@ -5209,3 +5231,82 @@ next time it runs" on iOS.
   and the budget timeout recorded as a failure) and pass with the fix; GTK app
   type-checks with tests; rustfmt and whitespace clean. Not verified: a real
   background wake on a device, GTK runtime, and the App Nap effect.
+
+## 2026-10-10 — F-058 sync performance and recovery handoff
+
+- **Revision/source:** dirty task/sync-performance-recovery based on 200f686;
+  automated local fixtures/builds and independent source review. Inherited Apple
+  Reminders ledger changes were preserved. No commit, push, deployment or release.
+- **Platforms touched:** toolkit-independent Rust Engine/Nextcloud/LibreSync/store,
+  GTK English/German error wording, the catalog shared by macOS/iOS, and iOS's
+  loopback transport fixture. Android requirements are recorded without scaffolding.
+- **Changes:** process-local validated Nextcloud polling, metadata-only idle commits,
+  bounded safe-read retries, strong overwrite guards and paired upload validators,
+  same-version replacement adoption, damaged-gzip recovery classification, one durable
+  LibreSync backlog publication and staged retryable receipts/snapshots. Provider policy,
+  task formats, offline edits, deletion/conflict semantics and dependencies are preserved.
+- **Benchmarks:** complete 10,000-task encrypted/compressed Engine idle polls:
+  1.582 s uncached → 136.146 ms validated for ten polls (11.6×), including cloning and
+  durable metadata persistence. Both paths use the new metadata commit, so this is a
+  conservative reference rather than the exact old full-save path. Transport-only
+  2.505 s → 28.729 ms (87.2×), 6,852,680 → 0 body bytes. Publishing 1,000 operations:
+  original unsynced per-op serialization/rename 13.235 s → one durable batch 54.271 ms
+  (243.9×). The synthetic healthy/transient matrix succeeds 10/20 → 20/20; worst
+  one-fault recovery 262.698 ms. [Method and limits](SYNC-PERFORMANCE.md).
+
+| Check | Actual result | Scope / limitation |
+|---|---|---|
+| Rust workspace, excluding GTK executable, all features/targets | 309 passed; 5 opt-in ignored; zero failures | Includes core, store, sync, real two-peer LibreSync, CLI and FFI consumers; the four new ignored benchmark cases were run separately and passed |
+| Complete-engine HTTP regressions after extending the fixture | 14 passed, one opt-in benchmark ignored | Real loopback; conditional polling preserves concurrent completion, pending IDs, vector clock, undo and disk |
+| macOS MomentumKit | 164 tests in 36 suites passed | Hostless production state/wording/resources, isolated fixtures; no UI automation or spoken accessibility claim |
+| iOS portable MomentumMobile | 158 tests in 24 suites passed | Final compiled Apple wording/core artifacts; does not prove UIKit or system background scheduling |
+| iOS native transport, iOS 27.0 and 26.5 | Eight passed and one hosted-TLS skip per runtime; zero failures | Real Swift/UniFFI/Rust HTTP, Keychain and two LibreSync socket peers in disposable test-host stores; validated poll/transient retry, encrypted convergence, auth and wrong-password recovery, cancellation |
+| macOS production Debug build | Passed, signing disabled | Generated bindings and shipping frontend compile; no over-install or live user-store sync |
+| iOS production Debug simulator build | Passed, signing disabled | Shipping frontend and Apple slices compile; no physical installation or scheduler-originated background claim |
+| Linux GTK consumer compilation | cargo check -p momentum --tests passed | Built on macOS with installed GTK dependencies; Linux runtime unavailable here |
+| Android shared-core/FFI compilation | aarch64-linux-android all-features code check passed | Installed Rust 1.91.1 and NDK 27.2/API-26 compiler tooling, isolated target output; no native Android client, Kotlin bindings, linked product or device claim |
+| Formatting/localization/docs | Rust formatting, diff whitespace, gettext validation, Apple catalog JSON and local document-link checks passed | English/German resources retained; manual spoken delivery remains open |
+
+- **Evidence files:** local /tmp/momentum-sync-* logs hold the workspace, package,
+  benchmark, GTK/Android checks and production builds. Native reports are the ignored
+  ios/DerivedData/TestReports/transport-1791681413297331000.xcresult (iOS 27) and
+  transport-1791681491040583000.xcresult (iOS 26.5). The final prepare step regenerates
+  bindings/static slices and refreshes the test runner's source/artifact fingerprint.
+- **Review:** corrected an upload acknowledgement/validator race and an error callback
+  that held owner/provider locks. Regressions cover missing/mismatched validators and
+  callback reentrancy. A later wording review removed the unsupported truncation claim
+  from the generalized upload-verification error. No remaining concrete source findings.
+- **Status/next:** F-058 remains Implemented on Linux/macOS/iOS, with automated scopes
+  above verified, and Planned on Android. Finish supported Linux native acceptance,
+  disposable hosted Nextcloud/TLS and separate-device LibreSync, physical/background
+  timing/energy and spoken recovery acceptance before broad native/production claims.
+  Android needs its approved native client and the same provider/credential/lifecycle
+  recovery contract. Existing unrelated manual deferrals stay separate.
+
+
+## 2026-10-10 — 0.4.9 integration and release preparation (F-058)
+
+- **Authorization/scope:** Dan requested merge to main and a new patch release. The
+  isolated `task/sync-release-0-4-9` worktree starts at `13f469d`, preserving main's
+  completion sound, iOS share extension and background-sync re-arm. Only the sync diff
+  was transferred; unrelated original-checkout changes remain there.
+- **Records:** new sync IDs are F-058 / B-100–B-103 because current main already uses
+  F-056 for the completion sound and B-099 for background scheduling. The original
+  measured sync handoff above retains its original workload/revision context.
+- **Local automated verification, dirty 13f469d integration:** all-features/all-targets
+  Rust workspace excluding GTK: 315 passed, 5 opt-in ignored, zero failures; GTK tests
+  type-check; Android aarch64 core/FFI code check passes with Rust 1.91.1/NDK 27.2.
+  Regenerated Apple bindings; MomentumKit: 170 tests in 37 suites passed; required
+  opt-in nearby Swift/Rust integration: one passed; MomentumMobile: 161 tests in 25
+  suites passed. iOS 27 native transport: eight passed, one hosted-TLS skip, zero
+  failures (`transport-1791683390718615000.xcresult`). Formatting, gettext, catalog JSON,
+  whitespace and 66 local Markdown target checks pass. Read-only integration review
+  found no concrete remaining findings. The shipping iOS Debug simulator build
+  passes with the share extension embedded; both bundle versions read back as 0.4.9 (409).
+- **Release preparation:** all version copies and build numbers are 0.4.9 (409) through
+  `build-aux/release.py`; changelog/metainfo include both sync work and the unreleased
+  background fixes. Main's exact-head CI/macOS gates and the tag's Release workflow
+  remain required before publication is called complete.
+- **Limits:** known hosted TLS, separate-device, physical/background/energy and spoken
+  accessibility acceptance remain open. Android still lacks a native client. GitHub's
+  normal release produces desktop/CLI assets, not an iOS App Store distribution.

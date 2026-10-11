@@ -48,8 +48,21 @@ fn now_ms() -> u64 {
 }
 fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, bytes)?;
-    std::fs::rename(tmp, path)
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(&tmp)?;
+    file.write_all(bytes)?;
+    file.sync_all()?;
+    std::fs::rename(tmp, path)?;
+    if let Some(parent) = path.parent() {
+        std::fs::File::open(parent)?.sync_all()?;
+    }
+    Ok(())
 }
 fn io(e: std::io::Error) -> Error {
     Error::Io(e)
@@ -133,6 +146,36 @@ impl Journal {
     fn save(&self, path: &Path) -> std::io::Result<()> {
         write_atomic(path, &serde_json::to_vec(self)?)
     }
+    fn publish<'a>(
+        &mut self,
+        path: &Path,
+        ops: impl IntoIterator<Item = (&'a Op, &'a Action)>,
+    ) -> std::io::Result<usize> {
+        let mut candidate: Option<Self> = None;
+        let mut added = 0;
+        for (op, action) in ops {
+            if self.seen.contains(&op.id) {
+                continue;
+            }
+            let candidate = candidate.get_or_insert_with(|| self.clone());
+            if !candidate.seen.insert(op.id.clone()) {
+                continue;
+            }
+            candidate.own.push(OpRecord {
+                id: op.id.clone(),
+                t: op.t,
+                origin: op.c.clone(),
+                op: serde_json::to_value(op)?,
+                action: serde_json::to_value(action)?,
+            });
+            added += 1;
+        }
+        if let Some(candidate) = candidate {
+            candidate.save(path)?;
+            *self = candidate;
+        }
+        Ok(added)
+    }
     fn inbox(&self) -> (Vec<OpRecord>, Option<Snapshot>) {
         let mut ops = self.inbox.clone();
         ops.sort_by_key(|r| r.t);
@@ -201,19 +244,17 @@ impl LogicalAdapter for OpAdapter {
             .lock()
             .map_err(|_| Error::Protocol("journal poisoned".into()))?;
         let cutoff = now_ms().saturating_sub(KEEP_DAYS * 86_400_000);
-        let mut keep = Vec::new();
-        for r in std::mem::take(&mut j.own) {
+        let mut expired = BTreeSet::new();
+        for r in &j.own {
             if r.t < cutoff {
-                records.set(op_record(&r, true))?;
-                j.tombstoned.insert(r.id.clone());
+                records.set(op_record(r, true))?;
+                expired.insert(r.id.clone());
             } else {
                 if records.get(SCHEMA, OP_ENTITY, &r.id)?.is_none() {
-                    records.set(op_record(&r, false))?;
+                    records.set(op_record(r, false))?;
                 }
-                keep.push(r);
             }
         }
-        j.own = keep;
         if j.snapshot_dirty {
             if let Some(s) = &j.snapshot_out {
                 let fields = std::collections::BTreeMap::from([
@@ -230,9 +271,16 @@ impl LogicalAdapter for OpAdapter {
                     ..SyncRecord::default()
                 })?;
             }
-            j.snapshot_dirty = false;
         }
-        j.save(&self.path).map_err(io)
+        if !expired.is_empty() || j.snapshot_dirty {
+            let mut candidate = j.clone();
+            candidate.own.retain(|r| !expired.contains(&r.id));
+            candidate.tombstoned.extend(expired);
+            candidate.snapshot_dirty = false;
+            candidate.save(&self.path).map_err(io)?;
+            *j = candidate;
+        }
+        Ok(())
     }
     /// Collects ops and snapshots from other devices into the inbox.
     fn apply_records(&self, view: &RecordView) -> Result<()> {
@@ -240,13 +288,14 @@ impl LogicalAdapter for OpAdapter {
             .journal
             .lock()
             .map_err(|_| Error::Protocol("journal poisoned".into()))?;
+        let mut candidate = j.clone();
         let mut changed = false;
         for r in view.snapshot()? {
             if r.tombstone || r.schema != SCHEMA {
                 continue;
             }
             if r.entity == OP_ENTITY {
-                if j.seen.contains(&r.id) {
+                if candidate.seen.contains(&r.id) {
                     continue;
                 }
                 let (Some(op), Some(action), Some(origin)) =
@@ -257,25 +306,25 @@ impl LogicalAdapter for OpAdapter {
                 let (Ok(op), Ok(action)) = (serde_json::from_str(op), serde_json::from_str(action)) else {
                     continue;
                 };
-                j.inbox.push(OpRecord {
+                candidate.inbox.push(OpRecord {
                     id: r.id.clone(),
                     t: field_i64(&r, "t").unwrap_or(0) as u64,
                     origin: origin.to_string(),
                     op,
                     action,
                 });
-                j.seen.insert(r.id);
+                candidate.seen.insert(r.id);
                 changed = true;
             } else if r.entity == SNAPSHOT_ENTITY {
                 let t = field_i64(&r, "t").unwrap_or(0) as u64;
-                let newer = j.snapshot_in.as_ref().is_none_or(|s| s.t < t);
-                let ours = j
+                let newer = candidate.snapshot_in.as_ref().is_none_or(|s| s.t < t);
+                let ours = candidate
                     .snapshot_out
                     .as_ref()
                     .is_some_and(|s| s.t == t && field_str(&r, "origin") == Some(&s.origin));
                 if newer && !ours {
                     if let (Some(origin), Some(gz)) = (field_str(&r, "origin"), field_str(&r, "gz_b64")) {
-                        j.snapshot_in = Some(Snapshot {
+                        candidate.snapshot_in = Some(Snapshot {
                             t,
                             origin: origin.into(),
                             gz_b64: gz.into(),
@@ -286,7 +335,8 @@ impl LogicalAdapter for OpAdapter {
             }
         }
         if changed {
-            j.save(&self.path).map_err(io)?;
+            candidate.save(&self.path).map_err(io)?;
+            *j = candidate;
         }
         Ok(())
     }
@@ -613,33 +663,28 @@ impl P2p {
     }
     /// Queues a local op for the next sync. Ops already seen (own or inbound) are skipped.
     pub fn publish(&self, op: &Op, action: &Action) -> bool {
-        let mut j = self.journal();
-        if j.seen.contains(&op.id) {
-            return false;
-        }
-        let (Ok(o), Ok(a)) = (serde_json::to_value(op), serde_json::to_value(action)) else {
-            return false;
-        };
-        j.seen.insert(op.id.clone());
-        j.own.push(OpRecord {
-            id: op.id.clone(),
-            t: op.t,
-            origin: op.c.clone(),
-            op: o,
-            action: a,
-        });
-        j.save(&self.journal_path).ok();
-        true
+        self.publish_batch([(op, action)]).is_ok_and(|n| n > 0)
+    }
+    /// One durable commit for an offline backlog. A failed write leaves every op
+    /// eligible for retry; no in-memory "seen" receipt gets ahead of disk.
+    pub fn publish_batch<'a>(&self, ops: impl IntoIterator<Item = (&'a Op, &'a Action)>) -> Result<usize> {
+        self.journal().publish(&self.journal_path, ops).map_err(io)
     }
     pub fn has_seen(&self, op_id: &str) -> bool {
         self.journal().seen.contains(op_id)
     }
     /// Publishes a snapshot of the whole state for devices that join later.
     pub fn publish_snapshot(&self, state_json: &[u8]) {
+        let _ = self.publish_snapshot_checked(state_json);
+    }
+    pub fn publish_snapshot_checked(&self, state_json: &[u8]) -> Result<()> {
         let mut j = self.journal();
-        j.snapshot_out = Some(Snapshot::new(&self.identity.device_id, state_json));
-        j.snapshot_dirty = true;
-        j.save(&self.journal_path).ok();
+        let mut candidate = j.clone();
+        candidate.snapshot_out = Some(Snapshot::new(&self.identity.device_id, state_json));
+        candidate.snapshot_dirty = true;
+        candidate.save(&self.journal_path).map_err(io)?;
+        *j = candidate;
+        Ok(())
     }
     /// Read a stable batch without removing it. Acknowledge only after the app store
     /// has committed it; newly arrived operations remain queued during acknowledgement.

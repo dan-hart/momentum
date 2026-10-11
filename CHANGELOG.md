@@ -6,7 +6,21 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-10-10
+
+### Changed
+- Sync: unchanged Nextcloud files use conditional requests and a small durable metadata
+  update. Controlled tests measured 11.6× faster idle engine exchanges with 10,000 tasks
+- LibreSync: queued offline changes are published in one durable journal batch; the
+  1,000-operation test measured 244× faster publication
+
 ### Fixed
+- Sync: retry transient download and verification failures within the exchange deadline,
+  while retaining local edits when an upload or journal write cannot be verified
+- Sync: detect same-version remote replacements and damaged compressed copies; improve
+  English and German recovery messages across the native apps
+- LibreSync: failed journal receipts and snapshots stay retryable instead of suppressing
+  later delivery
 - iOS: after a background sync wake, automatic sync could stop until the next edit or
   pull-to-refresh, so remote changes stayed out of sight; opening the app during a wake
   now retries at once and the idle cycle is re-armed. A wake that runs out of its time

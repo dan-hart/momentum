@@ -2347,8 +2347,8 @@ msgid "Sync was interrupted"
 msgstr "Die Synchronisierung wurde unterbrochen"
 
 #: crates/app/src/messages.rs
-msgid "The upload didn’t arrive whole"
-msgstr "Der Upload ist nicht vollständig angekommen"
+msgid "The upload could not be verified"
+msgstr "Der Upload konnte nicht bestätigt werden"
 
 #: crates/app/src/messages.rs
 msgid "Sync couldn’t finish"
@@ -2399,8 +2399,8 @@ msgid "Retry."
 msgstr "Versuche es erneut."
 
 #: crates/app/src/messages.rs
-msgid "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Retry on a steadier connection."
-msgstr "Der Server hat nur einen Teil der Datei behalten; die vorherige Kopie ist unverändert und deine Änderungen warten weiter hier. Versuche es über eine stabilere Verbindung erneut."
+msgid "Your edits are still waiting here. Check the server copy, then retry on a steadier connection."
+msgstr "Deine Änderungen warten weiter hier. Prüfe die Serverkopie und versuche es dann über eine stabilere Verbindung erneut."
 
 #: crates/app/src/messages.rs
 msgid "Retry. If it keeps failing, the details below say what the server or this computer reported."

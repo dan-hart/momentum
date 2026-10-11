@@ -682,6 +682,7 @@ fn cfg_to_draft(c: &RepeatCfg, existing: bool) -> RepeatDraft {
 pub struct Engine {
     pub(crate) inner: Mutex<Inner>,
     pub(crate) syncing: AtomicBool,
+    nextcloud_session: Mutex<sp_sync::SyncSession>,
     #[cfg(feature = "p2p")]
     pub(crate) p2p: Mutex<Option<Arc<crate::p2p::Runtime>>>,
     pub(crate) ipc: Mutex<Option<crate::ipc::Server>>,
@@ -752,6 +753,7 @@ impl Engine {
                 change_signal: None,
             }),
             syncing: AtomicBool::new(false),
+            nextcloud_session: Mutex::new(sp_sync::SyncSession::default()),
             #[cfg(feature = "p2p")]
             p2p: Mutex::new(None),
             ipc: Mutex::new(None),
@@ -2100,7 +2102,10 @@ impl Engine {
         timeout_ms: u64,
     ) -> Result<SyncReport, CoreError> {
         self.nextcloud_exchange(settings, cancellation, "Sync", |cfg, snapshot, is_current| {
-            sp_sync::exchange_guarded(cfg, snapshot, std::time::Duration::from_millis(timeout_ms), is_current)
+            self.nextcloud_session
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .exchange_guarded(cfg, snapshot, std::time::Duration::from_millis(timeout_ms), is_current)
         })
     }
 
@@ -2404,6 +2409,16 @@ impl Engine {
                     return Err(CoreError::Transient {
                         kind: SyncFailureKind::Cancelled,
                         message: format!("{what} was cancelled or superseded by a data replacement"),
+                    });
+                }
+                if !r.downloaded && !r.uploaded {
+                    // Nothing changed remotely: preserve the live owner's edits,
+                    // undo and indexes, including changes made during this GET.
+                    g.store.record_nextcloud_success(now_ms())?;
+                    return Ok(SyncReport {
+                        downloaded: false,
+                        uploaded: false,
+                        ops_uploaded: 0,
                     });
                 }
                 // Identify concurrent edits by stable operation IDs, never an array offset.

@@ -2232,7 +2232,7 @@ msgid "Sync was interrupted"
 msgstr ""
 
 #: crates/app/src/messages.rs
-msgid "The upload didn’t arrive whole"
+msgid "The upload could not be verified"
 msgstr ""
 
 #: crates/app/src/messages.rs
@@ -2284,7 +2284,7 @@ msgid "Retry."
 msgstr ""
 
 #: crates/app/src/messages.rs
-msgid "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Retry on a steadier connection."
+msgid "Your edits are still waiting here. Check the server copy, then retry on a steadier connection."
 msgstr ""
 
 #: crates/app/src/messages.rs

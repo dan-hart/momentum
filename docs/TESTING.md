@@ -366,3 +366,21 @@ GSETTINGS_SCHEMA_DIR="$OUT/schemas" GSETTINGS_BACKEND=memory MOMENTUM_DEMO=1 tar
 `cargo check -p momentum --tests` works too, but the GTK UI tests do not run natively:
 macOS requires GTK on the process main thread and the harness runs it on a worker
 thread. They stay on `build-aux/run-tests.sh` under Broadway (CI's Flatpak jobs).
+
+
+## Sync performance and failure recovery
+
+The F-058 isolated benchmarks and regression matrix are documented in
+[SYNC-PERFORMANCE.md](SYNC-PERFORMANCE.md). Ordinary Rust tests include transport
+failures, concurrent edits and failed journal persistence. The expensive 10,000-task
+idle-exchange and 1,000-operation publication samples are ignored by default:
+
+```sh
+cargo test -p sp-sync benchmark_ -- --ignored --nocapture --test-threads=1
+cargo test -p sp-p2p benchmark_offline_publish -- --ignored --nocapture
+```
+
+Run the [iOS transport lane](../ios/TESTING.md) after regenerating the core to prove
+conditional HTTP polling, same-cycle transient recovery and real peer convergence
+through Swift/UniFFI. Local fixtures do not replace disposable hosted TLS, Linux runtime,
+separate-device, physical/background, or spoken accessibility acceptance.

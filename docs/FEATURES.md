@@ -1,6 +1,6 @@
 # Momentum feature ledger
 
-Updated: 2026-09-29. See [AGENTS.md](../AGENTS.md) for policy and status definitions.
+Updated: 2026-10-10. See [AGENTS.md](../AGENTS.md) for policy and status definitions.
 Every row has an independent Linux, macOS, iOS, and Android status. `Implemented`
 is deliberately not a claim of complete native verification. Baseline entries below
 are seeded from the existing source/specifications and recorded acceptance, not a
@@ -61,6 +61,10 @@ platform interaction. It does not mean a mobile app or binding already exists.
 | F-044 | Fast task-list startup with lazy global indexing | Implemented | Implemented | Verified | Planned | Ordinary Today, Upcoming, project and tag listings no longer build the full live/archive search index. Search and Archive retain the existing invalidation-aware cache. Recurrence startup checks use archive entity IDs without deserializing every archived task. Deterministic core regressions preserve Archive caching and archived-repeat deduplication; the opt-in Release benchmark measures a cold reopen through the complete first 1,000-task Today snapshot at 80.8 ms on iOS 27 and 67.0 ms on iOS 26.5, below the 100 ms guard. Linux/macOS consume the same optimized core but lack fresh native runtime timing in this handoff. |
 
 ## Active feature request
+
+| ID | Capability / acceptance scope | Linux | macOS | iOS | Android | Evidence, differences, and remaining work |
+|---|---|---|---|---|---|---|
+| F-058 | Faster sync and safe automatic recovery on every platform | Implemented | Implemented | Implemented | Planned | [Scope and reproducible evidence](SYNC-PERFORMANCE.md), 2026-10-10 dirty `200f686`: complete shared-engine idle Nextcloud polls 11.6× faster (transport alone 87.2×); 1,000-op LibreSync publication 243.9× faster; specified transient-failure matrix 10/20 → 20/20 successes, worst single-failure recovery 263 ms. Shared Rust retains edits on failed verification/persistence and bounds read retries by cancellation/deadline. Linux and Apple English/German recovery wording agrees. Native builds/tests and their limits are recorded in PROGRESS. These are controlled workload results, not whole-app or production guarantees. Linux runtime, hosted TLS, separate devices, physical/background behavior and spoken recovery acceptance remain open. Android has no client; its native bindings, credential storage, lifecycle/status/retry and equivalent transport acceptance are explicit requirements. |
 
 | ID | Capability / acceptance scope | Linux | macOS | iOS | Android | Evidence, differences, and remaining work |
 |---|---|---|---|---|---|---|

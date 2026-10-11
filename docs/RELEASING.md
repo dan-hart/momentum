@@ -10,13 +10,14 @@ update.
 
 ## One version
 
-`Cargo.toml`'s workspace version is the source of truth. Four other files carry a copy,
+`Cargo.toml`'s workspace version is the source of truth. Five other files carry a copy,
 and `build-aux/release.py` keeps them equal:
 
 | File | Copy |
 |---|---|
 | `meson.build` | `project(version:)`, which becomes the GTK app's `--version` and metainfo |
 | `macos/project.yml` | `MARKETING_VERSION`, plus `CURRENT_PROJECT_VERSION` derived as `major*10000 + minor*100 + patch` so `CFBundleVersion` only ever goes up |
+| `ios/project.yml` | The same marketing version and increasing build number for the app and share extension |
 | `data/…metainfo.xml.in.in` | the newest `<release>` and the screenshot URLs, which point at the tag |
 | `CHANGELOG.md` | the newest `## [X.Y.Z]` section |
 
@@ -67,6 +68,10 @@ Before tagging, run on a real Mac what CI cannot: the opt-in nearby-sync test in
 
 A release with a missing optional secret still completes: the optional job is skipped
 and the release stays reproducible by rerunning the workflow once the secret is set.
+
+The workflow publishes desktop apps and CLI archives. The iOS source version also
+advances, but this workflow does not submit an iOS build to App Store Connect. Android
+has no native release target yet.
 
 ## Install channels after a release
 

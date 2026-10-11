@@ -25,6 +25,15 @@ pub struct MockDav {
     /// Headers of the most recent PUT, lower-cased, for asserting the upload guards.
     pub last_put_headers: Arc<Mutex<HashMap<String, String>>>,
     pub copies: Arc<AtomicUsize>,
+    pub not_modified: Arc<AtomicUsize>,
+    pub downloaded_bytes: Arc<AtomicUsize>,
+    pub fail_gets: Arc<AtomicUsize>,
+    pub fail_propfinds: Arc<AtomicUsize>,
+    pub hide_after_put: Arc<AtomicBool>,
+    pub omit_etag: Arc<AtomicBool>,
+    pub omit_put_etag: Arc<AtomicBool>,
+    pub omit_verified_etag: Arc<AtomicBool>,
+    pub different_verified_etag: Arc<AtomicBool>,
 }
 
 fn etag(body: &[u8]) -> String {
@@ -49,6 +58,25 @@ impl MockDav {
         let keep_only_next_put = Arc::new(AtomicUsize::new(0));
         let last_put_headers: Arc<Mutex<HashMap<String, String>>> = Default::default();
         let copies = Arc::new(AtomicUsize::new(0));
+        let not_modified = Arc::new(AtomicUsize::new(0));
+        let downloaded_bytes = Arc::new(AtomicUsize::new(0));
+        let fail_gets = Arc::new(AtomicUsize::new(0));
+        let fail_propfinds = Arc::new(AtomicUsize::new(0));
+        let hide_after_put = Arc::new(AtomicBool::new(false));
+        let omit_etag = Arc::new(AtomicBool::new(false));
+        let omit_put_etag = Arc::new(AtomicBool::new(false));
+        let omit_verified_etag = Arc::new(AtomicBool::new(false));
+        let different_verified_etag = Arc::new(AtomicBool::new(false));
+        let different_verified = different_verified_etag.clone();
+        let (omit_put, omit_verified) = (omit_put_etag.clone(), omit_verified_etag.clone());
+        let (nm, bytes, fg, fp, hide, omit) = (
+            not_modified.clone(),
+            downloaded_bytes.clone(),
+            fail_gets.clone(),
+            fail_propfinds.clone(),
+            hide_after_put.clone(),
+            omit_etag.clone(),
+        );
         let (missing, created) = (missing_collection.clone(), collections.clone());
         let (keep_only, put_headers, copied) = (keep_only_next_put.clone(), last_put_headers.clone(), copies.clone());
         let (f, p, g, pf, reject, fail) = (
@@ -105,9 +133,28 @@ impl MockDav {
                         match method {
                             "GET" => {
                                 g.fetch_add(1, Ordering::SeqCst);
-                                match files.get(&path) {
-                                    Some(b) => (200, vec![format!("OC-ETag: {}", etag(b))], b.clone()),
-                                    None => (404, vec![], vec![]),
+                                if fg
+                                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
+                                    .is_ok()
+                                {
+                                    (503, vec![], vec![])
+                                } else {
+                                    match files.get(&path) {
+                                        Some(b) if headers.get("if-none-match") == Some(&etag(b)) => {
+                                            nm.fetch_add(1, Ordering::SeqCst);
+                                            (304, vec![], vec![])
+                                        }
+                                        Some(b) => {
+                                            bytes.fetch_add(b.len(), Ordering::SeqCst);
+                                            let extra = if omit.load(Ordering::SeqCst) {
+                                                vec![]
+                                            } else {
+                                                vec![format!("OC-ETag: {}", etag(b))]
+                                            };
+                                            (200, extra, b.clone())
+                                        }
+                                        None => (404, vec![], vec![]),
+                                    }
                                 }
                             }
                             "HEAD" => match files.get(&path) {
@@ -140,7 +187,12 @@ impl MockDav {
                             "PROPFIND" => {
                                 pf.fetch_add(1, Ordering::SeqCst);
                                 let folder = "/remote.php/dav/files/u/sp";
-                                if path == folder && missing.load(Ordering::SeqCst) {
+                                if fp
+                                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
+                                    .is_ok()
+                                {
+                                    (503, vec![], vec![])
+                                } else if path == folder && missing.load(Ordering::SeqCst) {
                                     (404, vec![], vec![])
                                 } else if path == folder || path == "/remote.php/dav/files/u/" {
                                     (207, vec![], vec![])
@@ -148,7 +200,9 @@ impl MockDav {
                                     let xml = format!(
                                         "<?xml version=\"1.0\"?><d:multistatus xmlns:d=\"DAV:\"><d:response><d:href>{path}</d:href><d:propstat><d:prop><d:getcontentlength>{}</d:getcontentlength><d:getetag>{}</d:getetag></d:prop></d:propstat></d:response></d:multistatus>",
                                         b.len(),
-                                        etag(b).replace('"', "&quot;")
+                                        if omit_verified.load(Ordering::SeqCst) { String::new() }
+                                        else if different_verified.load(Ordering::SeqCst) { "&quot;another-file&quot;".into() }
+                                        else { etag(b).replace('"', "&quot;") }
                                     );
                                     (207, vec![], xml.into_bytes())
                                 } else {
@@ -177,7 +231,15 @@ impl MockDav {
                                     let created = cur.is_none();
                                     let tag = etag(&body);
                                     files.insert(path.clone(), body);
-                                    (if created { 201 } else { 204 }, vec![format!("OC-ETag: {tag}")], vec![])
+                                    if hide.swap(false, Ordering::SeqCst) {
+                                        files.remove(&path);
+                                    }
+                                    let extra = if omit_put.load(Ordering::SeqCst) {
+                                        vec![]
+                                    } else {
+                                        vec![format!("OC-ETag: {tag}")]
+                                    };
+                                    (if created { 201 } else { 204 }, extra, vec![])
                                 }
                             }
                             _ => (405, vec![], vec![]),
@@ -228,6 +290,15 @@ impl MockDav {
             keep_only_next_put,
             last_put_headers,
             copies,
+            not_modified,
+            downloaded_bytes,
+            fail_gets,
+            fail_propfinds,
+            hide_after_put,
+            omit_etag,
+            omit_put_etag,
+            omit_verified_etag,
+            different_verified_etag,
         }
     }
     pub fn file_count(&self) -> usize {

@@ -234,6 +234,17 @@ fn prepare(dir: &Path) -> io::Result<PathBuf> {
 pub(super) fn save(dir: &Path, images: [Vec<u8>; 3]) -> io::Result<()> {
     save_with_hook(dir, images, |_| {})
 }
+/// The task image is unchanged. Recover any interrupted full transaction under
+/// the usual cross-process lock before atomically replacing only metadata.
+pub(super) fn save_metadata(dir: &Path, bytes: &[u8]) -> io::Result<()> {
+    let _lock = lock_dir(dir)?;
+    recover(dir)?;
+    regular_file(&dir.join("meta.json"))?;
+    let tmp = dir.join("meta.json.tmp");
+    write_synced(&tmp, bytes)?;
+    fs::rename(tmp, dir.join("meta.json"))?;
+    sync_dir(dir)
+}
 fn save_with_hook(dir: &Path, images: [Vec<u8>; 3], checkpoint: impl Fn(Step)) -> io::Result<()> {
     let _lock = lock_dir(dir)?;
     recover(dir)?;

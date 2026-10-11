@@ -230,24 +230,28 @@ impl Runtime {
         });
     }
     /// Hands every own pending op to the transport.
-    fn publish_pending(&self) {
-        let Some(engine) = self.engine() else { return };
-        let mut any = false;
-        {
+    fn publish_pending(&self) -> Result<(), CoreError> {
+        let Some(engine) = self.engine() else { return Ok(()) };
+        let added = {
             let g = engine.lock();
             if self.stopped.load(Ordering::SeqCst) {
-                return;
+                return Ok(());
             }
-            for pd in g.store.pending.iter().filter(|pd| pd.op.c == g.store.meta.client_id) {
-                if !self.p2p.has_seen(&pd.op.id) {
-                    any |= self.p2p.publish(&pd.op, &pd.action);
-                }
-            }
-        }
-        if any {
+            self.p2p
+                .publish_batch(
+                    g.store
+                        .pending
+                        .iter()
+                        .filter(|pd| pd.op.c == g.store.meta.client_id)
+                        .map(|pd| (&pd.op, &pd.action)),
+                )
+                .map_err(|e| CoreError::Nearby { message: e.to_string() })?
+        };
+        if added > 0 {
             self.schedule_sync(5);
         }
         self.schedule_snapshot();
+        Ok(())
     }
     /// Republishes the bootstrap snapshot when the state changed.
     fn publish_snapshot(&self) {
@@ -262,14 +266,22 @@ impl Runtime {
         };
         let h = hash_bytes(&json);
         {
-            let mut last = self.snapshot_hash.lock().unwrap_or_else(|e| e.into_inner());
+            let last = self.snapshot_hash.lock().unwrap_or_else(|e| e.into_inner());
             if *last == h {
                 return;
             }
-            *last = h;
         }
-        self.p2p.publish_snapshot(&json);
+        let result = self.p2p.publish_snapshot_checked(&json);
         drop(g);
+        if let Err(error) = result {
+            self.emit(P2pEvent::SyncCompleted {
+                cycle_id: None,
+                error: Some(error.to_string()),
+            });
+            self.schedule_snapshot();
+            return;
+        }
+        *self.snapshot_hash.lock().unwrap_or_else(|e| e.into_inner()) = h;
         self.schedule_sync(5);
     }
     fn sync_now(&self) -> Result<u64, CoreError> {
@@ -290,6 +302,14 @@ impl Runtime {
                 kind: crate::SyncFailureKind::Other,
                 message,
             });
+        }
+        if let Err(error) = self.publish_pending() {
+            self.emit(P2pEvent::SyncCompleted {
+                cycle_id: None,
+                error: Some(error.to_string()),
+            });
+            self.schedule_sync(5);
+            return Err(error);
         }
         match self.p2p.sync_all() {
             Ok(ticket) => {
@@ -486,7 +506,15 @@ impl Runtime {
                     }
                     if d.publish {
                         d.publish = false;
-                        break Box::new(|r: &Runtime| r.publish_pending());
+                        break Box::new(|r: &Runtime| {
+                            if let Err(error) = r.publish_pending() {
+                                r.emit(P2pEvent::SyncCompleted {
+                                    cycle_id: None,
+                                    error: Some(error.to_string()),
+                                });
+                                r.schedule_sync(5);
+                            }
+                        });
                     }
                     let now = Instant::now();
                     let mut next: Option<Instant> = None;
@@ -707,11 +735,11 @@ impl Engine {
                 rt.sched.update(|d| d.publish = true);
             }
         }));
-        rt.publish_snapshot();
-        *runtime = Some(rt);
+        *runtime = Some(rt.clone());
         // Listener startup completed before the waker was registered. Drain those
         // queued events too, after publishing the runtime to callback consumers.
         drop(runtime);
+        rt.publish_snapshot();
         initial_wake.send(()).ok();
         Ok(info)
     }
@@ -836,6 +864,45 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::base64_impl::{decode, encode};
+    #[test]
+    fn snapshot_save_failure_releases_locks_before_delegate_and_retries() {
+        struct Probe(std::sync::Weak<super::Engine>, std::sync::mpsc::Sender<bool>);
+        impl super::P2pDelegate for Probe {
+            fn on_event(&self, event: super::P2pEvent) {
+                if matches!(event, super::P2pEvent::SyncCompleted { error: Some(_), .. }) {
+                    let engine = self.0.upgrade().unwrap();
+                    let unlocked = engine.inner.try_lock().is_ok() && engine.p2p.try_lock().is_ok();
+                    if unlocked {
+                        let _ = engine.sync_status();
+                    }
+                    let _ = self.1.send(unlocked);
+                }
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let engine = super::Engine::open(dir.path().join("store").to_string_lossy().into_owned());
+        let (sender, received) = std::sync::mpsc::channel();
+        engine
+            .clone()
+            .p2p_start(
+                std::sync::Arc::new(Probe(std::sync::Arc::downgrade(&engine), sender)),
+                std::sync::Arc::new(NoSecrets),
+                "Failure fixture".into(),
+                Some(dir.path().join("keys").to_string_lossy().into_owned()),
+            )
+            .unwrap();
+        let runtime = engine.runtime().unwrap();
+        *runtime.snapshot_hash.lock().unwrap() = 0;
+        let scratch = dir.path().join("store/p2p/journal.tmp");
+        std::fs::create_dir(&scratch).unwrap();
+        runtime.publish_snapshot();
+        assert!(received.recv_timeout(std::time::Duration::from_secs(2)).unwrap());
+        assert_eq!(*runtime.snapshot_hash.lock().unwrap(), 0);
+        std::fs::remove_dir(scratch).unwrap();
+        runtime.publish_snapshot();
+        assert_ne!(*runtime.snapshot_hash.lock().unwrap(), 0);
+        engine.p2p_stop();
+    }
     #[test]
     fn empty_exchange_does_not_consume_bootstrap_and_success_updates_timestamp() {
         let dir = tempfile::tempdir().unwrap();

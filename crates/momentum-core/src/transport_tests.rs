@@ -20,6 +20,12 @@ pub(crate) struct PausedDav {
 }
 impl PausedDav {
     pub(crate) fn new() -> Self {
+        Self::with_pause(1)
+    }
+    fn with_pause(request_number: usize) -> Self {
+        Self::fixture(request_number, 0, false)
+    }
+    fn fixture(request_number: usize, task_count: usize, encrypted: bool) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
         let settings = NextcloudSettings {
@@ -27,8 +33,8 @@ impl PausedDav {
             user_name: "fixture".into(),
             password: "fixture".into(),
             folder: "fixture".into(),
-            compress: false,
-            encryption_password: None,
+            compress: encrypted,
+            encryption_password: encrypted.then(|| "fixture-key".into()),
         };
         let (arrival, arrived) = mpsc::channel();
         let (resume, released) = mpsc::channel();
@@ -37,7 +43,7 @@ impl PausedDav {
         let puts = Arc::new(AtomicUsize::new(0));
         let uploads = puts.clone();
         let thread = std::thread::spawn(move || {
-            let file = sp_sync::SyncFile {
+            let mut file = sp_sync::SyncFile {
                 version: 2,
                 sync_version: 1,
                 schema_version: sp_model::SCHEMA_VERSION,
@@ -50,8 +56,12 @@ impl PausedDav {
                 recent_ops: vec![],
                 oldest_op_sync_version: None,
             };
-            let response = sp_sync::encode(&file, false, None).unwrap();
-            let mut first = true;
+            for i in 0..task_count {
+                let task = Task::new(&format!("Benchmark task {i}"), INBOX_PROJECT_ID);
+                file.state.task.insert(&task.id.clone(), task);
+            }
+            let response = sp_sync::encode(&file, encrypted, encrypted.then_some("fixture-key")).unwrap();
+            let mut request_count = 0;
             // The size a HEAD reports: the last upload's, or the served file's before one.
             let mut stored_len = response.len();
             while !stopped.load(Ordering::SeqCst) {
@@ -88,14 +98,14 @@ impl PausedDav {
                     uploads.fetch_add(1, Ordering::SeqCst);
                     stored_len = length;
                 }
-                if first {
+                request_count += 1;
+                if request_count == request_number {
                     // The held first request is an exchange's download or a connection
                     // probe's PROPFIND; either way the fixture waits to be released.
                     assert!(
                         head.starts_with("GET ") || head.starts_with("PROPFIND "),
                         "unexpected first request: {head}"
                     );
-                    first = false;
                     arrival.send(()).unwrap();
                     if released.recv_timeout(Duration::from_secs(5)).is_err() {
                         return;
@@ -108,7 +118,14 @@ impl PausedDav {
                 let propfind = format!(
                     "<d:multistatus xmlns:d=\"DAV:\"><d:response><d:prop><d:getcontentlength>{stored_len}</d:getcontentlength><d:getetag>&quot;fixture&quot;</d:getetag></d:prop></d:response></d:multistatus>"
                 );
-                let (status, body) = if head.starts_with("GET ") {
+                let conditional = head.lines().any(|line| {
+                    line.split_once(':').is_some_and(|(name, value)| {
+                        name.eq_ignore_ascii_case("if-none-match") && value.trim() == "\"fixture\""
+                    })
+                });
+                let (status, body) = if head.starts_with("GET ") && conditional {
+                    ("304 Not Modified", "")
+                } else if head.starts_with("GET ") {
                     ("200 OK", response.as_str())
                 } else if head.starts_with("PROPFIND ") && head.contains("sync-data.json") {
                     ("207 Multi-Status", propfind.as_str())
@@ -146,6 +163,114 @@ fn titles(engine: &Engine) -> Vec<String> {
     let mut titles = engine.all_tasks().into_iter().map(|t| t.title).collect::<Vec<_>>();
     titles.sort();
     titles
+}
+
+#[test]
+#[ignore = "large isolated end-to-end idle poll timing"]
+fn benchmark_idle_engine_exchange() {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = Engine::open(dir.path().to_string_lossy().into_owned());
+    let server = PausedDav::fixture(usize::MAX, 10_000, true);
+    engine.sync_nextcloud(server.settings.clone()).unwrap();
+    assert_eq!(engine.all_tasks().len(), 10_000);
+    // Alternating the output compression preference invalidates the session while
+    // retaining identical input/decryption. Both paths use the optimized metadata
+    // commit: the uncached reference is conservative relative to the old full save.
+    let started = std::time::Instant::now();
+    for i in 0..10 {
+        let mut settings = server.settings.clone();
+        settings.compress = i % 2 == 1;
+        engine.sync_nextcloud(settings).unwrap();
+    }
+    let uncached = started.elapsed();
+    let started = std::time::Instant::now();
+    for _ in 0..10 {
+        let report = engine.sync_nextcloud(server.settings.clone()).unwrap();
+        assert!(!report.uploaded && !report.downloaded);
+    }
+    let validated = started.elapsed();
+    assert_eq!(engine.pending_count(), 0);
+    assert_eq!(engine.all_tasks().len(), 10_000);
+    eprintln!("10,000 tasks / 10 encrypted compressed complete Engine polls: uncached={uncached:?}, validated={validated:?}, speedup={:.1}x", uncached.as_secs_f64() / validated.as_secs_f64());
+}
+
+#[test]
+fn unchanged_exchange_preserves_task_files_and_search_index() {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = Engine::open(dir.path().to_string_lossy().into_owned());
+    let mut server = PausedDav::new();
+    let syncing = engine.clone();
+    let settings = server.settings.clone();
+    let exchange = std::thread::spawn(move || syncing.sync_nextcloud(settings));
+    server.arrived.recv_timeout(Duration::from_secs(5)).unwrap();
+    server.release();
+    assert!(exchange.join().unwrap().unwrap().downloaded);
+    engine.search("cached index".into());
+    assert!(engine.has_search_index());
+    let state_modified = std::fs::metadata(dir.path().join("state.json"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    let pending_modified = std::fs::metadata(dir.path().join("pending.json"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    let result = engine.sync_nextcloud(server.settings.clone()).unwrap();
+    assert!(!result.downloaded && !result.uploaded);
+    assert!(engine.has_search_index());
+    assert_eq!(
+        std::fs::metadata(dir.path().join("state.json"))
+            .unwrap()
+            .modified()
+            .unwrap(),
+        state_modified
+    );
+    assert_eq!(
+        std::fs::metadata(dir.path().join("pending.json"))
+            .unwrap()
+            .modified()
+            .unwrap(),
+        pending_modified
+    );
+    let reloaded = Engine::open(dir.path().to_string_lossy().into_owned());
+    assert_eq!(
+        reloaded.sync_status().last_nextcloud_ms,
+        engine.sync_status().last_nextcloud_ms
+    );
+}
+
+#[test]
+fn edits_during_an_unchanged_poll_keep_pending_undo_clock_and_disk() {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = Engine::open(dir.path().to_string_lossy().into_owned());
+    let mut server = PausedDav::with_pause(2);
+    engine.sync_nextcloud(server.settings.clone()).unwrap();
+    let syncing = engine.clone();
+    let settings = server.settings.clone();
+    let exchange = std::thread::spawn(move || syncing.sync_nextcloud(settings));
+    server.arrived.recv_timeout(Duration::from_secs(5)).unwrap();
+    engine.add_task("During unchanged poll".into(), View::Today);
+    engine.toggle_done(engine.all_tasks()[0].id.clone());
+    assert!(engine.can_undo(), "the concurrent completion supplies an undo batch");
+    let (ids, clock) = engine.with_store(|s| {
+        (
+            s.pending.iter().map(|p| p.op.id.clone()).collect::<Vec<_>>(),
+            s.meta.vector_clock.clone(),
+        )
+    });
+    server.release();
+    let report = exchange.join().unwrap().unwrap();
+    assert!(!report.downloaded && !report.uploaded);
+    assert_eq!(titles(&engine), ["During unchanged poll"]);
+    assert!(engine.can_undo());
+    engine.with_store(|s| {
+        assert_eq!(s.pending.iter().map(|p| p.op.id.clone()).collect::<Vec<_>>(), ids);
+        assert_eq!(s.meta.vector_clock, clock);
+    });
+    let reloaded = Engine::open(dir.path().to_string_lossy().into_owned());
+    assert_eq!(titles(&reloaded), titles(&engine));
+    assert_eq!(reloaded.pending_count(), ids.len() as u32);
+    reloaded.with_store(|s| assert_eq!(s.meta.vector_clock, clock));
 }
 
 #[test]
