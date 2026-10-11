@@ -2410,7 +2410,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   PR #4 review-fix handoff in [PROGRESS.md](PROGRESS.md). Spoken VoiceOver acceptance
   remains separate and must not be inferred from accessible labels or unit tests.
 
-## B-099 — generated Kotlin error payloads redeclare Throwable.message
+## B-105 — generated Kotlin error payloads redeclare Throwable.message
 
 - **Severity:** High. **Features:** F-001/F-017. **Source:** Android source-build
   compiler failure reproduced during native scaffolding on 2026-10-10.
@@ -2431,7 +2431,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Android Verified for generated Kotlin compilation and error projections. Fresh locked generation, 33 host-tool regressions, 69 JVM tests and gate11d debug/minified-release APK/AAB builds pass. Existing wire/Apple projections remain compatible; generated files remain build outputs. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-100 — a new Android editor can save into the later navigation context
+## B-106 — a new Android editor can save into the later navigation context
 
 - **Severity:** High. **Feature:** F-006. **Source:** source-confirmed ownership defect
   during Android review on 2026-10-10; pre-fix live misfiling was not separately recorded.
@@ -2452,7 +2452,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Android Verified for the controlled captured-source regression. The source-context regression passes in the current API26/API37 native suites with the unchanged gate11d production application. Broader physical lifecycle/project/tag interaction remains in the Android checklist. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-101 — large Android task notes crash native editor layout
+## B-107 — large Android task notes crash native editor layout
 
 - **Severity:** High. **Feature:** F-006/F-018. **Source:** runtime reproduced on the
   disposable API 36 emulator on 2026-10-10 with approximately 450 KB of Unicode notes.
@@ -2470,10 +2470,10 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   final suite, process/configuration recreation, IME and large-text device checks are
   separate acceptance gates; no broad native verification is claimed.
 
-- **Current verification (2026-10-10):** Android Verified for native bounded-layout/private-draft preservation. The original large-private-draft regression and six bounded-source cases pass on API26/36/37. Full draft/VM recreation and one Rust Save preserve undisplayed Unicode. B-122 separately records layout performance and native IME scope; physical-device interaction remains open. See
+- **Current verification (2026-10-10):** Android Verified for native bounded-layout/private-draft preservation. The original large-private-draft regression and six bounded-source cases pass on API26/36/37. Full draft/VM recreation and one Rust Save preserve undisplayed Unicode. B-128 separately records layout performance and native IME scope; physical-device interaction remains open. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-102 — stale Android notification actions have a validation/mutation race
+## B-108 — stale Android notification actions have a validation/mutation race
 
 - **Severity:** High. **Feature:** F-007. **Source:** source-confirmed concurrency
   defect on 2026-10-10; a stale notification corrupting live tasks was not reproduced.
@@ -2494,10 +2494,10 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   The implementation pass reported 26 targeted Rust tests passing; complete workspace/generated-consumer/native checks now pass below. Cold
   physical notification action delivery remains a separate OS acceptance gate.
 
-- **Current verification (2026-10-10):** Android/shared core Verified for atomic source validation and mutation. The six atomic notification-action and 21 source-ledger regressions pass in both complete Rust workspace gates (299 passed, one ignored). Fresh generated core, CLI and Apple consumer checks pass; Android native action/restore regressions pass. Actual locked OS invocation remains B-113's separate manual gate. See
+- **Current verification (2026-10-10):** Android/shared core Verified for atomic source validation and mutation. The six atomic notification-action and 21 source-ledger regressions pass in both complete Rust workspace gates (299 passed, one ignored). Fresh generated core, CLI and Apple consumer checks pass; Android native action/restore regressions pass. Actual locked OS invocation remains B-119's separate manual gate. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-103 — LibreSync connection-test wording overstates a read-only guarantee
+## B-109 — LibreSync connection-test wording overstates a read-only guarantee
 
 - **Severity:** Medium. **Feature:** F-043. **Source:** source-confirmed contract and
   documentation discrepancy on 2026-10-10; no new live data-loss claim.
@@ -2518,7 +2518,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   Android F-043 remains In progress with this blocked sub-capability visible in
   [Android acceptance](ANDROID-PARITY-CHECKLIST.md).
 
-## B-104 — the older Espresso input injector fails before Android 37 UI actions
+## B-110 — the older Espresso input injector fails before Android 37 UI actions
 
 - **Severity:** High for Android acceptance tooling. **Features:** F-001/F-020.
   **Source:** runtime reproduced by the baseline API 37 instrumentation suite on
@@ -2541,7 +2541,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   This dirty-source gate predates typography/system indexing/recurrence refinements;
   their verification remains independent.
 
-## B-105 — Android editor and restore admission can race suspended work
+## B-111 — Android editor and restore admission can race suspended work
 
 - **Severity:** High. **Features:** F-006/F-029/F-040. **Source:** source-confirmed
   ownership/admission defects on 2026-10-10, with controlled native regressions after
@@ -2561,14 +2561,14 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   by these Android tests. Broader lifecycle and actual external-entry acceptance remain
   explicit rather than implied by this status.
 - **Evidence:** three [ViewModelConcurrencyTest](../android/app/src/androidTest/java/com/codedbydan/momentum/ViewModelConcurrencyTest.kt)
-  cases passed in both 37-test API 36/API 37 gates recorded under B-104, using controlled
+  cases passed in both 37-test API 36/API 37 gates recorded under B-110, using controlled
   suspended repository reads/restore barriers and 450 KB rejected input. Eight capture
   queue tests and five text-import tests also passed. App/test hashes identify the exact
   pre-typography dirty-source artifact; future editor/queue changes need fresh coverage.
   The later capture-count change introduced the separate drain-ordering regression
-  recorded as B-112; this earlier evidence does not verify that new source.
+  recorded as B-118; this earlier evidence does not verify that new source.
 
-## B-106 — Android change events can release the restore service barrier
+## B-112 — Android change events can release the restore service barrier
 
 - **Severity:** High. **Features:** F-025/F-026/F-029. **Source:** source-confirmed
   admission defect on 2026-10-10; live restore corruption was not reproduced.
@@ -2592,7 +2592,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Android Verified for controlled restore-barrier ownership. Current CoordinatorTransport/ViewModelConcurrency native cases pass on API26 and API37, including an earlier operation completing inside the barrier and successful/failed pause resumption. Actual document-provider replacement/relaunch is separately recorded under F-029; hosted transport remains open. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-107 — sync setup failures can prevent Android notification opt-out
+## B-113 — sync setup failures can prevent Android notification opt-out
 
 - **Severity:** High, privacy. **Features:** F-007/F-038. **Source:** source-confirmed
   control-flow defect on 2026-10-10; actual notification removal is verified by the
@@ -2618,7 +2618,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Android Verified for the native notification opt-out failure path. The opt-in disposable test passes on API26/API37 with an actual NotificationManager observation and incomplete fixture Keystore credentials: sync failure remains actionable and displayed private reminders are removed after opt-out. Real LAN revocation/system permission recovery remains a separate acceptance scope. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-108 — pre-restore notification actions accept identical restored tasks
+## B-114 — pre-restore notification actions accept identical restored tasks
 
 - **Severity:** High. **Feature:** F-007/F-029. **Source:** reproduced by a targeted
   shared-core regression on 2026-10-10 in the dirty `task/android-native` worktree.
@@ -2648,7 +2648,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Shared core Verified for restored-source identity rejection. Both full Rust gates pass 299 tests with one intentional ignore; fresh mo/generated FFI, MomentumKit (164), MomentumMobile (158), unsigned Mac and iOS-simulator builds pass. Android native restore/stale-action cases pass. Apple/Linux action-routing runtime and physical reminder delivery are not inferred from consumer builds. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-109 — Android typography sliders expose a 44dp semantic target
+## B-115 — Android typography sliders expose a 44dp semantic target
 
 - **Severity/reproduction:** medium accessibility defect, reproduced on API 36 and
   API 37/16 KiB in `TypographySettingsTest.nativeControlsChangeOnlyTheirAreaAndResetBoth`
@@ -2673,13 +2673,13 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   and supplies real Android Density; fixtures restore the prior app locale and its
   combined-scale title/action/scroll checks remain intact.
   The Activity-context exception stopped in gate4b, while the root toolbar case then
-  found ambiguous task/list actions sharing the root View Options label (B-110).
+  found ambiguous task/list actions sharing the root View Options label (B-116).
   Current native thumb and unique named-action gates pass below.
 
 - **Current verification (2026-10-10):** Android Verified for the recorded 48dp native range target. Current native typography/toolbar tests pass with the original 48dp threshold on supported API26/API37 scopes. The native thumb slot keeps range semantics and independent scale/reset behavior. Spoken/pointer/physical-device acceptance remains open. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-111 — Android silently discards sync-status persistence failures
+## B-117 — Android silently discards sync-status persistence failures
 
 - **Severity:** Medium. **Features:** F-025/F-026. **Source:** source-confirmed
   persistence defect on 2026-10-10; the isolated native write-fault regression
@@ -2707,7 +2707,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Android Verified for isolated AtomicFile status-write failure and local retry. The real exchange/recovery native fixture passes on API26/API37, retaining prior bytes on write failure, recording actual exchange success truthfully, and saving the latest typed status through local-only retry without repeating replacement. External-server acceptance remains separate. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-112 — A queued drain can reopen a dismissed share
+## B-118 — A queued drain can reopen a dismissed share
 
 - **Severity:** High. **Features:** F-006/F-040. **Platforms:** Android reproduced;
   Linux/macOS/iOS do not use this Android capture queue.
@@ -2733,7 +2733,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Verified for concurrent capture drain/dismissal and retained recovery. The current complete capture suite passes on API26/API37, including repeated concurrent drains, corrupt completion retention and queue count. Earlier gate3 failures remain historical evidence; actual shipping warm/cold FIFO entry and full sharing have separate recorded probes. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-113 — Android reminder actions can mutate tasks while locked
+## B-119 — Android reminder actions can mutate tasks while locked
 
 - **Severity:** High. **Features:** F-007/F-031. **Source:** source-confirmed on
   2026-10-10 in dirty `task/android-native`; real lock-screen invocation is not
@@ -2758,7 +2758,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Current verification (2026-10-10):** Android Verified for the injected locked-callback policy and native action flags. Current ReminderOsTest passes on API26/API37: locked Done/Snooze preserve core, receipt and displayed source; unlocked retry commits once; API31+ action authentication flags are present. Injected policy does not prove actual OS keyguard behavior; physical locked-device acceptance remains open. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-110 — Android toolbar locale fixture loses native display association
+## B-116 — Android toolbar locale fixture loses native display association
 
 - **Severity:** Low; verification infrastructure. **Features:** F-020/F-021/F-022.
   Gate3 reproduced an exception in both API 36/API 37 toolbar tests when an
@@ -2777,10 +2777,10 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   Production MainActivity retained its UI context throughout; other platforms do not
   use this Compose test fixture.
 
-- **Current verification (2026-10-10):** Verified for the native Activity-context/toolbar fixture scope. Current API37 toolbar, locale and named-action tests pass, including German combined scaling. B-114 has separate phone/tablet native geometry evidence. No production UI-context replacement was introduced; manual focus/spoken acceptance remains open. See
+- **Current verification (2026-10-10):** Verified for the native Activity-context/toolbar fixture scope. Current API37 toolbar, locale and named-action tests pass, including German combined scaling. B-120 has separate phone/tablet native geometry evidence. No production UI-context replacement was introduced; manual focus/spoken acceptance remains open. See
   the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
 
-## B-114 — German large-text Android bottom navigation overflows the window
+## B-120 — German large-text Android bottom navigation overflows the window
 
 - **Severity:** Medium (P2). **Features:** F-020/F-022/F-053. **Affected:** Android
   reproduced; other platforms do not use the Material navigation-suite label layout.
@@ -2814,7 +2814,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   hashes are recorded in `android/rust-target/api37-native-gate7b-artifacts.json`.
   Landscape, spoken TalkBack output and physical-device acceptance remain separate.
 
-## B-115 — Large Android clipboard copies exceed Binder and Android 8 URI grants fail
+## B-121 — Large Android clipboard copies exceed Binder and Android 8 URI grants fail
 
 - **Severity:** High for the uncaught copy failure; Medium for the remaining
   Android 8 cross-app clipboard limitation. **Features:** F-006/F-015/F-023.
@@ -2864,7 +2864,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   gate; arbitrary recipient apps, API27 runtime, indefinite cache retention and
   very-large editor performance are not established by the scoped proofs above.
 
-## B-116 — AndroidX Graphics Path JNI has a partial 16 KiB RELRO page
+## B-122 — AndroidX Graphics Path JNI has a partial 16 KiB RELRO page
 
 - **Severity:** High; release compatibility. **Affected:** Android dependency;
   other platform frontends do not load this JNI. **Features:** F-020/F-022/F-053.
@@ -2910,7 +2910,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   acceptance. The local byte comparison does not establish a second-host build.
 
 
-## B-117 — Warm Android background projections miss recurrence at day rollover
+## B-123 — Warm Android background projections miss recurrence at day rollover
 
 - **Severity:** Medium. **Features:** F-007/F-013/F-032. **Source:** source-confirmed
   on 2026-10-10 in dirty `task/android-native`. A warm process generating reminders
@@ -2935,7 +2935,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   and admission revoked while waiting for the local queue. It neither changes a
   global clock nor claims actual OS background scheduling acceptance.
 
-## B-118 — Count notification cancellation cancels its coroutine owner
+## B-124 — Count notification cancellation cancels its coroutine owner
 
 - **Severity:** High. **Features:** F-007/F-025/F-026/F-032. **Reproduced:** dirty
   `task/android-native`, parent native gate5b on API36/API37 and gate5c on API26.
@@ -2963,7 +2963,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   corrected sources pass. Historical logs: `android/rust-target/` files
   `api36-native-gate5b.log`, `api37-native-gate5b.log`, `api26-native-gate5c.log`.
 
-## B-119 — A stale Android backup read replaces the latest selection
+## B-125 — A stale Android backup read replaces the latest selection
 
 - **Severity:** Medium. **Feature:** F-029. **Source-confirmed reproduction:**
   dirty `task/android-native`, 2026-10-10. Start a slow document-provider read A,
@@ -2990,7 +2990,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   Third-party/cloud providers remain unverified. Core data and restore
   semantics are unchanged; Apple uses a separate coordinated immutable-input path.
 
-## B-120 — An unreadable private draft loses its Android Retry identity
+## B-126 — An unreadable private draft loses its Android Retry identity
 
 - **Severity:** Medium. **Feature:** F-006. **Source-confirmed reproduction:**
   dirty `task/android-native`, 2026-10-10. Reconstruct the VM with a normal private
@@ -3019,7 +3019,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   actual OS lock/third-party provider acceptance remains separate. Other platforms
   do not use this Android SavedState path; shared core/data formats are unchanged.
 
-## B-121 — Imported long names bypass Quick Add bounds and bury native actions
+## B-127 — Imported long names bypass Quick Add bounds and bury native actions
 
 - **Severity:** Medium. **Features:** F-004/F-005/F-006/F-017/F-048. **Affected:**
   Android native presentation. The shared core deliberately preserves imported
@@ -3053,7 +3053,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Remaining:** broader device geometry and physical TalkBack/third-party
   IME/pointer checks. Current full suites and artifacts are recorded in PROGRESS.
 
-## B-122 — Very large emoji notes block the Android editor's first frame
+## B-128 — Very large emoji notes block the Android editor's first frame
 
 - **Severity:** High; native responsiveness. **Features:** F-006/F-018/F-040.
   **Affected:** Android; no corresponding Apple/Linux failure is claimed.
@@ -3111,7 +3111,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Remaining:** physical keyboard/third-party IME acceptance is separate from supported native
   input interception; no installed-keyboard or spoken-accessibility claim is made.
 
-## B-123 — Native text Undo can replace a different large-note section
+## B-129 — Native text Undo can replace a different large-note section
 
 - **Severity:** High; editor data integrity. **Features:** F-006/F-015/F-023.
   **Affected:** Android's new large-source presentation; no corresponding
@@ -3148,9 +3148,9 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   and the 91-test JVM/build lane pass. Ordinary same-section Undo restores the
   edited section and leaves every other section unchanged.
 - **Remaining:** physical keyboard/IME acceptance remains separate from controlled
-  Android key/input connections. Existing-format capacity gaps are B-127.
+  Android key/input connections. Existing-format capacity gaps are B-133.
 
-## B-124 — Android scale fixture expects a count on an uncounted sidebar destination
+## B-130 — Android scale fixture expects a count on an uncounted sidebar destination
 
 - **Severity:** Low; verification fixture. **Feature:** F-044. **Affected:** Android
   instrumentation only; no production count or task-loss defect was established.
@@ -3173,7 +3173,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   functional 1,000-task case; the opt-in timing samples above remain separate. Exact results and
   measurement limits are recorded in [PROGRESS.md](PROGRESS.md).
 
-## B-125 — Native Sharesheet fixture taps a clipped recipient label
+## B-131 — Native Sharesheet fixture taps a clipped recipient label
 
 - **Severity:** Low; verification fixture. **Features:** F-006/F-020.
   **Affected:** Android instrumentation; no provider/full-text transfer failure was
@@ -3196,7 +3196,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   recipient/provider and physical-device acceptance remain separate.
 
 
-## B-126 — Large-source fixture checks visibility before the native dialog settles
+## B-132 — Large-source fixture checks visibility before the native dialog settles
 
 - **Severity:** Low; verification fixture. **Features:** F-006/F-040. **Affected:**
   Android instrumentation; no source/save defect was established by this failure.
@@ -3219,7 +3219,7 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   widened timeout was introduced.
 
 
-## B-127 — Android accepts edits that cannot fit its private draft format
+## B-133 — Android accepts edits that cannot fit its private draft format
 
 - **Severity:** High; draft durability. **Features:** F-006/F-015/F-040.
   **Affected:** Android presentation/private drafts; shared task rules and storage
@@ -3251,14 +3251,14 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
   references retained through Retry/new capture. Current artifact identities and
   actual native results are recorded in [PROGRESS.md](PROGRESS.md). All three
   admission cases and the new native whole-edit/caret/deletion case pass on both
-  API26/API37; full suites also pass. Gate11g's API26 memory gap is B-128.
+  API26/API37; full suites also pass. Gate11g's API26 memory gap is B-134.
 - **Existing-format limitation:** opening an imported task beyond these private
   draft bounds now refuses explicitly and preserves its complete core contents.
   An oversized legacy draft keeps its original recovery reference/bytes. Editing
   those records needs a separately approved private-draft format design; no
   truncation or new shared-core limit is introduced to hide this gap.
 
-## B-128 — Near-limit private draft reads duplicate large buffers on Android 8
+## B-134 — Near-limit private draft reads duplicate large buffers on Android 8
 
 - **Severity:** High; private-draft recovery. **Features:** F-006/F-015/F-040.
   **Affected:** Android private draft I/O; reproduced on the controlled API26

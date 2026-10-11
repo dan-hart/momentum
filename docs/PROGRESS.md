@@ -39,19 +39,19 @@ performed for this handoff.
 | Linux | Established native GTK4/libadwaita MVP using shared Rust engine | Full SDK/GTK tests and broad isolated GNOME Wayland acceptance ran 2026-09-17. Typography, automation and Background Apps count parity are Implemented; remaining feature-specific native gates are listed below. |
 | macOS | Established SwiftUI/AppKit MVP using UniFFI/shared core | Local build/tests and many native flows recorded; specific deferred/unverified checks below. |
 | iOS | In progress in `task/ios-app`; approved native SwiftUI architecture and real shared Rust core | Four-tab offline workflows build and have scoped iOS 26.5/27 native evidence. Nextcloud and LibreSync are implemented; real simulator notification delivery/actions and App Intents pass. Unit coverage exercises the production background handler, IME boundary, external payload decoding and keyboard fallbacks. Hosted TLS, scheduler-originated execution, separate-device Bonjour and remaining manual system interactions stay open. |
-| Android | In progress on `task/android-native`; native Kotlin/Compose/Material 3 app using generated UniFFI and the shared Rust engine | Offline task/editor/list flows, optional Nextcloud/LibreSync, private backups, native reminders and opt-in task counts exist. Frozen gate11h source has 91 passing JVM tests, release APK/AAB, zero lint errors and strict 16 KiB native packaging. Controlled API26↔API37 LibreSync pairing/offline convergence/reopen and native minified SAF replacement pass. B-122 removes the large-emoji layout stall, B-123 protects native text Undo/source ownership, B-127 prevents nondurable edits, and B-128 streams private records within their unchanged bounds. Fresh full native/minified checks are being recorded below; oversized imported-task editing still requires an approved private-draft format design. Physical accessibility, external-server/scheduler checks, optional automation and independent store-builder gates remain explicit in [Android checklist](ANDROID-PARITY-CHECKLIST.md). |
+| Android | In progress on `task/android-native`; native Kotlin/Compose/Material 3 app using generated UniFFI and the shared Rust engine | Offline task/editor/list flows, optional Nextcloud/LibreSync, private backups, native reminders and opt-in task counts exist. Frozen gate11h source has 91 passing JVM tests, release APK/AAB, zero lint errors and strict 16 KiB native packaging. Controlled API26↔API37 LibreSync pairing/offline convergence/reopen and native minified SAF replacement pass. B-128 removes the large-emoji layout stall, B-129 protects native text Undo/source ownership, B-133 prevents nondurable edits, and B-134 streams private records within their unchanged bounds. Fresh full native/minified checks are being recorded below; oversized imported-task editing still requires an approved private-draft format design. Physical accessibility, external-server/scheduler checks, optional automation and independent store-builder gates remain explicit in [Android checklist](ANDROID-PARITY-CHECKLIST.md). |
 
 ## Current priorities
 
 ### 2026-10-11 — Android implementation and acceptance
 
-- Gate11h API26/API37 native acceptance passes after B-127's exact admission
-  before editable publication and B-128's format-preserving streamed private I/O.
+- Gate11h API26/API37 native acceptance passes after B-133's exact admission
+  before editable publication and B-134's format-preserving streamed private I/O.
   Current minified/runtime evidence is linked in the final handoff below. The first API26 near-limit fixture exposed a real 48 MiB recovery
   allocation failure; its failed checkpoint remains recorded. Existing private
   bounds prevent safely editing oversized imported tasks/boundary legacy records;
   all source and recovery references are retained, pending an approved format design.
-- B-122/B-123 bound very large native text layout while preserving complete source,
+- B-128/B-129 bound very large native text layout while preserving complete source,
   active composition, focus/caret and section-specific native text Undo. Identical
   shipping-Activity/debug-AVD emoji benchmarks remove the original 30.363/26.725-second
   cold/warm stall; fresh gate11h timing and restoration evidence follows below.
@@ -62,10 +62,10 @@ performed for this handoff.
   Existing links/shortcuts and locked-policy safeguards remain available. The
   pending approval does not authorize a public task-query/mutation contract.
 - F-043 Nextcloud Test Connection is read-only. LibreSync Sync Now is an exchange;
-  a true read-only probe needs a shared protocol/API decision (B-103). Physical
+  a true read-only probe needs a shared protocol/API decision (B-109). Physical
   discovery/hosted-server/scheduler/manual native gates remain open.
 - Gate11h release APK/AAB, bundle validation, lint, packaged notices and strict
-  LOAD/RELRO/ZIP checks for all eight libraries pass. B-116 rebuilds pinned Graphics
+  LOAD/RELRO/ZIP checks for all eight libraries pass. B-122 rebuilds pinned Graphics
   Path JNI from unchanged source. Local F-Droid metadata/source scanning and fresh
   offline vendored Rust builds pass for their recorded checkpoints; the final
   source snapshot, independent Linux builder, Maven/APK scan, second-host
@@ -190,8 +190,8 @@ performed for this handoff.
 | Item | State | Next action |
 |---|---|---|
 | Android feature/native parity, F-001–F-054 | Native source exists with the exact partial/Planned scope in [Android checklist](ANDROID-PARITY-CHECKLIST.md); no broad Verified status | Complete outstanding code, then record fresh full behavioral/build and native layout/accessibility/OS evidence for each scope |
-| Android notification race, B-102/F-007 | Atomic shared-core action API implemented; 26 targeted Rust tests passed during development | Complete workspace/generated-consumer and final Android stale/cold action acceptance |
-| Read-only LibreSync connection probe, B-103/F-043 | No read-only shared protocol contract; iOS Test Connection starts a sync cycle; Android exposes Sync Now | Prepare a pinned LibreSync/core protocol proposal; keep Nextcloud-only read-only guarantee and blocked sub-capability visible |
+| Android notification race, B-108/F-007 | Atomic shared-core action API implemented; 26 targeted Rust tests passed during development | Complete workspace/generated-consumer and final Android stale/cold action acceptance |
+| Read-only LibreSync connection probe, B-109/F-043 | No read-only shared protocol contract; iOS Test Connection starts a sync cycle; Android exposes Sync Now | Prepare a pinned LibreSync/core protocol proposal; keep Nextcloud-only read-only guarantee and blocked sub-capability visible |
 | Android distribution | APK/AAB/signing/source recipe implemented; F-Droid admission, reproducibility and actual store delivery unverified | Verify fresh release/native alignment/notices and independent F-Droid builder/scanner; decide signing/update continuity before an explicitly requested release |
 | Physical LibreSync Linux↔Mac, B-001/F-026 | Earlier desktop deferral remains; implementation is not a proven real-device fix | Preserve earlier evidence and diagnostics until desktop physical testing is resumed |
 | Spoken VoiceOver, F-020 | Explicitly excluded by the user from the current iOS completion scope; AX/keyboard/contrast checks do not establish spoken output | Keep unverified without blocking the user-approved scope |
@@ -212,17 +212,17 @@ performed for this handoff.
 
 ### 2026-10-10 — Android restore admission, notification privacy and status receipts
 
-- **B-106/F-029:** generic change events no longer release the restore service
+- **B-112/F-029:** generic change events no longer release the restore service
   barrier. Its ViewModel owner explicitly resumes current-policy transport, search
   and reminder services after replacement returns or fails, keeping UI admission
   held until that resume completes. New controlled native regressions cover an
   earlier edit completing during the barrier and successful/failed pause ownership.
-- **B-107/F-007/F-038:** foreground/background sync configuration each runs under
+- **B-113/F-007/F-038:** foreground/background sync configuration each runs under
   its own guarded step, while local reminder reconciliation runs independently.
   Notification replenishment cancellation precedes optional credential reads.
   An opt-in disposable-emulator regression observes a real private notification
   removed after opt-out despite deliberately incomplete nearby credentials.
-- **B-108/F-007/F-029:** private notification source revisions now include the
+- **B-114/F-007/F-029:** private notification source revisions now include the
   existing durable restore epoch. A same-ID/title/reminder backup restore regression
   failed before the fix because the old action changed the restored task. After
   the fix both old Done/Snooze reject, unchanged task/disk/Undo state persists, and
@@ -231,7 +231,7 @@ performed for this handoff.
   dirty `task/android-native` worktree. Two existing atomic deprecation warnings
   remain. No public API or task/store format changed; existing scheduled identities
   intentionally require native reconciliation.
-- **B-111/F-025/F-026:** status-write failure is separate from actual sync/recovery
+- **B-117/F-025/F-026:** status-write failure is separate from actual sync/recovery
   state. A private synchronized latest desired receipt supports explicit local-only
   save retry; native Sync screens/footer show a localized warning, including when
   the provider is Off. The real damaged-copy recovery fixture now blocks an atomic
@@ -257,11 +257,11 @@ performed for this handoff.
   native row padding/spacing, uses bounded visible title/metadata lines and retains
   a named notes indicator, full text semantics and 48dp controls. Regular remains a
   Material ListItem. Empty notes-only supporting slots are removed.
-- **B-109/B-110:** gate4b still measured the native slider below 48dp after the first
+- **B-115/B-116:** gate4b still measured the native slider below 48dp after the first
   modifier attempt. Exact Material3 1.4.0 source measures its thumb/track, so the
   public native thumb now has a 48dp minimum. Task/list menu labels name their object,
   correcting misleading View Options labels and the ambiguous toolbar assertion.
-- **B-114/F-020/F-022:** parent live German/dark/system-scale-2 inspection reproduced
+- **B-120/F-020/F-022:** parent live German/dark/system-scale-2 inspection reproduced
   bottom-navigation overflow. Width-bounded native labels now use one visual line
   with ellipsis while retaining complete localized semantics and native font scaling.
 - **Evidence boundary:** gate4b passed the earlier queue, locale, accent/palette and
@@ -280,7 +280,7 @@ performed for this handoff.
   was the separate queue fixture owned by the root implementation pass. Logs:
   `android/rust-target/api36-native-gate3.log` and `api37-native-gate3.log`.
   This is an actual failed gate, not a pass for the current dirty source.
-- **B-109/F-022:** slider sizing now sits inside its description semantics so the
+- **B-115/F-022:** slider sizing now sits inside its description semantics so the
   semantic target includes the explicit 48dp area. The German toolbar fixture keeps
   the host Activity context, uses Android's real per-app German locale and provides
   Activity-backed Android Density at system scale 2. The debug-only test Activity
@@ -318,8 +318,8 @@ performed for this handoff.
   concurrency, four transport, three reminder observations and two vault cases.
   Evidence: `android/rust-target/debug-build-gate2.log`, `api36-native-gate2.log`,
   `api37-native-gate2.log` in that output directory. App/test SHA-256 values are in
-  B-104 and the Android checklist; live file hashes matched those recorded artifacts.
-- **B-104/B-105:** Espresso 3.5 input injection failed on API37 because reflection of
+  B-110 and the Android checklist; live file hashes matched those recorded artifacts.
+- **B-110/B-111:** Espresso 3.5 input injection failed on API37 because reflection of
   InputManager.getInstance no longer resolves; explicit 3.7.0/v2 Compose rule now passes.
   Controlled suspended task-open/restore and oversized SavedState input cases pass
   on both runtimes. These defect scopes have evidence; broad Android parity is open.
@@ -360,13 +360,13 @@ performed for this handoff.
   handling and native entry points. App versionName derives from the Cargo workspace;
   versionCode derives from bounded major/minor/patch fields. API 26 minimum/37 target,
   arm64-v8a/x86_64, pinned public LibreSync/toolchain and optional external signing.
-- **Defects:** B-099 actual generated Kotlin Throwable collision corrected by projection
-  renaming; B-100 source context persisted independently of navigation; B-101 450 KB
+- **Defects:** B-105 actual generated Kotlin Throwable collision corrected by projection
+  renaming; B-106 source context persisted independently of navigation; B-107 450 KB
   Unicode notes caused a real Compose layout crash, with bounded editor viewport and
   focused API 36 regression passing; small SavedState/private full draft avoids an
-  additional source-risk Binder limit. B-102 source-confirmed validate/mutate race
+  additional source-risk Binder limit. B-108 source-confirmed validate/mutate race
   fixed through atomic Rust notification actions, with 26 targeted Rust tests passing
-  before the final workspace/native gate. B-103 records the LibreSync read-only probe
+  before the final workspace/native gate. B-109 records the LibreSync read-only probe
   discrepancy and missing protocol contract; no live data-loss assertion is made.
 - **Earlier checks:** 19 JVM tests passed before final drag/import/action changes;
   ten API 36 instrumentation tests passed before the expanded editor/lifecycle suite.
@@ -5231,7 +5231,7 @@ No merge, tag, release, personal reminder access, or production data change.
   threads, and retain the above native acceptance limits. No merge/release requested.
 
 
-### 2026-10-10 — Android count and native entry-point slice (F-031/F-032, B-113)
+### 2026-10-10 — Android count and native entry-point slice (F-031/F-032, B-119)
 
 - Dirty `task/android-native`: source implements the off-default independent task
   count setting, quiet private framework notification and supported launcher count
@@ -5256,7 +5256,7 @@ No merge, tag, release, personal reminder access, or production data change.
   API31+ when the special access is actually unavailable.
 
 
-### 2026-10-10 — pinned native Graphics Path alignment correction (B-116, F-001)
+### 2026-10-10 — pinned native Graphics Path alignment correction (B-122, F-001)
 
 - Dirty `task/android-native`, base `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`.
   Published Graphics Path 1.0.1/1.1.0 LOAD alignment passes but RELRO endpoints do
@@ -5280,14 +5280,14 @@ No merge, tag, release, personal reminder access, or production data change.
   outstanding; this source stage is Implemented, not broadly Verified.
 
 
-### 2026-10-10 — Android native projection corrections (B-117/B-118)
+### 2026-10-10 — Android native projection corrections (B-123/B-124)
 
 - Dirty `task/android-native`: parent gate5b API36/API37 and gate5c API26
-  reproduced B-118 count cancellation and coordinator restore failures. Compiled
+  reproduced B-124 count cancellation and coordinator restore failures. Compiled
   bytecode independently confirms implicit coroutine cancellation. Renamed the
   notification helper and kept native assertions, adding calling-job-active checks;
   source is Implemented pending the fresh parent gate6.
-- B-117 routes visible snapshots, reminders and counts through one serialized
+- B-123 routes visible snapshots, reminders and counts through one serialized
   repository day/projection helper using existing Rust APIs and live restore
   admission. Date/combined refresh emits a UI revision after real repeat creation.
   Three new isolated `CoordinatorLocalDayTest` regressions exercise real recurrence
@@ -5297,14 +5297,14 @@ No merge, tag, release, personal reminder access, or production data change.
   local-day and full app acceptance belongs to the parent gate; launcher visuals
   and real OS lock/background delivery remain separate verification limits.
 
-### 2026-10-10 — Android selected-backup and private-draft recovery (B-119/B-120)
+### 2026-10-10 — Android selected-backup and private-draft recovery (B-125/B-126)
 
 - Dirty `task/android-native`: a source trace found stale backup preparation able
-  to replace a later selected input or republish confirmation after Cancel (B-119).
+  to replace a later selected input or republish confirmation after Cancel (B-125).
   Latest-request ownership, per-job temporary cleanup and localized reading/Cancel
   status are now Implemented. Provider streams can still finish a blocking read;
   late completions cannot publish or overwrite the newer prepared backup.
-- B-120 now retains a bounded SavedState-only list of failed private draft identities
+- B-126 now retains a bounded SavedState-only list of failed private draft identities
   and origin contexts, with an explicit idle-editor Retry. Failed reads retain both
   their bytes and reference. A fresh editor cannot overwrite a failed source; a full
   reference list preserves the additional active pointer and blocks new editors
@@ -5389,12 +5389,12 @@ No merge, tag, release, personal reminder access, or production data change.
   `task/sync-performance-recovery` with its inherited 22 tracked changes and
   untracked sync-performance document preserved. No commit, push, PR, tag,
   upload, store registration or release was performed.
-- **Production checkpoint:** gate11h freezes B-121 imported-name/native entry
-  guards, B-122 lossless bounded source layout, B-123 native Undo/disposal ownership,
-  B-127 exact private-draft admission, and B-128 streamed existing-format disk and
-  legacy-inline reads. B-124–B-126 correct native scale/chooser/visibility fixtures
-  without loosening equality, geometry or original deadlines. B-127's real RED
-  and B-128's API26 48 MiB allocation failure remain in BUGS/logs; they are not
+- **Production checkpoint:** gate11h freezes B-127 imported-name/native entry
+  guards, B-128 lossless bounded source layout, B-129 native Undo/disposal ownership,
+  B-133 exact private-draft admission, and B-134 streamed existing-format disk and
+  legacy-inline reads. B-130–B-132 correct native scale/chooser/visibility fixtures
+  without loosening equality, geometry or original deadlines. B-133's real RED
+  and B-134's API26 48 MiB allocation failure remain in BUGS/logs; they are not
   erased by later passes. Admission keeps rejected native text/caret, complete VM
   source, draft/context/UUID and durable bytes; boundary legacy records retain
   their disk/inline references through Retry/new capture.

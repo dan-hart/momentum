@@ -88,7 +88,7 @@ was introduced. A separate-UID API 37 disposable recipient pasted a complete
 the sender process was killed and its provider restarted. The recipient received
 read access, no write access, and lost read access after clipboard replacement.
 This live system-boundary proof does not replace the subsequent app-native suite
-or establish behavior on every supported API. B-115's native regressions cover the
+or establish behavior on every supported API. B-121's native regressions cover the
 app helper, bounded explicit own-provider Paste, and capacity failure preserving
 earlier payloads. [README.md](README.md) records the bounded payload lifecycle.
 

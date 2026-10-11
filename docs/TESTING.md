@@ -228,8 +228,8 @@ with one status and stable navigation/Add bounds. `LocaleResourcesTest` covers
 observable English→German date/feedback recomposition and singular/plural/zero grammar.
 Run these against fresh artifacts; tests added after gate3 are not covered by that gate.
 
-B-104 records the old Espresso input-injection failure on API 37; current UI tests use
-explicit Espresso 3.7.0 and the Compose `junit4.v2` rule. B-105's controlled suspended
+B-110 records the old Espresso input-injection failure on API 37; current UI tests use
+explicit Espresso 3.7.0 and the Compose `junit4.v2` rule. B-111's controlled suspended
 task-open/restore and rejected oversized-input cases are separate from actual external
 share/deep-link/force-stop inspection. Keep the tested app/test hashes and source scope
 when reporting either gate; do not infer a pass for later source changes.
