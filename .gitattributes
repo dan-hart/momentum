@@ -1,0 +1,4 @@
+# Preserve checksum-pinned upstream license and native source bytes.
+android/licenses/** -whitespace
+android/vendor/graphics-path/** -whitespace
+android/gradlew.bat whitespace=cr-at-eol

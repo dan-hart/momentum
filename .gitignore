@@ -36,3 +36,14 @@
 /ios/**/.build/
 /ios/**/.swiftpm/
 /ios/DerivedData/
+
+# Android native sources and bindings are built locally from pinned source.
+/android/.gradle/
+/android/.kotlin/
+/android/**/build/
+/android/rust-target/
+/android/local.properties
+/android/keystore.properties
+/android/**/*.jks
+/android/**/*.keystore
+/android/**/__pycache__/

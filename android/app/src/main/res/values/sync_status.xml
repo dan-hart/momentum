@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="sync_status_save_failed">Could not save sync status. Restart may show an older status.</string>
+    <string name="sync_status_save_retry">Retry saving status</string>
+</resources>

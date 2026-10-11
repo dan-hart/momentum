@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="add-task" android:enabled="true"
+        android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/add_task">
+        <intent android:action="com.codedbydan.momentum.ADD_TASK"
+            android:targetPackage="com.codedbydan.momentum"
+            android:targetClass="com.codedbydan.momentum.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="search" android:enabled="true"
+        android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/search">
+        <intent android:action="android.intent.action.SEARCH"
+            android:targetPackage="com.codedbydan.momentum"
+            android:targetClass="com.codedbydan.momentum.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="today" android:enabled="true"
+        android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/today">
+        <intent android:action="com.codedbydan.momentum.OPEN_TODAY"
+            android:targetPackage="com.codedbydan.momentum"
+            android:targetClass="com.codedbydan.momentum.MainActivity" />
+    </shortcut>
+</shortcuts>

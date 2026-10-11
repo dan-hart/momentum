@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="accent_color">Akzentfarbe</string>
+    <string name="accent_hint">Die Farben passen sich an helle und dunkle Flächen an, damit Text und Bedienelemente lesbar bleiben.</string>
+    <string name="accent_dynamic_hint">Die Farben deines Hintergrundbilds sind aktiv. Dein gewählter Akzent bleibt gespeichert und wird beim Ausschalten der Hintergrundfarben verwendet.</string>
+    <string name="accent_momentum">Momentum</string>
+    <string name="accent_alizarin">Alizarinrot</string>
+    <string name="accent_carrot">Karottenorange</string>
+    <string name="accent_orange">Orange</string>
+    <string name="accent_emerald">Smaragdgrün</string>
+    <string name="accent_turquoise">Türkis</string>
+    <string name="accent_peter_river">Flussblau</string>
+    <string name="accent_amethyst">Amethyst</string>
+    <string name="accent_pomegranate">Granatapfelrot</string>
+    <string name="accent_green_sea">Meeresgrün</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <plurals name="queued_captures">
+        <item quantity="one">%1$d saved capture is waiting. Finish this draft to review it.</item>
+        <item quantity="other">%1$d saved captures are waiting. Finish this draft to review them.</item>
+    </plurals>
+</resources>

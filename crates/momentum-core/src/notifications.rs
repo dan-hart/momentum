@@ -35,6 +35,14 @@ pub enum NotificationContent {
     },
 }
 
+/// A native notification action, applied only while its exact task source is current.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
+pub enum NotificationAction {
+    Done,
+    Snooze { minutes: u32 },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Record))]
 pub struct NotificationRequest {

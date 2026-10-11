@@ -108,6 +108,9 @@ fn desired(store: &Store, prefs: &Preferences, now_ms: u64, ledger: &Ledger) -> 
             .then_some((prefs.morning_summary_time.hour, prefs.morning_summary_time.minute));
         request.source_revision = serde_json::json!({
             "version": 1,
+            // A restored copy may have identical task IDs and fields. Reuse the
+            // existing durable restore generation to reject pre-restore callbacks.
+            "restore_epoch": store.meta.p2p_restore_epoch,
             "id": request.id,
             "scheduled_at_ms": request.scheduled_at_ms,
             "local_day": day_of_ms(request.scheduled_at_ms),
@@ -128,6 +131,49 @@ fn decorate(mut plan: NotificationPlan, ledger: &Ledger) -> NotificationPlan {
         }
     }
     plan
+}
+
+fn current_request(
+    store: &Store,
+    prefs: &Preferences,
+    request: &NotificationRequest,
+    now_ms: u64,
+    ledger: &Ledger,
+) -> bool {
+    let identity = request.observation();
+    let mut validation = ledger.clone();
+    // A duplicate acknowledgement/action must compare its current source even
+    // when its own elapsed occurrence is already suppressed by the durable ledger.
+    if validation
+        .accepted
+        .get(&request.id)
+        .is_some_and(|a| a.identity == identity)
+    {
+        validation.accepted.remove(&request.id);
+    }
+    desired(store, prefs, now_ms, &validation)
+        .requests
+        .iter()
+        .any(|current| {
+            current.observation() == identity
+                && current.content == request.content
+                && current.scheduled_at_ms == request.scheduled_at_ms
+                && request.fire_at_ms >= request.scheduled_at_ms
+                && (request.fire_at_ms == request.scheduled_at_ms || request.fire_at_ms <= now_ms)
+        })
+}
+
+/// Validate without changing acceptance or consumption. The caller must retain
+/// the engine's owner lock until any corresponding task mutation is committed.
+pub(crate) fn request_is_current(
+    store: &Store,
+    prefs: &Preferences,
+    request: &NotificationRequest,
+    now_ms: u64,
+) -> Result<bool, CoreError> {
+    let mut ledger = Ledger::load(store.dir())?;
+    ledger.consume_elapsed(now_ms);
+    Ok(current_request(store, prefs, request, now_ms, &ledger))
 }
 
 #[cfg_attr(feature = "ffi", uniffi::export)]
@@ -213,26 +259,7 @@ impl Engine {
         let mut ledger = before.clone();
         ledger.consume_elapsed(now_ms);
         let identity = request.observation();
-        let mut validation = ledger.clone();
-        // A duplicate acknowledgement may be idempotent, but its current source must
-        // still match. Temporarily lift only its own suppression for that comparison.
-        if validation
-            .accepted
-            .get(&request.id)
-            .is_some_and(|a| a.identity == identity)
-        {
-            validation.accepted.remove(&request.id);
-        }
-        let valid = desired(&g.store, &g.prefs, now_ms, &validation)
-            .requests
-            .iter()
-            .any(|current| {
-                current.observation() == identity
-                    && current.content == request.content
-                    && current.scheduled_at_ms == request.scheduled_at_ms
-                    && request.fire_at_ms >= request.scheduled_at_ms
-                    && (request.fire_at_ms == request.scheduled_at_ms || request.fire_at_ms <= now_ms)
-            });
+        let valid = current_request(&g.store, &g.prefs, &request, now_ms, &ledger);
         let accepted = valid;
         if valid && !ledger.accepted.get(&request.id).is_some_and(|a| a.identity == identity) {
             ledger.accepted.insert(

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="clipboard_copy_failed">Der Text konnte nicht kopiert werden. Dein Text bleibt unverändert. Versuche es erneut.</string>
+    <string name="clipboard_large_unsupported">Android 8 kann so viel Text nicht sicher zwischen Apps einfügen. Deine Zwischenablage bleibt unverändert.</string>
+    <string name="share_notes">Vollständige Notizen teilen</string>
+    <string name="share_notes_failed">Die Notizen konnten nicht geteilt werden. Deine Notizen bleiben unverändert. Versuche es erneut.</string>
+    <string name="share_notes_capacity">Der private Freigabe-Cache ist voll. Leere Momentums Cache in den Android-Einstellungen, um weitere Notizen zu teilen. Lösche nicht die App-Daten.</string>
+</resources>

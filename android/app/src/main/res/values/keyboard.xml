@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_shortcuts">Hardware keyboard</string>
+    <string name="keyboard_modifier_hint">Choose the modifier for Momentum commands. Text editing, Ctrl+A and Ctrl+, keep native Ctrl shortcuts.</string>
+    <string name="keyboard_help">Keyboard shortcuts</string>
+    <string name="keyboard_help_hint">Task commands use the visible selection and are unavailable in text fields or while a dialog or operation is active. Archive permits Undo only. Single-task commands require one selected task. Done reopens one completed task; with multiple tasks it marks them done. Move applies to selected main tasks. Nudge requires manual sorting. Alt mode uses Ctrl+Alt for nudging. Android or the keyboard may reserve some combinations.</string>
+    <string name="keyboard_ctrl">Ctrl</string>
+    <string name="keyboard_alt">Alt</string>
+    <string name="keyboard_meta">Meta</string>
+    <string name="keyboard_shift">Shift</string>
+    <string name="keyboard_global">Navigation and app</string>
+    <string name="keyboard_tasks">Tasks</string>
+    <string name="keyboard_editor">Editor</string>
+    <string name="keyboard_search_tab">Search tab</string>
+    <string name="keyboard_settings_tab">Settings tab</string>
+    <string name="keyboard_next_tab">Next tab</string>
+    <string name="keyboard_previous_tab">Previous tab</string>
+    <string name="keyboard_sync">Sync now</string>
+    <string name="keyboard_select_all">Select visible tasks</string>
+    <string name="keyboard_done_reopen">Done / reopen</string>
+    <string name="keyboard_archive_done">Archive completed tasks</string>
+    <string name="keyboard_plan_today">Plan for Today / toggle one task</string>
+    <string name="keyboard_delete_key">Delete</string>
+    <string name="keyboard_enter_key">Enter</string>
+</resources>

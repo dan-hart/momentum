@@ -8,6 +8,10 @@ whole test suite against the tag, builds every binary, attaches them to a GitHub
 updates the Homebrew tap, publishes the signed Flatpak repository, and opens the Flathub
 update.
 
+Android has a separate local source-build/validation path described below. The
+current Release workflow does not attach or publish Android products; its source
+recipe and APK/AAB targets do not establish store admission or a release.
+
 ## One version
 
 `Cargo.toml`'s workspace version is the source of truth. Four other files carry a copy,
@@ -117,3 +121,87 @@ REQUIRE_UNIVERSAL=1 macos/scripts/package-app.sh dist    # fail unless both arch
 
 For a universal binary, `rustup target add x86_64-apple-darwin` first. Flatpak bundles
 come from the release manifest, as in the README's *Build from source*.
+
+## Android artifacts and future store distribution
+
+The native Android app targets API 37 with an API 26 minimum, arm64-v8a/x86_64,
+Kotlin/Compose and generated UniFFI from the source-built Rust core. The same source
+build produces APK and Android App Bundle artifacts; ordinary functionality has no
+Google Play services, store SDK, proprietary account, advertising or analytics
+dependency. F-Droid compatibility and future alternative-store/Google Play delivery
+are approved implementation requirements. Uploading, signing for distribution,
+submitting to a repository/store, tagging and releasing require an explicit request.
+
+Follow [Android source setup](../android/README.md) and
+[isolated testing](TESTING.md#android-source-and-native-acceptance) first. From
+`android/`, with the pinned public source and SDK/toolchain installed:
+
+```sh
+./gradlew :app:testDebugUnitTest :app:assembleRelease :app:bundleRelease :app:lintRelease
+cd ..
+python3 android/scripts/build_core.py --verify-source
+python3 android/scripts/build_core.py --check-apk android/app/build/outputs/apk/release/app-release-unsigned.apk
+```
+
+Omit the development-only `momentumRustProfile=debug` override for distribution.
+Unsigned APK: `android/app/build/outputs/apk/release/app-release-unsigned.apk`.
+AAB: `android/app/build/outputs/bundle/release/app-release.aab`. The app's
+`versionName` reads Cargo's workspace version; `versionCode` derives as
+`major*1_000_000 + minor*1000 + patch`, with bounded fields so stable version increases
+produce increasing Android codes within the store limit. Before release, inspect the
+actual APK/AAB version/application ID/SDK metadata against the approved version and
+previous published code; source formulas alone are not artifact evidence.
+
+Release signing is optional and outside source. Supply all four environment variables
+from a private local secret manager/shell environment: `MOMENTUM_KEYSTORE` (absolute
+path), `MOMENTUM_KEYSTORE_PASSWORD`, `MOMENTUM_KEY_ALIAS`, `MOMENTUM_KEY_PASSWORD`.
+Partial configuration fails early; no default release key is provided. When configured,
+the APK becomes `app-release.apk`; run the same alignment check against that actual
+signed artifact. Do not put private keys/passwords in Gradle arguments, logs, repository
+files or bundled assets. Local build commands do not upload artifacts.
+
+Choose certificate/update continuity before the first distribution. Direct APKs and
+store-generated APKs can update each other only with compatible app signing identity.
+Play upload and app signing keys can differ; independently distributed APKs need an
+app signing key available to their signer. Conventional F-Droid repository signing
+uses a different certificate from an upstream-signed APK, so the same application ID
+does not make those installations interchangeable. Retaining an upstream signature
+requires F-Droid's separately verified reproducible-build process. See
+[Android signing](https://developer.android.com/studio/publish/app-signing) and
+[F-Droid reproducible builds](https://f-droid.org/en/docs/Reproducible_Builds/).
+
+Before marking a release ready, record current source/artifact hashes and fresh tests,
+lint, metadata, packaged assets/notices and signatures. The native checker inspects
+every bundled `.so`, including Rust and JNA, for ELF LOAD/RELRO alignment and APK ZIP
+16 KiB alignment. Use checksum-verified bundletool from
+[toolchain.json](../android/toolchain.json) to validate/dump the AAB configuration;
+`PAGE_ALIGNMENT_16K` must be present. Generate actual APKs from the bundle, then check
+their native/ZIP alignment and run them on a confirmed 16 KiB runtime. A local APK
+alignment pass or earlier debug component tests do not verify a later release/bundle.
+See [Android page-size guidance](https://developer.android.com/guide/practices/page-sizes).
+
+The AndroidX Graphics Path 1.1.0 JNI replacement must come from the
+[pinned unchanged Apache-licensed release sources](../android/vendor/GRAPHICS-PATH.md),
+built with both NDK r27 page-size flags. Retain its source/build provenance and
+licenses in distribution archives and packaged notices. Verify final APK/AAB JNI
+bytes and native rendering on API26 and a confirmed 16 KiB device; a standalone
+library alignment/reproducibility pass does not establish those later artifacts.
+
+Preserve Momentum GPL-3.0-or-later, LibreSync's AGPL-3.0-only source/license and the
+complete dependency notices/corresponding source. The build generates
+`assets/THIRD_PARTY_NOTICES.txt` in APK/AAB from resolved public Maven POM/artifact
+license files, Rust source package notices and retained native JNA/libffi notices.
+Check the packaged output, not only the source Markdown. Source archives must identify
+the exact pinned inputs; [distribution audit](../android/DISTRIBUTION_AUDIT.md) and
+[third-party notices](../android/THIRD_PARTY_NOTICES.md) record provenance and limits.
+
+The [F-Droid recipe](../android/fdroid/README.md) and metadata are drafts. They build
+both native ABIs from public pinned Momentum/LibreSync/Rust sources, use offline Cargo
+vendoring and do not bypass scanners. Before submission, select an approved source
+revision, run the actual F-Droid builder/scanner, verify license/source availability,
+and compare independently prepared builds for reproducibility. Admission, successful
+F-Droid builds and bit-for-bit reproducibility have not been established locally.
+The [Android workflow](../.github/workflows/android.yml) checks unsigned APK/AAB,
+source pins, JVM tests, lint, notices and alignment with no store credentials,
+artifact upload or publish step. Its first remote execution and Android integration
+into the tag-driven Release workflow remain separate future work.

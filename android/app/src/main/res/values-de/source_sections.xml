@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="source_section_hint">Langer Text wird in Abschnitten bearbeitet. Die Auswahl gilt für den sichtbaren Abschnitt. Wenn sich der sichtbare Abschnitt ändert, beginnt der Verlauf zum Rückgängigmachen neu. Speichern verwendet den vollständigen Text.</string>
+    <string name="source_section_position">Textpositionen %1$d–%2$d von %3$d</string>
+    <string name="source_section_previous">Vorheriger Abschnitt: %1$s</string>
+    <string name="source_section_next">Nächster Abschnitt: %1$s</string>
+    <string name="source_section_composition">Schließe die aktuelle Texteingabe ab, bevor du mehr hinzufügst. Dein bisheriger Text bleibt erhalten.</string>
+    <string name="source_section_long_character">Diese ungewöhnlich lange Zeichenfolge wird in einem anderen Abschnitt fortgesetzt. Der vollständige Text bleibt erhalten.</string>
+</resources>

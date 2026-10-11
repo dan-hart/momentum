@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="backup_reading">Das gewählte Backup wird gelesen…</string>
+    <string name="draft_recovery_pending">Ein gespeicherter Entwurf konnte nicht gelesen werden. Seine private Datei bleibt erhalten. Versuche erneut, ihn wiederherzustellen.</string>
+    <string name="draft_recovery_wait">Schließe den aktuellen Entwurf oder Vorgang ab, bevor du die Wiederherstellung erneut versuchst. Erfasste Entwürfe behalten ihre Reihenfolge.</string>
+    <string name="draft_recovery_unavailable">Die gespeicherte Entwurfsdatei ist nicht verfügbar. Ihre Referenz zur Wiederherstellung bleibt erhalten.</string>
+    <string name="draft_recovery_full">Stelle gespeicherte Entwürfe wieder her, bevor du einen weiteren Editor öffnest. Bestehende Entwürfe und erfasste Inhalte bleiben erhalten.</string>
+</resources>

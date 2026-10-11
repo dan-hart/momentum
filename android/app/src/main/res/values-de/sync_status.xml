@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="sync_status_save_failed">Der Synchronisierungsstatus konnte nicht gespeichert werden. Nach einem Neustart kann ein älterer Status angezeigt werden.</string>
+    <string name="sync_status_save_retry">Status erneut speichern</string>
+</resources>

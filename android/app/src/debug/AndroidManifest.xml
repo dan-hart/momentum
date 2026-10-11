@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- The Compose test host keeps its content while native app locales change. -->
+        <activity android:name="androidx.activity.ComponentActivity"
+            android:configChanges="locale|layoutDirection|fontScale|orientation|screenSize|screenLayout|keyboardHidden" />
+    </application>
+</manifest>

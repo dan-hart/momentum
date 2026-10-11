@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="clipboard_copy_failed">The text could not be copied. Your text is unchanged. Try copying again.</string>
+    <string name="clipboard_large_unsupported">Android 8 cannot securely paste this much text between apps. Your clipboard is unchanged.</string>
+    <string name="share_notes">Share full notes</string>
+    <string name="share_notes_failed">The notes could not be shared. Your notes are unchanged. Try again.</string>
+    <string name="share_notes_capacity">The private sharing cache is full. Clear Momentum’s cache in Android Settings to share more notes. Do not clear app storage.</string>
+</resources>

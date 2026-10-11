@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="backup_reading">Reading the selected backup…</string>
+    <string name="draft_recovery_pending">A saved draft could not be read. Its private file is retained. Retry to recover it.</string>
+    <string name="draft_recovery_wait">Finish the current draft or operation before retrying recovery. Queued captures keep their order.</string>
+    <string name="draft_recovery_unavailable">The saved draft file is unavailable. Its recovery reference is retained.</string>
+    <string name="draft_recovery_full">Recover saved drafts before opening another editor. Existing drafts and captures are retained.</string>
+</resources>

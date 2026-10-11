@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="task_count_title">Aufgabenanzahl</string>
+    <string name="task_count_off">Aus</string>
+    <string name="task_count_due_mode">Heute fällig oder geplant</string>
+    <string name="task_count_overdue_mode">Heute einschließlich überfälliger Aufgaben</string>
+    <string name="task_count_hint">Zeigt eine stille Benachrichtigung mit der Aufgabenanzahl. Unterstützte Launcher zeigen einen Punkt und die Anzahl im Menü beim Gedrückthalten; eine Zahl am App-Symbol hängt vom Launcher ab. Aufgabentitel und Notizen werden nicht übertragen. Android kann Hintergrundaktualisierungen verzögern. Solange Momentum läuft, erscheint die geschlossene Benachrichtigung erst wieder, wenn sich Anzahl, Modus, Tag oder Sprache ändern.</string>
+    <string name="task_count_channel_hint">Stille Anzahl offener Aufgaben, unabhängig von Erinnerungen steuerbar.</string>
+    <string name="task_count_denied">Erlaube Benachrichtigungen zur Aufgabenanzahl in den Android-Einstellungen, um die Anzahl anzuzeigen.</string>
+    <string name="task_count_failed">Die Aufgabenanzahl konnte nicht aktualisiert werden. Versuche es erneut, um die aktuelle Anzahl anzuzeigen.</string>
+    <plurals name="task_count_due_today"><item quantity="one">%1$d heute fällige oder geplante Aufgabe</item><item quantity="other">%1$d heute fällige oder geplante Aufgaben</item></plurals>
+    <plurals name="task_count_today_overdue"><item quantity="one">%1$d offene Aufgabe für Heute einschließlich überfälliger Aufgaben</item><item quantity="other">%1$d offene Aufgaben für Heute einschließlich überfälliger Aufgaben</item></plurals>
+    <string name="reminder_unlock_required">Entsperre dein Gerät, bevor du eine Erinnerung abschließt oder verschiebst. Öffne Momentum und versuche die Erinnerungsaktion erneut.</string>
+    <string name="reminder_body_unlock">%1$s · Öffne Momentum und entsperre das Gerät vor Abschließen oder Verschieben.</string>
+    <string name="automation_title">Automatisierung</string>
+    <string name="automation_hint">Halte das App-Symbol gedrückt für Aufgabe hinzufügen, Suche und Heute. Automatisierungs-Apps können auch Momentum-Aufgabenlinks öffnen.</string>
+    <string name="automation_help">Aufgabenlinks und Parameter</string>
+    <string name="automation_security_hint">Aufgabenlinks öffnen Momentum. Zum Lesen oder Ändern von Aufgaben muss das Gerät entsperrt sein. Neue Aufgaben öffnen einen privaten Entwurf zur Prüfung; ein vorhandener Entwurf bleibt erhalten. Links liefern keine strukturierten Aufgabenergebnisse zurück.</string>
+    <string name="automation_create" formatted="false">Entwurf erstellen:\nmomentum://add?title=Bericht%20prüfen\nOptionale Parameter: notes, due (JJJJ-MM-TT), tags (durch Kommas getrennt). Der Host create-task und das Schema superproductivity werden ebenfalls unterstützt.</string>
+    <string name="automation_find">Aufgaben suchen:\nmomentum://find-tasks?query=Bericht\nÖffnet die Suchergebnisse in der App.</string>
+    <string name="automation_open">Aufgabe öffnen:\nmomentum://open-task?id=TASK_ID\nVerwendet die aktuelle Aufgaben-ID. Ein aktiver Editor bleibt erhalten.</string>
+    <string name="automation_complete" formatted="false">Aufgabe abschließen:\nmomentum://complete-task?title=Bericht%20prüfen\nSchließt die erste offene Aufgabe mit genau diesem Titel ab, ohne Unterscheidung zwischen A–Z und a–z. Verwende eindeutige Titel. Der Abschluss kann in Momentum rückgängig gemacht werden.</string>
+    <string name="automation_reopen">Aufgabe wieder öffnen:\nmomentum://reopen-task?id=TASK_ID\nÖffnet eine abgeschlossene Aufgabe per ID wieder, mit Rückgängig. Eine bereits offene oder fehlende Aufgabe bleibt unverändert.</string>
+    <string name="automation_plan">Für Heute planen:\nmomentum://plan-task?id=TASK_ID\nVerwendet die vorhandene Planungsregel von Momentum.</string>
+    <string name="automation_parameters">Kodiere Parameterwerte für URLs. Aufgaben-IDs sind die vorhandenen stabilen IDs, keine Titel. Beim Erstellen bleiben vollständige Quellnotizen im privaten Entwurfsspeicher. Aufgabenlinks sind auf 1.000.000 Zeichen begrenzt, Suchanfragen auf 4.096.</string>
+</resources>

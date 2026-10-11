@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Android source build
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", "crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/android.yml"]
+  pull_request:
+    paths: ["android/**", "crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CARGO_TERM_COLOR: always
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install pinned Rust and Android packages
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal
+          rustup target add --toolchain 1.99.0 aarch64-linux-android x86_64-linux-android
+          sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0' 'ndk;27.2.12479018' 'platform-tools'
+          java --version
+          rustup run 1.99.0 rustc --version --verbose
+      - name: Verify public source and generate host bindings
+        run: |
+          python3 android/scripts/build_core.py --prepare-source
+          python3 android/scripts/build_core.py --bindings-only
+          python3 -m unittest discover -s android/scripts/tests -v
+      - name: Build unsigned APK/AAB, JVM tests and release lint
+        working-directory: android
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:bundleRelease :app:lintRelease
+      - name: Verify APK native alignment and shipped notices
+        run: |
+          python3 android/scripts/build_core.py --check-apk android/app/build/outputs/apk/release/app-release-unsigned.apk
+          python3 - <<'PY'
+          import zipfile
+          path = 'android/app/build/outputs/apk/release/app-release-unsigned.apk'
+          with zipfile.ZipFile(path) as apk:
+              notices = apk.read('assets/THIRD_PARTY_NOTICES.txt').decode()
+              assert 'LibreSync/LICENSE' in notices and 'JNA-libffi-LICENSE.txt' in notices
+              assert 'Maven: net.java.dev.jna:jna:5.19.1' in notices
+              print('Packaged native dependency notices verified')
+          PY
+      - name: Verify AAB requests 16 KiB ZIP alignment
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, urllib.request
+          pin = json.loads(pathlib.Path('android/toolchain.json').read_text())['bundletool']
+          data = urllib.request.urlopen(pin['url'], timeout=60).read()
+          assert hashlib.sha256(data).hexdigest() == pin['sha256'], 'bundletool checksum mismatch'
+          pathlib.Path('android/rust-target/bundletool.jar').write_bytes(data)
+          PY
+          java -jar android/rust-target/bundletool.jar validate --bundle=android/app/build/outputs/bundle/release/app-release.aab
+          java -jar android/rust-target/bundletool.jar dump config --bundle=android/app/build/outputs/bundle/release/app-release.aab > android/rust-target/bundle-config.json
+          python3 - <<'PY'
+          from pathlib import Path
+          assert 'PAGE_ALIGNMENT_16K' in Path('android/rust-target/bundle-config.json').read_text()
+          print('AAB requests 16 KiB APK alignment')
+          PY
+      - name: Print verification reports
+        if: always()
+        run: |
+          find android/app/build/reports -maxdepth 4 -type f -name '*results*' -o -name 'lint-results*.txt'
+        # Deliberately no upload action, store credentials or signing keys.

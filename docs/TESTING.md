@@ -89,6 +89,151 @@ It checks day/week/month/year wording at 0, 1, 2 and 99 without launching an app
 or simulator. This catches missing source-language plural forms that catalog
 completeness checks alone cannot detect. The test skips on non-macOS hosts.
 
+## Android source and native acceptance
+
+AndroidX Graphics Path JNI is built from the exact pinned 1.1.0 release sources;
+run `python3 android/scripts/build_graphics_path.py --verify-source` with the other
+source checks. The Python suite covers tampering/unknown inputs and deterministic
+JNI-only AAR replacement. See [source provenance and build](../android/vendor/GRAPHICS-PATH.md).
+Run `NativeGraphicsPathTest` on API26 as well as the current 16 KiB runtime: it
+checks actual native iterator control points and conic-to-quadratic Canvas rendering,
+not only library loading. Final APK checks still cover every `.so` LOAD and RELRO
+segment plus ZIP alignment. Independent source/build reproducibility remains required.
+
+Use an isolated checkout/worktree, private test stores and disposable credentials.
+The [Android guide](../android/README.md) and [toolchain pins](../android/toolchain.json)
+specify JDK 17, Rust 1.99.0, stable SDK 37, Build Tools 37.0.0, NDK 27.2.12479018
+and the two Rust Android targets. Set `ANDROID_HOME` to the intended SDK; do not
+repoint an unrelated checkout's configuration or share its generated bindings/output.
+Android builds isolate Cargo output in `android/rust-target` and generated source/native
+libraries in `android/app/build/generated`. Never edit generated UniFFI source.
+
+From the repository root, prepare only the pinned public LibreSync input:
+
+```sh
+python3 android/scripts/build_core.py --prepare-source
+python3 android/scripts/build_core.py --verify-source
+python3 android/scripts/build_core.py --bindings-only
+python3 -m unittest discover -s android/scripts/tests -v
+cd android
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest -PmomentumRustProfile=debug
+```
+
+Preparation refuses to replace a mismatched existing `libresync-src`; investigate
+that checkout rather than deleting or silently overwriting it. Locked Rust inputs,
+archive/tree hashes and host bindings must match. The debug override shortens local
+iteration; distribution uses the default release Rust profile. JVM tests use the host
+library from this Android output directory, not another frontend's FFI build.
+
+Run native tests only on an explicitly selected owned disposable emulator. Inventory
+devices with `adb devices -l`, verify the chosen AVD name, and reserve its port before
+launching. Do not send device mutations through an unqualified `adb`, run a connected-device Gradle task against
+all attached devices, stop the shared adb server, clear personal stores, or alter
+another task's emulator. For example, after creating a uniquely named AVD from the
+stable `system-images;android-37.0;google_apis_ps16k;arm64-v8a` image on an arm64 host:
+
+```sh
+emulator -avd Momentum_Test_API37_16K -port 5554 -no-snapshot -gpu swiftshader
+```
+
+Use `-no-window` only for component instrumentation; native visual/touch/accessibility
+acceptance needs an inspectable UI. Use the host-compatible ABI on other machines.
+From `android/`, after confirming this is the owned disposable AVD:
+
+```sh
+export MOMENTUM_TEST_SERIAL=emulator-5554
+adb -s "$MOMENTUM_TEST_SERIAL" emu avd name
+adb -s "$MOMENTUM_TEST_SERIAL" shell getprop ro.build.version.sdk
+adb -s "$MOMENTUM_TEST_SERIAL" shell getprop ro.product.cpu.abi
+adb -s "$MOMENTUM_TEST_SERIAL" shell getconf PAGE_SIZE
+adb -s "$MOMENTUM_TEST_SERIAL" shell getprop sys.boot_completed
+shasum -a 256 app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s "$MOMENTUM_TEST_SERIAL" install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s "$MOMENTUM_TEST_SERIAL" install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s "$MOMENTUM_TEST_SERIAL" shell am instrument -w com.codedbydan.momentum.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+`PAGE_SIZE` must actually be `16384` for 16 KiB runtime evidence. A 4 KiB API 36
+emulator or APK alignment pass is a separate check. API 26 minimum-runtime coverage,
+both supported ABIs, final release/bundle-produced APKs and a real device remain
+separate gates. Tests instantiate disposable stores and credentials; platform
+fixtures must not affect the ordinary app's OS notifications or real sync peers.
+
+SDK 37 requires [local network permission](https://developer.android.com/privacy-and-security/local-network-permission)
+even for loopback transport fixtures. Use the API-conditional test permission fixture.
+For an older already-installed test artifact lacking it, grant only on the selected
+owned disposable API 37 emulator before the fixture run:
+
+```sh
+adb -s "$MOMENTUM_TEST_SERIAL" shell pm grant com.codedbydan.momentum android.permission.ACCESS_LOCAL_NETWORK
+```
+
+Record that grant with the test result. Production permission-denial/recovery behavior
+must still be exercised separately; do not loosen production transport validation
+to make fixtures pass. Test restricted classes with `am instrument -e class` when
+appropriate, but do not present a filtered run as the full suite. App/test artifacts
+must come from the same generated core/build; record their hashes, dirty source scope,
+date, API/ABI/page size, test filter and result. Do not reinstall while another build
+is writing the same output without coordinating artifact ownership.
+
+On macOS 27, the owned API 37 16 KiB AVD initially had `target=android-0` in its
+`.ini` metadata. This disabled HVF and produced `qemu_mprotect: Permission denied`
+despite a successful hypervisor check. Correcting only that disposable AVD's target
+to android-37 enabled boot with the same emulator/image. If this symptom recurs,
+inspect image/API metadata, emulator logs and `emulator -accel-check` first; back up
+and correct only a demonstrably malformed owned AVD. The suspected SDK parser origin
+has not been established, so do not rewrite global SDK package metadata.
+
+The [Android checklist](ANDROID-PARITY-CHECKLIST.md) maps every feature to native gates:
+offline restart/process death, full/long editor drafts, failures/stale task recovery,
+selection/archive/Undo, actual drag and user-initiated paste/IME, all grouping/sort
+choices, English/German 12/24-hour and large-text compact/tablet/landscape rendering,
+keyboard/TalkBack/focus/contrast, native document providers, permission denial/regrant,
+real notification delivery/cold actions/reboot/time changes, background scheduler and
+power-saver behavior, hosted TLS and separate-device LibreSync. Core tests and Compose
+semantics do not replace those platform interactions. Preserve earlier user-deferred
+desktop/Apple checks instead of rerunning them incidentally.
+
+Release/native alignment checks and F-Droid builder gates are in
+[RELEASING.md](RELEASING.md#android-artifacts-and-future-store-distribution).
+The [Android workflow](../.github/workflows/android.yml) checks source/JVM/release
+APK/AAB/lint/notices/alignment without uploading or publishing; a remote workflow
+result is separate from a local pass.
+
+F-022 native typography has separate JVM `NativeTypographyTest` and instrumentation
+`TypographySettingsTest`/`NativeToolbarTest` coverage. Verify built-in font selection, independent content
+and interface sizes, reset retaining unrelated settings, invalid-scale normalization,
+private preference reopen, native slider/radio actions and 48dp minimum controls.
+The theme scales `sp` styles before Android conversion, preserves relative `em` values,
+and leaves the supplied Density/fontScale unchanged; see
+[Android scalable-content guidance](https://developer.android.com/develop/ui/compose/accessibility/scalable-content).
+Inspect English/German phone/tablet/landscape with OS and app scales combined above
+200%, including editor/import notes, task metadata, settings and selection controls.
+`NativeToolbarTest` uses a German configuration with Android context-backed Density at
+OS scale 2 and saved app scales 2. It checks actual root/editor/import title layout
+bounds, full title semantics, visible 48dp actions and content scrolling. Toolbar height
+comes from the actual converted title line rather than multiplying system fontScale.
+Its test-only 800dp public WindowInfo fixture selects the actual native rail while
+retaining Activity window services and Android's font converter. Check full labels
+inside each native target and the real host window, vertical rail placement and
+48dp targets; healthy rail expansion is allowed. It does not replace a real tablet
+or resize the device under other tests.
+These scoped tests do not replace the wider layout, screen-reader and keyboard matrix.
+
+F-019 adds JVM `AccentSchemeTest` coverage for all ten seeds in both native
+appearances, contrasting primary/container/fixed roles and swatch selection ink.
+`NativeAppearanceTest` checks private preference reopen, wallpaper/accent independence,
+labeled palette selection, and F-042's controlled initial-loading→ready transition
+with one status and stable navigation/Add bounds. `LocaleResourcesTest` covers
+observable English→German date/feedback recomposition and singular/plural/zero grammar.
+Run these against fresh artifacts; tests added after gate3 are not covered by that gate.
+
+B-104 records the old Espresso input-injection failure on API 37; current UI tests use
+explicit Espresso 3.7.0 and the Compose `junit4.v2` rule. B-105's controlled suspended
+task-open/restore and rejected oversized-input cases are separate from actual external
+share/deep-link/force-stop inspection. Keep the tested app/test hashes and source scope
+when reporting either gate; do not infer a pass for later source changes.
+
 ## Layers
 
 | Layer | Where | Needs | Covers |

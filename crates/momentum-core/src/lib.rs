@@ -26,8 +26,8 @@ pub mod types;
 
 pub use engine::{Engine, QUICK_MATCHES};
 pub use notifications::{
-    NotificationAcceptance, NotificationContent, NotificationObservation, NotificationPlan, NotificationRequest,
-    ProjectedOccurrence,
+    NotificationAcceptance, NotificationAction, NotificationContent, NotificationObservation, NotificationPlan,
+    NotificationRequest, ProjectedOccurrence,
 };
 pub use sync_cancellation::SyncCancellation;
 pub use text::QuickAdd;

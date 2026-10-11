@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_shortcuts">Hardwaretastatur</string>
+    <string name="keyboard_modifier_hint">Wähle die Zusatztaste für Momentum-Befehle. Textbearbeitung, Strg+A und Strg+, behalten die üblichen Strg-Kürzel.</string>
+    <string name="keyboard_help">Tastenkürzel</string>
+    <string name="keyboard_help_hint">Aufgabenbefehle gelten für die sichtbare Auswahl und sind in Textfeldern sowie während eines Dialogs oder Vorgangs nicht verfügbar. Im Archiv ist nur Rückgängig verfügbar. Einzelaufgabenbefehle benötigen eine ausgewählte Aufgabe. Erledigen öffnet eine erledigte Aufgabe erneut; mehrere Aufgaben werden erledigt. Verschieben gilt für ausgewählte Hauptaufgaben. Reihenfolge ändern erfordert manuelle Sortierung. Im Alt-Modus gilt dafür Strg+Alt. Android oder die Tastatur kann Kombinationen reservieren.</string>
+    <string name="keyboard_ctrl">Strg</string>
+    <string name="keyboard_alt">Alt</string>
+    <string name="keyboard_meta">Meta</string>
+    <string name="keyboard_shift">Umschalt</string>
+    <string name="keyboard_global">Navigation und App</string>
+    <string name="keyboard_tasks">Aufgaben</string>
+    <string name="keyboard_editor">Bearbeitung</string>
+    <string name="keyboard_search_tab">Suche öffnen</string>
+    <string name="keyboard_settings_tab">Einstellungen öffnen</string>
+    <string name="keyboard_next_tab">Nächster Tab</string>
+    <string name="keyboard_previous_tab">Vorheriger Tab</string>
+    <string name="keyboard_sync">Jetzt synchronisieren</string>
+    <string name="keyboard_select_all">Sichtbare Aufgaben auswählen</string>
+    <string name="keyboard_done_reopen">Erledigen / wieder öffnen</string>
+    <string name="keyboard_archive_done">Erledigte Aufgaben archivieren</string>
+    <string name="keyboard_plan_today">Für Heute planen / eine Aufgabe umschalten</string>
+    <string name="keyboard_delete_key">Entf</string>
+    <string name="keyboard_enter_key">Eingabe</string>
+</resources>

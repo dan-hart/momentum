@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="colorful_labels">Projekte und Tags farbig kennzeichnen</string>
+    <string name="colorful_labels_hint">Namen und Auswahlmarkierungen bleiben ohne Farbe sichtbar. Deaktiviere Farben für eine einfarbige Liste.</string>
+    <string name="colorful_labels_high_contrast_hint">Die Systemeinstellung für Text mit hohem Kontrast deaktiviert diese Farben ebenfalls.</string>
+    <string name="row_layout">Darstellung</string>
+    <string name="row_regular">Normale Zeilen</string>
+    <string name="row_compact">Kompakte Zeilen</string>
+    <string name="task_actions">Aufgabenaktionen: %1$s</string>
+    <string name="list_actions">Listenaktionen: %1$s</string>
+    <string name="has_notes">Mit Notizen</string>
+</resources>

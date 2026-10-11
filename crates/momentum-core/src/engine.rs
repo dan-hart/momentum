@@ -8,6 +8,7 @@
 //! mutation returns an [`Outcome`]: whether anything changed, a structured [`Message`]
 //! for a toast, and the id of the undo batch it pushed.
 use crate::listing::{self, SearchIndex};
+use crate::notifications::{NotificationAction, NotificationContent, NotificationRequest};
 use crate::sync_cancellation::{SyncCancellation, SyncOperation};
 use crate::text::*;
 use crate::types::*;
@@ -217,6 +218,22 @@ impl Inner {
             changes: [("isDone".to_string(), json!(false))].into_iter().collect(),
         }]);
         changed_with(Message::TaskCompleted, Some(undo))
+    }
+    fn snooze(&mut self, id: String, minutes: u32, now: u64) -> Outcome {
+        if self.task(&id).is_none_or(|task| task.is_done) {
+            return Outcome::none();
+        }
+        self.notified.remove(&id);
+        self.update_task(
+            &id,
+            [(
+                "remindAt".to_string(),
+                json!(now.saturating_add(minutes as u64 * 60_000)),
+            )]
+            .into_iter()
+            .collect(),
+        );
+        changed_with(Message::Snoozed { minutes }, None)
     }
     fn reopen_tasks(&mut self, ids: Vec<String>) -> Outcome {
         let g = self;
@@ -2030,18 +2047,27 @@ impl Engine {
     }
     /// Push a reminder forward by `minutes` and let it fire again.
     pub fn snooze(&self, id: String, minutes: u32) -> Outcome {
-        self.edit(|g| {
-            if g.task(&id).is_none_or(|task| task.is_done) {
-                return Outcome::none();
+        self.edit(|g| g.snooze(id, minutes, now_ms()))
+    }
+    /// Validate a notification's exact source and apply its native action under one
+    /// owner lock. Edits, sync commits and restore cannot slip between the two.
+    pub fn perform_notification_action(
+        &self,
+        request: NotificationRequest,
+        action: NotificationAction,
+        now_ms: u64,
+    ) -> Result<Outcome, CoreError> {
+        self.try_edit_checked(|g| {
+            let NotificationContent::Reminder { task_id, .. } = &request.content else {
+                return Ok(Outcome::none());
+            };
+            if !crate::notification_schedule::request_is_current(&g.store, &g.prefs, &request, now_ms)? {
+                return Ok(Outcome::none());
             }
-            g.notified.remove(&id);
-            g.update_task(
-                &id,
-                [("remindAt".to_string(), json!(now_ms() + minutes as u64 * 60_000))]
-                    .into_iter()
-                    .collect(),
-            );
-            changed_with(Message::Snoozed { minutes }, None)
+            Ok(match action {
+                NotificationAction::Done => g.set_done(task_id.clone(), true),
+                NotificationAction::Snooze { minutes } => g.snooze(task_id.clone(), minutes, now_ms),
+            })
         })
     }
     /// True once per calendar day: the caller then spawns repeats and refreshes.

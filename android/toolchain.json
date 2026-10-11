@@ -1,0 +1,100 @@
+{
+  "rust": "1.99.0",
+  "ndk": "27.2.12479018",
+  "min_sdk": 26,
+  "build_tools": "37.0.0",
+  "abis": {
+    "arm64-v8a": "aarch64-linux-android",
+    "x86_64": "x86_64-linux-android"
+  },
+  "jna": {
+    "version": "5.19.1",
+    "source_commit": "1a91122853f6ab6f1fb2a4a284a6cf2ed8af0a4d",
+    "aar_sha256": "b57125cb7d16253f0d65a80f7d3a4c3664effa711b8bdbb7f87fb572ce1624ed"
+  },
+  "bundletool": {
+    "version": "1.18.3",
+    "url": "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar",
+    "sha256": "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
+  },
+  "libresync": {
+    "version": "0.6.0",
+    "commit": "839c98c0386ee6a5b8ba2f298de48fa0bf2dacaa",
+    "url": "https://codeload.github.com/dan-hart/LibreSync/tar.gz/refs/tags/v0.6.0",
+    "archive_sha256": "2773cbe8e559097731e8aa0a2dbeb8c47af0a128f07ff3a7ceb369e9203c6303",
+    "source_sha256": "97c29054075bf549670075515d75344b9db9495fcc28c850ea522c310af4b3f4"
+  },
+  "graphics_path": {
+    "version": "1.1.0",
+    "source_commit": "1c44f0be720ff16cd30357ad2375239bf97a1da8",
+    "release_notes": "https://developer.android.com/jetpack/androidx/releases/graphics#graphics-path-1.1.0",
+    "source_url": "https://android.googlesource.com/platform/frameworks/support/+/1c44f0be720ff16cd30357ad2375239bf97a1da8/",
+    "aar_sha256": "d031370d45ba4129a175fe9de913328a512b01a3c267e0eaf6b9b759f35842ae",
+    "files": {
+      "src/main/cpp/CMakeLists.txt": {
+        "sha256": "dc981826c335432c08cdbee3fd880fa38b5b3938247da67c7bdebc8d34ac35f5",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/CMakeLists.txt"
+      },
+      "src/main/cpp/Conic.cpp": {
+        "sha256": "49b3da93aa43480cf9cd481590be48705cb9340c52e5d09635efbd0ece07be83",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/Conic.cpp"
+      },
+      "src/main/cpp/Conic.h": {
+        "sha256": "cd315ad7c8d030c72e96893e9a0feec463d72d2066209a203dedcf0925398a6f",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/Conic.h"
+      },
+      "src/main/cpp/Path.h": {
+        "sha256": "4ee841338063d8c6f71ff4c655ecf52559f6c6df9af79835388dae1ebcd8b982",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/Path.h"
+      },
+      "src/main/cpp/PathIterator.cpp": {
+        "sha256": "3705946b43bf894e013f46ccc940f9923f43285340f8fc2128f95c59238ec7f8",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/PathIterator.cpp"
+      },
+      "src/main/cpp/PathIterator.h": {
+        "sha256": "a16e99b0273fb7205607eb0cf51fc7be518a55f3446a304f92ecab353e77be6f",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/PathIterator.h"
+      },
+      "src/main/cpp/libandroidx.graphics.path.map": {
+        "sha256": "bc338abd36eeb27059572903ad167cf4231a36ca92be4eae3574501aa83f0d8c",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/libandroidx.graphics.path.map"
+      },
+      "src/main/cpp/math/TVecHelpers.h": {
+        "sha256": "1b0d6b06c5bbd6b438f9d8440ac78cf93fb8a713761badc59a4412b6457c1014",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/math/TVecHelpers.h"
+      },
+      "src/main/cpp/math/compiler.h": {
+        "sha256": "d53e85383580e5dbf81cbcb24426b0fe1bf419b4837540242dbdca3f1df4cf66",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/math/compiler.h"
+      },
+      "src/main/cpp/math/vec2.h": {
+        "sha256": "09e1a8eb3f8fdf9c1071500f1a4933f67caeb6d0f765d5c44ba968370de9fcb1",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/math/vec2.h"
+      },
+      "src/main/cpp/pathway.cpp": {
+        "sha256": "4be68d6fdb6376e95560f7c49a79aa0cd97218d758cf11ea3230ac9124485800",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/pathway.cpp"
+      },
+      "src/main/cpp/scalar.h": {
+        "sha256": "b1d2bba80a4c9272d84473b6f09f700972b016f7579842d3a87bdbbdb2af1edc",
+        "upstream_path": "graphics/graphics-path/src/main/cpp/scalar.h"
+      },
+      "build.gradle": {
+        "sha256": "4200a2ceb81e6ead35172bf7278242981b1230858e6c29537db71b9bc73a9bbd",
+        "upstream_path": "graphics/graphics-path/build.gradle"
+      },
+      "LICENSE.txt": {
+        "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+        "upstream_path": "LICENSE.txt"
+      }
+    },
+    "kotlin_source_sha256": {
+      "androidx/graphics/path/ConicConverter.kt": "796c8ddca94a9945a24cdcfba6b03fa09f297b537fd232dae5eea59a8e6fa721",
+      "androidx/graphics/path/ConicsImpl.kt": "5a253e92a3dbaece2f47a933a838a3c72b90119ea3384470067b04f0930182a9",
+      "androidx/graphics/path/PathIterator.kt": "2c0cb51a935c6f793fd2ca6238fd148757d9925de661bb00b664c8ef498398cd",
+      "androidx/graphics/path/PathIteratorImpl.kt": "956c650b7399ae1849c595540b324f9801928c13272c49d95eaeb80077ff74ee",
+      "androidx/graphics/path/PathSegment.kt": "2a954487037514fae63b826e54550ba7d735567722ebab408d6bf6a387ff13f4"
+    },
+    "classes_sha256": "e86697d4a35249f4e75cb1368dde7937e5901e2c9b314065fee8032e2032b2f0"
+  }
+}

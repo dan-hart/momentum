@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="colorful_labels">Color-code projects and tags</string>
+    <string name="colorful_labels_hint">Names and selection marks remain visible without color. Turn colors off for a monochrome list.</string>
+    <string name="colorful_labels_high_contrast_hint">System high-contrast text also turns off these colors.</string>
+    <string name="row_layout">Layout</string>
+    <string name="row_regular">Regular rows</string>
+    <string name="row_compact">Compact rows</string>
+    <string name="task_actions">Task actions: %1$s</string>
+    <string name="list_actions">List actions: %1$s</string>
+    <string name="has_notes">Has notes</string>
+</resources>

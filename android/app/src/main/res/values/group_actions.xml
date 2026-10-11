@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="select_shown_group">Select shown tasks in %1$s</string>
+    <string name="selection_actions">Actions for selected tasks</string>
+</resources>

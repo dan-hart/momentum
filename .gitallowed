@@ -1,3 +1,10 @@
 crate::keyring::get\("nextcloud"\)
+.gitallowed:[0-9]+:
 secret\("nextcloud"\)
 FileCreateFlags::PRIVATE
+# Reviewed Android notification identifiers and pinned upstream CMake scope.
+ReminderScheduler\.kt:[0-9]+:            val key = intent\.getStringExtra\(KEY\) \?: return@withLock false$
+ReminderScheduler\.kt:[0-9]+:            \.putExtra\(KEY, key\), flags or PendingIntent\.FLAG_IMMUTABLE\)$
+ReminderScheduler\.kt:[0-9]+:            \.setData\(Uri\.parse\("momentum-private://reminder/\$key/\$action"\)\)\.putExtra\(KEY, key\)\.putExtra\(ACTION, action\),$
+ReminderScheduler\.kt:[0-9]+:        const val KEY = "momentum\.notification\.key"$
+android/vendor/graphics-path/src/main/cpp/CMakeLists\.txt:[0-9]+:    PRIVATE$

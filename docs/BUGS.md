@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-10-02. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-10-11. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in
@@ -2409,3 +2409,890 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Evidence:** coordinator feedback-event and native view checks are recorded in the
   PR #4 review-fix handoff in [PROGRESS.md](PROGRESS.md). Spoken VoiceOver acceptance
   remains separate and must not be inferred from accessible labels or unit tests.
+
+## B-099 — generated Kotlin error payloads redeclare Throwable.message
+
+- **Severity:** High. **Features:** F-001/F-017. **Source:** Android source-build
+  compiler failure reproduced during native scaffolding on 2026-10-10.
+- **Reproduction:** generate Kotlin from the actual `momentum-ffi` library, then
+  compile error variants whose Rust payload field is named `message`. UniFFI's
+  exception projection also implements `Throwable.message`; generated declarations
+  collide and the Android client cannot compile.
+- **Expected/fix:** keep Rust errors and wire/Apple compatibility intact. Rename only
+  the Kotlin projection's Actionable/Transient/Io/Invalid/Nearby payload field to
+  `detail` in [uniffi.toml](../android/uniffi.toml), then regenerate through the build.
+  Generated code is not hand-edited.
+- **Platforms:** Android Verified for generated Kotlin compilation; compiler defect reproduced. Existing Linux,
+  macOS and iOS exception projections are unaffected by the Kotlin-only renaming.
+- **Evidence:** the code-generation regression in
+  [test_codegen.py](../android/scripts/tests/test_codegen.py) generates actual
+  bindings and checks the exception declarations. Current generated-binding/build checks pass as recorded below. See [Android acceptance](ANDROID-PARITY-CHECKLIST.md).
+
+- **Current verification (2026-10-10):** Android Verified for generated Kotlin compilation and error projections. Fresh locked generation, 33 host-tool regressions, 69 JVM tests and gate11d debug/minified-release APK/AAB builds pass. Existing wire/Apple projections remain compatible; generated files remain build outputs. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-100 — a new Android editor can save into the later navigation context
+
+- **Severity:** High. **Feature:** F-006. **Source:** source-confirmed ownership defect
+  during Android review on 2026-10-10; pre-fix live misfiling was not separately recorded.
+- **Reproduction:** open a new task from Morning/project/tag, navigate to another
+  destination while the editor remains open, then Save. Reading the active route at
+  Save time applies the later destination instead of the editor's creation source.
+- **Expected/fix:** capture and persist the editor's source view/context when it opens;
+  pass that source into Rust task creation independently of subsequent navigation.
+  Keep drafts on failure and do not duplicate Rust membership rules in Kotlin.
+- **Platforms:** Android Verified for the captured-source regression. No equivalent new defect is established in
+  Linux/macOS/iOS; their prior source-context evidence remains independent.
+- **Evidence:** `sourceContextSurvivesNavigationBeforeSave` in
+  [ComposeFlowTest.kt](../android/app/src/androidTest/java/com/codedbydan/momentum/ComposeFlowTest.kt)
+  covers Morning → new draft → other project → Save, asserting the original family
+  destination/slot. Current API26/API37 native suites pass this regression; broader real-OS process
+  recreation and project/tag interaction remain separate acceptance.
+
+- **Current verification (2026-10-10):** Android Verified for the controlled captured-source regression. The source-context regression passes in the current API26/API37 native suites with the unchanged gate11d production application. Broader physical lifecycle/project/tag interaction remains in the Android checklist. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-101 — large Android task notes crash native editor layout
+
+- **Severity:** High. **Feature:** F-006/F-018. **Source:** runtime reproduced on the
+  disposable API 36 emulator on 2026-10-10 with approximately 450 KB of Unicode notes.
+- **Reproduction:** open/render the long notes draft in the native editor. An
+  unbounded text viewport triggered a Compose layout-state/measurement exception.
+- **Expected/fix:** bound the notes TextField's viewport while retaining all source
+  text and ordinary scrolling/editing. Large draft content belongs in the private
+  atomic draft file; SavedState carries a small draft identity. The potential Binder
+  saved-state overflow was a source risk, not a separately reproduced crash.
+- **Platforms:** Android Verified for bounded native layout/private-draft preservation; runtime failure reproduced. This does not
+  establish a corresponding Apple/Linux editor defect.
+- **Evidence:** the focused `largePrivateDraftUsesSmallSavedStateAndRestoresWithoutTruncation`
+  regression in [ComposeFlowTest.kt](../android/app/src/androidTest/java/com/codedbydan/momentum/ComposeFlowTest.kt)
+  passed on API 36 after the bounded viewport fix. Full Unicode preservation, fresh
+  final suite, process/configuration recreation, IME and large-text device checks are
+  separate acceptance gates; no broad native verification is claimed.
+
+- **Current verification (2026-10-10):** Android Verified for native bounded-layout/private-draft preservation. The original large-private-draft regression and six bounded-source cases pass on API26/36/37. Full draft/VM recreation and one Rust Save preserve undisplayed Unicode. B-122 separately records layout performance and native IME scope; physical-device interaction remains open. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-102 — stale Android notification actions have a validation/mutation race
+
+- **Severity:** High. **Feature:** F-007. **Source:** source-confirmed concurrency
+  defect on 2026-10-10; a stale notification corrupting live tasks was not reproduced.
+- **Reproduction:** Done/Snooze first validates a notification's source revision,
+  then mutates in a separate engine call. Native sync/restore can change the task
+  between calls even when Kotlin serializes UI operations, allowing a stale action
+  to affect the changed task.
+- **Expected/fix:** the additive Rust `perform_notification_action` API validates the
+  source, applies the action and durably commits under the same engine owner lock.
+  [ReminderScheduler.kt](../android/app/src/main/java/com/codedbydan/momentum/platform/ReminderScheduler.kt)
+  uses this atomic entry point. Rejected/stale/invalid/failed actions must preserve
+  task, source ledger and Undo state; one accepted action must commit once.
+- **Platforms:** Android/shared core Verified for the atomic-action scope. Existing
+  GTK/CLI/Apple generated consumers remain compatible. Equivalent existing-platform races have
+  not been established by this Android review.
+- **Evidence:** [notification_actions.rs](../crates/momentum-core/tests/notification_actions.rs)
+  covers accepted/repeated/stale/invalid-source, failure and restore boundaries.
+  The implementation pass reported 26 targeted Rust tests passing; complete workspace/generated-consumer/native checks now pass below. Cold
+  physical notification action delivery remains a separate OS acceptance gate.
+
+- **Current verification (2026-10-10):** Android/shared core Verified for atomic source validation and mutation. The six atomic notification-action and 21 source-ledger regressions pass in both complete Rust workspace gates (299 passed, one ignored). Fresh generated core, CLI and Apple consumer checks pass; Android native action/restore regressions pass. Actual locked OS invocation remains B-113's separate manual gate. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-103 — LibreSync connection-test wording overstates a read-only guarantee
+
+- **Severity:** Medium. **Feature:** F-043. **Source:** source-confirmed contract and
+  documentation discrepancy on 2026-10-10; no new live data-loss claim.
+- **Reproduction:** iOS `NearbyLifecycle.testConnection` calls `runtime.syncNow` and
+  waits for its attributed outbound cycle; `CoreNearbyRuntime.syncNow` calls Rust
+  `p2pSyncNow`. This starts a task-data exchange rather than a read-only health probe.
+  Previous blanket “never changes task state” documentation exceeds that source contract.
+- **Expected/next action:** scope the read-only guarantee to Nextcloud's WebDAV probe.
+  Android keeps LibreSync's explicit Sync Now action. A true bounded/cancellable
+  LibreSync health probe needs an approved pinned protocol/core API proposal; do not
+  relabel an exchange as a read-only test or duplicate protocol behavior in Kotlin.
+- **Platforms:** Android read-only LibreSync probe Blocked on the missing shared
+  protocol contract; Nextcloud probe Implemented. iOS source behavior confirmed,
+  existing feature status preserved; runtime mutation during a probe is unverified.
+  Linux/macOS connection-test behavior was not assessed in this pass.
+- **Evidence:** [NearbyLifecycle.swift](../ios/Packages/MomentumMobile/Sources/MomentumMobile/NearbyLifecycle.swift)
+  and [CoreNearbyRuntime.swift](../ios/Packages/MomentumMobile/Sources/MomentumMobile/CoreNearbyRuntime.swift).
+  Android F-043 remains In progress with this blocked sub-capability visible in
+  [Android acceptance](ANDROID-PARITY-CHECKLIST.md).
+
+## B-104 — the older Espresso input injector fails before Android 37 UI actions
+
+- **Severity:** High for Android acceptance tooling. **Features:** F-001/F-020.
+  **Source:** runtime reproduced by the baseline API 37 instrumentation suite on
+  2026-10-10; this is a test-framework compatibility failure, not evidence that the
+  product's task actions fail.
+- **Reproduction:** the resolved Espresso 3.5.x input strategy reflects the removed
+  `android.hardware.input.InputManager.getInstance` method. Compose tests fail before
+  input with `java.lang.NoSuchMethodException: android.hardware.input.InputManager.getInstance []`
+  in `InputManagerEventInjectionStrategy`. Baseline log:
+  `android/rust-target/api37-native-suite-baseline.log`.
+- **Fix:** explicitly pin Espresso 3.7.0 and use Compose's `junit4.v2.createComposeRule`
+  in native UI tests. No product input workaround or unsupported OS reflection added.
+- **Platforms/status:** Android Verified for this API 36/37 framework-failure scope
+  at the gate below; unrelated platform test frameworks are unaffected.
+- **Evidence:** API 36 and API 37 arm64/16 KiB full gate each passed 37 native tests,
+  zero failures, in 44.574/43.485 seconds. Logs:
+  `android/rust-target/api36-native-gate2.log`, `android/rust-target/api37-native-gate2.log`.
+  App SHA-256 `f57e78680af734f015e72c02f0666fc8181eebec5c84cbefb9ee0409e5f3ee66`;
+  test SHA-256 `70ceaad54872cc5bf512f376e1f81933bb3d5c4a92f4e28c74a6bed535e411c3`.
+  This dirty-source gate predates typography/system indexing/recurrence refinements;
+  their verification remains independent.
+
+## B-105 — Android editor and restore admission can race suspended work
+
+- **Severity:** High. **Features:** F-006/F-029/F-040. **Source:** source-confirmed
+  ownership/admission defects on 2026-10-10, with controlled native regressions after
+  the fix. Pre-fix live draft loss or restore corruption was not separately established.
+- **Reproduction:** while task detail loading suspends, another Add/share can replace
+  its draft. Restore that claims its source/busy state only after a suspension permits
+  cancellation, repeated restoration or another action to race the same backup input.
+  Unbounded externally supplied search/identifier values can also inflate SavedState;
+  a Binder crash from those values was a source risk, not a reproduced failure.
+- **Fix:** explicit editor-loading/restore admission, retained ordered private capture
+  queue, captured backup input and synchronous busy claim reject competing edits,
+  cancellation and reentry; resume pending captures after ownership is released.
+  Search is capped at 4,096 characters and invalid/oversized task identifiers never
+  enter SavedState. Keep failed drafts and concrete errors.
+- **Platforms/status:** Android Verified for the controlled task-open, restore and
+  oversized-state regressions below. Existing Linux/macOS/iOS behavior is not assessed
+  by these Android tests. Broader lifecycle and actual external-entry acceptance remain
+  explicit rather than implied by this status.
+- **Evidence:** three [ViewModelConcurrencyTest](../android/app/src/androidTest/java/com/codedbydan/momentum/ViewModelConcurrencyTest.kt)
+  cases passed in both 37-test API 36/API 37 gates recorded under B-104, using controlled
+  suspended repository reads/restore barriers and 450 KB rejected input. Eight capture
+  queue tests and five text-import tests also passed. App/test hashes identify the exact
+  pre-typography dirty-source artifact; future editor/queue changes need fresh coverage.
+  The later capture-count change introduced the separate drain-ordering regression
+  recorded as B-112; this earlier evidence does not verify that new source.
+
+## B-106 — Android change events can release the restore service barrier
+
+- **Severity:** High. **Features:** F-025/F-026/F-029. **Source:** source-confirmed
+  admission defect on 2026-10-10; live restore corruption was not reproduced.
+- **Reproduction:** an edit or settings operation admitted before restore finishes
+  while `pauseForRestore` drains native I/O, then calls `changed`. The former event
+  sequence check treated that newer event as permission to resume services, even
+  though backup replacement had not returned.
+- **Expected/fix:** only the restore owner may release the barrier. `changed` keeps
+  transport, reminder and search admission paused; the ViewModel explicitly calls
+  `resumeAfterRestore` after import succeeds, fails or is cancelled, including a
+  failure while pausing. UI restore admission remains held through that resume.
+- **Platforms/status:** Android Verified for controlled restore-barrier ownership; other frontends were not changed or
+  established as affected by this Kotlin lifecycle defect.
+- **Evidence/limits:** new isolated native regressions in
+  [CoordinatorTransportTest.kt](../android/app/src/androidTest/java/com/codedbydan/momentum/platform/CoordinatorTransportTest.kt)
+  and [ViewModelConcurrencyTest.kt](../android/app/src/androidTest/java/com/codedbydan/momentum/ViewModelConcurrencyTest.kt)
+  model an earlier edit completing during the barrier and successful/failed pause
+  ownership. They pass on current API26/API37 artifacts as recorded below; earlier
+  pre-fix artifacts are not used as evidence for this source.
+
+- **Current verification (2026-10-10):** Android Verified for controlled restore-barrier ownership. Current CoordinatorTransport/ViewModelConcurrency native cases pass on API26 and API37, including an earlier operation completing inside the barrier and successful/failed pause resumption. Actual document-provider replacement/relaunch is separately recorded under F-029; hosted transport remains open. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-107 — sync setup failures can prevent Android notification opt-out
+
+- **Severity:** High, privacy. **Features:** F-007/F-038. **Source:** source-confirmed
+  control-flow defect on 2026-10-10; actual notification removal is verified by the
+  disposable-emulator regression below.
+- **Reproduction:** after a task-title notification is displayed, revoke Android 37
+  LAN access with LibreSync selected, then disable notifications. The preference
+  persists, but sync setup throws before reminder reconciliation, so the displayed
+  private notification is not promptly removed. Invalid native nearby credentials
+  reach the same failure path without changing runtime permission mid-process.
+- **Expected/fix:** foreground, preference-change and restore-resume processing
+  reconcile local notifications independently of foreground/background sync setup.
+  A sync error remains visible while disabling notifications cancels app-owned
+  displayed notifications and scheduled alarms.
+- **Platforms/status:** Android Verified for controlled native notification removal; corresponding Linux/macOS/iOS control
+  flow was not assessed by this Android-specific reproduction.
+- **Evidence/limits:** `syncSetupFailureCannotKeepAPostedPrivateReminderAfterOptOut`
+  in [CoordinatorTransportTest.kt](../android/app/src/androidTest/java/com/codedbydan/momentum/platform/CoordinatorTransportTest.kt)
+  uses an isolated store, deliberately incomplete Keystore credentials and a real
+  NotificationManager observation. It is restricted to an explicitly opted-in
+  disposable emulator and passes the current native gate below. No production store,
+  account, index or background work is used.
+
+- **Current verification (2026-10-10):** Android Verified for the native notification opt-out failure path. The opt-in disposable test passes on API26/API37 with an actual NotificationManager observation and incomplete fixture Keystore credentials: sync failure remains actionable and displayed private reminders are removed after opt-out. Real LAN revocation/system permission recovery remains a separate acceptance scope. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-108 — pre-restore notification actions accept identical restored tasks
+
+- **Severity:** High. **Feature:** F-007/F-029. **Source:** reproduced by a targeted
+  shared-core regression on 2026-10-10 in the dirty `task/android-native` worktree.
+- **Reproduction:** schedule and accept a reminder, export/import the same backup,
+  then perform the old Done/Snooze action. The restored task retains its ID, title
+  and reminder time, so the old source identity previously still validated and
+  changed the replacement task.
+- **Expected/fix:** include the existing durable `p2p_restore_epoch` in private
+  notification source revisions. Restoring changes source identity even for equal
+  task fields, and old actions fail closed under the engine owner lock. No public
+  API or task/store format changed; existing scheduled source identities are
+  intentionally invalidated and native reconciliation must reschedule them.
+- **Platforms/status:** shared-core Verified for restored-source identity rejection. Android uses the atomic action API;
+  Linux/macOS/iOS use the same scheduling source identity where integrated, but
+  their platform action routing was not separately reproduced as vulnerable.
+  Native restore cancellation reduces exposure without repairing this shared
+  identity contract. Fresh generated-consumer checks pass as recorded below.
+- **Evidence/limits:** the same-ID/title/time regression in
+  [notification_actions.rs](../crates/momentum-core/tests/notification_actions.rs)
+  failed before the fix because the old action changed the restored task. It
+  checks both Done and Snooze rejection, unchanged task/disk/Undo state, reopen
+  identity persistence and acceptance of the newly generated request. Targeted
+  post-fix `notification_actions` (6) and `notification_ledger` (21) tests all passed.
+  Full workspace/generated/native consumer checks pass; results and their
+  runtime limits are recorded in the dated progress handoff.
+
+- **Current verification (2026-10-10):** Shared core Verified for restored-source identity rejection. Both full Rust gates pass 299 tests with one intentional ignore; fresh mo/generated FFI, MomentumKit (164), MomentumMobile (158), unsigned Mac and iOS-simulator builds pass. Android native restore/stale-action cases pass. Apple/Linux action-routing runtime and physical reminder delivery are not inferred from consumer builds. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-109 — Android typography sliders expose a 44dp semantic target
+
+- **Severity/reproduction:** medium accessibility defect, reproduced on API 36 and
+  API 37/16 KiB in `TypographySettingsTest.nativeControlsChangeOnlyTheirAreaAndResetBoth`
+  during the 2026-10-10 gate3 dirty-source run. The assertion measured 44dp where the
+  native control requires a minimum of 48dp. Existing pointer hit-area expansion does
+  not establish the measured semantic/layout target.
+- **Expected/actual:** size controls retain a minimum 48dp accessible area. The native
+  Slider track/thumb retained its smaller semantic bounds inside an outer min-height
+  modifier, despite the requested surrounding space.
+- **Cause/fix:** the first modifier-order attempt still exposed 44dp in gate4b,
+  including 44.19046dp on API 26. Exact Material3 1.4.0 source lays out the native
+  range node from its track/thumb sizes; the default thumb is 44dp. The public native
+  thumb slot now provides `SliderDefaults.Thumb` with a 48dp minimum and shared
+  interaction source. Native range actions remain; the original threshold is unchanged.
+- **Platforms/status:** Android Verified for the native 48dp range target.
+  Linux/macOS/iOS are not affected by this Compose modifier-order defect.
+- **Evidence/limits:** both `android/rust-target/api36-native-gate3.log` and
+  `api37-native-gate3.log` record the 44dp failure. The same failed gate also uncovered
+  a separate toolbar fixture error: an Application configuration context lacked the
+  UI/display association needed by native window services. That fixture now retains
+  its host Activity context, changes the actual app locale through LocaleManager
+  and supplies real Android Density; fixtures restore the prior app locale and its
+  combined-scale title/action/scroll checks remain intact.
+  The Activity-context exception stopped in gate4b, while the root toolbar case then
+  found ambiguous task/list actions sharing the root View Options label (B-110).
+  Current native thumb and unique named-action gates pass below.
+
+- **Current verification (2026-10-10):** Android Verified for the recorded 48dp native range target. Current native typography/toolbar tests pass with the original 48dp threshold on supported API26/API37 scopes. The native thumb slot keeps range semantics and independent scale/reset behavior. Spoken/pointer/physical-device acceptance remains open. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-111 — Android silently discards sync-status persistence failures
+
+- **Severity:** Medium. **Features:** F-025/F-026. **Source:** source-confirmed
+  persistence defect on 2026-10-10; the isolated native write-fault regression
+  passes below.
+- **Reproduction:** retain a prior saved sync error, make
+  `android-platform-state.json.new` a directory, then finish a successful exchange
+  or report a newer failure. AtomicFile cannot start its write, but the former
+  `runCatching` discarded the exception. Live UI shows the current result while
+  restart reads the older status without a persistence warning.
+- **Expected/fix:** a separate localized status-save warning preserves the actual
+  exchange result, typed recovery error and last successful sync. Synchronize the
+  latest private desired status with write attempts, retain it on failure, and
+  offer an explicit local-only save retry. Do not recursively persist a write
+  failure or start another exchange from that retry. The warning/retry remain
+  accessible when the selected provider is Off.
+- **Platforms/status:** Android Verified for the native atomic-write/retry fault path. Other frontends do not use this Kotlin
+  AtomicFile status adapter; their own status persistence was not assessed here.
+- **Evidence/limits:** the real damaged-copy recovery test in
+  [CoordinatorTransportTest.kt](../android/app/src/androidTest/java/com/codedbydan/momentum/platform/CoordinatorTransportTest.kt)
+  now injects an isolated atomic-write obstruction, verifies actual exchange
+  success plus retained old bytes, then saves the latest typed error and checks
+  restart. It asserts retry preserves the core success timestamp and does not
+  repeat server-copy replacement. Current Android build/native gates pass for this scope below.
+
+- **Current verification (2026-10-10):** Android Verified for isolated AtomicFile status-write failure and local retry. The real exchange/recovery native fixture passes on API26/API37, retaining prior bytes on write failure, recording actual exchange success truthfully, and saving the latest typed status through local-only retry without repeating replacement. External-server acceptance remains separate. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-112 — A queued drain can reopen a dismissed share
+
+- **Severity:** High. **Features:** F-006/F-040. **Platforms:** Android reproduced;
+  Linux/macOS/iOS do not use this Android capture queue.
+- **Reproduction/evidence:** two durable shared drafts and twenty repeated drain
+  requests, then dismiss the first draft. On both API 36 and API 37, the gate3
+  regression timed out with the first draft still visible although the queue had
+  already removed its reference. The focused diagnostic recorded `title=First`,
+  `loading=false`, `error=null`, and `queue=1`. Logs:
+  `android/rust-target/api36-native-gate3.log`, `api37-native-gate3.log`, and
+  `queue-gate3-diagnostic.log`; dirty `task/android-native` based on `200f686c`.
+- **Cause:** the newly added queue-count read suspended an older drain before its
+  idle check. Dismissal handed completion to a different coroutine, so that older
+  drain could claim the old head before completion committed its removal.
+- **Fix/status:** Verified for controlled concurrent capture drain/completion. Dismissal records its pending completion synchronously;
+  every drain commits that completion under the queue mutex before claiming a head.
+  It retains the completion on failure and preserves unreadable queue bytes. Idle
+  drains no longer suspend solely to recount a currently presented editor.
+- **Acceptance:** current concurrent drain, corrupt-completion recovery, queue
+  count and complete native capture checks pass below. This is a
+  reproduced regression, not an inference from the earlier passing gate2 suite.
+
+
+- **Current verification (2026-10-10):** Verified for concurrent capture drain/dismissal and retained recovery. The current complete capture suite passes on API26/API37, including repeated concurrent drains, corrupt completion retention and queue count. Earlier gate3 failures remain historical evidence; actual shipping warm/cold FIFO entry and full sharing have separate recorded probes. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-113 — Android reminder actions can mutate tasks while locked
+
+- **Severity:** High. **Features:** F-007/F-031. **Source:** source-confirmed on
+  2026-10-10 in dirty `task/android-native`; real lock-screen invocation is not
+  claimed as reproduced. Notification privacy hid text but the broadcast Done
+  and Snooze actions did not request authentication and the receiver did not
+  check keyguard before core mutation.
+- **Expected/fix:** require native action authentication (effective API31+) and
+  reject a locked callback on every supported API immediately before mutation.
+  Preserve displayed notification and private receipt for retry after unlocking;
+  show localized guidance to open Momentum and unlock. Existing Open routing
+  remains protected through the Activity. Use the same Rust atomic action API.
+- **Platforms/status:** Android Verified for injected callback policy/native flags; actual
+  OS keyguard acceptance remains open. iOS
+  App Intents already request authentication; the other platforms do not use
+  this Android broadcast adapter and were not reproduced here.
+- **Evidence/limits:** `ReminderOsTest` now checks actual API31+ notification
+  authentication flags and injected locked-policy Done/Snooze rejection, unchanged
+  core/receipt/displayed source, and successful unlocked exactly-once retry.
+  A deterministic closure tests callback policy, not actual OS keyguard behavior.
+  See [native action authentication](https://developer.android.com/reference/android/app/Notification.Action.Builder#setAuthenticationRequired(boolean)).
+
+- **Current verification (2026-10-10):** Android Verified for the injected locked-callback policy and native action flags. Current ReminderOsTest passes on API26/API37: locked Done/Snooze preserve core, receipt and displayed source; unlocked retry commits once; API31+ action authentication flags are present. Injected policy does not prove actual OS keyguard behavior; physical locked-device acceptance remains open. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-110 — Android toolbar locale fixture loses native display association
+
+- **Severity:** Low; verification infrastructure. **Features:** F-020/F-021/F-022.
+  Gate3 reproduced an exception in both API 36/API 37 toolbar tests when an
+  Application configuration context replaced the native Activity context.
+- **Cause/fix:** Android window services require a UI context with display association.
+  The fixture now retains its Activity, uses actual per-app LocaleManager changes
+  and restores the prior locales. A debug-only test-host configuration declaration
+  keeps composition mounted; Android's context-backed font converter remains at
+  system scale 2, combined with interface/content scale 2.
+- **Status/evidence:** Verified for native Activity-context/toolbar fixture behavior. Gate4b no longer reports the UI-context exception.
+  Its root toolbar assertion instead found three controls all named View Options:
+  the root toolbar, task menu and hidden list menu. Product task/list actions now
+  name their task/list, leaving the root label unique. Logs are
+  `android/rust-target/api36-native-gate3.log` and `api37-native-gate4b.log`.
+  Current toolbar/navigation native acceptance passes for the recorded scope below.
+  Production MainActivity retained its UI context throughout; other platforms do not
+  use this Compose test fixture.
+
+- **Current verification (2026-10-10):** Verified for the native Activity-context/toolbar fixture scope. Current API37 toolbar, locale and named-action tests pass, including German combined scaling. B-114 has separate phone/tablet native geometry evidence. No production UI-context replacement was introduced; manual focus/spoken acceptance remains open. See
+  the final artifact/test identities in [PROGRESS.md](PROGRESS.md).
+
+## B-114 — German large-text Android bottom navigation overflows the window
+
+- **Severity:** Medium (P2). **Features:** F-020/F-022/F-053. **Affected:** Android
+  reproduced; other platforms do not use the Material navigation-suite label layout.
+- **Reproduction/evidence:** 2026-10-10 parent live inspection on the owned API 36
+  phone emulator, German/dark appearance and system font scale 2, after gate4b.
+  `android/rust-target/api36-german-dark-large.png` shows Demnächst split within its
+  word and Einstellungen extending beyond the right edge. This is observed native
+  behavior on a dirty artifact, not a suspected source-only problem.
+- **Expected/fix:** all four native navigation targets and their labels stay inside
+  the window. Native label Text now has a single visual line with ellipsis bounded
+  to its available item width. Its complete localized Text semantics are retained,
+  as are native selectable targets and Android font scaling; no Density override or
+  reduced text scale is introduced in product code.
+- **Status/limits:** Verified for the recorded native navigation geometry scope.
+  On 2026-10-10, live API37 inspection of dirty gate6b APK
+  `4513860022158c19f9bbec45d7cd9c53cc4c15f4c08913e6c38b3beaceb069b5`
+  used German/dark, OS font scale 2 and native content/interface scales 2.
+  Phone and real 800dp tablet-window labels stayed within their native items and
+  window; screenshots and full semantic labels were inspected. All settings and
+  window overrides were restored. Evidence: `android/rust-target/b114-live-api37/`.
+  A new actual
+  German system-scale-2/interface-scale-2 navigation regression checks all four tab
+  targets, full label semantics, one-line layout, 48dp geometry and window edges.
+  This automated phone regression passes on API26 and API37 in gate7b.
+  A further test-only 800dp adaptive-window fixture selects the actual Material rail
+  at German system/interface scale 2 and checks every full semantic label inside its
+  native item and real host-window bounds. It allows healthy native width expansion:
+  Material 1.4.0's 80dp rail token is a minimum, and item measurement honors supplied
+  parent constraints. No current rail clipping is inferred solely from the previous
+  bottom-bar screenshot. The tablet fixture also passes gate7b on API37; its app/test
+  hashes are recorded in `android/rust-target/api37-native-gate7b-artifacts.json`.
+  Landscape, spoken TalkBack output and physical-device acceptance remain separate.
+
+## B-115 — Large Android clipboard copies exceed Binder and Android 8 URI grants fail
+
+- **Severity:** High for the uncaught copy failure; Medium for the remaining
+  Android 8 cross-app clipboard limitation. **Features:** F-006/F-015/F-023.
+  **Reproduced:** 2026-10-10, dirty `task/android-native`. An isolated API37 native
+  ClipboardManager probe exactly copied smaller ASCII controls but copying
+  2,097,152 ASCII characters or 552,960 UTF-16 emoji characters threw
+  `RuntimeException` caused by `TransactionTooLargeException`. The editor's full
+  notes exceed this limit and previously passed directly into the same Binder call.
+  Native draft/core data must remain complete; silent truncation is unacceptable.
+- **Fix:** small explicit Copy Notes/Title remains sensitive plain text. Larger
+  text uses a private, nonexported read-only FileProvider stream, with 32 files of
+  at most 4,000,000 UTF-8 bytes each. I/O occurs off the main thread and failures
+  surface localized feedback while preserving notes and the previous clipboard.
+  Explicit Import Paste streams only this app's validated URI and rejects input
+  beyond 1,000,000 characters without replacing the draft. No arbitrary URI fetch,
+  public provider, storage permission, new dependency or task-format change was added.
+- **Android 8 limitation:** an independent API26 cross-UID probe reproduced zero
+  readable URI content and no read grant. Android 8/8.1 ClipboardService requests
+  its grant as system UID, which ActivityManager refuses; Android 9 uses the source
+  UID. See the official sources and probe scope in
+  [DISTRIBUTION_AUDIT.md](../android/DISTRIBUTION_AUDIT.md). Large Copy Notes/Title
+  now rejects before changing the prior clip or creating a payload on API26/27.
+  Full-title sharing is not implemented. **Android cross-app large clipboard on
+  API26/27 remains Blocked by the platform grant behavior.**
+- **Separate native alternative:** the editor's user-invoked **Share full notes**
+  opens the standard Sharesheet with the complete private text stream and a
+  temporary read-only grant to the selected recipient. The separate sharing cache
+  retains existing files through clipboard replacement and process recreation;
+  capacity failure explains how to clear only app cache. No automatic share or
+  all-app grant is made. Cache eviction and user clearing can end stream availability;
+  chooser cancellation does not imply an expired recipient grant.
+- **Verification/status:** Android Verified for scoped safe-copy/preflight and
+  explicit notes-sharing regressions, not unrestricted large clipboard support.
+  Gate8b API26 passes the preserved-old-clip preflight and all three notes-share
+  cases; Gate9 API36 passes all three notes-share cases including native chooser
+  touch. Direct separate-UID full-text/read-only sharing also passes API37.
+  The actual shipping TaskEditor Sharesheet on API36 delivers all 1,105,920 UTF-8
+  bytes exactly to a separate UID. After SIGKILL of the sender, the same recipient
+  URI reread restarts the shipping FileProvider and preserves the complete text,
+  read grant and denied write access. Evidence is in ignored
+  `android/rust-target/clipboard-probe/uri/api36-shipping-share-process-death.log`.
+  API28+ helper regressions and the independent API37 URI clipboard probe preserve
+  complete text/read-only grants and revoke recipient access after replacement.
+- **Platforms/remaining:** Linux/macOS/iOS do not use this Android Binder adapter;
+  their clipboard behavior is unaffected by these Kotlin changes and was not
+  retested here. Minimum-SDK/native regressions are refreshed in the next shared
+  gate; arbitrary recipient apps, API27 runtime, indefinite cache retention and
+  very-large editor performance are not established by the scoped proofs above.
+
+## B-116 — AndroidX Graphics Path JNI has a partial 16 KiB RELRO page
+
+- **Severity:** High; release compatibility. **Affected:** Android dependency;
+  other platform frontends do not load this JNI. **Features:** F-020/F-022/F-053.
+- **Evidence:** 2026-10-10 dirty `task/android-native` gate4b APK contains
+  `androidx.graphics:graphics-path:1.0.1` with 16 KiB LOAD alignment but GNU_RELRO
+  endpoints `0x6000` (arm64) and `0x7000` (x86_64). The official 1.1.0 AAR still
+  ends RELRO at `0x6000` on both ABIs. These fail the strict alignment checker;
+  a task-app runtime crash is not claimed as reproduced.
+- **Cause/fix:** exact upstream 1.1.0 CMake supplies max-page-size only. NDK r27
+  requires common-page-size as well. Fourteen unchanged Apache-licensed release
+  source/build/license files are pinned locally; a dedicated source build uses
+  both flags and preserves upstream exports/API. Gradle replaces only JNI entries
+  of the hash-verified 1.1.0 AAR. Classes/resources/licenses remain byte-identical;
+  no binary patch or weakened ELF/ZIP check is used.
+- **Status/verification:** Verified for the scoped source/alignment/native checks; local source-build and packaging checks
+  pass. Five focused Python regressions pass (32 total script tests at
+  gate10b). Both rebuilt ABIs have LOAD `0x4000`, RELRO endpoint `0xc000`
+  and only JNI_OnLoad exported. Separate output-directory builds reproduced
+  byte-for-byte on this macOS host; all original non-JNI AAR bytes were compared.
+  Source commit `1c44f0be720ff16cd30357ad2375239bf97a1da8` matches all five
+  published Kotlin source files. See [provenance](../android/vendor/GRAPHICS-PATH.md).
+- **Native/package evidence:** gate7b iterator/Canvas regressions pass on API26 and
+  API37 with 16 KiB pages. Gate10b unsigned release APK and bundle-generated universal
+  APK pass strict LOAD/RELRO and ZIP checks for all eight libraries; bundle configuration
+  declares `PAGE_ALIGNMENT_16K`. Both APKs and the AAB retain the source provenance
+  and packaged notices. Exact artifacts are recorded in PROGRESS.
+- **Latest native reassessment:** API26 gate10c passes both regressions; API37's
+  full gate10c conic-render comparison reports 182 differing edge pixels against
+  its 64-pixel coverage limit. Controlled native inspection finds identical 66
+  converted segments before/after size calculation and radii between 23.9999896
+  and 24.0000195 for the expected 24-unit circle. Android's `Paint()` default enables
+  antialiasing from API31. Explicit antialiasing yields 182 edge differences; explicit
+  non-antialiased coverage yields nine. The fixture now explicitly selects the
+  coverage mode and independently checks the actual curve geometry within 0.01;
+  the original 64-pixel limit is retained. No JNI or product rendering fix is claimed.
+  See [Android's constructor contract](https://developer.android.com/reference/android/graphics/Paint#Paint()).
+- **Current acceptance:** gate11h passes both native iterator/Canvas cases in each
+  complete API26/API37 suite, retaining the 64-pixel bound and independent geometry
+  checks. Both current release APKs pass strict checks for all eight libraries; the
+  minified bundle product runs on actual 16 KiB API37 pages. Exact hashes and
+  minimum-runtime checks are in PROGRESS.
+- **Remaining:** independent Linux/F-Droid reproducibility and broader physical
+  acceptance. The local byte comparison does not establish a second-host build.
+
+
+## B-117 — Warm Android background projections miss recurrence at day rollover
+
+- **Severity:** Medium. **Features:** F-007/F-013/F-032. **Source:** source-confirmed
+  on 2026-10-10 in dirty `task/android-native`. A warm process generating reminders
+  or task counts from a worker/date event read the core without the day processing
+  performed by the visible task snapshot. Newly due repeat instances therefore
+  depended on opening/refreshing the UI; no fake-clock OS reproduction is claimed.
+- **Expected/fix:** all native projections use one repository helper that checks
+  live admission after queueing, invokes Rust `dayChanged` then `spawnRepeats` under
+  the same local mutex, and reads the projection only while still admitted. The
+  coordinator also prepares the day before combined/date refresh and emits a
+  revision when recurrence creates tasks. Restore does not consume the day signal
+  while paused and resumes only through its existing explicit owner barrier.
+- **Platforms/status:** Android Verified for the serialized native projection
+  regression scope on API26/API37, 2026-10-10 dirty gate7b. All three
+  `CoordinatorLocalDayTest` cases pass on both runtimes; logs and exact app/test
+  hashes are in `android/rust-target/api{26,37}-native-gate7b*`.
+  Shared recurrence rules and data format are unchanged; other native clients do
+  not use this Kotlin projection path and were not reproduced here.
+- **Regression scope:** `CoordinatorLocalDayTest` uses an isolated missed-repeat
+  backup and injected day observation, with real Rust creation, count and summary
+  outputs. It checks one actual instance, deduplication, explicit restore resume,
+  and admission revoked while waiting for the local queue. It neither changes a
+  global clock nor claims actual OS background scheduling acceptance.
+
+## B-118 — Count notification cancellation cancels its coroutine owner
+
+- **Severity:** High. **Features:** F-007/F-025/F-026/F-032. **Reproduced:** dirty
+  `task/android-native`, parent native gate5b on API36/API37 and gate5c on API26.
+  Default Off/zero count reconciliation and restore drain threw
+  `JobCancellationException`; restore could return before cancelling/draining the
+  active native HTTP exchange. `TaskCountOsTest` and the existing coordinator
+  restore regressions exposed the failure.
+- **Cause:** inside `withContext`, unqualified `cancel()` resolved to the implicit
+  `CoroutineScope.cancel` extension instead of the enclosing private notification
+  helper. Read-only `javap` of gate5 debug bytecode confirms
+  `CoroutineScopeKt.cancel$default` in `cancelAndDrain` and reconciliation branches.
+- **Fix/status:** Android Verified for cancellation-owner and native transport
+  regression scope on API26/API37, 2026-10-10 dirty gate7b. The private helper and every invocation are
+  named `cancelPostedNotification`; explicit `scope.cancel()` remains only in close.
+  `ReminderScheduler.cancel(NotificationRequest)` has a distinct required argument
+  and was not affected. Other platforms do not use this adapter.
+- **Acceptance:** retain the real notification privacy/zero/Off/channel tests and
+  add explicit calling-job-active assertions after cancellation and restore drain.
+  Gate7b passes the caller-job, zero/Off, real notification and native
+  exchange/restore cancellation cases on API26/API37. API26's channel-block fixture
+  required a fresh initially blocked channel because Android 8 ignores an app's
+  attempted importance update to its existing channel; the corrected full channel
+  fixture still needs the next minimum-SDK gate. Gate8b passes all three real
+  framework count tests on API37. Prior gate5 is a failure, not evidence that the
+  corrected sources pass. Historical logs: `android/rust-target/` files
+  `api36-native-gate5b.log`, `api37-native-gate5b.log`, `api26-native-gate5c.log`.
+
+## B-119 — A stale Android backup read replaces the latest selection
+
+- **Severity:** Medium. **Feature:** F-029. **Source-confirmed reproduction:**
+  dirty `task/android-native`, 2026-10-10. Start a slow document-provider read A,
+  select backup B while A remains blocked, and allow B then A to finish. Without
+  request ownership, A republishes itself and deletes B's prepared private file.
+  Cancelling preparation also leaves a late A completion able to reopen replacement
+  confirmation. No production document or task store was used for this assessment.
+- **Fix/status:** Android Verified for the controlled private-provider regression
+  scope on API26/API37, 2026-10-10 dirty gate7b. Both backup preparation cases in
+  `NativeRecoveryTest` pass with real Rust replacement and cancellation. Preparation
+  has a latest-request generation and cancellable job; each read owns a unique
+  temporary file and removes only its unpublished file in `finally`. A stale or
+  cancelled completion cannot replace the selected bytes or publish an error over
+  a newer request. The localized reading/Cancel state is visible before confirmation.
+  A blocking third-party stream may finish its current read before cleanup; this
+  does not claim immediate cancellation of arbitrary provider I/O.
+- **Regression scope:** `NativeRecoveryTest` uses private isolated backups generated
+  by the real Rust engine and a controlled blocking InputStream. It checks A/B
+  ordering with actual replacement contents, and Cancel with unchanged local tasks
+  and no late confirmation. The minified gate7b bundle universal APK also passes
+  actual API37 Downloads SAF export, explicit replacement of a later synthetic
+  control task and cold persistence; full Unicode notes are retained. Evidence:
+  `android/rust-target/api37-release-saf-result.json` and corresponding native XML.
+  Third-party/cloud providers remain unverified. Core data and restore
+  semantics are unchanged; Apple uses a separate coordinated immutable-input path.
+
+## B-120 — An unreadable private draft loses its Android Retry identity
+
+- **Severity:** Medium. **Feature:** F-006. **Source-confirmed reproduction:**
+  dirty `task/android-native`, 2026-10-10. Reconstruct the VM with a normal private
+  draft UUID whose file read fails. Startup retained the bytes but cleared the sole
+  SavedState identity; the generic Retry refreshed tasks and could not recover the
+  retained draft. New editor creation could then displace its recovery reference.
+- **Fix/status:** Android Verified for the private-file/SavedState/UI recovery
+  regression scope on API26/API37, 2026-10-10 dirty gate7b. All four private-draft
+  `NativeRecoveryTest` cases and `NativeDraftRecoveryUiTest` pass on both runtimes.
+  The exact app/test hashes and logs are in `android/rust-target/api{26,37}-native-gate7b*`.
+  A separate
+  SavedState-only list retains up to 32 UUID/context references, without task text
+  or a storage format change. Retry reads the original private file off the main
+  thread, validates capture ownership/order, and claims an idle editor before
+  presenting it. New editors use fresh UUIDs; active editors and failed reads retain
+  their bytes. When the list is full, an additional active failure keeps its original
+  SavedState pointer and new editors wait rather than overwrite a reference.
+- **Native recovery:** localized generic status and a minimum-48dp Retry action are
+  present on the root, task editor and text-import editor. Retry is disabled while
+  an editor or operation owns presentation; recovery checks the existing unlock
+  policy again before publication. No private draft text appears in recovery status.
+- **Regression scope:** four `NativeRecoveryTest` cases use real private draft files
+  for active-editor protection, failed retry/reconstruction, two retained failures,
+  and the full-list extra reference. `NativeDraftRecoveryUiTest` checks the actual
+  Compose button policy and successful recovery. Tests use disposable directories;
+  actual OS lock/third-party provider acceptance remains separate. Other platforms
+  do not use this Android SavedState path; shared core/data formats are unchanged.
+
+## B-121 — Imported long names bypass Quick Add bounds and bury native actions
+
+- **Severity:** Medium. **Features:** F-004/F-005/F-006/F-017/F-048. **Affected:**
+  Android native presentation. The shared core deliberately preserves imported
+  names; the other frontends do not use these Compose controls and are not claimed
+  as reproduced here. Source inspection and disposable native fixtures on
+  2026-10-10 use dirty `task/android-native`, without changing core naming rules.
+- **Reproduction:** an imported long tag can expand a Quick Add completion chip
+  and insert a completed name beyond the normal entry limit. Rejected completion
+  feedback is then lost on Android 8 when its input system sends an unchanged-text
+  caret/composition update. Gate9 API26 native inspection reproduced the default
+  hint replacing the error while the rejected input itself stayed unchanged.
+  Unbounded project/tag/task names also expand list labels, action-sheet headings,
+  destination chips and editor organization/subtask controls; multiline name fields
+  can displace Color, Save and destructive-scope information.
+- **Fix/status:** Android Verified for the scoped controlled native regressions.
+  Tag completion uses the same UTF-8 entry admission as normal editing, preserves
+  the text/caret on rejection and keeps feedback through selection-only updates.
+  Feedback clears after a real accepted text edit. Labels retain complete data and
+  semantics while native line limits, viewport bounds, single-line fields and
+  scrollable dialogs keep actions reachable. Full names remain in Rust, exports,
+  drafts and accessibility text; no import limit or migration was introduced.
+- **Evidence:** all three `QuickAddBoundaryTest` cases pass on API26 gate10b,
+  including actual DPAD caret movement, persistent rejection feedback, unchanged
+  input/core tags and subsequent edit recovery. Gate9 API36 covered bounded/full
+  tag semantics and editor reachability. New real-Rust export/import fixtures
+  cover drawer editing/deletion scope, project movement, Search/grouping, bounded
+  destination chips and task-editor project/subtask controls. All five imported-name and two editor-name fixtures pass in current
+  API26/API37 complete suites. API37 also checks German/system-font-2/app-font-2
+  labels: full 8,192-unit semantics and the same bounded 48dp chip height as its
+  short reference, within the existing 1dp tolerance. Core trimming is respected.
+- **Remaining:** broader device geometry and physical TalkBack/third-party
+  IME/pointer checks. Current full suites and artifacts are recorded in PROGRESS.
+
+## B-122 — Very large emoji notes block the Android editor's first frame
+
+- **Severity:** High; native responsiveness. **Features:** F-006/F-018/F-040.
+  **Affected:** Android; no corresponding Apple/Linux failure is claimed.
+- **Reproduction/evidence:** controlled API36 gate9 shipping MainActivity with a
+  disposable private draft containing 552,960 UTF-16 units / 1,105,920 UTF-8 bytes
+  of emoji. The first editor frame appears by 30.363 seconds cold / 26.725 seconds
+  with the same warm process, using 31.41 / 26.29 seconds of per-process CPU.
+  The warm Activity launch itself times out after 10 seconds, then eventually
+  presents the complete note. Warm ordinary short text takes 1.405 seconds / 1.08
+  CPU seconds; 600,000-unit multiline text takes 2.181 / 2.29 seconds. Host load
+  affects wall time; the per-process CPU measurements independently reproduce the
+  expensive path. These are observed upper bounds, not benchmark guarantees.
+- **State safety:** each run preserves the prior empty capture index, private
+  draft listing and core/settings hashes byte-for-byte. No task was saved or
+  exchanged. Only fixture metadata/screenshots/timings are retained, without the
+  full note text. Evidence is under `android/rust-target/notes-performance-api36`.
+- **Cause:** the sampled warm run spends 24.950 exclusive CPU seconds in
+  `LineBreaker.nComputeLineBreaks`, about 96% of its 26.022-second main-thread CPU
+  total. The Compose 1.12.1/Material 3 source already resolves this field to simple
+  line breaking and no hyphenation; setting those values again does not avoid
+  laying out the complete paragraph. Bounded height alone does not bound text layout.
+- **Status:** Android Verified for the scoped native/performance regression.
+  Both Notes and text-import source now use native
+  section editing above 32,768 UTF-16 units, with bounded 4,096-unit fields and
+  localized position/navigation controls. The existing full private draft remains
+  authoritative; Copy, explicit sharing, Save and Rust parsing still use all text.
+  Android ICU boundaries preserve ordinary graphemes and CRLF; a pathological
+  oversized grapheme uses an explicit lossless code-point continuation. Section
+  selection applies only to the visible text, as the UI explains. No data limit,
+  storage format, core behavior or third-party dependency changed.
+- **IME boundary:** active composition retains the native proposed text/selection
+  unchanged within a fixed temporary budget; committed sections rewindow to 4,096
+  units. Rewriting active composition clears Compose's InputConnection composition
+  and reproduced an appended second composing replacement in gate11a. Whole-edit
+  rejection preserves the source and caret when the budget is exceeded. EOF
+  deletion, CRLF, emoji and oversized joined-grapheme progress have regressions.
+- **Current evidence:** all 14 JVM source-section tests pass in gate11h's 91-test lane.
+  All seven bounded-source and six actual Android InputConnection/native Undo
+  cases pass on API26/API37, with the earlier six-plus-six also passing on API36. The full source persists through the private draft and one Rust
+  Save. Exact artifact identities are recorded in [PROGRESS.md](PROGRESS.md).
+- **Repeated performance:** the same API36 shipping Activity/debug-AVD fixture now
+  appears by 3.811 seconds cold / 2.101 seconds warm, using 5.49 / 1.56 per-process
+  CPU seconds. Notes is reachable with one swipe and lays out 4,096 units while
+  retaining all 552,960 source units. All six short/multiline/emoji cold/warm runs
+  preserve the original queue, private-draft listing and core/settings bytes.
+  The fresh gate11h run has host load 16.4–22.5 with other emulator tests active: these are observed upper
+  bounds demonstrating the removed layout stall, not physical-device or minified
+  release timing guarantees. Raw evidence and before/after values are in
+  `android/rust-target/notes-performance-api36/gate11h-summary.json` and
+  `gate11h-before-after.json`. Complete private bytes were also compared; only
+  the derived disabled-search receipt's `updated-at` changed, while every other
+  private file remained identical.
+- **Current full acceptance:** API26 has 121 passes/six expected skips; API37 has
+  134 passes/three expected skips, zero failures.
+- **Remaining:** physical keyboard/third-party IME acceptance is separate from supported native
+  input interception; no installed-keyboard or spoken-accessibility claim is made.
+
+## B-123 — Native text Undo can replace a different large-note section
+
+- **Severity:** High; editor data integrity. **Features:** F-006/F-015/F-023.
+  **Affected:** Android's new large-source presentation; no corresponding
+  Apple/Linux defect is claimed. Reproduced on a disposable API37 fixture in the
+  dirty `task/android-native` worktree on 2026-10-10 local time.
+- **Reproduction:** replace one character in the first 4,096-unit section of a
+  synthetic note, move to its distinct second section, focus Notes and send actual
+  native Ctrl+Z key events through the Dialog window. The complete VM/private draft
+  no longer matches the edited source because the remembered legacy field Undo
+  history restores a previous section's text into the current source range.
+- **Evidence:** gate11b's two actual Android InputConnection composition tests
+  pass; its native cross-section Undo regression fails at complete-source equality.
+  App SHA-256 `2d3136004870e763662f287a6747f25b80b84d63c0631f4d034a493328a33246`;
+  test SHA-256 `808da1b894c5a0e337c9102ca0afe9efcf9889deeeca76503376bbb64ec812e6`.
+  Log: `android/rust-target/api37-gate11b-ime-undo.log`. Initial edit and distinct
+  second-section assertions pass before the Z event; this is native reproduction,
+  rather than an inference from the remembered UndoManager source.
+- **Fix/status:** Android Verified for the scoped controlled source/IME/Undo regressions. A public Compose field key separates native
+  history when navigation, external source replacement or committed rewindowing
+  changes the field's source mapping. Ordinary same-section typing/composition
+  keeps its identity; focus and caret restoration use supported native APIs.
+  No shared task rule, storage format, core Undo behavior or private framework API
+  changes. The large-text hint explains this section-specific text Undo scope.
+- **Lifecycle follow-up:** gate11c fixed cross-section Undo but exposed a disposal
+  callback: the retired field's `onBlur` sent its old processor text into the new
+  section, clearing focus or overwriting the latest complete draft. The field
+  captures its immutable history scope and rejects retired callbacks before source
+  preparation or admission. All 12 focused source/IME/Undo cases pass on API26,
+  API36 and API37 in gate11d, including native focus, final Rust Save, same-section
+  Undo, short final sections and composition-triggered rewindowing.
+- **Current verification:** all six native InputConnection/Undo cases and seven
+  bounded-source cases pass on API26/API37 in gate11h; complete private source,
+  focus/caret and final Rust Save checks remain intact. Both complete native suites
+  and the 91-test JVM/build lane pass. Ordinary same-section Undo restores the
+  edited section and leaves every other section unchanged.
+- **Remaining:** physical keyboard/IME acceptance remains separate from controlled
+  Android key/input connections. Existing-format capacity gaps are B-127.
+
+## B-124 — Android scale fixture expects a count on an uncounted sidebar destination
+
+- **Severity:** Low; verification fixture. **Feature:** F-044. **Affected:** Android
+  instrumentation only; no production count or task-loss defect was established.
+- **Reproduction/evidence:** gate11d API26 full suite runs 123 cases with one
+  failure at `TaskScaleTest.kt:58`: fixed Today sidebar count is zero while the
+  strengthened fixture expects 1,000. Complete listing row/title/identity/section
+  checks pass before this assertion. The exact installed application/test hashes
+  are in the gate11d handoff. Log: `android/rust-target/api26-native-gate11d-full.log`.
+- **Cause:** shared `listing::sidebar` intentionally assigns zero to fixed navigation
+  destinations; project/tag entries carry canonical unfinished-family counts.
+  The fixture assumed a capability the fixed-sidebar contract does not expose.
+- **Fix/status:** Verified for this fixture scope on API26 and API37. Assert the Inbox project's
+  exact 1,000-family sidebar count and independent Rust `task_count(DueToday)`
+  count, both initially and after reopening; retain complete listing and persisted
+  last-task editing assertions. No production source, rule, preference or contract
+  changed. Both corrected functional/opt-in scale cases pass on API26 (18.739 s)
+  and API37 (23.083 s), using application SHA-256 `695e973cba1c1132bdff110001e80f28bc9ac6a6924079695d0cbcd24a9aac63`
+  and test SHA-256 `ad5fae1c3bd03d3da8ef7d4d822c0b5eb819ed08c1b3800df40dd6586a7d82fc`.
+  Both gate11h complete native suites have zero failures, including the
+  functional 1,000-task case; the opt-in timing samples above remain separate. Exact results and
+  measurement limits are recorded in [PROGRESS.md](PROGRESS.md).
+
+## B-125 — Native Sharesheet fixture taps a clipped recipient label
+
+- **Severity:** Low; verification fixture. **Features:** F-006/F-020.
+  **Affected:** Android instrumentation; no provider/full-text transfer failure was
+  established. Direct separate-UID sharing passes in the same failing full runs.
+- **Reproduction/evidence:** API37 gate11d/gate11e full suites time out waiting for
+  the native recipient after injecting a touch at its accessible label. Passive
+  native-component observations remain on `ChooserActivityLauncher` for 30 seconds.
+  Live four/ten-second screenshots show a collapsed native sheet with the owned
+  tile's second label line clipped near the navigation bar. Accessibility visibility
+  of that text did not prove a reachable touch target. Evidence:
+  `android/rust-target/api37-gate11e-chooser-watch.log` and
+  `api37-gate11e-chooser-live-10s.png`.
+- **Fix/status:** Verified for the native Sharesheet fixture on API26/API37; changed in the test only. Expand the modern native sheet even
+  when the exact label exists, refetch after native idle, require the exact label's
+  enabled/visible clickable tile wholly inside the resolver window, and send a
+  real touch to its center. Original receipt/visibility deadlines and complete
+  Unicode, separate UID, read permission and no-write assertions remain intact.
+  API26 preserves its existing full-screen selection path. All three sharing cases pass in gate11h focused/full suites on both runtimes,
+  including the real chooser touch. Production sharing code is unchanged. Arbitrary
+  recipient/provider and physical-device acceptance remain separate.
+
+
+## B-126 — Large-source fixture checks visibility before the native dialog settles
+
+- **Severity:** Low; verification fixture. **Features:** F-006/F-040. **Affected:**
+  Android instrumentation; no source/save defect was established by this failure.
+- **Evidence:** API37 gate11e's full suite fails the huge-emoji fixture at its
+  initial `performScrollTo().assertIsDisplayed()`, before editing or Save. The same
+  six bounded-source cases pass on an isolated replay, and all source/IME cases
+  pass in gate11d. Log: `android/rust-target/api37-native-gate11e-full.log`.
+- **Assessment:** the fixture awaited ViewModel loading, then immediately opened
+  a native Dialog, supplied the source and checked visibility. Android window/IME
+  and bring-into-view work can run outside Compose's test clock; `isDisplayed`
+  additionally checks the host's actual visible screen rectangle. A readiness race
+  is suspected, but the exact failed geometry was not captured in that old run.
+- **Fix/status:** Verified for the controlled native visibility fixture; changed in the test only. Await the placed field and its
+  actual public visibility, re-scrolling if later native window work invalidates
+  the first scroll. The original ten-second wall deadline, complete VM/private
+  source and Rust Save equality checks remain unchanged. Failure diagnostics
+  contain only bounds, placement and focus; no task/source text or private
+  framework APIs. All seven bounded-source cases and both complete API26/API37 suites pass in
+  gate11h. The earlier failed geometry remains unproven; no product workaround or
+  widened timeout was introduced.
+
+
+## B-127 — Android accepts edits that cannot fit its private draft format
+
+- **Severity:** High; draft durability. **Features:** F-006/F-015/F-040.
+  **Affected:** Android presentation/private drafts; shared task rules and storage
+  have no new text limit. Other native clients were not reproduced here.
+- **Reproduction:** an already durable 4,000,000-byte ASCII Notes field accepts
+  one additional byte into the ViewModel. The delayed private write then rejects
+  it at the existing codec limit, leaving older disk text for process recovery.
+  API37 gate11g's native RED fails immediately at unchanged-source equality after
+  that edit (one test, one failure, 0.193 seconds). Baseline persistence completed
+  first. App `695e973cba1c1132bdff110001e80f28bc9ac6a6924079695d0cbcd24a9aac63`,
+  test `e3ad282fdd5d2b32f908bd6dc71fbd85b1bf86efa5819fc8f6749081b80fcafa`;
+  `android/rust-target/api37-gate11g-draft-admission-red.log`.
+- **Cause:** `setEditor` published before checking deterministic private codec
+  admission. The existing v2 format allows eight 4,000,000-byte UTF-8 fields,
+  10,000 writeUTF tags and a 4,500,000-byte total record. A valid boundary v1 record
+  can exceed v2 by its additional marker byte; startup/recovery ownership also
+  needed admission before editable publication or reference removal.
+- **Fix/status:** Verified for the existing-format admission/retention regressions. Exact allocation-free
+  UTF-8/modified-UTF-8 byte accounting runs before changing text, context, UUID,
+  recovery ownership or the scheduled write. Only the last admitted field/tag
+  identities and bounded counts are cached; rejected input leaves them intact.
+  Whole-edit refusal keeps the previous native text/caret and shows EN/DE feedback.
+  The writer retains defensive validation. No codec version, cap, task rule,
+  dependency or migration changed.
+- **Coverage:** ten new JVM budget regressions and gate11h's complete 91-test JVM lane
+  pass. New native cases check exact VM/private-file/identity/reconstruction
+  preservation, real native input refusal followed by a durable deletion, an
+  oversized existing core task left untouched, and exact old disk/inline record
+  references retained through Retry/new capture. Current artifact identities and
+  actual native results are recorded in [PROGRESS.md](PROGRESS.md). All three
+  admission cases and the new native whole-edit/caret/deletion case pass on both
+  API26/API37; full suites also pass. Gate11g's API26 memory gap is B-128.
+- **Existing-format limitation:** opening an imported task beyond these private
+  draft bounds now refuses explicitly and preserves its complete core contents.
+  An oversized legacy draft keeps its original recovery reference/bytes. Editing
+  those records needs a separately approved private-draft format design; no
+  truncation or new shared-core limit is introduced to hide this gap.
+
+## B-128 — Near-limit private draft reads duplicate large buffers on Android 8
+
+- **Severity:** High; private-draft recovery. **Features:** F-006/F-015/F-040.
+  **Affected:** Android private draft I/O; reproduced on the controlled API26
+  emulator with a 48 MiB application heap. No shared-core or Apple/Linux defect
+  is claimed.
+- **Evidence:** gate11g's 19 focused API26 cases have 17 passes and two failures.
+  The exact-boundary legacy recovery case throws `OutOfMemoryError` while allocating
+  a 6,000,016-byte String in `DraftStore.read`, with about 4.81 MiB free. The native
+  durable-deletion case subsequently reports an unreadable draft; the same memory
+  cause is suspected, but that failure did not independently capture an allocation
+  stack. API37 passes the identical 19 cases and its complete 137-case suite.
+  Exact installed artifacts and the original failures are retained in
+  `android/rust-target/api26-native-gate11g-final-focused.log` and its artifact
+  record. This is a real minimum-runtime recovery gap, rather than a passed check.
+- **Cause:** disk reads retain a growing encoded byte buffer, its String, a full
+  decoded binary record and individual decoded fields. Writes additionally encode
+  and decode the whole record for validation. The native fixtures also held large
+  redundant expected/source/file buffers; those copies amplified the production
+  reader's allocations.
+- **Fix/status:** Verified for the controlled near-limit recovery regressions. Read and write the existing Base64/binary v1/v2
+  format through bounded streams, validate before opening an atomic write, and
+  preserve AtomicFile finalization. Remove redundant fixture snapshots while
+  retaining exact source, file size/SHA-256, identity and recovery assertions.
+  No format version, cap, shared task rule, dependency or migration changes.
+- **Coverage:** twelve streaming regressions pass in the standalone 26-test lane,
+  including independent legacy/canonical bytes, maximum v1/v2 and inline records,
+  partial reads, trailing raw/decoded bytes, malformed fields/tags/markers and
+  caller-owned stream lifetimes. VM errors propagate rather than becoming corruption.
+- **Current native/build verification:** gate11h passes all 19 focused cases on
+  API26 (102.437 seconds) and API37 (43.054 seconds), preserving exact full-source,
+  file length/SHA-256, native caret, identity, deletion/reconstruction and original
+  legacy reference checks. Both complete native suites and all 91 JVM tests pass.
+  Source review finds no further material codec blocker; per-field byte/String
+  allocations and the existing legacy SavedState String remain.
+- **Remaining:** broader physical/low-memory/process-failure acceptance, distinct
+  from these controlled 48 MiB API26 fixtures. A VM memory error propagates rather
+  than being silently classified as a corrupt saved draft.

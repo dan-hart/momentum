@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+Categories:
+  - Task
+License: AGPL-3.0-only
+AuthorName: Dan Hart
+SourceCode: https://github.com/dan-hart/momentum
+IssueTracker: https://github.com/dan-hart/momentum/issues
+Changelog: https://github.com/dan-hart/momentum/blob/HEAD/CHANGELOG.md
+AutoName: Momentum
+RepoType: git
+Repo: https://github.com/dan-hart/momentum.git
+MaintainerNotes: |
+  Draft only: select the first approved Android release commit and validate this
+  recipe in fdroidserver before enabling it. Momentum's own sources remain
+  GPL-3.0-or-later; the binary includes LibreSync under AGPL-3.0-only.
+  All Momentum native libraries are built from locked Rust source by preBuild.
+  JNA 5.19.1 is a FLOSS Maven AAR with upstream native dispatch libraries;
+  its pinned tag/source and Maven SHA-256 are recorded in android/toolchain.json.
+  Current F-Droid policy allows FLOSS dependencies from trusted Maven repositories;
+  actual scanner/build-server review remains required. APK license notices are generated.
+  The builder needs rustup Rust 1.99.0 with Android targets prepared before its
+  isolated build phase. Prebuild must vendor locked Cargo inputs before network
+  access is disabled. Do not bypass the source scanner with scanignore.
+
+Builds:
+  - versionName: 0.4.5
+    versionCode: 4005
+    disable: No approved Android release commit or F-Droid build-server verification yet
+    commit: REPLACE_WITH_APPROVED_ANDROID_RELEASE_COMMIT
+    subdir: android
+    gradle:
+      - "yes"
+    ndk: 27.2.12479018
+    srclibs:
+      - LibreSync@839c98c0386ee6a5b8ba2f298de48fa0bf2dacaa
+    prebuild:
+      - cp -R $$LibreSync$$ ../libresync-src
+      - python3 scripts/build_core.py --verify-source
+      - (cd .. && mkdir -p .cargo && rustup run 1.99.0 cargo vendor --locked --versioned-dirs vendor > .cargo/config.toml && printf '\n[net]\noffline = true\n' >> .cargo/config.toml)
+      - python3 scripts/prepare_fdroid_source.py --vendor ../vendor --lock ../Cargo.lock --report rust-target/fdroid-source-preparation.json
+    postbuild:
+      - python3 scripts/build_core.py --check-apk "$$OUT$$"
+    gradleprops:
+      - momentumRustProfile=release
+    output: app/build/outputs/apk/release/app-release-unsigned.apk
+
+AutoUpdateMode: None
+UpdateCheckMode: None

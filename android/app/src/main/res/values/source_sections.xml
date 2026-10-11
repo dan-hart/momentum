@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="source_section_hint">Large text is edited in sections. Selection applies to the visible section. Text undo starts fresh when the visible section changes. Saving uses the complete text.</string>
+    <string name="source_section_position">Text positions %1$d–%2$d of %3$d</string>
+    <string name="source_section_previous">Previous section: %1$s</string>
+    <string name="source_section_next">Next section: %1$s</string>
+    <string name="source_section_composition">Finish composing this text before adding more. Your previous text is retained.</string>
+    <string name="source_section_long_character">This unusually long character sequence continues in another section. The complete text is retained.</string>
+</resources>

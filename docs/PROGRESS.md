@@ -1,9 +1,18 @@
 # Momentum progress and handoff
 
-Updated: 2026-10-02. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-10-11. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
+
+Android implementation is isolated on `task/android-native` at
+`/Users/danhart/.codex/worktrees/android-native/momentum`, based on
+`200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`, with uncommitted Android/shared-core
+and documentation changes. The primary checkout's inherited changes are preserved.
+The user requested sustained autonomous native Kotlin/Compose work through iOS
+capability parity; Android scaffolding and necessary FLOSS dependencies are approved.
+Local changes only: no commit, push, PR, tag, upload or release. Older workspace
+paragraphs and dated handoffs below retain their original historical context.
 
 Desktop development was consolidated from `.claude/worktrees/pull-latest-code-70308a`,
 based on `0c9c0bf`, using integration branch `task/desktop-mvp` and target `main`.
@@ -30,9 +39,37 @@ performed for this handoff.
 | Linux | Established native GTK4/libadwaita MVP using shared Rust engine | Full SDK/GTK tests and broad isolated GNOME Wayland acceptance ran 2026-09-17. Typography, automation and Background Apps count parity are Implemented; remaining feature-specific native gates are listed below. |
 | macOS | Established SwiftUI/AppKit MVP using UniFFI/shared core | Local build/tests and many native flows recorded; specific deferred/unverified checks below. |
 | iOS | In progress in `task/ios-app`; approved native SwiftUI architecture and real shared Rust core | Four-tab offline workflows build and have scoped iOS 26.5/27 native evidence. Nextcloud and LibreSync are implemented; real simulator notification delivery/actions and App Intents pass. Unit coverage exercises the production background handler, IME boundary, external payload decoding and keyboard fallbacks. Hosted TLS, scheduler-originated execution, separate-device Bonjour and remaining manual system interactions stay open. |
-| Android | Upcoming; no native app foundation yet | Plan native frontend/platform services and bindings around shared Rust core; scope/order to be agreed. |
+| Android | In progress on `task/android-native`; native Kotlin/Compose/Material 3 app using generated UniFFI and the shared Rust engine | Offline task/editor/list flows, optional Nextcloud/LibreSync, private backups, native reminders and opt-in task counts exist. Frozen gate11h source has 91 passing JVM tests, release APK/AAB, zero lint errors and strict 16 KiB native packaging. Controlled API26↔API37 LibreSync pairing/offline convergence/reopen and native minified SAF replacement pass. B-122 removes the large-emoji layout stall, B-123 protects native text Undo/source ownership, B-127 prevents nondurable edits, and B-128 streams private records within their unchanged bounds. Fresh full native/minified checks are being recorded below; oversized imported-task editing still requires an approved private-draft format design. Physical accessibility, external-server/scheduler checks, optional automation and independent store-builder gates remain explicit in [Android checklist](ANDROID-PARITY-CHECKLIST.md). |
 
 ## Current priorities
+
+### 2026-10-11 — Android implementation and acceptance
+
+- Gate11h API26/API37 native acceptance passes after B-127's exact admission
+  before editable publication and B-128's format-preserving streamed private I/O.
+  Current minified/runtime evidence is linked in the final handoff below. The first API26 near-limit fixture exposed a real 48 MiB recovery
+  allocation failure; its failed checkpoint remains recorded. Existing private
+  bounds prevent safely editing oversized imported tasks/boundary legacy records;
+  all source and recovery references are retained, pending an approved format design.
+- B-122/B-123 bound very large native text layout while preserving complete source,
+  active composition, focus/caret and section-specific native text Undo. Identical
+  shipping-Activity/debug-AVD emoji benchmarks remove the original 30.363/26.725-second
+  cold/warm stall; fresh gate11h timing and restoration evidence follows below.
+  Keep physical TalkBack/Switch Access, third-party/hardware IME/pointer and broader
+  configuration lifecycle checks separate from controlled native fixtures.
+- Optional framework AppFunctions automation awaits approval of the concrete
+  [proposal](superpowers/specs/2026-10-10-android-automation-proposal.md).
+  Existing links/shortcuts and locked-policy safeguards remain available. The
+  pending approval does not authorize a public task-query/mutation contract.
+- F-043 Nextcloud Test Connection is read-only. LibreSync Sync Now is an exchange;
+  a true read-only probe needs a shared protocol/API decision (B-103). Physical
+  discovery/hosted-server/scheduler/manual native gates remain open.
+- Gate11h release APK/AAB, bundle validation, lint, packaged notices and strict
+  LOAD/RELRO/ZIP checks for all eight libraries pass. B-116 rebuilds pinned Graphics
+  Path JNI from unchanged source. Local F-Droid metadata/source scanning and fresh
+  offline vendored Rust builds pass for their recorded checkpoints; the final
+  source snapshot, independent Linux builder, Maven/APK scan, second-host
+  reproducibility and admission remain separate gates. CI does not publish.
 
 ### 2026-09-16 — iOS implementation
 
@@ -95,6 +132,23 @@ performed for this handoff.
    scaffolded by desktop feature work. Do not choose a delivery order without a decision.
 4. Preserve open acceptance gaps; resume user-deferred work only when requested.
 
+## Approved Android decisions — 2026-10-10
+
+- Native Kotlin/Jetpack Compose with Material 3/AndroidX, API 26+, current stable
+  target SDK 37, source-built Rust and generated UniFFI Kotlin bindings. Share task
+  behavior; Android owns presentation, lifecycle, permissions and credential storage.
+- Native offline use is free/account-free; no proprietary Google service, advertising,
+  analytics, billing SDK or new sync provider. Optional Off/Nextcloud/LibreSync preserve
+  current formats and stored connections. Keystore secrets and private task/draft
+  storage are excluded from automatic cloud backup/device transfer.
+- F-Droid-compatible source recipe and standard APK/AAB targets support eventual
+  alternative-store/Google Play distribution without store-specific functionality.
+  Signing is optional local environment configuration; publishing/admission remain
+  separate authorized future actions. GPL/LibreSync and dependency notices retained.
+- Android equivalent services follow Android limits: foreground-only nearby sync,
+  discretionary bounded WorkManager Nextcloud work, AlarmManager reminders with
+  truthful exact-access fallback and explicit notification/LAN permission requests.
+
 ## Approved decisions — 2026-09-16
 
 - iOS is the next requested app: native Swift/SwiftUI, tab navigation, shared Rust
@@ -135,6 +189,10 @@ performed for this handoff.
 
 | Item | State | Next action |
 |---|---|---|
+| Android feature/native parity, F-001–F-054 | Native source exists with the exact partial/Planned scope in [Android checklist](ANDROID-PARITY-CHECKLIST.md); no broad Verified status | Complete outstanding code, then record fresh full behavioral/build and native layout/accessibility/OS evidence for each scope |
+| Android notification race, B-102/F-007 | Atomic shared-core action API implemented; 26 targeted Rust tests passed during development | Complete workspace/generated-consumer and final Android stale/cold action acceptance |
+| Read-only LibreSync connection probe, B-103/F-043 | No read-only shared protocol contract; iOS Test Connection starts a sync cycle; Android exposes Sync Now | Prepare a pinned LibreSync/core protocol proposal; keep Nextcloud-only read-only guarantee and blocked sub-capability visible |
+| Android distribution | APK/AAB/signing/source recipe implemented; F-Droid admission, reproducibility and actual store delivery unverified | Verify fresh release/native alignment/notices and independent F-Droid builder/scanner; decide signing/update continuity before an explicitly requested release |
 | Physical LibreSync Linux↔Mac, B-001/F-026 | Earlier desktop deferral remains; implementation is not a proven real-device fix | Preserve earlier evidence and diagnostics until desktop physical testing is resumed |
 | Spoken VoiceOver, F-020 | Explicitly excluded by the user from the current iOS completion scope; AX/keyboard/contrast checks do not establish spoken output | Keep unverified without blocking the user-approved scope |
 | Voice Control and Switch Control, F-020 | Visible touch alternatives, stable labels and named actions exist; live system activation/focus remains unverified | Exercise manually in isolated simulator data |
@@ -151,6 +209,195 @@ performed for this handoff.
 | Billing/tips, F-034–F-036 | Future intention; pricing and entitlements open | Product decision and current provider/store review before implementation |
 
 ## Dated handoffs
+
+### 2026-10-10 — Android restore admission, notification privacy and status receipts
+
+- **B-106/F-029:** generic change events no longer release the restore service
+  barrier. Its ViewModel owner explicitly resumes current-policy transport, search
+  and reminder services after replacement returns or fails, keeping UI admission
+  held until that resume completes. New controlled native regressions cover an
+  earlier edit completing during the barrier and successful/failed pause ownership.
+- **B-107/F-007/F-038:** foreground/background sync configuration each runs under
+  its own guarded step, while local reminder reconciliation runs independently.
+  Notification replenishment cancellation precedes optional credential reads.
+  An opt-in disposable-emulator regression observes a real private notification
+  removed after opt-out despite deliberately incomplete nearby credentials.
+- **B-108/F-007/F-029:** private notification source revisions now include the
+  existing durable restore epoch. A same-ID/title/reminder backup restore regression
+  failed before the fix because the old action changed the restored task. After
+  the fix both old Done/Snooze reject, unchanged task/disk/Undo state persists, and
+  reopened new source identities accept. `cargo test -p momentum-core --test
+  notification_actions --test notification_ledger` passed all 27 tests in this
+  dirty `task/android-native` worktree. Two existing atomic deprecation warnings
+  remain. No public API or task/store format changed; existing scheduled identities
+  intentionally require native reconciliation.
+- **B-111/F-025/F-026:** status-write failure is separate from actual sync/recovery
+  state. A private synchronized latest desired receipt supports explicit local-only
+  save retry; native Sync screens/footer show a localized warning, including when
+  the provider is Off. The real damaged-copy recovery fixture now blocks an atomic
+  status write, checks genuine exchange success and retained old bytes, then retries
+  the latest typed failure and verifies restart without another network exchange.
+- **Status/limits:** these Android follow-up changes are Implemented, pending the
+  fresh parent-owned debug/release/native API 36/API 37 gates. No Gradle or Apple
+  build was run by this subagent. Parent owns whole-workspace/generated-consumer
+  and Apple checks for the shared identity change. Earlier native artifacts predate
+  these fixes; no broad native, launcher, TalkBack or physical-device pass is implied.
+
+### 2026-10-10 — Android colorful labels, real compact rows and navigation follow-up
+
+- **Source scope:** local dirty `task/android-native`, baseline `200f686c`; Android
+  presentation/preferences only. Rust already supplies normalized project/tag/group
+  colors, so no task rules, store/sync fields or generated bindings changed here.
+- **F-019:** saved colorful-label preference, opaque contrast-adjusted native spans
+  and list icons now use those core colors. Names, checkbox marks and selected traits
+  retain meaning without color. Public API 36 high-contrast query/change listener
+  disables custom labels without changing the saved preference; earlier Android
+  versions retain the contrast guard and explicit monochrome opt-out.
+- **F-052:** View Options now offers actual Regular/Compact choices. Compact reduces
+  native row padding/spacing, uses bounded visible title/metadata lines and retains
+  a named notes indicator, full text semantics and 48dp controls. Regular remains a
+  Material ListItem. Empty notes-only supporting slots are removed.
+- **B-109/B-110:** gate4b still measured the native slider below 48dp after the first
+  modifier attempt. Exact Material3 1.4.0 source measures its thumb/track, so the
+  public native thumb now has a 48dp minimum. Task/list menu labels name their object,
+  correcting misleading View Options labels and the ambiguous toolbar assertion.
+- **B-114/F-020/F-022:** parent live German/dark/system-scale-2 inspection reproduced
+  bottom-navigation overflow. Width-bounded native labels now use one visual line
+  with ellipsis while retaining complete localized semantics and native font scaling.
+- **Evidence boundary:** gate4b passed the earlier queue, locale, accent/palette and
+  initial-loading regressions but retained five native failures on each tested API
+  according to the parent run. Those artifacts predate this label/density/nav/thumb
+  source. New four JVM label-contrast/policy tests, three native row/persistence tests
+  and one German combined-scale navigation test are saved, unrun. No Gradle was run
+  by this subagent. Gate5 plus native visual/accessibility checks remain required.
+
+### 2026-10-10 — Android locale, accent and loading follow-up
+
+- **Gate3 observations:** the parent implementation pass ran 55 native tests on each
+  API 36/API 37 (16 KiB) artifact: 51 passed and four failed on each. Two failures
+  came from a toolbar test injecting a non-UI Application configuration context into
+  native window services; one reproduced a 44dp slider semantic target; the fourth
+  was the separate queue fixture owned by the root implementation pass. Logs:
+  `android/rust-target/api36-native-gate3.log` and `api37-native-gate3.log`.
+  This is an actual failed gate, not a pass for the current dirty source.
+- **B-109/F-022:** slider sizing now sits inside its description semantics so the
+  semantic target includes the explicit 48dp area. The German toolbar fixture keeps
+  the host Activity context, uses Android's real per-app German locale and provides
+  Activity-backed Android Density at system scale 2. The debug-only test Activity
+  handles locale configuration changes; fixtures restore the prior app locale.
+  The existing regressions remain
+  unchanged in strength. Both fixes require fresh runtime results.
+- **F-021:** release lint exposed non-observable locale/context-resource reads.
+  Native UI now reads LocalLocale, composes feedback before effects/callbacks, uses
+  observable resource strings, and responds to actual window container width.
+  Six count messages have English/German one/other plurals; selection naming avoids
+  a private Compose resource collision. Four confirmed unused strings were removed.
+  Two new native locale/resource regressions cover hot app-locale changes and grammar.
+  The fixture changes Compose's actual owner locale instead of merely overriding
+  child resources/configuration, and retains the Activity's display association.
+- **F-019:** ten saved native accent choices use the established iOS seed palette.
+  Android renders opaque Material primary/container/fixed roles with tone adjustment
+  and readable ink; the source target is at least 4.55:1 for normal accent text.
+  Separate wallpaper colors preserve the saved accent. Five JVM contrast tests and
+  native preference/palette-control tests await execution; colorful task labels and
+  wider visual/accessibility acceptance remain open.
+- **F-042:** initial task content has static native surface placeholders and one
+  polite localized loading status; there are no fake controls or animation. A new
+  controlled native first-snapshot test checks status, navigation and stable Add bounds.
+- **Review/limits:** platform preference review found no new correctness/privacy
+  issue: atomic transforms and enum fallback defaults remain, and settings stay in
+  private no-backup DataStore. Changes are local; no Gradle was run by this subagent.
+  Current feature sources are Implemented/In progress pending the combined fresh gate.
+
+### 2026-10-10 — second native gate and independent Android typography
+
+- **Gate2:** dirty branch/build baseline still 200f686; 31 JVM tests, debug app/test APK
+  build successful in 23s. Both owned API 36 and API 37 arm64/16384-page emulators passed
+  all 37 native tests with zero failures in 44.574/43.485s. The set covers eight capture
+  queue, ten Compose editor/list, two repository, five text import, three ViewModel
+  concurrency, four transport, three reminder observations and two vault cases.
+  Evidence: `android/rust-target/debug-build-gate2.log`, `api36-native-gate2.log`,
+  `api37-native-gate2.log` in that output directory. App/test SHA-256 values are in
+  B-104 and the Android checklist; live file hashes matched those recorded artifacts.
+- **B-104/B-105:** Espresso 3.5 input injection failed on API37 because reflection of
+  InputManager.getInstance no longer resolves; explicit 3.7.0/v2 Compose rule now passes.
+  Controlled suspended task-open/restore and oversized SavedState input cases pass
+  on both runtimes. These defect scopes have evidence; broad Android parity is open.
+- **Additional live entry evidence:** warm MainActivity share, a second share, force
+  stop and cold relaunch retained two private captures and the original editor.
+  This was the parent implementation pass's live inspection on disposable data.
+  Newly added localized waiting-capture/error surfaces inside both editor dialogs
+  are later source and still require the next artifact/native gate.
+- **F-022 source:** System/Sans/Serif/Monospace, saved independent 75–200% task/interface
+  scales, native percentage controls/previews and reset are implemented in native
+  settings/theme. Built-in fonts only; no dependency/service. Content derives from
+  unscaled Material styles, preserving OS Density/non-linear font scaling without
+  multiplying the interface scale into task text; controls retain 48dp minimums.
+  Root/editor/import toolbar heights use the actual converted title line plus padding;
+  one-line ellipsis preserves full title semantics. Localized native check actions
+  avoid truncating long German Save/Create labels at combined scaling. New real-app
+  German toolbar tests exercise OS scale 2 with both saved app scales 2, title bounds,
+  visible 48dp actions and editor/import scrolling; their execution is still pending.
+  Five JVM and six native tests were added first, but execution is pending the
+  combined build while other agents ran immutable artifacts. No red/green claim.
+  English/German resource XML/keys and git diff --check pass. German/combined >200%
+  layouts and native typography behavior still need fresh platform evidence.
+- **F-048/F-051:** native task sheet and compact bulk overflow include Tomorrow plus
+  the two following localized weekdays and next week, matching the existing desktop
+  contract. Source is Implemented; actual weekday gestures/Undo remain unverified.
+- **Shared checks reported by implementation pass:** both Rust workspace gates
+  passed 298 tests with one ignored; Mac package 164/iOS package 158 and both Xcode
+  Debug products passed. Existing native/manual OS consumer limits stay separate.
+  These gates precede typography/AppSearch/recurrence and are not a final release pass.
+
+### 2026-10-10 — native Android implementation, scoped 16 KiB evidence and acceptance inventory
+
+- **Scope/state:** dirty `task/android-native` based on `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`.
+  Source-built Kotlin/Compose app reuses Rust for tasks/import/recurrence/sync and
+  generated bindings. Private drafts, failure recovery, task/org/archive/search,
+  bulk actions and native drag are present. Platform services provide Keystore,
+  SAF backups, optional selected-provider sync, permission-aware alarm/notification
+  handling and native entry points. App versionName derives from the Cargo workspace;
+  versionCode derives from bounded major/minor/patch fields. API 26 minimum/37 target,
+  arm64-v8a/x86_64, pinned public LibreSync/toolchain and optional external signing.
+- **Defects:** B-099 actual generated Kotlin Throwable collision corrected by projection
+  renaming; B-100 source context persisted independently of navigation; B-101 450 KB
+  Unicode notes caused a real Compose layout crash, with bounded editor viewport and
+  focused API 36 regression passing; small SavedState/private full draft avoids an
+  additional source-risk Binder limit. B-102 source-confirmed validate/mutate race
+  fixed through atomic Rust notification actions, with 26 targeted Rust tests passing
+  before the final workspace/native gate. B-103 records the LibreSync read-only probe
+  discrepancy and missing protocol contract; no live data-loss assertion is made.
+- **Earlier checks:** 19 JVM tests passed before final drag/import/action changes;
+  ten API 36 instrumentation tests passed before the expanded editor/lifecycle suite.
+  These counts describe earlier iterations and cannot validate newer source.
+- **16 KiB runtime:** owned API 37 `Momentum_Test_API37_16K`, emulator-5554, arm64,
+  reported `getconf PAGE_SIZE=16384`. Eight RepositoryTest/SecretVaultTest/
+  CoordinatorTransportTest cases passed on an earlier installed app after explicitly
+  granting SDK 37 LAN access to its disposable local-server fixture. App SHA-256
+  `a12e37e7465de9cbecc9e2660d2b5569ab41c3b8dfe586010bf6064582db5f7b`;
+  test SHA-256 `c0214ae2222218f574a118d90e9bf5f1e2200ce35ddc7d75ed4e6fab72b53e78`.
+  The fixture initially failed transport cases without LAN permission; the grant
+  changed permission state only, with the same installed artifacts then passing.
+  Newer app/notification/UI/release artifacts still require their own 16 KiB checks.
+- **Emulator tooling:** its generated AVD metadata incorrectly said `target=android-0`,
+  disabling HVF and failing with `qemu_mprotect: Permission denied` on macOS 27.
+  Correcting only this owned AVD to android-37 enabled boot with the same API 37
+  16 KiB image/emulator; old SDK metadata parsing is a suspected origin, not a proven
+  global SDK defect. [Testing guidance](TESTING.md#android-source-and-native-acceptance)
+  records isolated-device selection and this narrow recovery.
+- **Records/limits:** all 55 feature IDs have Android capability/native-difference and
+  remaining-acceptance entries. Existing platform statuses/history are preserved;
+  Android remains Implemented/In progress or explicitly Planned/Not applicable.
+  Missing typography, complete keyboard/automation/search/count/loading/menu scope,
+  localization, native drag/clipboard/IME, TalkBack/large-text/layout, actual OS
+  delivery/background/document-provider, hosted TLS and separate-device discovery
+  stay visible. Current source/builds are still changing; final evidence comes next.
+- **Distribution:** source recipe and local APK/AAB/CI paths do not establish F-Droid
+  admission, independent reproducibility or a store release. Full license/corresponding
+  source, bundle APK, remote CI and signing continuity gates remain explicit in
+  [RELEASING.md](RELEASING.md#android-artifacts-and-future-store-distribution).
+  No commit, push, PR, tag, artifact upload, store submission or release performed.
 
 ### 2026-10-01 — Public docs refresh: previews, status, sync guidance
 
@@ -2347,7 +2594,9 @@ change. Never include private tasks, credentials or machine-specific server addr
   inspection was necessary. No application workaround or security/account change.
   Probe evidence: `/tmp/momentum-intent-probe/actual-development-result.xcresult`;
   Momentum: `/tmp/momentum-automation-native26-development.xcresult`, Create Task
-  33.735s and URL 28.765s. [QA signing steps](../ios/TESTING.md#url-and-app-intents-acceptance).
+  33.735s and URL 28.765s. The former QA signing section was removed with the
+  historical system-test targets; [current test lanes](../ios/TESTING.md) preserve
+  that distinction.
 - Final iOS 26.5 fast native suite: 11 tests passed (0.334s execution, 3.825s
   command); `ios/DerivedData/TestReports/views-1789618136425182000.xcresult`.
   Final German catalog coverage 239/239 and `git diff --check` pass. URL acceptance
@@ -4980,3 +5229,260 @@ No merge, tag, release, personal reminder access, or production data change.
   exercised. The disposable simulator/host are closed after testing.
 - **Next:** observe CI on the published exact head, resolve the four corrected review
   threads, and retain the above native acceptance limits. No merge/release requested.
+
+
+### 2026-10-10 — Android count and native entry-point slice (F-031/F-032, B-113)
+
+- Dirty `task/android-native`: source implements the off-default independent task
+  count setting, quiet private framework notification and supported launcher count
+  metadata. Counts remain in Rust; no dependency, service, protocol or storage
+  migration was added. Local edits, sync changes, date checks, bounded existing
+  workers and explicit post-restore resume reconcile; restore/Off/zero/denial
+  remove the count. Native launcher visuals remain unverified.
+- Existing task links gained localized help and a Today static shortcut. The
+  shared Activity adapter retains real Intent payloads, private capture queuing
+  and warm/cold routing; Reopen now uses the existing idempotent Rust batch rule
+  and Undo. Full structured automation remains In progress pending the
+  [concrete App Functions decision](superpowers/specs/2026-10-10-android-automation-proposal.md).
+- New pending native scope: `TaskCountOsTest` (3), `TaskEntryPointsTest` (5),
+  additional `ReminderOsTest` lock-policy retention/authentication check. The
+  actual exchange/status-write regression now faults a private receipt directory
+  with real file permissions: API26 AtomicFile uses base/.bak, so the previous
+  `.new` obstruction did not prove a failure there. Production receipt path is
+  unchanged; fixture permissions are restored in cleanup.
+- Source/resource/diff inspection is distinct from the parent-owned fresh build
+  and native gate. No Gradle run, actual OS-lock or vendor-launcher success is
+  claimed by this handoff. API26 exact-alarm delay guidance now appears only on
+  API31+ when the special access is actually unavailable.
+
+
+### 2026-10-10 — pinned native Graphics Path alignment correction (B-116, F-001)
+
+- Dirty `task/android-native`, base `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`.
+  Published Graphics Path 1.0.1/1.1.0 LOAD alignment passes but RELRO endpoints do
+  not; upgrading the Maven dependency alone does not close the compatibility gate.
+- Fourteen unchanged Apache-licensed 1.1.0 release source/build/license inputs are
+  retained with exact hashes. Five published Kotlin source files byte-match commit
+  `1c44f0be720ff16cd30357ad2375239bf97a1da8`. A dedicated pinned NDK27 source build
+  adds common-page-size alongside max-page-size and retains upstream exports/API.
+  Gradle builds JNI within its transform workspace and replaces only the reviewed
+  AAR's JNI; every non-JNI entry and classes SHA remain unchanged.
+- Fresh local checks: 25 Python script tests pass, source hashes and documentation
+  links pass, both ABI libraries pass strict LOAD/RELRO/export checks, and separate
+  output-directory builds reproduce byte-for-byte. RELRO ends at `0xc000` on both;
+  dependencies remain Android libc/libm/libdl with NOW protection. No ELF patch,
+  extra SDK, source rewrite, private signing key or weakened checker is introduced.
+- `NativeGraphicsPathTest` adds two real iterator/control-point and converted-oval
+  Canvas raster tests, pending parent API26/16 KiB execution. The row appearance
+  fixture now gives its project task an explicit Today due day before asserting
+  Today-list geometry; assertions are retained. Parent owns final Gradle/APK/AAB,
+  packaged notices and runtime evidence. Independent Linux/F-Droid builds remain
+  outstanding; this source stage is Implemented, not broadly Verified.
+
+
+### 2026-10-10 — Android native projection corrections (B-117/B-118)
+
+- Dirty `task/android-native`: parent gate5b API36/API37 and gate5c API26
+  reproduced B-118 count cancellation and coordinator restore failures. Compiled
+  bytecode independently confirms implicit coroutine cancellation. Renamed the
+  notification helper and kept native assertions, adding calling-job-active checks;
+  source is Implemented pending the fresh parent gate6.
+- B-117 routes visible snapshots, reminders and counts through one serialized
+  repository day/projection helper using existing Rust APIs and live restore
+  admission. Date/combined refresh emits a UI revision after real repeat creation.
+  Three new isolated `CoordinatorLocalDayTest` regressions exercise real recurrence
+  and projection outputs with only the day observation injected; no global clock,
+  production store, new rule, dependency, service or migration is changed.
+- No Gradle/core/Apple build ran in this agent. Fresh native count, restore/transport,
+  local-day and full app acceptance belongs to the parent gate; launcher visuals
+  and real OS lock/background delivery remain separate verification limits.
+
+### 2026-10-10 — Android selected-backup and private-draft recovery (B-119/B-120)
+
+- Dirty `task/android-native`: a source trace found stale backup preparation able
+  to replace a later selected input or republish confirmation after Cancel (B-119).
+  Latest-request ownership, per-job temporary cleanup and localized reading/Cancel
+  status are now Implemented. Provider streams can still finish a blocking read;
+  late completions cannot publish or overwrite the newer prepared backup.
+- B-120 now retains a bounded SavedState-only list of failed private draft identities
+  and origin contexts, with an explicit idle-editor Retry. Failed reads retain both
+  their bytes and reference. A fresh editor cannot overwrite a failed source; a full
+  reference list preserves the additional active pointer and blocks new editors
+  until recovery makes room. Native root/editor/import recovery status exposes no
+  task contents and uses localized live-region guidance and a 48dp Retry action.
+- Six isolated `NativeRecoveryTest` cases cover real Rust backup replacement,
+  cancellation, original private bytes, VM reconstruction, multiple failures and
+  the 32-reference boundary. One `NativeDraftRecoveryUiTest` checks the actual
+  Compose Retry policy and repaired-file recovery. These new tests are written but
+  have not run in this agent; no Gradle/core/Apple/device action was taken. The
+  parent owns the fresh native/full-build gate, and prior immutable gate6b evidence
+  does not verify these later source changes. Cloud/provider and real OS-lock
+  acceptance remain explicit limits. No dependency, protocol or core format changed.
+
+### 2026-10-10 — Isolated Android two-emulator LibreSync acceptance fixture (F-026)
+
+- Dirty `task/android-native`: `LibreSyncTwoEmulatorTest` and the stdlib
+  `android/scripts/test_libresync_two_emulators.py` runner are Implemented. They
+  use the existing production coordinator, generated FFI and Keystore callbacks,
+  with UUID cache stores and an explicit disposable-emulator opt-in. No core,
+  protocol, dependency, public service or real account is changed.
+- One loopback TCP/private Unix ADB bridge supports the protocol's actual two-way
+  exchange. Native checks cover initial pairing/bootstrap, both devices' stopped
+  transport offline edits/additions, completion/deletion convergence, truthful
+  exchange timestamps and task/identity/credential persistence after reopening.
+  Pairing codes and device/key/task data stay in private fixture files or captured
+  memory; only sanitized phase/runtime/count summaries may be printed. Scoped
+  cleanup removes its aliases/files/forward and restores initially denied API37
+  LAN permission, without clearing app data or modifying unrelated channels.
+- Two host regressions passed: real opaque byte relay in both directions with a
+  loopback-only listener and exact forward cleanup; validation failure performs no
+  permission mutation. Python compilation and `git diff --check` pass. New Kotlin
+  fixture compilation and actual API26/API37 exchange remain pending the parent
+  gate/device release. No emulator or Gradle action ran in this source stage.
+  Multicast discovery, symmetric NAT routing and physical-device acceptance remain
+  unverified; the fixture does not conceal those separate F-026 limits.
+
+### 2026-10-10 — Real Android two-emulator LibreSync acceptance (F-026)
+
+- Dirty `task/android-native`, verified at 2026-10-11 03:42 UTC: the explicit
+  disposable API26/API37 run passed using the same installed gate8b debug app
+  SHA-256 `4ff25aac892ad801310aa32cf0ad59f6f98ff6a4fba39bd3c29292780cccb10c`
+  and test APK SHA-256
+  `0a5cf1730d2d99fa20c869d24c427dd829651fc8248ffe12b95c83c00d9cd857`
+  on both emulators. The parent compiled the native fixture; this run performed
+  no build/install, real-account exchange or default-store mutation.
+- Production coordinator/Keystore/FFI pairing and bootstrap succeeded. With both
+  transports stopped, the two isolated stores independently edited titles/notes
+  and added tasks, completed a task and deleted another. One B-to-A encrypted
+  exchange over the loopback/private Unix ADB bridge converged exactly five live
+  tasks and truthful exchange timestamps. Repository/coordinator reopen reused
+  durable tasks, selected provider, linked identity and all three credentials.
+  Secret values, device identities and task contents were never printed.
+- Native finally plus scoped host cleanup passed. Live post-run checks found zero
+  owned cache/probe folders and zero harness forwards; installed APK hashes still
+  matched. API37 LAN access was initially granted and remained granted, so this
+  run does not verify the initially-denied grant/revoke path. The host timeout
+  regression independently proves permission restoration/output closing still
+  run when native cleanup times out.
+- Two earlier harness attempts failed in host command/status plumbing, not an
+  established production transport defect. Live checks confirmed raw `exec-out`
+  reports a missing `cat` as stdout with exit zero, and Android mksh heredocs under
+  `run-as` require an inaccessible `/data/local` temporary file. Guarded status
+  reads now bound partial-publication retries by the phase deadline and reject
+  stable corruption, oversized/nonobject/wrongly typed status. Captured non-PTY
+  shell-v2 stdin with shell-quoted built-in `printf` publishes commands atomically
+  without those temporary files or putting private parameters on argv.
+- All six host regressions pass: opaque bidirectional relay/scoped forward
+  removal, no mutation before instrumentation, timeout-safe permission/output
+  cleanup, partial status publication, persistent corruption/type/size rejection
+  and real atomic shell publication with literal shell characters. No new core,
+  protocol, service, dependency or production lifecycle API was added. Multicast
+  discovery, symmetric NAT routing and physical-device acceptance remain open;
+  F-026 stays Implemented overall with this bounded native scope verified.
+
+
+### 2026-10-11 — Android current native source and distribution handoff
+
+- **Workspace/authority:** dirty `task/android-native`, isolated worktree
+  `/Users/danhart/.codex/worktrees/android-native/momentum`, base
+  `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`. The primary checkout remains on
+  `task/sync-performance-recovery` with its inherited 22 tracked changes and
+  untracked sync-performance document preserved. No commit, push, PR, tag,
+  upload, store registration or release was performed.
+- **Production checkpoint:** gate11h freezes B-121 imported-name/native entry
+  guards, B-122 lossless bounded source layout, B-123 native Undo/disposal ownership,
+  B-127 exact private-draft admission, and B-128 streamed existing-format disk and
+  legacy-inline reads. B-124–B-126 correct native scale/chooser/visibility fixtures
+  without loosening equality, geometry or original deadlines. B-127's real RED
+  and B-128's API26 48 MiB allocation failure remain in BUGS/logs; they are not
+  erased by later passes. Admission keeps rejected native text/caret, complete VM
+  source, draft/context/UUID and durable bytes; boundary legacy records retain
+  their disk/inline references through Retry/new capture.
+- **Capacity/format limit:** existing v1/v2 bytes and limits remain unchanged.
+  Oversized imported tasks and exact-boundary old records cannot safely become
+  editable v2 drafts; complete original core/private content stays intact with
+  localized feedback. An approved larger-draft format design is still required
+  (F-006 remains In progress). No truncation, migration, new core task cap,
+  dependency, proprietary SDK or public automation API was introduced.
+- **Build/JVM:** the fresh full Gradle lane succeeds in 46 seconds: 91 JVM tests,
+  zero failures/errors/skips; debug/test APK, minified unsigned release APK, AAB
+  and release lint. Lint has zero errors/nine warnings. Twelve stream regressions
+  cover independent v1/canonical v2 bytes, maximum records/legacy strings, partial
+  reads, malformed/truncated/tag/marker inputs, trailing raw/binary bytes and
+  caller-owned stream lifetimes. Writer finalizes Base64 before AtomicFile fsync;
+  decoder catches exceptions while propagating VM errors. Read-only review finds
+  no material remaining codec blocker; per-field byte/String allocations remain.
+- **Immutable artifacts:** debug APK SHA-256
+  `b05d8d2fa4e14d077f667f81894c55e726637f6b4a3fec613d4490625e0a12bc`;
+  test APK `69ca5866358123ba22bd293f714fb271a0f6e696f8481b872f18930dbf49ca4d`;
+  unsigned release APK
+  `781a31a8e739de1bb073141f7963b26835dd2e34638f35480e95791be29ed888`;
+  AAB `80c80f0c9678d221375f44e5b17d5288ef54ecd17e4f2a95c313656eb8ea6456`;
+  bundle-produced universal APK
+  `90cee7ad51787171daea6a4a9eb8e3b6951e10ed3256648d6e05720de3ac1949`.
+  Exact sizes/lint/JVM/notices are in
+  `android/rust-target/gate11h-final-artifacts.json`.
+- **Native complete gates:** API26 has 121 passes/six expected skips/zero failures
+  out of 127 (169.621 seconds); API37 has 134 passes/three expected skips/zero
+  failures out of 137 (182.939 seconds). All 19 focused admission/source/IME/Undo/
+  explicit-share cases pass on API26 in 102.437 seconds and API37 in 43.054 seconds,
+  including both prior low-heap failures. Exact logs and matching artifact records
+  are `android/rust-target/api26-native-gate11h-final-{focused,full}*` and
+  `api37-{gate11h-final-focused,native-gate11h-final-full}*`. Skips distinguish the
+  reproduced Android 8/8.1 URI-clipboard OS bug and API26-only preflight from
+  separately opt-in timing/two-emulator work. Functional 1,000-task identity/title/
+  family/core counts, scroll/edit/reopen, real touch drag/exact Undo, native picker,
+  imported names, private recovery, key events, count privacy and read-only sharing
+  still execute. Controlled input events do not establish installed-keyboard or
+  spoken screen-reader acceptance.
+- **Shipping Activity performance:** all six identical API36/debug-AVD baseline,
+  600,000-unit multiline and 552,960-unit emoji cold/warm fixtures pass with native
+  Notes reachable. First-editor-paint upper bound / process CPU seconds are
+  baseline 3.484/4.40 cold, 1.622/1.22 warm; multiline 3.977/5.13, 2.184/1.69;
+  emoji 3.811/5.49, 2.101/1.56. Original emoji was 30.363/31.41 cold and
+  26.725/26.29 warm. Large fields show 4,096 units, one swipe, and retain every
+  source unit. All warm PIDs stay unchanged. Complete private bytes are compared:
+  only the disabled AppSearch receipt's `updated-at` changes; queue/draft/core/
+  preference and every other private byte match. Host load 16.4–22.5 includes
+  other emulator suites; these are measured upper bounds, not physical/minified
+  guarantees. Evidence: `android/rust-target/notes-performance-api36/gate11h-*`.
+- **Current minified runtime/screens:** the exact universal APK is installed and
+  read back on API26/API37, debuggable false, version 0.4.5/code 4005. Actual cold
+  process launch and native auxiliary vectors establish 4,096-/16,384-byte pages;
+  the current API37 launch has TotalTime 293 ms/WaitTime 297 ms. API26's Android 8
+  timing fields are recorded separately, preserving any accumulated stale TotalTime
+  rather than treating it as a new launch duration. Core/settings/capture/draft
+  bytes remain intact; API37's derived disabled-search timestamp changes only.
+  These are owned synthetic stores. Actual tasks/editor/settings PNG/XMLs are in
+  `android/rust-target/api37-release-gate11h/`; API26's current launch/readback/data
+  evidence is `android/rust-target/api26-release-gate11h-*`.
+- **Packaging/source gates:** bundletool validates the AAB and declares
+  `PAGE_ALIGNMENT_16K`; both APKs pass strict LOAD/RELRO/ZIP checks for all eight
+  arm64/x86_64 native libraries. All four app artifacts retain identical 2,170,926-
+  byte notices, SHA-256
+  `e89be245aa881ee15a3c75c90c274df21f7e5f115a3dcc59078fcefb4d8e888b`, including
+  six original pinned Rust standard-library notices. Fresh SUSS binary scans of
+  both APKs return zero warnings/errors for known nonfree DEX classes and extra
+  signing blocks. Prepared-source/metadata/host-tool results, final manifest and
+  snapshot evidence limits are maintained in [VALIDATION.md](../android/fdroid/VALIDATION.md).
+  Unchanged native inputs retain the fresh isolated offline Cargo host/bindgen/
+  both-ABI proof; no output-cache copy is presented as a fresh build.
+- **Other preserved evidence:** controlled API26↔API37 production LibreSync/Keystore
+  pairing, encrypted offline edit/add/complete/delete convergence and reopen passed
+  at gate8b. Gate7b actual minified API37 Downloads SAF replacement/cold persistence
+  passed. The relevant adapters/core inputs are unchanged. After the last shared
+  change, both Rust workspace lanes pass 299 tests/one ignored; generated Mac/iOS/
+  CLI builds, MomentumKit 164 tests, MomentumMobile 158 tests and unsigned Apple
+  Xcode builds pass. These do not prove GTK runtime, physical Apple deployment,
+  arbitrary providers, hosted TLS, multicast/NAT or scheduler-originated execution.
+- **Remaining/next action:** overall Android remains In progress. Continue physical
+  TalkBack/Switch Access, third-party/hardware input, keyguard/cold notification
+  actions, launcher/search/count surfaces, broad configuration lifecycle, external
+  sync/network and battery/performance acceptance from the checklist. Optional
+  AppFunctions needs approval of the existing concrete proposal; LibreSync's
+  read-only connection probe needs a protocol/core decision. Independent Linux/
+  F-Droid full builder, offline Maven/dependency/source review, second-host
+  reproducibility, clean approved revision, signing/update validation and store
+  admission remain open. The local Docker client has no running daemon; no new
+  VM/service was started. CI is read-only build verification and has not run
+  remotely. Official signing/public publishing is not configured or authorized.
