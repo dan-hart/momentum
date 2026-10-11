@@ -15,8 +15,9 @@ B-105–134 in `c4bc5da` because main independently assigned B-099–104. Main
 was verified from clean checkpoint `c24b114`. Existing Apple and sync/storage source
 is preserved, with the bounded shared parser correction B-135. The final handoff
 records the user-authorized local main merge and verification scope. The user explicitly authorized a local merge to main, README
-updates and Android release-process integration on 2026-10-11. No push, tag, actual
-release or store submission is authorized. The primary checkout remains on
+updates and Android release-process integration on 2026-10-11. The subsequent
+2026-10-11 request authorizes pushing these merged updates to `origin/main`. Tags,
+actual releases and store submissions remain outside that request. The primary checkout remains on
 `task/sync-performance-recovery` with its inherited changes preserved. Historical
 workspace paragraphs and dated evidence below retain their original scope.
 
