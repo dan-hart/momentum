@@ -25,14 +25,23 @@ source file. At the time of writing these are:
 
 Momentum is not affiliated with or endorsed by the Super Productivity project.
 
-## Completion sound
+## Completion sounds
 
-The optional task-completion chime (`data/resources/sounds/task-complete.wav` and
-`macos/Packages/MomentumKit/Sources/MomentumKit/Resources/task-complete.wav`) is
-`confirmation_001` from [Interface Sounds](https://kenney.nl/assets/interface-sounds)
-by Kenney (www.kenney.nl), released under Creative Commons Zero
-(`LICENSES/CC0-1.0.txt`). It was converted from Ogg Vorbis to 16-bit mono WAV without
-other changes. Credit is not required by the license; it is given here with thanks.
+The ten optional task-completion sounds in `data/resources/sounds/`,
+`macos/Packages/MomentumKit/Sources/MomentumKit/Resources/` and
+`android/app/src/main/res/raw/` are short arrangements of acoustic recordings from
+[Versilian Community Sample Library](https://versilian-studios.com/vcsl/) by
+Versilian Studios, released under Creative Commons Zero (`LICENSES/CC0-1.0.txt`).
+The source recordings are pinned to
+[VCSL revision c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e](https://github.com/sgossner/VCSL/tree/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e).
+
+The arrangements use onset trimming, optional pitch shifting, amplitude envelopes,
+layering, mono conversion and gain normalization. Their approved PCM16 mono WAV
+masters are bundled unchanged on each platform. Per-recording URLs, source hashes,
+arrangement events and approved master hashes are in
+[`data/resources/sounds/provenance.json`](data/resources/sounds/provenance.json).
+Run `python3 build-aux/check-completion-sounds.py` to verify all ten masters and
+platform copies. Credit is not required by CC0; it is given here with thanks.
 
 ## LibreSync
 

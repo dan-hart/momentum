@@ -51,6 +51,7 @@ struct RootView: SwiftUI.View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(MobileAppearance.hapticsKey) private var haptics = true
     @AppStorage(PrefKey.completionSound) private var completionSound = false
+    @AppStorage(PrefKey.completionSoundChoice) private var completionSoundChoiceRaw = CompletionSoundChoice.defaultChoice.rawValue
     @AppStorage(PrefKey.modifierKey) private var modifierRaw = ModifierKey.command.rawValue
     @State private var taskWorkspaceState = TaskWorkspaceState()
     @State private var startupPhase = RootStartupPhase.loadingToday
@@ -167,7 +168,7 @@ struct RootView: SwiftUI.View {
         // The optional chime follows the same completion signal as the haptic, with its own switch.
         .onChange(of: model.completionFeedback) { oldValue, newValue in
             if InteractionFeedbackPolicy.shouldPresent(enabled: completionSound, oldValue: oldValue, newValue: newValue) {
-                CompletionSound.shared.playCompletion()
+                CompletionSound.shared.playCompletion(CompletionSoundChoice.resolve(completionSoundChoiceRaw))
             }
         }
         .sensoryFeedback(.selection, trigger: model.selectionFeedback) { oldValue, newValue in

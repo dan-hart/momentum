@@ -460,7 +460,7 @@ public final class AppState {
             }
             toast(Strings.message(m), undo: o.undo, celebratesCompletion: completed)
             if completed, prefs.completionSound {
-                sounds?.playCompletion()
+                sounds?.playCompletion(prefs.completionSoundChoice)
             }
         }
         if o.syncNow, prefs.syncConfigured {

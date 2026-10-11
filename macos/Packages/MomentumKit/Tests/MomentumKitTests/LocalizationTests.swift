@@ -5,6 +5,22 @@ import Testing
 @testable import MomentumKit
 
 @Suite struct LocalizationTests {
+    @Test func germanCompletionChoicesKeepTheApprovedNumbers() throws {
+        let path = try #require(Bundle.module.path(forResource: "de", ofType: "lproj"))
+        let german = try #require(Bundle(path: path))
+        let labels = [
+            ("1 Wood Pop", "1 Holzklang"), ("2 Double Check", "2 Doppeltes Häkchen"),
+            ("3 Rounded Lift", "3 Sanfter Aufstieg"), ("4 Pocket Piano", "4 Taschenklavier"),
+            ("5 String Flick", "5 Saitenzupfer"), ("6 Bright Finish", "6 Heller Abschluss"),
+            ("7 Harp Snap", "7 Harfenzupfer"), ("8 Click and Glow", "8 Klick und Glanz"),
+            ("9 Tiny Ta-Da", "9 Kleines Ta-Da"), ("10 Warm Spark", "10 Warmer Funke"),
+        ]
+        for (key, translated) in labels {
+            #expect(german.localizedString(forKey: key, value: nil, table: "Localizable") == translated)
+        }
+        #expect(CompletionSoundChoice.allCases.map { $0.label(locale: Locale(identifier: "de_DE")) } == labels.map { $0.1 })
+    }
+
     @Test func germanResourcesAreAvailableInThePackageBundle() throws {
         let path = try #require(Bundle.module.path(forResource: "de", ofType: "lproj"))
         let german = try #require(Bundle(path: path))

@@ -7,6 +7,9 @@ All notable changes to Momentum are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Ten short CC0 task-completion sounds to choose and preview on Linux, macOS, iOS
+  and Android. Sound stays off by default; when enabled, the default choice is
+  6 · Bright Finish.
 - Native Android app in Kotlin and Jetpack Compose with the shared Rust core: offline
   tasks, organization, search, recurrence, reminders, optional Nextcloud/LibreSync,
   Android Keystore, private drafts and SAF backups. Native parity and physical

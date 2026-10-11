@@ -284,4 +284,19 @@
     <string name="clear">Clear</string>
     <string name="draft_edit_capacity">This edit is too large to save as a draft. Your previous text has been kept.</string>
     <string name="draft_open_capacity">This text is too large to edit safely. Its saved content has been kept.</string>
+    <string name="completion_sound">Completion sound</string>
+    <string name="completion_sound_enabled">Play a sound when a task is completed</string>
+    <string name="completion_sound_choice">Sound</string>
+    <string name="completion_sound_preview">Preview sound</string>
+    <string name="completion_sound_hint">Choose a short sound for completed tasks. Preview plays the selected sound. Respects silent mode and system volume.</string>
+    <string name="sound_wood_pop">1 Wood Pop</string>
+    <string name="sound_double_check">2 Double Check</string>
+    <string name="sound_rounded_lift">3 Rounded Lift</string>
+    <string name="sound_pocket_piano">4 Pocket Piano</string>
+    <string name="sound_string_flick">5 String Flick</string>
+    <string name="sound_bright_finish">6 Bright Finish</string>
+    <string name="sound_harp_snap">7 Harp Snap</string>
+    <string name="sound_click_and_glow">8 Click and Glow</string>
+    <string name="sound_tiny_ta_da">9 Tiny Ta-Da</string>
+    <string name="sound_warm_spark">10 Warm Spark</string>
 </resources>

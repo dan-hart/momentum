@@ -45,6 +45,10 @@ mod imp {
         #[template_child]
         pub completion_sound_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub completion_sound_choice_row: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub completion_sound_preview_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
         pub morning_summary_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub morning_hour_row: TemplateChild<adw::SpinRow>,
@@ -176,6 +180,71 @@ mod imp {
             s.bind("auto-archive", &*self.auto_archive_row, "active").build();
             s.bind("completion-sound", &*self.completion_sound_row, "active")
                 .build();
+            let sound_labels = crate::sound::CompletionSoundChoice::ALL.map(|choice| choice.label());
+            self.completion_sound_choice_row.set_model(Some(&gtk::StringList::new(
+                &sound_labels.iter().map(String::as_str).collect::<Vec<_>>(),
+            )));
+            self.completion_sound_choice_row
+                .set_selected(crate::sound::selected_choice(&s).index());
+            self.completion_sound_choice_row
+                .upcast_ref::<gtk::Widget>()
+                .update_property(&[
+                    gtk::accessible::Property::Label(&gettext("Completion sound")),
+                    gtk::accessible::Property::Description(&gettext("Choose a short sound for completed tasks")),
+                ]);
+            self.completion_sound_preview_row
+                .upcast_ref::<gtk::Widget>()
+                .update_property(&[
+                    gtk::accessible::Property::Label(&gettext("Preview sound")),
+                    gtk::accessible::Property::Description(&gettext("Play the selected completion sound")),
+                ]);
+            for row in [
+                self.completion_sound_choice_row.upcast_ref::<gtk::Widget>(),
+                self.completion_sound_preview_row.upcast_ref(),
+            ] {
+                s.bind("completion-sound", row, "sensitive")
+                    .flags(gio::SettingsBindFlags::GET)
+                    .build();
+            }
+            // A settings-to-row update must not save its sanitized fallback over an
+            // unknown value written by a newer app. Only the user's selection writes.
+            let updating_sound = std::rc::Rc::new(std::cell::Cell::new(false));
+            self.completion_sound_choice_row.connect_selected_notify(glib::clone!(
+                #[strong]
+                s,
+                #[strong]
+                updating_sound,
+                move |row| {
+                    if !updating_sound.get() {
+                        if let Some(choice) = crate::sound::CompletionSoundChoice::ALL.get(row.selected() as usize) {
+                            s.set_string("completion-sound-choice", choice.slug()).ok();
+                        }
+                    }
+                }
+            ));
+            s.connect_changed(
+                Some("completion-sound-choice"),
+                glib::clone!(
+                    #[weak(rename_to = row)]
+                    self.completion_sound_choice_row,
+                    #[strong]
+                    updating_sound,
+                    move |settings, _| {
+                        updating_sound.set(true);
+                        row.set_selected(crate::sound::selected_choice(settings).index());
+                        updating_sound.set(false);
+                    }
+                ),
+            );
+            self.completion_sound_preview_row.connect_activated(glib::clone!(
+                #[strong]
+                s,
+                move |_| {
+                    if s.boolean("completion-sound") {
+                        crate::sound::play_completion(crate::sound::selected_choice(&s));
+                    }
+                }
+            ));
             for (key, row) in [
                 ("typography-content-scale", &*self.content_scale_row),
                 ("typography-interface-scale", &*self.interface_scale_row),

@@ -53,7 +53,7 @@ jobs:
         run: |
           rustup toolchain install 1.99.0 --profile minimal
           rustup target add --toolchain 1.99.0 aarch64-linux-android x86_64-linux-android
-          sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0' 'ndk;27.2.12479018' 'platform-tools'
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-37.0' 'build-tools;37.0.0' 'ndk;27.2.12479018' 'platform-tools'
           java --version
           rustup run 1.99.0 rustc --version --verbose
       - name: Verify public source and generate host bindings

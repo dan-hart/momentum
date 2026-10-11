@@ -24,6 +24,8 @@ jobs:
       # Cargo.toml, meson.build, macos/project.yml, the metainfo and CHANGELOG.md all
       # carry the version; build-aux/release.py bump keeps them equal and this proves it.
       - run: build-aux/release.py check
+      - name: Completion sound resources and provenance
+        run: python3 build-aux/check-completion-sounds.py
 
   rustfmt:
     name: Rustfmt

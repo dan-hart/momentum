@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.codedbydan.momentum.core.*
 import com.codedbydan.momentum.core.Preferences
+import com.codedbydan.momentum.platform.CompletionSoundChoice
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -26,6 +27,8 @@ data class AppSettings(
     val compact: Boolean = false,
     val colorfulLabels: Boolean = true,
     val notifications: Boolean = false,
+    val completionSound: Boolean = false,
+    val completionSoundChoice: CompletionSoundChoice = CompletionSoundChoice.defaultChoice,
     val provider: SyncProvider = SyncProvider.Off,
     val automaticSync: Boolean = true,
     val backgroundSync: Boolean = false,
@@ -111,6 +114,8 @@ class MomentumRepository internal constructor(
             it[booleanPreferencesKey("compact")] = settings.compact
             it[booleanPreferencesKey("colorful-labels")] = settings.colorfulLabels
             it[booleanPreferencesKey("notifications")] = settings.notifications
+            it[booleanPreferencesKey("completion-sound")] = settings.completionSound
+            it[stringPreferencesKey("completion-sound-choice")] = settings.completionSoundChoice.key
             it[stringPreferencesKey("provider")] = settings.provider.name
             it[booleanPreferencesKey("automatic-sync")] = settings.automaticSync
             it[booleanPreferencesKey("background-sync")] = settings.backgroundSync
@@ -177,6 +182,8 @@ private fun appSettings(prefs: androidx.datastore.preferences.core.Preferences):
     compact = prefs[booleanPreferencesKey("compact")] ?: false,
     colorfulLabels = prefs[booleanPreferencesKey("colorful-labels")] ?: true,
     notifications = prefs[booleanPreferencesKey("notifications")] ?: false,
+    completionSound = prefs[booleanPreferencesKey("completion-sound")] ?: false,
+    completionSoundChoice = CompletionSoundChoice.resolve(prefs[stringPreferencesKey("completion-sound-choice")]),
     provider = enumValueOr(prefs[stringPreferencesKey("provider")], SyncProvider.Off),
     automaticSync = prefs[booleanPreferencesKey("automatic-sync")] ?: true,
     backgroundSync = prefs[booleanPreferencesKey("background-sync")] ?: false,

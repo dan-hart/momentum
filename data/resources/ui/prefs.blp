@@ -85,7 +85,17 @@ template $MomentumPrefs: Adw.PreferencesDialog {
 
       Adw.SwitchRow completion_sound_row {
         title: _("Play a sound when a task is completed");
-        subtitle: _("A short chime when you mark a task done. Off by default.");
+        subtitle: _("A short sound when you mark a task done. Off by default.");
+      }
+
+      Adw.ComboRow completion_sound_choice_row {
+        title: _("Completion sound");
+        subtitle: _("Choose a short sound for completed tasks");
+      }
+
+      Adw.ButtonRow completion_sound_preview_row {
+        title: _("Preview sound");
+        start-icon-name: "audio-volume-high-symbolic";
       }
     }
 

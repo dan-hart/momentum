@@ -837,15 +837,19 @@ import XCTest
             "Ton beim Erledigen"
         )
 
-        for (locale, expected, sound) in [("en", "Haptic feedback", "Completion sound"),
-                                          ("de", "Haptisches Feedback", "Ton beim Erledigen")] {
+        for (locale, expected, sound, pickerLabel, previewLabel, defaultLabel) in [
+            ("en", "Haptic feedback", "Completion sound", "Sound", "Preview sound", "6 Bright Finish"),
+            ("de", "Haptisches Feedback", "Ton beim Erledigen", "Klang", "Klang anhören", "6 Heller Abschluss"),
+        ] {
             let name = "momentum-haptic-setting-label-tests-\(locale)-\(UUID())"
             let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
             let mounted = try HostingFixture.mount(
                 NavigationStack { AppearanceSettings() }
                     .environment(\.locale, Locale(identifier: locale)),
                 defaults: defaults,
-                defaultsName: name
+                defaultsName: name,
+                size: CGSize(width: 390, height: 1_100),
+                locale: locale
             )
             defer { mounted.unmount() }
             XCTAssertTrue(
@@ -857,6 +861,50 @@ import XCTest
                 mounted.hasAccessibilityElement(label: sound),
                 "Mounted \(locale) accessibility: \(mounted.accessibilitySnapshot())"
             )
+            try await mounted.wait(until: "native sound controls: \(mounted.accessibilitySnapshot())") {
+                mounted.accessibilityElement(identifier: "completion-sound-choice") != nil
+                    && mounted.accessibilityElement(identifier: "completion-sound-preview") != nil
+            }
+            let picker = try XCTUnwrap(mounted.accessibilityElement(identifier: "completion-sound-choice"),
+                                      "Mounted \(locale) accessibility: \(mounted.accessibilitySnapshot())")
+            XCTAssertEqual(picker.label, pickerLabel)
+            XCTAssertEqual(picker.value, defaultLabel,
+                           "Mounted \(locale) accessibility: \(mounted.accessibilitySnapshot())")
+            XCTAssertTrue(picker.traits.contains(.notEnabled), "Sound stays off by default")
+            XCTAssertFalse(mounted.activateAccessibilityElement(label: pickerLabel))
+            let preview = try XCTUnwrap(mounted.accessibilityElement(identifier: "completion-sound-preview"))
+            XCTAssertEqual(preview.label, previewLabel)
+            XCTAssertTrue(preview.traits.contains(.notEnabled))
+
+            defaults.set(true, forKey: PrefKey.completionSound)
+            try await mounted.wait(until: "enabled sound controls") {
+                mounted.accessibilityElement(identifier: "completion-sound-choice")?.traits.contains(.notEnabled) == false
+                    && mounted.accessibilityElement(identifier: "completion-sound-preview")?.traits.contains(.notEnabled) == false
+            }
+            defaults.set("warm-spark", forKey: PrefKey.completionSoundChoice)
+            let warmLabel = locale == "de" ? "10 Warmer Funke" : "10 Warm Spark"
+            try await mounted.wait(until: "saved sound selection") {
+                guard let current = mounted.accessibilityElement(identifier: "completion-sound-choice") else { return false }
+                return [current.label, current.value].compactMap { $0 }.joined().contains(warmLabel)
+            }
+            defaults.set("unknown-future-sound", forKey: PrefKey.completionSoundChoice)
+            try await mounted.wait(until: "fallback sound selection") {
+                guard let current = mounted.accessibilityElement(identifier: "completion-sound-choice") else { return false }
+                return [current.label, current.value].compactMap { $0 }.joined().contains(defaultLabel)
+            }
+            XCTAssertEqual(defaults.string(forKey: PrefKey.completionSoundChoice), "unknown-future-sound")
+            XCTAssertTrue(mounted.activateAccessibilityElement(label: pickerLabel),
+                          "The picker must retain its native activation action")
+            try await mounted.wait(until: "native sound choices") {
+                CompletionSoundChoice.allCases.allSatisfy { choice in
+                    mounted.hasAccessibilityElement(label: choice.label(locale: Locale(identifier: locale)))
+                }
+            }
+            let firstChoice = CompletionSoundChoice.woodPop
+            XCTAssertTrue(mounted.activateAccessibilityElement(label: firstChoice.label(locale: Locale(identifier: locale))))
+            try await mounted.wait(until: "native sound choice saved") {
+                defaults.string(forKey: PrefKey.completionSoundChoice) == firstChoice.rawValue
+            }
         }
     }
 

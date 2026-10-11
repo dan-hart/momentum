@@ -54,8 +54,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         if(!getSystemService(KeyguardManager::class.java).isDeviceLocked) vm.resumeQueuedCaptures()
     }
-    override fun onStart() { super.onStart(); lifecycleScope.launch { (application as MomentumApplication).platform.foreground(true) }; vm.refresh() }
-    override fun onStop() { lifecycleScope.launch { try { vm.persistDraft() } catch(e: Exception) { vm.reportError(e) } }; (application as MomentumApplication).platform.leaveForeground(); super.onStop() }
+    override fun onStart() { super.onStart(); vm.completionSoundForeground(true); lifecycleScope.launch { (application as MomentumApplication).platform.foreground(true) }; vm.refresh() }
+    override fun onStop() { vm.completionSoundForeground(false); lifecycleScope.launch { try { vm.persistDraft() } catch(e: Exception) { vm.reportError(e) } }; (application as MomentumApplication).platform.leaveForeground(); super.onStop() }
 
     private fun capture(intent: Intent) = com.codedbydan.momentum.platform.TaskEntryPoints(this, vm).capture(intent)
 

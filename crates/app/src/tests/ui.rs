@@ -1132,6 +1132,132 @@ fn modifier_setting_rewrites_accelerators_and_the_shortcuts_overlay() {
     });
 }
 #[test]
+fn completion_sound_preferences_bind_choices_preview_and_fallback_without_playing_on_selection() {
+    use crate::sound::{take_play_requests, CompletionSoundChoice};
+    on_gtk(|| {
+        reset_settings();
+        take_play_requests();
+        let s = settings();
+        let prefs = crate::prefs::MomentumPrefs::default();
+        let imp = prefs.imp();
+        assert_eq!(imp.completion_sound_choice_row.selected(), 5);
+        assert_eq!(imp.completion_sound_choice_row.model().unwrap().n_items(), 10);
+        assert!(!imp.completion_sound_choice_row.is_sensitive());
+        assert!(!imp.completion_sound_preview_row.is_sensitive());
+        assert!(gtk::test_accessible_has_property(
+            imp.completion_sound_choice_row.upcast_ref::<gtk::Widget>(),
+            gtk::AccessibleProperty::Label
+        ));
+        assert!(gtk::test_accessible_has_property(
+            imp.completion_sound_preview_row.upcast_ref::<gtk::Widget>(),
+            gtk::AccessibleProperty::Description
+        ));
+        imp.completion_sound_preview_row.emit_by_name::<()>("activated", &[]);
+        assert!(
+            take_play_requests().is_empty(),
+            "off also gates programmatic activation"
+        );
+        imp.completion_sound_row.set_active(true);
+        assert!(imp.completion_sound_choice_row.is_sensitive());
+        assert!(imp.completion_sound_preview_row.is_sensitive());
+        for choice in CompletionSoundChoice::ALL {
+            imp.completion_sound_choice_row.set_selected(choice.index());
+            assert_eq!(s.string("completion-sound-choice"), choice.slug());
+            assert!(take_play_requests().is_empty(), "selection changes never preview");
+            imp.completion_sound_preview_row.emit_by_name::<()>("activated", &[]);
+            assert_eq!(take_play_requests(), vec![choice]);
+        }
+        imp.completion_sound_row.set_active(false);
+        assert_eq!(s.string("completion-sound-choice"), "warm-spark");
+        assert_eq!(
+            crate::prefs::MomentumPrefs::default()
+                .imp()
+                .completion_sound_choice_row
+                .selected(),
+            9
+        );
+        s.set_string("completion-sound-choice", "future-sound").unwrap();
+        pump();
+        assert_eq!(imp.completion_sound_choice_row.selected(), 5);
+        assert_eq!(
+            s.string("completion-sound-choice"),
+            "future-sound",
+            "fallback must not rewrite an external value"
+        );
+        assert_eq!(
+            crate::prefs::MomentumPrefs::default()
+                .imp()
+                .completion_sound_choice_row
+                .selected(),
+            5
+        );
+        assert_eq!(
+            s.string("completion-sound-choice"),
+            "future-sound",
+            "opening preferences must not rewrite a future value"
+        );
+        assert!(take_play_requests().is_empty());
+        s.set_string("completion-sound-choice", "wood-pop").unwrap();
+        pump();
+        assert_eq!(imp.completion_sound_choice_row.selected(), 0);
+        assert!(take_play_requests().is_empty());
+        reset_settings();
+    });
+}
+
+#[test]
+fn completion_sound_uses_current_choice_once_for_single_and_bulk_and_silences_undo_reopen() {
+    use crate::sound::{take_play_requests, CompletionSoundChoice};
+    on_gtk(|| {
+        reset_settings();
+        take_play_requests();
+        let s = settings();
+        let (win, _) = empty_window();
+        win.add_task("Single sound test");
+        let single = id_of(&win, "Single sound test");
+        assert!(take_play_requests().is_empty());
+        win.set_done(&single, true);
+        assert!(take_play_requests().is_empty(), "off by default");
+        win.undo_last();
+        s.set_boolean("completion-sound", true).unwrap();
+        for auto_archive in [false, true] {
+            s.set_boolean("auto-archive", auto_archive).unwrap();
+            s.set_string("completion-sound-choice", "harp-snap").unwrap();
+            win.set_done(&single, true);
+            assert_eq!(take_play_requests(), vec![CompletionSoundChoice::HarpSnap]);
+            win.undo_last();
+            assert!(take_play_requests().is_empty(), "undo completion is silent");
+            if !auto_archive {
+                win.set_done(&single, true);
+                take_play_requests();
+                win.set_done(&single, false);
+                assert!(take_play_requests().is_empty(), "reopening is silent");
+            }
+            win.add_task("Second sound test");
+            let second = id_of(&win, "Second sound test");
+            s.set_string("completion-sound-choice", "tiny-ta-da").unwrap();
+            win.set_selecting(true);
+            win.toggle_selected(&single);
+            win.toggle_selected(&second);
+            win.bulk_done();
+            assert_eq!(
+                take_play_requests(),
+                vec![CompletionSoundChoice::TinyTaDa],
+                "bulk plays once using the latest choice"
+            );
+            win.undo_last();
+            assert!(take_play_requests().is_empty(), "bulk undo is silent");
+            win.delete_task(&second);
+        }
+        s.set_string("completion-sound-choice", "future-sound").unwrap();
+        win.set_done(&single, true);
+        assert_eq!(take_play_requests(), vec![CompletionSoundChoice::BrightFinish]);
+        assert_eq!(s.string("completion-sound-choice"), "future-sound");
+        reset_settings();
+    });
+}
+
+#[test]
 fn preferences_rows_are_bound_to_settings() {
     on_gtk(|| {
         let _win = demo_window();

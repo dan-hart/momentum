@@ -97,7 +97,11 @@ final class RecordingIndexer: SearchIndexer {
 @MainActor
 final class RecordingSoundPlayer: SoundPlayer {
     var completions = 0
-    func playCompletion() { completions += 1 }
+    var choiceRawValues: [String] = []
+    func playCompletion(_ choice: CompletionSoundChoice) {
+        completions += 1
+        choiceRawValues.append(choice.rawValue)
+    }
 }
 
 extension SectionKind {

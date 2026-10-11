@@ -8,6 +8,16 @@ bus or network: every test gets its own directory, settings live in a memory bac
 the session bus address points nowhere, and the Nextcloud tests talk to an in-process
 WebDAV stand-in.
 
+## Completion-sound assets
+
+`python3 build-aux/check-completion-sounds.py` verifies the ten approved WAV hashes,
+short PCM format, distinct clips, matching Linux/Apple/Android copies and selected
+resource catalogs. The source revision, samples and arrangements are recorded in
+`data/resources/sounds/provenance.json`; [NOTICE.md](../NOTICE.md) records CC0 rights.
+Native preference/playback tests cover default Bright Finish, persistence, unknown
+choice fallback, off-by-default behavior and silence for undo/reopening. Audio device
+output remains a separate native acceptance check.
+
 ## Run it
 
 ```sh

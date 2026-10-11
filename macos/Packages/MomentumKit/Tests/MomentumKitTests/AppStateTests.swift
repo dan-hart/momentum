@@ -80,6 +80,19 @@ import Testing
         #expect(CompletionSound.url != nil, "the clip ships with the package")
     }
 
+    @Test func completionPlaybackUsesTheCurrentSavedChoice() {
+        let h = Harness()
+        let id = h.id("Write release notes for 0.1")
+        h.defaults.set(true, forKey: PrefKey.completionSound)
+        h.defaults.set("wood-pop", forKey: PrefKey.completionSoundChoice)
+        h.state.setDone(id, true)
+        #expect(h.sounds.choiceRawValues == ["wood-pop"])
+        h.state.setDone(id, false)
+        h.defaults.set("warm-spark", forKey: PrefKey.completionSoundChoice)
+        h.state.setDone(id, true)
+        #expect(h.sounds.choiceRawValues == ["wood-pop", "warm-spark"])
+    }
+
     @Test func aToastsUndoButtonRevertsThatChangeAndOnlyOnce() throws {
         let h = Harness()
         let first = h.id("Write release notes for 0.1")

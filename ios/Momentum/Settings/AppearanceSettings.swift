@@ -5,12 +5,22 @@ import SwiftUI
 import UIKit
 
 struct AppearanceSettings: View {
+    @Environment(\.locale) private var locale
     @AppStorage(PrefKey.appFontName) private var fontName = ""
     @AppStorage(MobileAppearance.contentScaleKey) private var contentScale = 1.0
     @AppStorage(MobileAppearance.interfaceScaleKey) private var interfaceScale = 1.0
     @AppStorage(MobileAppearance.hapticsKey) private var haptics = true
     @AppStorage(PrefKey.completionSound) private var completionSound = false
+    @AppStorage(PrefKey.completionSoundChoice) private var completionSoundChoiceRaw = CompletionSoundChoice.defaultChoice.rawValue
     @State private var pickingFont = false
+
+    private var completionSoundChoice: Binding<CompletionSoundChoice> {
+        Binding {
+            CompletionSoundChoice.resolve(completionSoundChoiceRaw)
+        } set: { choice in
+            completionSoundChoiceRaw = choice.rawValue
+        }
+    }
 
     var body: some View {
         Form {
@@ -38,8 +48,24 @@ struct AppearanceSettings: View {
             Section {
                 Toggle("Haptic feedback", isOn: $haptics)
                 Toggle("Completion sound", isOn: $completionSound)
+                Picker("Sound", selection: completionSoundChoice) {
+                    ForEach(CompletionSoundChoice.allCases) { choice in
+                        Text(choice.label(locale: locale)).tag(choice)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+                .accessibilityLabel(Text("Sound"))
+                .accessibilityValue(Text(completionSoundChoice.wrappedValue.label(locale: locale)))
+                .accessibilityIdentifier("completion-sound-choice")
+                .disabled(!completionSound)
+                Button("Preview sound") {
+                    guard completionSound else { return }
+                    CompletionSound.shared.playCompletion(completionSoundChoice.wrappedValue)
+                }
+                .accessibilityIdentifier("completion-sound-preview")
+                .disabled(!completionSound)
             } header: { Text("Feedback").foregroundStyle(AccentTheme.secondaryText) } footer: {
-                Text("The completion sound is a short chime when you mark a task done. It follows the Ring/Silent switch.")
+                Text("Choose a short sound for completed tasks. Preview plays the selected sound. It follows the Ring/Silent switch.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
         }

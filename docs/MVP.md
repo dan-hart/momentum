@@ -306,14 +306,19 @@ Open, New Task Here…, Edit…, Delete Project… (not Inbox). Tag: Open, Edit�
   with `moveToArchive`, then syncs as Archive Completed does. The toast reads "Task
   completed and archived"; undo restores it as an open task. Reopening a task never
   archives.
-- Tasks › Play a sound when a task is completed (`completion-sound`, off by default): any
-  change whose outcome is a completion message (check box, Ctrl+D/⌘D, bulk Mark as Done,
-  a notification's Done button, a `complete-task` URL, Shortcuts on macOS) plays a bundled
-  0.3 s chime (Kenney "Interface Sounds" `confirmation_001`, CC0). Reopening, undo, and
-  every other change are silent. The clip plays through GTK's media stream on Linux and
-  as a system sound on Apple platforms. iOS limits it to in-app completion and follows
-  the Ring/Silent switch; notification, URL and Shortcuts completions are silent. `mo done` from the command line, which never produces a toast,
-  does not chime either.
+- Tasks › Play a sound when a task is completed (`completion-sound`, off by default):
+  choose any of ten bundled acoustic clips with `completion-sound-choice`. The default
+  selection is **6 · Bright Finish** (`bright-finish`), including for an absent or unknown
+  saved choice. Turning sound off retains the choice. Native settings offer a sound
+  picker and an explicit preview while enabled; changing the selection alone is silent.
+  Clips are 0.22–0.55 seconds, arranged from VCSL CC0 recordings (see [NOTICE.md](../NOTICE.md)).
+  Linux/macOS play once for a completion outcome, including bulk and auto-archived tasks.
+  Reopening, undo, failures and other changes stay silent. Linux uses GTK media; Apple
+  uses system sounds. iOS retains its in-app completion scope and respects Ring/Silent;
+  notification, URL and App Intents completions remain silent. Android plays for
+  interactive completion outcomes through native SoundPool and respects silent/vibrate
+  mode and system volume. Automatic background work and `mo done` do not play a sound. Desktop notification
+  Done retains its existing completion feedback.
 - Desktop › Modifier key: `modifier-key` (`control` default, `alt`, `super`; `option`,
   `command` on macOS). Every app accelerator is written with `<Control>` and rewritten
   through one function at startup and on change; the Keyboard Shortcuts overlay and the

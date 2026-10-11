@@ -2605,6 +2605,106 @@
           }
         }
       }
+    },
+    "1 Wood Pop": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Holzklang"
+          }
+        }
+      }
+    },
+    "10 Warm Spark": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 Warmer Funke"
+          }
+        }
+      }
+    },
+    "2 Double Check": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2 Doppeltes Häkchen"
+          }
+        }
+      }
+    },
+    "3 Rounded Lift": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 Sanfter Aufstieg"
+          }
+        }
+      }
+    },
+    "4 Pocket Piano": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 Taschenklavier"
+          }
+        }
+      }
+    },
+    "5 String Flick": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 Saitenzupfer"
+          }
+        }
+      }
+    },
+    "6 Bright Finish": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 Heller Abschluss"
+          }
+        }
+      }
+    },
+    "7 Harp Snap": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 Harfenzupfer"
+          }
+        }
+      }
+    },
+    "8 Click and Glow": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "8 Klick und Glanz"
+          }
+        }
+      }
+    },
+    "9 Tiny Ta-Da": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "9 Kleines Ta-Da"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

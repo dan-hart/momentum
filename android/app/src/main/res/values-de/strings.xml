@@ -284,4 +284,19 @@
     <string name="clear">Leeren</string>
     <string name="draft_edit_capacity">Diese Änderung ist zu groß, um sie als Entwurf zu speichern. Dein bisheriger Text wurde beibehalten.</string>
     <string name="draft_open_capacity">Dieser Text ist zu groß, um ihn sicher zu bearbeiten. Sein gespeicherter Inhalt wurde beibehalten.</string>
+    <string name="completion_sound">Ton beim Erledigen</string>
+    <string name="completion_sound_enabled">Beim Erledigen einer Aufgabe einen Ton abspielen</string>
+    <string name="completion_sound_choice">Ton</string>
+    <string name="completion_sound_preview">Ton anhören</string>
+    <string name="completion_sound_hint">Wähle einen kurzen Ton für erledigte Aufgaben. Die Vorschau spielt den ausgewählten Ton ab. Stummmodus und Systemlautstärke werden berücksichtigt.</string>
+    <string name="sound_wood_pop">1 Holzklang</string>
+    <string name="sound_double_check">2 Doppeltes Häkchen</string>
+    <string name="sound_rounded_lift">3 Sanfter Aufstieg</string>
+    <string name="sound_pocket_piano">4 Taschenklavier</string>
+    <string name="sound_string_flick">5 Saitenzupfer</string>
+    <string name="sound_bright_finish">6 Heller Abschluss</string>
+    <string name="sound_harp_snap">7 Harfenzupfer</string>
+    <string name="sound_click_and_glow">8 Klick und Glanz</string>
+    <string name="sound_tiny_ta_da">9 Kleines Ta-Da</string>
+    <string name="sound_warm_spark">10 Warmer Funke</string>
 </resources>

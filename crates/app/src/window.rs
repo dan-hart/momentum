@@ -1118,7 +1118,7 @@ impl MomentumWindow {
                 None => self.toast(&text),
             }
             if crate::sound::should_play(&self.imp().settings, m) {
-                crate::sound::play_completion();
+                crate::sound::play_completion(crate::sound::selected_choice(&self.imp().settings));
             }
         }
         if out.sync_now && self.sync_configured() {

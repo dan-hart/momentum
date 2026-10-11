@@ -72,6 +72,7 @@ import java.time.format.FormatStyle
         KeyboardModifierSettings(settings, vm::settings)
         SettingHeading(R.string.lists)
         SettingSwitch(R.string.auto_archive, preferences.autoArchive) { enabled -> vm.preferences { it.copy(autoArchive = enabled) } }
+        CompletionSoundSettings(settings, vm::settings, vm::previewCompletionSound)
         SettingHeading(R.string.system_search)
         SettingSwitch(R.string.system_search_enabled, settings.systemSearch,
             Build.VERSION.SDK_INT >= 31 && (!searchStatus.searchUpdating || settings.systemSearch)) { enabled ->

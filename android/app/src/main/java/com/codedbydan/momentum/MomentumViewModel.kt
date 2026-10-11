@@ -10,6 +10,9 @@ import androidx.lifecycle.viewModelScope
 import com.codedbydan.momentum.core.*
 import com.codedbydan.momentum.data.*
 import com.codedbydan.momentum.platform.PlatformCoordinator
+import com.codedbydan.momentum.platform.CompletionSound
+import com.codedbydan.momentum.platform.CompletionSoundPlayer
+import com.codedbydan.momentum.platform.isInteractiveCompletion
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -53,6 +56,7 @@ class MomentumViewModel(
         (application as MomentumApplication).platform else PlatformCoordinator(application, repository),
     private val resumeAfterRestore: suspend () -> Unit = { platform.resumeAfterRestore() },
     private val openImportSource: (Uri) -> InputStream? = { application.contentResolver.openInputStream(it) },
+    private val soundPlayer: CompletionSoundPlayer = CompletionSound(application),
 ) : AndroidViewModel(application) {
     private val draftBudget = DraftStorageBudget()
     private var legacyInlineDraft = saved.get<String>("editor")?.let(EditorDraft::decode)
@@ -92,6 +96,9 @@ class MomentumViewModel(
     private val draftLock = Mutex()
     private var draftId: String? = saved["editor-id"]
     private var persistJob: Job? = null
+    private var soundSettingsJob: Job? = null
+    private var soundGeneration = 0L
+    private var soundForeground = true
 
     init {
         // The admitted editor or preserved SavedState value owns this source after initialization.
@@ -258,6 +265,7 @@ class MomentumViewModel(
                 notifyChanges()
                 refresh()
                 onSuccess()
+                if(outcome.isInteractiveCompletion()) playCurrentCompletionSound()
             }
         } catch (e: Exception) { fail(e) }
     }
@@ -515,8 +523,30 @@ class MomentumViewModel(
     fun preferences(change: (com.codedbydan.momentum.core.Preferences) -> com.codedbydan.momentum.core.Preferences) = viewModelScope.launch {
         try { repository.updatePreferences(change); notifyChanges(); refresh() } catch(e: Exception) { fail(e) }
     }
-    fun settings(change: (AppSettings) -> AppSettings) = viewModelScope.launch {
-        try { repository.updateSettings(change); notifyChanges(); refresh() } catch(e: Exception) { fail(e) }
+    fun settings(change: (AppSettings) -> AppSettings): Job {
+        // Invalidate pending audio synchronously, before the DataStore write suspends.
+        stopCompletionSound()
+        return viewModelScope.launch {
+            try { repository.updateSettings(change); notifyChanges(); refresh() } catch(e: Exception) { fail(e) }
+        }.also { soundSettingsJob = it }
+    }
+    fun previewCompletionSound() = viewModelScope.launch { playCurrentCompletionSound() }
+    fun stopCompletionSound() { ++soundGeneration; soundPlayer.cancelPending() }
+    fun completionSoundForeground(visible: Boolean) {
+        soundForeground = visible
+        if(!visible) stopCompletionSound()
+    }
+    private suspend fun playCurrentCompletionSound() {
+        try {
+            if(!soundForeground) return
+            val generation = soundGeneration
+            soundSettingsJob?.join()
+            val settings = repository.settings()
+            if(soundForeground && generation == soundGeneration && settings.completionSound) soundPlayer.play(settings.completionSoundChoice)
+        } catch(e: Exception) {
+            if(e is CancellationException) throw e
+            // Optional feedback must not turn a successfully persisted task into a failed action.
+        }
     }
     fun organization(project: Boolean, id: String?, title: String, color: String?, onEntity: (String) -> Unit = {}, onSuccess: () -> Unit = {}) = viewModelScope.launch {
         try {
@@ -640,7 +670,7 @@ class MomentumViewModel(
         // A manageable preview may be shorter; the full shared source remains editable.
         captureTask(firstLine.take(200), text.takeIf { it.contains('\n') || it.startsWith("http") || firstLine.length > 200 }.orEmpty(), "", "")
     }
-    override fun onCleared() { ++importGeneration; importPreparation?.cancel(); importFile?.delete() }
+    override fun onCleared() { ++importGeneration; importPreparation?.cancel(); importFile?.delete(); soundPlayer.close() }
 }
 
 private fun viewKey(view: View): String = when(view) {

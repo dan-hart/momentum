@@ -10,6 +10,33 @@ Severity: Critical = data loss/security/core unusable; High = major workflow imp
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
 
+## 2026-10-11 — F-056 completion-sound choices assessment
+
+This is a requested enhancement to feedback and settings, rather than a reproduced
+product defect. It replaces the former single clip with ten selectable CC0 clips on
+all four native platforms and adds Android’s optional sound setting. Default,
+persistence, fallback and completion-only regression evidence is recorded in
+[PROGRESS.md](PROGRESS.md). Existing unrelated defects retain their own status;
+audible output and physical-device acceptance are separate verification gates.
+
+## B-138 — Android CI cannot find the SDK manager
+
+- **Severity:** Medium. **Feature:** F-060/F-056 verification. **Impact:** reproduced
+  in the Android source-build run on main `4ffb52a` (2026-10-11).
+- **Reproduction:** the pinned Rust/Android package step invokes bare `sdkmanager`;
+  [run 38117069859](https://github.com/dan-hart/momentum/actions/runs/38117069859)
+  exits 127 before Android compilation because that executable is absent from PATH.
+- **Expected:** the existing runner SDK can install the pinned Android packages and
+  reach build/test validation. **Fix:** invoke the manager from the runner’s existing
+  `ANDROID_HOME/cmdline-tools/latest/bin` directory. No toolchain pin is changed.
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Not applicable — Android CI setup | Not applicable — Android CI setup | Not applicable — Android CI setup | Implemented — exact-head hosted execution pending |
+
+- **Evidence/next:** failure log inspected live on 2026-10-11; workflow command
+  updated locally. Exact-head CI after the authorized push is the verification gate.
+
 ## 2026-10-10 — internal TestFlight preparation assessment
 
 F-059 changes the iOS app and share-extension identifiers for the requested App Store

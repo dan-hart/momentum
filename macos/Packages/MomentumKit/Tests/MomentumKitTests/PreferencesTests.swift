@@ -39,6 +39,39 @@ import Testing
         #expect(d.string(forKey: PrefKey.rowDensity) == "regular", "iOS lists start at the regular density")
     }
 
+    @Test func completionSoundStartsWithBrightFinishWhileRemainingOff() {
+        let (d, name) = freshDefaults()
+        defer { d.removePersistentDomain(forName: name) }
+        #expect(!Preferences(d).completionSound)
+        #expect(d.string(forKey: PrefKey.completionSoundChoice) == "bright-finish")
+    }
+
+    @Test func everyCompletionSoundChoiceSurvivesRecreationAndToggling() {
+        let (d, name) = freshDefaults()
+        defer { d.removePersistentDomain(forName: name) }
+        for choice in CompletionSoundChoice.allCases {
+            d.set(choice.rawValue, forKey: PrefKey.completionSoundChoice)
+            d.set(true, forKey: PrefKey.completionSound)
+            #expect(Preferences(UserDefaults(suiteName: name)!).completionSoundChoice == choice)
+            d.set(false, forKey: PrefKey.completionSound)
+            #expect(Preferences(UserDefaults(suiteName: name)!).completionSoundChoice == choice)
+            d.set(true, forKey: PrefKey.completionSound)
+            #expect(Preferences(UserDefaults(suiteName: name)!).completionSoundChoice == choice)
+        }
+    }
+
+    @Test func absentOrUnknownCompletionChoiceFallsBackWithoutOverwritingSavedValue() {
+        let name = "momentum-prefs-\(UUID().uuidString)"
+        let d = UserDefaults(suiteName: name)!
+        defer { d.removePersistentDomain(forName: name) }
+        #expect(Preferences(d).completionSoundChoice == .brightFinish)
+        d.set("future-sound", forKey: PrefKey.completionSoundChoice)
+        #expect(Preferences(d).completionSoundChoice == .brightFinish)
+        #expect(d.string(forKey: PrefKey.completionSoundChoice) == "future-sound")
+        d.set("", forKey: PrefKey.completionSoundChoice)
+        #expect(Preferences(d).completionSoundChoice == .brightFinish)
+    }
+
     @Test func completionSoundPersistsWhenPreferencesAreRecreated() {
         let (d, name) = freshDefaults()
         defer { d.removePersistentDomain(forName: name) }

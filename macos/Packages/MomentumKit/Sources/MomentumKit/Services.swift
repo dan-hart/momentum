@@ -25,7 +25,7 @@ public protocol SearchIndexer: AnyObject {
 /// Short audible feedback. The state object asks for it only when the preference is on.
 @MainActor
 public protocol SoundPlayer: AnyObject {
-    func playCompletion()
+    func playCompletion(_ choice: CompletionSoundChoice)
 }
 
 #if os(macOS)

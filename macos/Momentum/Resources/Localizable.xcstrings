@@ -342,16 +342,6 @@
         }
       }
     },
-    "A short chime when you mark a task done.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ein kurzer Klang, wenn du eine Aufgabe als erledigt markierst."
-          }
-        }
-      }
-    },
     "A task you complete goes straight to the archive. Undo brings it back.": {
       "localizations": {
         "de": {
@@ -3623,6 +3613,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Systemeinstellungen öffnen"
+          }
+        }
+      }
+    },
+    "Choose a short sound for completed tasks. Preview plays the selected sound.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen kurzen Klang für erledigte Aufgaben. Mit „Klang anhören“ hörst du den ausgewählten Klang."
+          }
+        }
+      }
+    },
+    "Preview sound": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klang anhören"
+          }
+        }
+      }
+    },
+    "Sound": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klang"
           }
         }
       }

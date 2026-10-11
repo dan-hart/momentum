@@ -872,6 +872,16 @@
         }
       }
     },
+    "Choose a short sound for completed tasks. Preview plays the selected sound. It follows the Ring/Silent switch.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen kurzen Klang für erledigte Aufgaben. Mit „Klang anhören“ hörst du den ausgewählten Klang. Er beachtet den Schalter „Klingeln/Lautlos“."
+          }
+        }
+      }
+    },
     "Color": {
       "localizations": {
         "de": {
@@ -2831,6 +2841,16 @@
         }
       }
     },
+    "Preview sound": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klang anhören"
+          }
+        }
+      }
+    },
     "Previous Tab": {
       "localizations": {
         "de": {
@@ -3393,6 +3413,16 @@
         }
       }
     },
+    "Sound": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klang"
+          }
+        }
+      }
+    },
     "Source Code": {
       "localizations": {
         "de": {
@@ -3822,16 +3852,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Das App-Kennzeichen konnte nicht aktualisiert werden. Aktualisiere den Zeitplan, um es erneut zu versuchen."
-          }
-        }
-      }
-    },
-    "The completion sound is a short chime when you mark a task done. It follows the Ring/Silent switch.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Ton beim Erledigen ist ein kurzer Klang, wenn du eine Aufgabe als erledigt markierst. Er richtet sich nach dem Schalter „Klingeln/Lautlos“."
           }
         }
       }

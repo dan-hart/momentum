@@ -144,6 +144,15 @@ fn window_in(dir: PathBuf) -> (MomentumWindow, PathBuf) {
 pub fn settings() -> gio::Settings {
     gio::Settings::new(*crate::config::APP_ID)
 }
+/// A separate in-memory backend for preference logic tests that do not need GTK.
+/// Loading the compiled test schema explicitly avoids touching desktop preferences.
+pub fn isolated_settings() -> gio::Settings {
+    let directory = std::env::var("GSETTINGS_SCHEMA_DIR")
+        .expect("GSETTINGS_SCHEMA_DIR unset: run tests through build-aux/run-tests.sh");
+    let source = gio::SettingsSchemaSource::from_directory(directory, None, false).expect("compiled test schema");
+    let schema = source.lookup(*crate::config::APP_ID, false).expect("test app schema");
+    gio::Settings::new_full(&schema, Some(&gio::memory_settings_backend_new()), None)
+}
 /// Resets every key a test may have touched.
 pub fn reset_settings() {
     let s = settings();
@@ -162,6 +171,7 @@ pub fn reset_settings() {
         "background-sync",
         "auto-archive",
         "completion-sound",
+        "completion-sound-choice",
         "run-in-background",
         "background-count-mode",
         "morning-summary-enabled",

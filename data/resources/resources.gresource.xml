@@ -8,7 +8,16 @@
     <file compressed="true">style.css</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/tag-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/archive-symbolic.svg</file>
-    <!-- Kenney "Interface Sounds" confirmation_001, CC0-1.0 (see NOTICE.md) -->
-    <file>sounds/task-complete.wav</file>
+    <!-- Approved VCSL completion sound arrangements, CC0-1.0 (see NOTICE.md) -->
+    <file>sounds/wood-pop.wav</file>
+    <file>sounds/double-check.wav</file>
+    <file>sounds/rounded-lift.wav</file>
+    <file>sounds/pocket-piano.wav</file>
+    <file>sounds/string-flick.wav</file>
+    <file>sounds/bright-finish.wav</file>
+    <file>sounds/harp-snap.wav</file>
+    <file>sounds/click-and-glow.wav</file>
+    <file>sounds/tiny-ta-da.wav</file>
+    <file>sounds/warm-spark.wav</file>
   </gresource>
 </gresources>

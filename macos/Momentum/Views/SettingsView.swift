@@ -30,8 +30,10 @@ struct SettingsView: SwiftUI.View {
 
 private struct GeneralSettings: SwiftUI.View {
     @Environment(AppState.self) private var state
+    @Environment(\.locale) private var locale
     @AppStorage(PrefKey.autoArchive) private var autoArchive = false
     @AppStorage(PrefKey.completionSound) private var completionSound = false
+    @AppStorage(PrefKey.completionSoundChoice) private var completionSoundChoiceRaw = CompletionSoundChoice.defaultChoice.rawValue
     @AppStorage(PrefKey.colorfulLabels) private var colorful = true
     @AppStorage(PrefKey.runInBackground) private var background = false
     @AppStorage(PrefKey.showInMenuBar) private var menuBar = false
@@ -40,6 +42,14 @@ private struct GeneralSettings: SwiftUI.View {
     @AppStorage(PrefKey.morningSummaryEnabled) private var morningSummary = false
     @AppStorage(PrefKey.morningSummaryHour) private var morningHour = 8
     @AppStorage(PrefKey.morningSummaryMinute) private var morningMinute = 0
+
+    private var completionSoundChoice: Binding<CompletionSoundChoice> {
+        Binding {
+            CompletionSoundChoice.resolve(completionSoundChoiceRaw)
+        } set: { choice in
+            completionSoundChoiceRaw = choice.rawValue
+        }
+    }
 
     private var summaryTime: Binding<Date> {
         Binding {
@@ -60,7 +70,18 @@ private struct GeneralSettings: SwiftUI.View {
                 Text(String(localized: "A task you complete goes straight to the archive. Undo brings it back."))
                     .appFont(.caption).foregroundStyle(.secondary)
                 Toggle(String(localized: "Play a sound when a task is completed"), isOn: $completionSound)
-                Text(String(localized: "A short chime when you mark a task done."))
+                Picker(String(localized: "Sound"), selection: completionSoundChoice) {
+                    ForEach(CompletionSoundChoice.allCases) { choice in
+                        Text(choice.label(locale: locale)).tag(choice)
+                    }
+                }
+                .disabled(!completionSound)
+                Button(String(localized: "Preview sound")) {
+                    guard completionSound else { return }
+                    CompletionSound.shared.playCompletion(completionSoundChoice.wrappedValue)
+                }
+                .disabled(!completionSound)
+                Text(String(localized: "Choose a short sound for completed tasks. Preview plays the selected sound."))
                     .appFont(.caption).foregroundStyle(.secondary)
             }
             Section(String(localized: "Notifications")) {

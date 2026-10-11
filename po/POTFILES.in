@@ -14,5 +14,6 @@ crates/app/src/prefs.rs
 crates/app/src/quick_add.rs
 crates/app/src/repeat_dialog.rs
 crates/app/src/search_provider.rs
+crates/app/src/sound.rs
 crates/app/src/task_form.rs
 crates/app/src/window.rs

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Dan Hart
 //! Pure helpers behind the UI: formatting, parsing, colours, repeat descriptions, the
 //! modifier key. They touch glib and gettext, so they run on the GTK thread too.
-use super::support::{on_gtk, reset_settings, settings};
+use super::support::{isolated_settings, on_gtk, reset_settings, settings};
 use crate::background_status::{
     format_status, format_status_with, truncate_status, BackgroundCountMode, BackgroundStatusController,
 };
@@ -362,35 +362,106 @@ fn demo_data_is_what_the_screenshots_and_tests_rely_on() {
 }
 
 #[test]
+fn completion_sound_catalog_has_the_ten_approved_choices_and_default_six() {
+    use crate::sound::CompletionSoundChoice;
+    let slugs = [
+        "wood-pop",
+        "double-check",
+        "rounded-lift",
+        "pocket-piano",
+        "string-flick",
+        "bright-finish",
+        "harp-snap",
+        "click-and-glow",
+        "tiny-ta-da",
+        "warm-spark",
+    ];
+    assert_eq!(CompletionSoundChoice::ALL.map(|choice| choice.slug()), slugs);
+    assert_eq!(CompletionSoundChoice::default(), CompletionSoundChoice::BrightFinish);
+    for (index, choice) in CompletionSoundChoice::ALL.into_iter().enumerate() {
+        assert_eq!(CompletionSoundChoice::from_setting(choice.slug()), choice);
+        assert_eq!(choice.index(), index as u32);
+        assert!(choice.label().starts_with(&format!("{} ", index + 1)));
+        assert_eq!(
+            choice.resource(),
+            format!("/io/github/dan_hart/Momentum/sounds/{}.wav", slugs[index])
+        );
+    }
+    for unknown in ["", "future-sound", "BRIGHT-FINISH", "../../other"] {
+        assert_eq!(
+            CompletionSoundChoice::from_setting(unknown),
+            CompletionSoundChoice::BrightFinish
+        );
+    }
+}
+
+#[test]
+fn completion_sound_choice_persists_while_disabled_and_unknown_values_fall_back() {
+    use crate::sound::{selected_choice, CompletionSoundChoice};
+    let s = isolated_settings();
+    let schema = s.settings_schema().unwrap();
+    assert!(
+        schema.has_key("completion-sound-choice"),
+        "the selected sound has a persistent preference"
+    );
+    assert_eq!(s.string("completion-sound-choice"), "bright-finish");
+    assert_eq!(selected_choice(&s), CompletionSoundChoice::BrightFinish);
+    for choice in CompletionSoundChoice::ALL {
+        s.set_string("completion-sound-choice", choice.slug()).unwrap();
+        s.set_boolean("completion-sound", true).unwrap();
+        s.set_boolean("completion-sound", false).unwrap();
+        let reopened = gtk::gio::Settings::new_full(&schema, s.backend().as_ref(), None);
+        assert_eq!(selected_choice(&reopened), choice);
+    }
+    s.set_string("completion-sound-choice", "future-sound").unwrap();
+    assert_eq!(selected_choice(&s), CompletionSoundChoice::BrightFinish);
+    assert_eq!(
+        s.string("completion-sound-choice"),
+        "future-sound",
+        "reading never rewrites a future choice"
+    );
+}
+
+#[test]
+fn completion_sound_catalog_resources_are_bundled_wavs() {
+    let path = std::env::var("MOMENTUM_TEST_RESOURCES")
+        .expect("MOMENTUM_TEST_RESOURCES unset: run tests through build-aux/run-tests.sh");
+    let resource = gtk::gio::Resource::load(path).expect("compiled test resources");
+    for choice in crate::sound::CompletionSoundChoice::ALL {
+        let bytes = resource
+            .lookup_data(&choice.resource(), gtk::gio::ResourceLookupFlags::NONE)
+            .expect("every selectable clip is bundled");
+        assert_eq!(&bytes.as_ref()[..4], b"RIFF");
+        assert_eq!(&bytes.as_ref()[8..12], b"WAVE");
+    }
+}
+
+#[test]
 fn completion_sound_celebrates_only_completions_and_is_off_by_default() {
     use momentum_core::Message;
-    on_gtk(|| {
-        reset_settings();
-        let s = settings();
-        for m in [
-            Message::TaskCompleted,
-            Message::TaskCompletedArchived,
-            Message::TasksCompleted { n: 2 },
-            Message::TasksCompletedArchived { n: 2 },
-        ] {
-            assert!(crate::sound::celebrates(&m), "{m:?} completes tasks");
-            assert!(!crate::sound::should_play(&s, &m), "silent until the setting is on");
-        }
-        for m in [
-            Message::TaskAdded,
-            Message::TaskDeleted,
-            Message::Undone,
-            Message::MovedToToday,
-        ] {
-            assert!(!crate::sound::celebrates(&m), "{m:?} is not a completion");
-        }
-        s.set_boolean("completion-sound", true).unwrap();
-        assert!(crate::sound::should_play(&s, &Message::TaskCompleted));
-        assert!(crate::sound::should_play(&s, &Message::TasksCompletedArchived { n: 3 }));
-        assert!(
-            !crate::sound::should_play(&s, &Message::TaskAdded),
-            "other changes stay silent"
-        );
-        reset_settings();
-    });
+    let s = isolated_settings();
+    for m in [
+        Message::TaskCompleted,
+        Message::TaskCompletedArchived,
+        Message::TasksCompleted { n: 2 },
+        Message::TasksCompletedArchived { n: 2 },
+    ] {
+        assert!(crate::sound::celebrates(&m), "{m:?} completes tasks");
+        assert!(!crate::sound::should_play(&s, &m), "silent until the setting is on");
+    }
+    for m in [
+        Message::TaskAdded,
+        Message::TaskDeleted,
+        Message::Undone,
+        Message::MovedToToday,
+    ] {
+        assert!(!crate::sound::celebrates(&m), "{m:?} is not a completion");
+    }
+    s.set_boolean("completion-sound", true).unwrap();
+    assert!(crate::sound::should_play(&s, &Message::TaskCompleted));
+    assert!(crate::sound::should_play(&s, &Message::TasksCompletedArchived { n: 3 }));
+    assert!(
+        !crate::sound::should_play(&s, &Message::TaskAdded),
+        "other changes stay silent"
+    );
 }

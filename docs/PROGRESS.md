@@ -50,6 +50,55 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-11 — selectable completion sounds (F-056)
+
+Dan approved all ten shorter preview clips as native choices on Linux, macOS, iOS
+and Android, with option 6 Bright Finish as the default selection when enabled, and
+explicitly authorized pushing to main. Sound remains off by default. Work is isolated
+on `task/completion-sound-choices`, based on remote main `4ffb52a`; the primary
+`task/sync-performance-recovery` checkout and its inherited work are preserved.
+Native pickers and explicit preview keep saved choices device-local; unknown choices
+fall back to Bright Finish. All platforms bundle the same approved PCM WAVs with VCSL
+CC0 provenance and notices. Rust task rules, FFI and task formats remain unchanged.
+B-138 corrects the existing Android CI SDK-manager path so verification can run.
+Tests, build evidence and remaining native acceptance limits follow in the dated
+handoff below. This request authorizes a main push, with no tag or release requested.
+
+### 2026-10-11 — F-056 implementation handoff
+
+- **Scope/revision:** dirty `task/completion-sound-choices` based on `4ffb52a`,
+  isolated from the primary checkout. All ten approved files match across Linux,
+  Apple and Android; `check-completion-sounds.py` checks hashes, PCM format,
+  duration, catalog ordering, default and pinned public provenance. No Rust task
+  rule, persistence format or generated FFI contract changed.
+- **Automated checks:** shared Rust suite 323 passed, 5 existing ignored;
+  MomentumKit 178 passed with compiled string catalogs; MomentumMobile 161 passed;
+  Android JVM 99 passed and source/build tools 45 passed; release lint passed.
+  Linux production and test typechecking passed; four sound logic tests passed with isolated Gio settings and
+  the compiled resource bundle. Blueprint, strict GSettings schema, gresource,
+  gettext/POTFILES, version alignment and changed Markdown links passed.
+- **Apple builds/native:** macOS arm64 and iOS simulator app builds passed; all
+  ten WAVs in both actual app bundles and the Android debug APK match the masters.
+  macOS compiled German resources passed; iOS catalog validation passed. The full
+  hosted iOS 27 suite executed 102 tests with 3 existing skips and no failures.
+  The settings test passed both English/German paths, including default 6, disabled picker/preview, unknown-value fallback,
+  native activation exposing all ten choices, and native selection writing the
+  stable slug. The picker uses the existing native navigation-link style.
+- **Android native:** eight focused instrumentation tests passed on a fresh owned
+  API 26 emulator. They exercise isolated preference persistence, all ten native
+  settings rows and preview, 48 dp controls, successful single/bulk/auto-archive
+  completion and silent undo/reopen/unchanged/save-failure/off/background paths.
+  SoundPool decodes all ten shipped WAVs without playing through user speakers.
+  A fresh API 37 emulator could not boot because of a host `mprotect` failure;
+  existing unrelated emulators were left untouched. API 37 acceptance remains open.
+- **Acceptance status:** F-056 is Implemented separately on all four platforms.
+  Package tests and native fixtures verify their recorded scope; audible playback,
+  physical-device silent-switch/volume checks, and VoiceOver/TalkBack interaction
+  remain separate acceptance work. Linux GTK interaction tests need the hosted
+  Linux runtime. No personal task store, sync account or installed app was used.
+- **Integration:** main push is explicitly authorized. Exact-head hosted CI,
+  including B-138 setup verification, is checked after the push; no tag or release.
+
 ### 2026-10-11 — Android implementation and acceptance
 
 - User-authorized main integration adds F-060 Android release assets and README

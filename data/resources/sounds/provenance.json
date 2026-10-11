@@ -1,0 +1,476 @@
+{
+  "date": "2026-10-11",
+  "source_library": "Versilian Community Sample Library",
+  "creator": "Versilian Studios",
+  "license": "CC0-1.0",
+  "publisher_url": "https://versilian-studios.com/vcsl/",
+  "repository": "https://github.com/sgossner/VCSL",
+  "revision": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+  "sources": {
+    "Chordophones/Composite Chordophones/Folk Harp/EWHarp_Normal_C4_v2_RR1.wav": {
+      "path": "Chordophones/Composite Chordophones/Folk Harp/EWHarp_Normal_C4_v2_RR1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Composite%20Chordophones/Folk%20Harp/EWHarp_Normal_C4_v2_RR1.wav",
+      "sha256": "79774644727f61bd535e4b49f7eae0c31b0cac4d2714d33d8f6cd84e5db081d3",
+      "git_blob": "7118eaa188436970e23b28019b5b6e7fe6a1b5ef"
+    },
+    "Chordophones/Composite Chordophones/Strumstick/Finger/Strumstick_Finger_Str2_Main_D3_vl1_rr2.wav": {
+      "path": "Chordophones/Composite Chordophones/Strumstick/Finger/Strumstick_Finger_Str2_Main_D3_vl1_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Composite%20Chordophones/Strumstick/Finger/Strumstick_Finger_Str2_Main_D3_vl1_rr2.wav",
+      "sha256": "9b7d915a112b77e627f67dd8de809a5dbcc03c721a07269350c83b842a8c2b09",
+      "git_blob": "a95c9f05fc67654ed06e062820c1cf265dbe4300"
+    },
+    "Chordophones/Composite Chordophones/Strumstick/Finger/Strumstick_Finger_Str3_Main_A3_vl1_rr1.wav": {
+      "path": "Chordophones/Composite Chordophones/Strumstick/Finger/Strumstick_Finger_Str3_Main_A3_vl1_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Composite%20Chordophones/Strumstick/Finger/Strumstick_Finger_Str3_Main_A3_vl1_rr1.wav",
+      "sha256": "85092689ade53dd7a4f263fe3652d083c4028a5026710a90a8a879e43dfb2ed7",
+      "git_blob": "d0accdfa402f54810cc53f864b9c46ce1f6b5e6c"
+    },
+    "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_B3.wav": {
+      "path": "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_B3.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Upright%20Piano%2C%20Knight/Sustains/Player_vl1_rr1_B3.wav",
+      "sha256": "bec1685c18d279b6829a0acecb4ee95d4828ecb5d7ec5ea03cf6f5d7b8b13c35",
+      "git_blob": "8aea3ed9ab45ef2dcc9e9b9b937f9a41b868be9f"
+    },
+    "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_C#4.wav": {
+      "path": "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_C#4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Upright%20Piano%2C%20Knight/Sustains/Player_vl1_rr1_C%234.wav",
+      "sha256": "4e668e75c3922c79ef06bd46806224dbf8dbfa0be1569847a1cd17e573a967ec",
+      "git_blob": "946de9950a88c228d6f764e6789efb7d0147cffa"
+    },
+    "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_D#4.wav": {
+      "path": "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_D#4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Upright%20Piano%2C%20Knight/Sustains/Player_vl1_rr1_D%234.wav",
+      "sha256": "d1483294022dab8ae51c2909c6c91ea0130d8950a05ce3df6bd0ef8ddb4283c4",
+      "git_blob": "4ee03a886d65770d4f436c164c2f8ac4c581f614"
+    },
+    "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_F4.wav": {
+      "path": "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_F4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Upright%20Piano%2C%20Knight/Sustains/Player_vl1_rr1_F4.wav",
+      "sha256": "84fe87bd24dc93d354213f730517a29f485c40715d5959af97976b364110b70a",
+      "git_blob": "3a9f1381ca8a1a35ac4acdbf0d954e6aeb507dea"
+    },
+    "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_G3.wav": {
+      "path": "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_G3.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Upright%20Piano%2C%20Knight/Sustains/Player_vl1_rr1_G3.wav",
+      "sha256": "ad3b8eddf0de3a09fb584915222ac8da91fa229680b0e4285e62f9974746da86",
+      "git_blob": "052f794b0fbfa4c51db9f743a01c280ac6c95c1f"
+    },
+    "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_G4.wav": {
+      "path": "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_G4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Upright%20Piano%2C%20Knight/Sustains/Player_vl1_rr1_G4.wav",
+      "sha256": "dcb4ac3f0a810b4b7eb860596203764c10dd3fc9b3cb334f611029f908bf4842",
+      "git_blob": "28baf29b6bbab493bee7547d979a76207ea474f5"
+    },
+    "Idiophones/Struck Idiophones/Balafon/Soft Mallet/EthnicXylo_softM_C4_vl2_rr1_Mid.wav": {
+      "path": "Idiophones/Struck Idiophones/Balafon/Soft Mallet/EthnicXylo_softM_C4_vl2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Balafon/Soft%20Mallet/EthnicXylo_softM_C4_vl2_rr1_Mid.wav",
+      "sha256": "c46eaef41eed9c720227ec5c9e52d93bab53703c3bfd90e2e6a111cef01604c9",
+      "git_blob": "567d3fc7e5121fd5b8a36c400a1443fd4450ea44"
+    },
+    "Idiophones/Struck Idiophones/Balafon/Soft Mallet/EthnicXylo_softM_C5_vl2_rr1_Mid.wav": {
+      "path": "Idiophones/Struck Idiophones/Balafon/Soft Mallet/EthnicXylo_softM_C5_vl2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Balafon/Soft%20Mallet/EthnicXylo_softM_C5_vl2_rr1_Mid.wav",
+      "sha256": "cbb610a8b387916fece4630c8197f4d542d356f86849b4503ee370f32ca00b5b",
+      "git_blob": "e64709ee7c8c8d5fb069d791493f98db48911bc8"
+    },
+    "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_C5_02.wav": {
+      "path": "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_C5_02.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Glockenspiel/glock_soft_C5_02.wav",
+      "sha256": "4fa149e6f224557df5fab98ad660a8f192bc6fbf2556077dd1089509bf4424e2",
+      "git_blob": "b68621c4f4fc482284bc8e848ea2d2654366d49e"
+    },
+    "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_G4_01.wav": {
+      "path": "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_G4_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Glockenspiel/glock_soft_G4_01.wav",
+      "sha256": "cd92f9402c28d3e951dc8d575ce61f0a550b7e316cb6427b1b455ac3aab09000",
+      "git_blob": "0fb4b3e2baea5685fa4bb29aba340781c0ab0077"
+    },
+    "Idiophones/Struck Idiophones/Hand Chimes/sus_E4_r01_main.wav": {
+      "path": "Idiophones/Struck Idiophones/Hand Chimes/sus_E4_r01_main.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hand%20Chimes/sus_E4_r01_main.wav",
+      "sha256": "7196b23009e1acc8e03591c35e54144487991c75cfe22413e84e0bbfeb478caf",
+      "git_blob": "c8776af21545b22a934540b4f431ac1c5f51b990"
+    },
+    "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C4_soft_01.wav": {
+      "path": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C4_soft_01.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Marimba/Marimba_hit_Outrigger_C4_soft_01.wav",
+      "sha256": "4d03d005166e8b366e6a983b7a4a89e0847e1d58a6d34dda35ddf74289cace94",
+      "git_blob": "6ccd29800db58963dd91136ea426b895d703bb22"
+    },
+    "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_C5_v1_rr1_Main.wav": {
+      "path": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_C5_v1_rr1_Main.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Vibraphone/Soft%20Mallets/Vibes_soft_C5_v1_rr1_Main.wav",
+      "sha256": "be995c1164dcbbcf83688d095864a4abd0feaa68b71d1d2e78c35f62461fc03b",
+      "git_blob": "46a9c03a0ecfaee7246b10e2eec32908853ab860"
+    },
+    "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_E5_v1_rr1_Main.wav": {
+      "path": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_E5_v1_rr1_Main.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Vibraphone/Soft%20Mallets/Vibes_soft_E5_v1_rr1_Main.wav",
+      "sha256": "d2a9412550115bfdc4e1087cad3cd6e9d8146c1f4a91bf47f60aa7936c5f5dbe",
+      "git_blob": "5ed1086c7afbe31827afa8be8a8c7c55dcbd7b01"
+    },
+    "Idiophones/Struck Idiophones/Woodblock/wood_click3_vl1.wav": {
+      "path": "Idiophones/Struck Idiophones/Woodblock/wood_click3_vl1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Woodblock/wood_click3_vl1.wav",
+      "sha256": "b38a06f037de70bb2cf98fd89f06af8d104d4123773d2e625691189a67495be5",
+      "git_blob": "0df4f555f624d91e5fb6841af9e72123ab859218"
+    },
+    "Idiophones/Struck Idiophones/Woodblock/wood_click_pp_rr1.wav": {
+      "path": "Idiophones/Struck Idiophones/Woodblock/wood_click_pp_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Woodblock/wood_click_pp_rr1.wav",
+      "sha256": "2c21a5de6f3ddd51ce851325ba6caa4a187422c51299da7b2fdc4f51ae5e9ee1",
+      "git_blob": "74858894be5bbdd0da1c4a8c46ad234ed8e9b95f"
+    }
+  },
+  "processing": "New short arrangements of CC0 acoustic recordings; onset trim, optional pitch shift, amplitude envelope, layering, mono conversion and gain normalization.",
+  "purpose": "Ten approved task-completion sounds bundled unchanged on Linux, macOS, iOS and Android.",
+  "default": "bright-finish",
+  "options": [
+    {
+      "id": 1,
+      "slug": "wood-pop",
+      "title": "Wood Pop",
+      "duration": 0.22,
+      "description": "One rounded wooden click with a little body.",
+      "events": [
+        [
+          "Idiophones/Struck Idiophones/Woodblock/wood_click_pp_rr1.wav",
+          0,
+          0.004,
+          1,
+          0.05,
+          0.21
+        ],
+        [
+          "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C4_soft_01.wav",
+          0,
+          0.008,
+          0.22,
+          0.06,
+          0.2
+        ]
+      ],
+      "peak_dbfs": -6.0,
+      "rms_dbfs": -24.68,
+      "sha256": "e38ab4a1d0216bac2e88aad767d5027ab6339caa83300a86947b956d2e594b28",
+      "wav": "wood-pop.wav"
+    },
+    {
+      "id": 2,
+      "slug": "double-check",
+      "title": "Double Check",
+      "duration": 0.28,
+      "description": "Two quick wooden ticks; the second is lighter and higher.",
+      "events": [
+        [
+          "Idiophones/Struck Idiophones/Woodblock/wood_click3_vl1.wav",
+          -2,
+          0.004,
+          0.75,
+          0.04,
+          0.12
+        ],
+        [
+          "Idiophones/Struck Idiophones/Woodblock/wood_click3_vl1.wav",
+          3,
+          0.078,
+          1,
+          0.06,
+          0.19
+        ]
+      ],
+      "peak_dbfs": -6.0,
+      "rms_dbfs": -26.59,
+      "sha256": "6d6ad0d6f3a7cac492294b46b3e319af1f3250eeb25e41ed912a4348c1863368",
+      "wav": "double-check.wav"
+    },
+    {
+      "id": 3,
+      "slug": "rounded-lift",
+      "title": "Rounded Lift",
+      "duration": 0.32,
+      "description": "A compact upward bounce on wooden mallet bars.",
+      "events": [
+        [
+          "Idiophones/Struck Idiophones/Balafon/Soft Mallet/EthnicXylo_softM_C4_vl2_rr1_Mid.wav",
+          0,
+          0.004,
+          0.8,
+          0.055,
+          0.17
+        ],
+        [
+          "Idiophones/Struck Idiophones/Balafon/Soft Mallet/EthnicXylo_softM_C5_vl2_rr1_Mid.wav",
+          -5,
+          0.075,
+          1,
+          0.09,
+          0.24
+        ]
+      ],
+      "peak_dbfs": -8.63,
+      "rms_dbfs": -21.0,
+      "sha256": "1c62315ecef6cca1bcd09e605e61124d36baf5c47ea1b00121dd8a8cb41566bc",
+      "wav": "rounded-lift.wav"
+    },
+    {
+      "id": 4,
+      "slug": "pocket-piano",
+      "title": "Pocket Piano",
+      "duration": 0.38,
+      "description": "A single softly rolled major piano chord.",
+      "events": [
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_G3.wav",
+          0,
+          0.004,
+          0.55,
+          0.09,
+          0.36
+        ],
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_B3.wav",
+          0,
+          0.016,
+          0.55,
+          0.1,
+          0.35
+        ],
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_D#4.wav",
+          -1,
+          0.03,
+          0.8,
+          0.11,
+          0.34
+        ]
+      ],
+      "peak_dbfs": -6.0,
+      "rms_dbfs": -21.34,
+      "sha256": "7ff557a44654bb3ef8d769c48eaa31ea16d7c7dbe628792882392426b0bf0721",
+      "wav": "pocket-piano.wav"
+    },
+    {
+      "id": 5,
+      "slug": "string-flick",
+      "title": "String Flick",
+      "duration": 0.34,
+      "description": "A short acoustic string pluck with a bright upper note.",
+      "events": [
+        [
+          "Chordophones/Composite Chordophones/Strumstick/Finger/Strumstick_Finger_Str2_Main_D3_vl1_rr2.wav",
+          0,
+          0.004,
+          0.65,
+          0.075,
+          0.32
+        ],
+        [
+          "Chordophones/Composite Chordophones/Strumstick/Finger/Strumstick_Finger_Str3_Main_A3_vl1_rr1.wav",
+          0,
+          0.045,
+          1,
+          0.1,
+          0.29
+        ]
+      ],
+      "peak_dbfs": -6.0,
+      "rms_dbfs": -21.46,
+      "sha256": "4bfd34325bbbc7f2baea000335dcfd89bb376f8b0acf695b298c976687c5e64d",
+      "wav": "string-flick.wav"
+    },
+    {
+      "id": 6,
+      "slug": "bright-finish",
+      "title": "Bright Finish",
+      "duration": 0.38,
+      "description": "A tiny two-note bell lift, with the ringing tail damped.",
+      "events": [
+        [
+          "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_G4_01.wav",
+          0,
+          0.004,
+          0.7,
+          0.075,
+          0.17
+        ],
+        [
+          "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_C5_02.wav",
+          0,
+          0.075,
+          1,
+          0.1,
+          0.3
+        ]
+      ],
+      "peak_dbfs": -7.06,
+      "rms_dbfs": -21.0,
+      "sha256": "87903557cd5d790e37019358b70ce213373e7988a6421b90f8097b1ba243527f",
+      "wav": "bright-finish.wav"
+    },
+    {
+      "id": 7,
+      "slug": "harp-snap",
+      "title": "Harp Snap",
+      "duration": 0.3,
+      "description": "Three harp strings brushed into one quick, light chord.",
+      "events": [
+        [
+          "Chordophones/Composite Chordophones/Folk Harp/EWHarp_Normal_C4_v2_RR1.wav",
+          0,
+          0.004,
+          0.6,
+          0.065,
+          0.28
+        ],
+        [
+          "Chordophones/Composite Chordophones/Folk Harp/EWHarp_Normal_C4_v2_RR1.wav",
+          4,
+          0.018,
+          0.6,
+          0.065,
+          0.27
+        ],
+        [
+          "Chordophones/Composite Chordophones/Folk Harp/EWHarp_Normal_C4_v2_RR1.wav",
+          7,
+          0.036,
+          0.85,
+          0.08,
+          0.26
+        ]
+      ],
+      "peak_dbfs": -6.0,
+      "rms_dbfs": -21.94,
+      "sha256": "b8e065b15e28e1b486face48e2ca3dfb3db623d4845f1d19afb768838e60dd45",
+      "wav": "harp-snap.wav"
+    },
+    {
+      "id": 8,
+      "slug": "click-and-glow",
+      "title": "Click & Glow",
+      "duration": 0.42,
+      "description": "A crisp tap followed immediately by a soft resonant chime.",
+      "events": [
+        [
+          "Idiophones/Struck Idiophones/Woodblock/wood_click_pp_rr1.wav",
+          0,
+          0.004,
+          0.65,
+          0.035,
+          0.12
+        ],
+        [
+          "Idiophones/Struck Idiophones/Hand Chimes/sus_E4_r01_main.wav",
+          0,
+          0.028,
+          1,
+          0.105,
+          0.38
+        ]
+      ],
+      "peak_dbfs": -8.06,
+      "rms_dbfs": -21.0,
+      "sha256": "a86dbb5689e7b31489849255e597bc3ae7aa4474f98d3b96e2a76ea7c898762b",
+      "wav": "click-and-glow.wav"
+    },
+    {
+      "id": 9,
+      "slug": "tiny-ta-da",
+      "title": "Tiny Ta-da",
+      "duration": 0.48,
+      "description": "Two short piano chords that resolve into a cheerful finish.",
+      "events": [
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_G3.wav",
+          0,
+          0.004,
+          0.5,
+          0.05,
+          0.14
+        ],
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_B3.wav",
+          0,
+          0.01,
+          0.43,
+          0.05,
+          0.14
+        ],
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_D#4.wav",
+          -1,
+          0.016,
+          0.55,
+          0.05,
+          0.14
+        ],
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_C#4.wav",
+          -1,
+          0.112,
+          0.7,
+          0.09,
+          0.34
+        ],
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_F4.wav",
+          -1,
+          0.122,
+          0.7,
+          0.09,
+          0.33
+        ],
+        [
+          "Chordophones/Zithers/Upright Piano, Knight/Sustains/Player_vl1_rr1_G4.wav",
+          0,
+          0.13,
+          0.75,
+          0.1,
+          0.34
+        ]
+      ],
+      "peak_dbfs": -6.0,
+      "rms_dbfs": -21.89,
+      "sha256": "58ad4aed4ad6ebd5f737604f5595ec4efa26f196ee1132602fba7d1d5145c9a2",
+      "wav": "tiny-ta-da.wav"
+    },
+    {
+      "id": 10,
+      "slug": "warm-spark",
+      "title": "Warm Spark",
+      "duration": 0.55,
+      "description": "A warm mallet tap with a small, bright shimmer above it.",
+      "events": [
+        [
+          "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C4_soft_01.wav",
+          0,
+          0.004,
+          0.85,
+          0.07,
+          0.23
+        ],
+        [
+          "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_C5_v1_rr1_Main.wav",
+          0,
+          0.045,
+          0.75,
+          0.13,
+          0.49
+        ],
+        [
+          "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_E5_v1_rr1_Main.wav",
+          0,
+          0.065,
+          0.45,
+          0.13,
+          0.47
+        ]
+      ],
+      "peak_dbfs": -6.69,
+      "rms_dbfs": -21.0,
+      "sha256": "3e3ba756e1679e51465842450c58daf0ad39be82eeeff124a756c302c51fdd6e",
+      "wav": "warm-spark.wav"
+    }
+  ]
+}

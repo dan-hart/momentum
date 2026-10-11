@@ -189,7 +189,11 @@ import XCTest
             } else if let element = object as? UIAccessibilityElement {
                 identifier = element.accessibilityIdentifier
             } else {
-                identifier = nil
+                // SwiftUI virtual nodes expose UIKit's public getter without adopting
+                // UIAccessibilityIdentification or inheriting UIAccessibilityElement.
+                let getter = #selector(getter: UIAccessibilityIdentification.accessibilityIdentifier)
+                identifier = object.responds(to: getter)
+                    ? object.perform(getter)?.takeUnretainedValue() as? String : nil
             }
             let frame: CGRect
             if let view = object as? UIView {
@@ -203,6 +207,7 @@ import XCTest
                     element: AccessibilityElement(
                         identifier: identifier,
                         label: object.accessibilityLabel,
+                        value: object.accessibilityValue,
                         frame: frame,
                         traits: object.accessibilityTraits
                     ),
@@ -274,6 +279,7 @@ import XCTest
     struct AccessibilityElement {
         let identifier: String?
         let label: String?
+        let value: String?
         let frame: CGRect
         let traits: UIAccessibilityTraits
     }
