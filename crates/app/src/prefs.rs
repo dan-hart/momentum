@@ -43,6 +43,8 @@ mod imp {
         #[template_child]
         pub auto_archive_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub completion_sound_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub morning_summary_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub morning_hour_row: TemplateChild<adw::SpinRow>,
@@ -172,6 +174,8 @@ mod imp {
                 ),
             );
             s.bind("auto-archive", &*self.auto_archive_row, "active").build();
+            s.bind("completion-sound", &*self.completion_sound_row, "active")
+                .build();
             for (key, row) in [
                 ("typography-content-scale", &*self.content_scale_row),
                 ("typography-interface-scale", &*self.interface_scale_row),

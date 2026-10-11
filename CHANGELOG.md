@@ -6,6 +6,62 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Native Android app in Kotlin and Jetpack Compose with the shared Rust core: offline
+  tasks, organization, search, recurrence, reminders, optional Nextcloud/LibreSync,
+  Android Keystore, private drafts and SAF backups. Native parity and physical
+  accessibility acceptance remain in progress.
+- Android APK/AAB, matching source, dependency notices, R8 mapping and provenance in
+  the unified tagged release, with optional distribution signing and explicit unsigned
+  filenames otherwise. Release checksums cover all distribution assets. No store upload.
+
+## [0.4.9] - 2026-10-10
+
+### Changed
+- Sync: unchanged Nextcloud files use conditional requests and a small durable metadata
+  update. Controlled tests measured 11.6× faster idle engine exchanges with 10,000 tasks
+- LibreSync: queued offline changes are published in one durable journal batch; the
+  1,000-operation test measured 244× faster publication
+
+### Fixed
+- Sync: retry transient download and verification failures within the exchange deadline,
+  while retaining local edits when an upload or journal write cannot be verified
+- Sync: detect same-version remote replacements and damaged compressed copies; improve
+  English and German recovery messages across the native apps
+- LibreSync: failed journal receipts and snapshots stay retryable instead of suppressing
+  later delivery
+- iOS: after a background sync wake, automatic sync could stop until the next edit or
+  pull-to-refresh, so remote changes stayed out of sight; opening the app during a wake
+  now retries at once and the idle cycle is re-armed. A wake that runs out of its time
+  budget no longer shows as a sync failure
+- macOS and Linux: with background sync on, bringing the window back now redraws the list
+  and syncs when the idle cycle was missed while hidden; macOS keeps its background sync
+  timers on cadence by declining App Nap while syncing without a window
+
+## [0.4.8] - 2026-10-07
+
+### Added
+- iOS: share a link or text to Momentum from any app's share sheet. The sheet shows a
+  normalized title to edit and adds the task to Inbox with the link first in its notes when
+  Momentum next opens; the app and its extension now share an App Group
+
+## [0.4.7] - 2026-10-06
+
+### Added
+- Optional task-completion sound, off by default, in Linux Preferences, macOS Settings
+  and iOS Settings. A short bundled chime plays for completion; reopen and undo are silent.
+
+## [0.4.6] - 2026-10-02
+
+### Added
+- macOS and iOS: optional one-way import from a selected Apple Reminders list, with
+  manual import and off-by-default automatic import while Momentum is active
+
+### Fixed
+- Apple Reminders: prevent a crash when EventKit returns reminders on a background queue
+- Apple Reminders: retry failed fetches and saves, announce import results to assistive
+  technology, and retain newly discovered reminder identities to avoid duplicate imports
+
 ### Changed
 - README and screenshot notes refreshed: October 2026 previews of all three apps, the
   current platform status, what changed in 0.4, and how sync failures and recovery work

@@ -72,8 +72,10 @@ pub enum SyncError {
     Cancelled,
     #[error("sync exceeded its deadline; retry when the connection is available")]
     Deadline,
-    #[error("the server kept {kept} of {sent} bytes of the upload; the previous copy is unchanged")]
+    #[error("the server kept {kept} of {sent} bytes of the upload; local edits remain queued")]
     UploadIncomplete { sent: u64, kept: u64 },
+    #[error("the server did not confirm the uploaded file; local edits remain queued")]
+    UploadUnverified,
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }
@@ -134,7 +136,7 @@ impl SyncError {
             SyncError::Conflict => K::Conflict,
             SyncError::Cancelled => K::Cancelled,
             SyncError::Deadline => K::TimedOut,
-            SyncError::UploadIncomplete { .. } => K::UploadIncomplete,
+            SyncError::UploadIncomplete { .. } | SyncError::UploadUnverified => K::UploadIncomplete,
             SyncError::Io(_) => K::Other,
         }
     }
@@ -164,7 +166,9 @@ pub fn decode(body: &str, password: Option<&str>) -> Result<SyncFile, SyncError>
             .decode(json.trim())
             .map_err(|e| SyncError::Parse(e.to_string()))?;
         let mut s = String::new();
-        flate2::read::GzDecoder::new(&bytes[..]).read_to_string(&mut s)?;
+        flate2::read::GzDecoder::new(&bytes[..])
+            .read_to_string(&mut s)
+            .map_err(|error| SyncError::Parse(format!("invalid compressed sync file: {error}")))?;
         s
     } else {
         json.to_string()
@@ -199,7 +203,7 @@ pub fn encode(f: &SyncFile, compress: bool, password: Option<&str>) -> Result<St
     ))
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NextcloudCfg {
     pub server_url: String,
     pub user_name: String,
@@ -317,6 +321,42 @@ impl ExchangeGuard<'_> {
             .build()
             .into())
     }
+    /// Only read requests are retried. A lost PUT response must not replay edits
+    /// that may already have reached the server. Every wait shares the same budget.
+    fn retry_read<T>(&self, mut read: impl FnMut() -> Result<T, SyncError>) -> Result<T, SyncError> {
+        for attempt in 0..3 {
+            self.check()?;
+            match read() {
+                Err(error)
+                    if attempt < 2
+                        && matches!(
+                            &error,
+                            SyncError::Http(
+                                ureq::Error::StatusCode(408 | 500 | 502 | 503 | 504)
+                                    | ureq::Error::ConnectionFailed
+                                    | ureq::Error::HostNotFound
+                                    | ureq::Error::Io(_)
+                                    | ureq::Error::Timeout(_)
+                                    | ureq::Error::BodyStalled
+                            )
+                        ) =>
+                {
+                    let until = Instant::now() + Duration::from_millis(250 << attempt);
+                    while Instant::now() < until {
+                        self.check()?;
+                        std::thread::sleep(
+                            Duration::from_millis(25).min(until.saturating_duration_since(Instant::now())),
+                        );
+                    }
+                }
+                result => {
+                    self.check()?;
+                    return result;
+                }
+            }
+        }
+        unreachable!("the last read returns its result")
+    }
 }
 
 #[cfg(test)]
@@ -329,23 +369,46 @@ fn download(cfg: &NextcloudCfg) -> Result<Option<(SyncFile, String)>, SyncError>
         },
     )
 }
+#[cfg(test)]
 fn download_guarded(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>) -> Result<Option<(SyncFile, String)>, SyncError> {
-    let result = guard
-        .agent()?
-        .get(&cfg.file_url())
-        .header("Authorization", &cfg.auth())
-        .call();
+    match download_validated(cfg, guard, None)? {
+        Download::File(file, tag) => Ok(Some((file, tag))),
+        Download::Missing => Ok(None),
+        Download::Unchanged => unreachable!("an unconditional GET cannot validate a cached copy"),
+    }
+}
+enum Download {
+    File(SyncFile, String),
+    Missing,
+    Unchanged,
+}
+fn download_validated(
+    cfg: &NextcloudCfg,
+    guard: &ExchangeGuard<'_>,
+    known: Option<&str>,
+) -> Result<Download, SyncError> {
+    guard.retry_read(|| download_once(cfg, guard, known))
+}
+fn download_once(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>, known: Option<&str>) -> Result<Download, SyncError> {
+    let mut request = guard.agent()?.get(&cfg.file_url()).header("Authorization", &cfg.auth());
+    if let Some(tag) = known {
+        request = request.header("If-None-Match", tag);
+    }
+    let result = request.call();
     guard.check()?;
     match result {
         Ok(mut r) => {
+            if r.status() == 304 && known.is_some() {
+                return Ok(Download::Unchanged);
+            }
             let tag = etag(&r).unwrap_or_default();
             let body = r.body_mut().with_config().limit(512 << 20).read_to_string()?;
             guard.check()?;
             let decoded = decode(&body, cfg.encrypt_key.as_deref())?;
             guard.check()?;
-            Ok(Some((decoded, tag)))
+            Ok(Download::File(decoded, tag))
         }
-        Err(ureq::Error::StatusCode(404)) => Ok(None),
+        Err(ureq::Error::StatusCode(404)) => Ok(Download::Missing),
         Err(e) => Err(e.into()),
     }
 }
@@ -359,6 +422,9 @@ fn sha1_hex(body: &[u8]) -> String {
 /// Read with PROPFIND: a HEAD answer may omit Content-Length behind a proxy, and a
 /// missing size must never pass for a matching one.
 fn remote_size(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>) -> Result<Option<(u64, String)>, SyncError> {
+    guard.retry_read(|| remote_size_once(cfg, guard))
+}
+fn remote_size_once(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>) -> Result<Option<(u64, String)>, SyncError> {
     let result = guard.agent()?.run(
         ureq::http::Request::builder()
             .method("PROPFIND")
@@ -415,8 +481,8 @@ fn upload(
             .header("OC-Checksum", &checksum)
             .header("X-Expected-Entity-Length", sent.to_string());
         req = match expected {
-            Some(tag) if tag.starts_with('"') => req.header("If-Match", tag),
-            Some(_) => req,
+            Some(tag) if tag.starts_with('"') && tag.ends_with('"') => req.header("If-Match", tag),
+            Some(_) => return Err(SyncError::Conflict),
             None => req.header("If-None-Match", "*"),
         };
         let result = req.send(body);
@@ -424,10 +490,16 @@ fn upload(
         match result {
             Ok(r) => {
                 let tag = etag(&r).unwrap_or_default();
-                if let Some((kept, _)) = remote_size(cfg, guard)? {
-                    if kept != sent {
-                        return Err(SyncError::UploadIncomplete { sent, kept });
-                    }
+                let Some((kept, verified_tag)) = remote_size(cfg, guard)? else {
+                    return Err(SyncError::UploadIncomplete { sent, kept: 0 });
+                };
+                if kept != sent {
+                    return Err(SyncError::UploadIncomplete { sent, kept });
+                }
+                if !tag.starts_with('"') || !tag.ends_with('"') || tag != verified_tag {
+                    // The verification may describe another device's same-size
+                    // overwrite. Never cache its validator for our unadopted state.
+                    return Err(SyncError::UploadUnverified);
                 }
                 return Ok(tag);
             }
@@ -523,6 +595,44 @@ pub struct Report {
     pub ops_uploaded: usize,
 }
 
+/// Process-local validation for one engine. Nothing is persisted in the SP format.
+#[derive(Default)]
+pub struct SyncSession {
+    validated: Option<(NextcloudCfg, u64, String)>,
+}
+impl SyncSession {
+    pub fn exchange_guarded(
+        &mut self,
+        cfg: &NextcloudCfg,
+        store: &mut Store,
+        timeout: Duration,
+        is_current: impl Fn() -> bool,
+    ) -> Result<Report, SyncError> {
+        let known = self
+            .validated
+            .as_ref()
+            .filter(|(settings, version, tag)| {
+                settings == cfg
+                    && store.pending.is_empty()
+                    && *version == store.meta.last_sync_version
+                    && store.meta.last_etag.as_ref() == Some(tag)
+            })
+            .map(|(_, _, tag)| tag.as_str());
+        let result = exchange_inner(cfg, store, timeout, is_current, known);
+        self.validated = if result.is_ok() {
+            store
+                .meta
+                .last_etag
+                .as_ref()
+                .filter(|tag| tag.starts_with('"') && tag.ends_with('"'))
+                .map(|tag| (cfg.clone(), store.meta.last_sync_version, tag.clone()))
+        } else {
+            None
+        };
+        result
+    }
+}
+
 /// One sync cycle, including persistence for callers that exclusively own the store.
 pub fn sync(cfg: &NextcloudCfg, store: &mut Store) -> Result<Report, SyncError> {
     let report = exchange(cfg, store)?;
@@ -546,6 +656,15 @@ pub fn exchange_guarded(
     timeout: Duration,
     is_current: impl Fn() -> bool,
 ) -> Result<Report, SyncError> {
+    exchange_inner(cfg, store, timeout, is_current, None)
+}
+fn exchange_inner(
+    cfg: &NextcloudCfg,
+    store: &mut Store,
+    timeout: Duration,
+    is_current: impl Fn() -> bool,
+    known: Option<&str>,
+) -> Result<Report, SyncError> {
     let guard = ExchangeGuard {
         current: &is_current,
         deadline: Instant::now() + timeout,
@@ -553,10 +672,14 @@ pub fn exchange_guarded(
     guard.check()?;
     let mut report = Report::default();
     for _attempt in 0..3 {
-        let remote = download_guarded(cfg, &guard)?;
+        let remote = download_validated(cfg, &guard, known)?;
         let (mut file, tag) = match remote {
-            Some((f, tag)) => {
-                if f.sync_version != store.meta.last_sync_version {
+            Download::Unchanged => {
+                guard.check()?;
+                return Ok(report);
+            }
+            Download::File(f, tag) => {
+                if f.sync_version != store.meta.last_sync_version || store.meta.last_etag.as_ref() != Some(&tag) {
                     let mut state = f.state.clone();
                     // Archives live beside `state` in the file; keep them in `rest` locally so
                     // archiving ops can update them and they round-trip on upload.
@@ -574,8 +697,8 @@ pub fn exchange_guarded(
                 }
                 (f, Some(tag))
             }
-            None if store.state.rest.get("globalConfig").is_none() => return Err(SyncError::FreshState),
-            None => (
+            Download::Missing if store.state.rest.get("globalConfig").is_none() => return Err(SyncError::FreshState),
+            Download::Missing => (
                 SyncFile {
                     version: 2,
                     sync_version: 0,

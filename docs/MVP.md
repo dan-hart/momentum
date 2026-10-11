@@ -306,6 +306,14 @@ Open, New Task Here…, Edit…, Delete Project… (not Inbox). Tag: Open, Edit�
   with `moveToArchive`, then syncs as Archive Completed does. The toast reads "Task
   completed and archived"; undo restores it as an open task. Reopening a task never
   archives.
+- Tasks › Play a sound when a task is completed (`completion-sound`, off by default): any
+  change whose outcome is a completion message (check box, Ctrl+D/⌘D, bulk Mark as Done,
+  a notification's Done button, a `complete-task` URL, Shortcuts on macOS) plays a bundled
+  0.3 s chime (Kenney "Interface Sounds" `confirmation_001`, CC0). Reopening, undo, and
+  every other change are silent. The clip plays through GTK's media stream on Linux and
+  as a system sound on Apple platforms. iOS limits it to in-app completion and follows
+  the Ring/Silent switch; notification, URL and Shortcuts completions are silent. `mo done` from the command line, which never produces a toast,
+  does not chime either.
 - Desktop › Modifier key: `modifier-key` (`control` default, `alt`, `super`; `option`,
   `command` on macOS). Every app accelerator is written with `<Control>` and rewritten
   through one function at startup and on change; the Keyboard Shortcuts overlay and the

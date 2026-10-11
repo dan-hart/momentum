@@ -62,6 +62,7 @@ jobs:
           |---|---|
           | macOS app | \`brew install --cask dan-hart/tap/momentum\`, or open \`Momentum-v$VERSION-macos.zip\` below |
           | Linux app | \`flatpak install --user https://dan-hart.github.io/momentum/momentum.flatpakref\`, or the \`.flatpak\` bundle below |
+          | Android | APK/AAB, matching source and distribution notes below. A file labelled \`-unsigned\` requires signing before installation; no store upload is performed. |
           | \`mo\` command line | \`brew install dan-hart/tap/momentum-cli\` on macOS or Linux, or a \`mo-*\` archive below |
 
           Every file is listed with its digest in \`SHA256SUMS.txt\`.
@@ -105,6 +106,19 @@ jobs:
     with:
       ref: ${{ inputs.tag || github.ref }}
     secrets: inherit
+
+  android:
+    name: Android APK, bundle and source
+    needs: [verify, tests, macos-tests]
+    uses: ./.github/workflows/android.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+      release_artifacts: true
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
   # ---------------------------------------------------------------- 3. build the binaries
   flatpak:
@@ -305,7 +319,7 @@ jobs:
   # ----------------------------------------------------------- 5. the GitHub Release
   release:
     name: GitHub Release
-    needs: [verify, flatpak, macos, cli-linux]
+    needs: [verify, flatpak, macos, cli-linux, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -316,7 +330,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
-          pattern: "{flatpak-*,macos,cli-linux-*}"
+          pattern: "{flatpak-*,macos,cli-linux-*,android-release}"
           merge-multiple: true
       - name: Flathub manifest pinned to this tag
         run: |
@@ -334,10 +348,8 @@ jobs:
           .venv/bin/python flatpak-cargo-generator.py Cargo.lock -o dist/flathub/cargo-sources.json
           (cd dist/flathub && tar -czf "../flathub-$TAG.tar.gz" "$APP_ID.json" cargo-sources.json)
       - name: Digests
-        working-directory: dist
         run: |
-          rm -f release-notes.md
-          sha256sum *.flatpak *.zip *.tar.gz | tee SHA256SUMS.txt
+          build-aux/release.py checksums --assets dist
       - uses: actions/download-artifact@v4
         with:
           name: release-notes
@@ -351,6 +363,10 @@ jobs:
             dist/*.flatpak
             dist/*.zip
             dist/*.tar.gz
+            dist/*.apk
+            dist/*.aab
+            dist/*-android-*.txt
+            dist/*-android-*.json
             dist/SHA256SUMS.txt
 
   # ------------------------------------------------------------ 6. the Homebrew tap

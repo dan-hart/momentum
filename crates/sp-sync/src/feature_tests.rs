@@ -41,6 +41,240 @@ fn titles(s: &Store) -> Vec<String> {
 }
 
 #[test]
+fn transient_reads_recover_in_the_same_exchange() {
+    let dav = MockDav::start();
+    let (mut a, _dir) = store(true);
+    add(&mut a, "offline edit");
+    dav.fail_gets.store(2, Ordering::SeqCst);
+    dav.fail_propfinds.store(2, Ordering::SeqCst);
+    let report = sync(&cfg(&dav, false), &mut a).unwrap();
+    assert!(report.uploaded);
+    assert_eq!(dav.gets.load(Ordering::SeqCst), 3);
+    assert_eq!(dav.propfinds.load(Ordering::SeqCst), 3);
+    assert!(a.pending.is_empty());
+    let (mut b, _peer_dir) = store(false);
+    sync(&cfg(&dav, false), &mut b).unwrap();
+    assert_eq!(titles(&b), ["offline edit"]);
+}
+
+#[test]
+fn missing_upload_verification_preserves_pending_edits() {
+    let dav = MockDav::start();
+    let (mut a, _dir) = store(true);
+    add(&mut a, "must remain queued");
+    dav.hide_after_put.store(true, Ordering::SeqCst);
+    assert!(matches!(
+        sync(&cfg(&dav, false), &mut a),
+        Err(SyncError::UploadIncomplete { kept: 0, .. })
+    ));
+    assert_eq!(a.pending.len(), 1);
+    assert_eq!(a.meta.last_sync_version, 0);
+}
+
+#[test]
+fn upload_needs_both_validators_before_pending_edits_are_acknowledged() {
+    for fault in 0..3 {
+        let dav = MockDav::start();
+        let (mut a, _dir) = store(true);
+        add(&mut a, "unverified");
+        dav.omit_put_etag.store(fault == 0, Ordering::SeqCst);
+        dav.omit_verified_etag.store(fault == 1, Ordering::SeqCst);
+        dav.different_verified_etag.store(fault == 2, Ordering::SeqCst);
+        assert!(matches!(
+            exchange(&cfg(&dav, false), &mut a),
+            Err(SyncError::UploadUnverified)
+        ));
+        assert_eq!(a.pending.len(), 1);
+        assert_eq!(a.meta.last_sync_version, 0);
+        assert_eq!(
+            dav.puts.load(Ordering::SeqCst),
+            1,
+            "never retry a write whose effect is uncertain"
+        );
+    }
+}
+
+#[test]
+fn retry_waits_obey_cancellation_deadline_and_attempt_limit() {
+    let dav = MockDav::start();
+    let c = cfg(&dav, false);
+    let (mut a, _dir) = store(true);
+    add(&mut a, "keep through retries");
+    dav.fail_gets.store(10, Ordering::SeqCst);
+    assert!(matches!(
+        exchange_guarded(&c, &mut a, Duration::from_millis(100), || true),
+        Err(SyncError::Deadline)
+    ));
+    assert_eq!(dav.gets.load(Ordering::SeqCst), 1);
+    dav.gets.store(0, Ordering::SeqCst);
+    assert!(matches!(
+        exchange_guarded(&c, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || dav.gets.load(Ordering::SeqCst)
+            == 0),
+        Err(SyncError::Cancelled)
+    ));
+    assert_eq!(dav.gets.load(Ordering::SeqCst), 1);
+    dav.gets.store(0, Ordering::SeqCst);
+    assert!(matches!(
+        exchange(&c, &mut a),
+        Err(SyncError::Http(ureq::Error::StatusCode(503)))
+    ));
+    assert_eq!(dav.gets.load(Ordering::SeqCst), 3);
+    assert_eq!(dav.puts.load(Ordering::SeqCst), 0);
+    assert_eq!(a.pending.len(), 1);
+}
+
+#[test]
+fn corrupt_gzip_is_a_damaged_remote_copy_with_a_recovery_action() {
+    let body = base64::engine::general_purpose::STANDARD.encode(b"broken gzip");
+    assert_eq!(
+        decode(&format!("pf_C2__{body}"), None).unwrap_err().kind(),
+        SyncFailureKind::RemoteFileDamaged
+    );
+}
+
+#[test]
+fn missing_etag_never_causes_an_unconditional_overwrite() {
+    let dav = MockDav::start();
+    let c = cfg(&dav, false);
+    let (mut a, _dir) = store(true);
+    add(&mut a, "remote");
+    sync(&c, &mut a).unwrap();
+    let before = dav.raw("/remote.php/dav/files/u/sp/sync-data.json").unwrap();
+    add(&mut a, "pending");
+    dav.omit_etag.store(true, Ordering::SeqCst);
+    assert!(matches!(sync(&c, &mut a), Err(SyncError::Conflict)));
+    assert_eq!(dav.raw("/remote.php/dav/files/u/sp/sync-data.json").unwrap(), before);
+    assert_eq!(dav.puts.load(Ordering::SeqCst), 1);
+    assert_eq!(a.pending.len(), 1);
+}
+
+#[test]
+fn unchanged_poll_uses_headers_but_edits_and_changed_credentials_use_the_body() {
+    let dav = MockDav::start();
+    let c = cfg(&dav, true);
+    let (mut a, _dir) = store(true);
+    add(&mut a, "cached");
+    let mut session = SyncSession::default();
+    session
+        .exchange_guarded(&c, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true)
+        .unwrap();
+    dav.downloaded_bytes.store(0, Ordering::SeqCst);
+    let r = session
+        .exchange_guarded(&c, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true)
+        .unwrap();
+    assert!(!r.downloaded && !r.uploaded);
+    assert_eq!(dav.downloaded_bytes.load(Ordering::SeqCst), 0);
+    assert_eq!(dav.not_modified.load(Ordering::SeqCst), 1);
+    add(&mut a, "uncached edit");
+    assert!(
+        session
+            .exchange_guarded(&c, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true)
+            .unwrap()
+            .uploaded
+    );
+    assert!(dav.downloaded_bytes.load(Ordering::SeqCst) > 0);
+    let wrong_key = NextcloudCfg {
+        encrypt_key: Some("wrong".into()),
+        ..c.clone()
+    };
+    assert!(matches!(
+        session.exchange_guarded(&wrong_key, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true),
+        Err(SyncError::WrongEncryptionPassword)
+    ));
+    // An error discards the old validation, even when the old settings return.
+    let before = dav.downloaded_bytes.load(Ordering::SeqCst);
+    session
+        .exchange_guarded(&c, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true)
+        .unwrap();
+    assert!(dav.downloaded_bytes.load(Ordering::SeqCst) > before);
+}
+
+#[test]
+fn same_version_remote_replacement_is_still_adopted() {
+    let dav = MockDav::start();
+    let c = cfg(&dav, false);
+    let (mut a, _dir) = store(true);
+    add(&mut a, "old");
+    sync(&c, &mut a).unwrap();
+    let (mut file, _) = download(&c).unwrap().unwrap();
+    file.state.task.entities.values_mut().next().unwrap().title = "server replacement".into();
+    dav.set_raw(
+        "/remote.php/dav/files/u/sp/sync-data.json",
+        encode(&file, true, None).unwrap().into_bytes(),
+    );
+    assert!(sync(&c, &mut a).unwrap().downloaded);
+    assert_eq!(titles(&a), ["server replacement"]);
+}
+
+/// Run explicitly; timings are reported rather than asserted on a busy host.
+#[test]
+#[ignore]
+fn benchmark_idle_sync() {
+    let dav = MockDav::start();
+    let c = cfg(&dav, true);
+    let (mut a, _dir) = store(true);
+    for i in 0..10_000 {
+        a.stage(Action::AddTask {
+            task: Task::new(&format!("Benchmark task {i}"), INBOX_PROJECT_ID),
+            bottom: true,
+        });
+    }
+    let mut session = SyncSession::default();
+    session
+        .exchange_guarded(&c, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true)
+        .unwrap();
+    let full = Instant::now();
+    for _ in 0..10 {
+        exchange(&c, &mut a).unwrap();
+    }
+    let full = full.elapsed();
+    let bytes = dav.downloaded_bytes.load(Ordering::SeqCst);
+    let cached = Instant::now();
+    for _ in 0..10 {
+        session
+            .exchange_guarded(&c, &mut a, DEFAULT_EXCHANGE_TIMEOUT, || true)
+            .unwrap();
+    }
+    let cached = cached.elapsed();
+    eprintln!("10,000 tasks / 10 encrypted compressed idle exchanges: full={full:?}, validated={cached:?}, speedup={:.1}x, full_bytes={bytes}, validated_bytes={}",
+        full.as_secs_f64() / cached.as_secs_f64(), dav.downloaded_bytes.load(Ordering::SeqCst) - bytes);
+}
+
+#[test]
+#[ignore]
+fn benchmark_transient_recovery() {
+    let dav = MockDav::start();
+    let c = cfg(&dav, false);
+    let (mut a, _dir) = store(true);
+    add(&mut a, "recovery fixture");
+    exchange(&c, &mut a).unwrap();
+    let mut baseline_successes = 0;
+    let mut recovered_successes = 0;
+    let mut worst_recovery = Duration::ZERO;
+    // Identical matrix: ten healthy exchanges and ten with one transient 503.
+    // The reference is the original single-attempt GET; no waiting is simulated.
+    for i in 0..20 {
+        let fault = usize::from(i % 2 == 1);
+        dav.fail_gets.store(fault, Ordering::SeqCst);
+        let guard = ExchangeGuard {
+            current: &|| true,
+            deadline: Instant::now() + DEFAULT_EXCHANGE_TIMEOUT,
+        };
+        baseline_successes += usize::from(download_once(&c, &guard, None).is_ok());
+        dav.fail_gets.store(fault, Ordering::SeqCst);
+        let started = Instant::now();
+        recovered_successes += usize::from(exchange(&c, &mut a).is_ok());
+        if fault != 0 {
+            worst_recovery = worst_recovery.max(started.elapsed());
+        }
+    }
+    assert_eq!(baseline_successes, 10);
+    assert_eq!(recovered_successes, 20);
+    assert!(worst_recovery < Duration::from_secs(2));
+    eprintln!("20 exchanges (10 healthy / 10 transient 503): single-attempt={baseline_successes}/20, bounded-retry={recovered_successes}/20, worst same-cycle recovery={worst_recovery:?}");
+}
+
+#[test]
 fn fresh_device_without_data_refuses_to_create_the_file() {
     let dav = MockDav::start();
     let (mut s, _d) = store(false);

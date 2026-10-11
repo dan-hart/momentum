@@ -62,6 +62,117 @@ fn op_record_decodes_back_to_the_typed_action() {
 fn json_null() -> Value {
     Value::Null
 }
+
+#[test]
+fn failed_inbound_save_can_retry_without_losing_the_receipt() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ad, journal) = adapter(dir.path());
+    let (o, a) = op("peer", "retry me");
+    let mut state = State::new("peer");
+    RecordState::new(&mut state, APP_ID)
+        .set(op_record(
+            &OpRecord {
+                id: o.id.clone(),
+                t: o.t,
+                origin: o.c.clone(),
+                op: serde_json::to_value(&o).unwrap(),
+                action: serde_json::to_value(&a).unwrap(),
+            },
+            false,
+        ))
+        .unwrap();
+    std::fs::create_dir(ad.path.with_extension("tmp")).unwrap();
+    assert!(ad.apply_records(&RecordView::new(&state, APP_ID)).is_err());
+    assert!(journal.lock().unwrap().inbox.is_empty());
+    assert!(!journal.lock().unwrap().seen.contains(&o.id));
+    std::fs::remove_dir(ad.path.with_extension("tmp")).unwrap();
+    ad.apply_records(&RecordView::new(&state, APP_ID)).unwrap();
+    assert_eq!(Journal::load(&ad.path).unwrap().inbox.len(), 1);
+    assert!(Journal::load(&ad.path).unwrap().seen.contains(&o.id));
+}
+
+#[test]
+fn failed_snapshot_publication_stays_dirty_for_retry() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ad, journal) = adapter(dir.path());
+    journal.lock().unwrap().snapshot_out = Some(Snapshot::new("me", b"{}"));
+    journal.lock().unwrap().snapshot_dirty = true;
+    std::fs::create_dir(ad.path.with_extension("tmp")).unwrap();
+    let mut state = State::new("me");
+    assert!(ad.load_records(&mut RecordState::new(&mut state, APP_ID)).is_err());
+    assert!(journal.lock().unwrap().snapshot_dirty);
+    std::fs::remove_dir(ad.path.with_extension("tmp")).unwrap();
+    ad.load_records(&mut RecordState::new(&mut state, APP_ID)).unwrap();
+    assert!(!Journal::load(&ad.path).unwrap().snapshot_dirty);
+}
+
+#[test]
+fn a_batch_is_persisted_once_and_a_failed_save_keeps_every_op_retryable() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("journal.json");
+    let mut journal = Journal::default();
+    let ops = [op("me", "one"), op("me", "two")];
+    std::fs::create_dir(path.with_extension("tmp")).unwrap();
+    assert!(journal.publish(&path, ops.iter().map(|(o, a)| (o, a))).is_err());
+    assert!(journal.own.is_empty() && journal.seen.is_empty());
+    std::fs::remove_dir(path.with_extension("tmp")).unwrap();
+    assert_eq!(journal.publish(&path, ops.iter().map(|(o, a)| (o, a))).unwrap(), 2);
+    assert_eq!(Journal::load(&path).unwrap().own, journal.own);
+    // No new work needs a write: even an unavailable scratch path is harmless.
+    std::fs::create_dir(path.with_extension("tmp")).unwrap();
+    assert_eq!(journal.publish(&path, ops.iter().map(|(o, a)| (o, a))).unwrap(), 0);
+}
+
+#[test]
+fn unchanged_load_never_rewrites_the_journal() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ad, journal) = adapter(dir.path());
+    let (o, a) = op("me", "stable");
+    journal.lock().unwrap().publish(&ad.path, [(&o, &a)]).unwrap();
+    let mut state = State::new("me");
+    ad.load_records(&mut RecordState::new(&mut state, APP_ID)).unwrap();
+    std::fs::create_dir(ad.path.with_extension("tmp")).unwrap();
+    ad.load_records(&mut RecordState::new(&mut state, APP_ID)).unwrap();
+    assert_eq!(RecordView::new(&state, APP_ID).snapshot().unwrap().len(), 1);
+}
+
+#[test]
+#[ignore]
+fn benchmark_offline_publish() {
+    let ops: Vec<_> = (0..1_000).map(|i| op("me", &format!("offline task {i}"))).collect();
+    let dir = tempfile::tempdir().unwrap();
+    let mut one_at_a_time = Journal::default();
+    let path = dir.path().join("individual.json");
+    let started = Instant::now();
+    for (o, a) in &ops {
+        // Reference the original one-save-per-op path, including its cheaper,
+        // unsynced atomic write. Do not inflate the baseline with staging clones.
+        one_at_a_time.seen.insert(o.id.clone());
+        one_at_a_time.own.push(OpRecord {
+            id: o.id.clone(),
+            t: o.t,
+            origin: o.c.clone(),
+            op: serde_json::to_value(o).unwrap(),
+            action: serde_json::to_value(a).unwrap(),
+        });
+        let tmp = path.with_extension("tmp");
+        std::fs::write(&tmp, serde_json::to_vec(&one_at_a_time).unwrap()).unwrap();
+        std::fs::rename(tmp, &path).unwrap();
+    }
+    let individual = started.elapsed();
+    let mut batch = Journal::default();
+    let started = Instant::now();
+    batch
+        .publish(&dir.path().join("batch.json"), ops.iter().map(|(o, a)| (o, a)))
+        .unwrap();
+    let elapsed = started.elapsed();
+    assert_eq!(one_at_a_time.own, batch.own);
+    assert_eq!(Journal::load(&dir.path().join("batch.json")).unwrap().own, batch.own);
+    eprintln!(
+        "1,000 queued ops: individual={individual:?}, batch={elapsed:?}, speedup={:.1}x",
+        individual.as_secs_f64() / elapsed.as_secs_f64()
+    );
+}
 #[test]
 fn adapter_publishes_own_ops_once_and_collects_foreign_ones() {
     let dir = tempfile::tempdir().unwrap();

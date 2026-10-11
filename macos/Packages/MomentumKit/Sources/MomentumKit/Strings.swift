@@ -355,7 +355,7 @@ public enum Strings {
         case .nothingToStartFrom: return String(localized: "Nothing to sync yet", bundle: .module)
         case .conflict: return String(localized: "Another device is syncing at the same time", bundle: .module)
         case .cancelled: return String(localized: "Sync was interrupted", bundle: .module)
-        case .uploadIncomplete: return String(localized: "The upload didn’t arrive whole", bundle: .module)
+        case .uploadIncomplete: return String(localized: "The upload could not be verified", bundle: .module)
         case .other: return String(localized: "Sync couldn’t finish", bundle: .module)
         }
     }
@@ -386,7 +386,7 @@ public enum Strings {
         case .cancelled:
             return String(localized: "Try again.", bundle: .module)
         case .uploadIncomplete:
-            return String(localized: "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Try again on a steadier connection.", bundle: .module)
+            return String(localized: "Your edits are still waiting here. Check the server copy, then try again on a steadier connection.", bundle: .module)
         case .other:
             return String(localized: "Try again. If it keeps failing, the details below say what the server or this device reported.", bundle: .module)
         }

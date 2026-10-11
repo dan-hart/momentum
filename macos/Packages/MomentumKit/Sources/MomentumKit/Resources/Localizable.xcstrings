@@ -2234,12 +2234,12 @@
         }
       }
     },
-    "The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Try again on a steadier connection.": {
+    "Your edits are still waiting here. Check the server copy, then try again on a steadier connection.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Server hat nur einen Teil der Datei behalten; die vorherige Kopie ist unverändert und deine Änderungen warten weiter hier. Versuche es über eine stabilere Verbindung erneut."
+            "value": "Deine Änderungen warten weiter hier. Prüfe die Serverkopie und versuche es dann über eine stabilere Verbindung erneut."
           }
         }
       }
@@ -2264,12 +2264,12 @@
         }
       }
     },
-    "The upload didn’t arrive whole": {
+    "The upload could not be verified": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Upload ist nicht vollständig angekommen"
+            "value": "Der Upload konnte nicht bestätigt werden"
           }
         }
       }

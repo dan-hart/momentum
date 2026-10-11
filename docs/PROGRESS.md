@@ -5,14 +5,16 @@ and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
 
-Android implementation is isolated on `task/android-native` at
-`/Users/danhart/.codex/worktrees/android-native/momentum`, based on
-`200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`, with uncommitted Android/shared-core
-and documentation changes. The primary checkout's inherited changes are preserved.
-The user requested sustained autonomous native Kotlin/Compose work through iOS
-capability parity; Android scaffolding and necessary FLOSS dependencies are approved.
-Local changes only: no commit, push, PR, tag, upload or release. Older workspace
-paragraphs and dated handoffs below retain their original historical context.
+Android integration is prepared on `task/android-native` at
+`/Users/danhart/.codex/worktrees/android-native/momentum`. The original Android
+checkpoint was committed as `e1f007e`, then its 30 bug IDs were disambiguated as
+B-105–134 in `c4bc5da` because main independently assigned B-099–104. Current main
+`7c583a6` (0.4.9) is integrated for fresh verification; existing Apple and sync/storage
+source is preserved. The user explicitly authorized a local merge to main, README
+updates and Android release-process integration on 2026-10-11. No push, tag, actual
+release or store submission is authorized. The primary checkout remains on
+`task/sync-performance-recovery` with its inherited changes preserved. Historical
+workspace paragraphs and dated evidence below retain their original scope.
 
 Desktop development was consolidated from `.claude/worktrees/pull-latest-code-70308a`,
 based on `0c9c0bf`, using integration branch `task/desktop-mvp` and target `main`.
@@ -45,6 +47,14 @@ performed for this handoff.
 
 ### 2026-10-11 — Android implementation and acceptance
 
+- User-authorized main integration adds F-060 Android release assets and README
+  screenshots/build guidance while preserving main 0.4.9's Apple/sync work. B-135
+  corrects a reproduced shared URL decoder panic; B-136 drains Android's pending
+  private autosave before explicit flush. All 323 Rust tests, 331 Apple package
+  tests, 91 Android JVM tests and 45 release/source-tool tests pass. The two API26
+  draft failures pass after the correction with unchanged acceptance assertions.
+  Full final native suites and clean committed-source packaging are in progress;
+  their actual results and artifact identities will be recorded in the handoff.
 - Gate11h API26/API37 native acceptance passes after B-133's exact admission
   before editable publication and B-134's format-preserving streamed private I/O.
   Current minified/runtime evidence is linked in the final handoff below. The first API26 near-limit fixture exposed a real 48 MiB recovery
@@ -70,6 +80,87 @@ performed for this handoff.
   offline vendored Rust builds pass for their recorded checkpoints; the final
   source snapshot, independent Linux builder, Maven/APK scan, second-host
   reproducibility and admission remain separate gates. CI does not publish.
+
+### 2026-10-10 — internal iOS TestFlight (F-059)
+
+- Dan authorized personal-account app creation and internal iOS TestFlight distribution.
+  Work is isolated on `task/ios-testflight`, based on main/release `1ade8ab`; the primary
+  dirty checkout is preserved. Shared task/sync rules and data formats are unchanged.
+- Live account-holder, provider, and signing-certificate readback confirm the personal
+  Daniel Hart account. App Store Connect provider IDs differ from Developer team IDs.
+  Dan approved **Momentum Tasks by Daniel Hart** after Apple rejected the shorter names.
+  [App Store Connect / TestFlight](https://appstoreconnect.apple.com/apps/6821523171/testflight)
+  confirms the app ID, exact `com.codedbydan.Momentum` bundle, and matching SKU.
+- The installed app and share extension still display **Momentum**. Exact IPA readback
+  verifies both `CFBundleDisplayName` values and no English/German override.
+- Both exact bundle IDs are registered and assigned the existing
+  `group.com.codedbydan.Momentum`; prior development IDs are preserved. App Store
+  profiles for the app and extension match the new Apple Distribution identity.
+  Signing files are protected outside Git in a dedicated signing Keychain.
+- Optimized Rust/Apple production passes for both Mac architectures, iOS device, and
+  both simulators. The canonical device Release build passes (478.681 s, signing
+  disabled); log `/tmp/momentum-testflight-build.log`. The first unsigned archive
+  compiled and packaged both targets and their privacy manifests (B-104).
+- A trial export of that unsigned archive signed both binaries but omitted the source
+  App Group entitlement. No such IPA was uploaded. A new signed archive passes, then
+  `asc xcode export` produces the corrected internal-only TestFlight IPA. A private
+  XcodeGen packaging spec reused the exact-source verified core, omitted only its two
+  redundant producer hooks, and supplied the two signing profiles. The canonical
+  generated project was restored afterwards; shipping source retains the hooks.
+- Final IPA verification passes deep/strict signature checks, both exact bundle IDs,
+  0.4.9 (409), personal signing team/certificate, App Store profile type, App Group
+  entitlements, and both privacy manifests. Protected evidence is in
+  `~/Library/Developer/Momentum-TestFlight/0.4.9-409/ipa-verification-receipt.json`;
+  archive/export logs are `/tmp/momentum-testflight-signed-{archive,export}.log`.
+- **Verified distribution:** Apple reports 0.4.9 (409) `VALID`, `INTERNAL_ONLY`, and
+  `IN_BETA_TESTING`, with a complete server-side membership lookup confirming the
+  **Internal Testers** group. That group has all-build access and feedback enabled.
+  The sole eligible existing internal user, the account holder, has an issued
+  invitation and readback state `INVITED`. English What to Test notes cover sync,
+  recovery, offline/reconnect, task actions, sharing, reminders, and lifecycle checks.
+- Build-level export compliance is cleared. The implementation uses standard Rust
+  encryption rather than OS-only encryption. Apple’s [documentation table](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption/)
+  requires a French declaration for standard third-party algorithms only with French
+  App Store distribution, which is outside this internal-only request. Apple rejected
+  formal declaration creation for the applicable standard/non-French combination;
+  `usesNonExemptEncryption=false` was applied to this build and the missing-compliance
+  state cleared. No broad future-release encryption flag is added to source.
+- Protected upload and final verification receipts are under
+  `~/Library/Developer/Momentum-TestFlight/0.4.9-409/`. Final IPA SHA-256:
+  `78b9c859ec2a4febc82fa321f8d5fc893142353401d0981b4ce99c753df424ff`.
+  Property-list lint, version consistency, 68 changed-document relative links, and
+  `git diff --check` pass. Dan subsequently authorized merging `task/ios-testflight`
+  into main. Fresh pre-merge checks confirm the source manifests match the uploaded
+  IPA, both display names remain Momentum, every version is 0.4.9, both manifests
+  pass lint, all 68 relative document links resolve, and 12 runner regression tests
+  pass. Remote main still matches `1ade8ab`, so integration needs no source conflict
+  resolution. Credentials and signing assets remain outside the repository.
+- **Verification limit / next QA:** invitation acceptance and physical installation,
+  launch, share-sheet use, and sync/recovery behavior from this TestFlight build remain
+  user/device checks. Their existing feature/bug evidence is not upgraded by upload.
+  App Store publication and external beta review were not requested or performed.
+
+### 2026-10-10 — sync performance and recovery on all platforms
+
+- F-058 / B-100–B-103: sync work is integrated on task/sync-release-0-4-9
+  from current main (13f469d); the original checkout and inherited notes are preserved.
+  [Measured workloads and repeatable commands](SYNC-PERFORMANCE.md) define the
+  10×/2×/2× targets and distinguish transport timings from full native acceptance.
+- Shared Rust now validates idle Nextcloud polls, commits metadata alone for unchanged
+  exchanges, retries safe transient reads within the existing deadline, requires verified
+  upload validators/size, adopts same-version replacements and classifies corrupt gzip.
+  LibreSync batches journals and retains failed receipts/snapshots for retry. English/German
+  recovery copy is updated in GTK and the catalog shared by both Apple clients.
+- Recorded local measurements: complete shared-engine idle Nextcloud polls 11.6× faster
+  (transport alone 87.2×), LibreSync backlog publication 243.9× faster, the specified fault matrix 10/20 → 20/20 successful exchanges,
+  and worst one-fault recovery 263 ms. These do not establish general production rates.
+- No format migration, dependency upgrade, provider-policy change or personal-store test.
+  Dan authorized merging to main and releasing patch 0.4.9 after the local handoff.
+  Android has no app in this checkout; native integration and
+  equivalent lifecycle/credential/status/recovery acceptance remain Planned.
+- Remaining: disposable hosted TLS and separate-device/physical/background performance,
+  Linux native runtime checks, and spoken recovery-message acceptance. Automated build/test
+  results are recorded in the dated handoff below. Existing unrelated deferrals remain.
 
 ### 2026-09-16 — iOS implementation
 
@@ -5486,3 +5577,325 @@ No merge, tag, release, personal reminder access, or production data change.
   admission remain open. The local Docker client has no running daemon; no new
   VM/service was started. CI is read-only build verification and has not run
   remotely. Official signing/public publishing is not configured or authorized.
+
+## 2026-10-02 — dip17pm crash investigation and corrected installation (B-095 / F-055)
+
+- **Scope/revision:** began on dirty `task/apple-reminders-import`, base `f49160b`.
+  Inherited source changes were committed separately as `200f686` during this
+  investigation; this task did not commit or push. Preserved inherited Rust
+  provenance/recovery and shared Apple-adapter changes.
+  No additional production-code change was needed: the installed app predated the
+  existing callback correction. Local ledger updates only; no commit/push/release.
+- **Confirmed cause:** read the first October 1 evening and latest October 2
+  12:17 CDT physical Momentum crash reports. Both show `EXC_BREAKPOINT`/`SIGTRAP`
+  through `_dispatch_assert_queue_fail` and `_swift_task_checkIsolatedSwift` in the
+  nested `EventKitRemindersSource.incompleteReminders(in:)` projection, on
+  `com.apple.eventkit.reminders.search`. This matches the earlier isolated B-095
+  reproduction, rather than a new failure in the corrected Sendable adapter.
+  Raw reports remain outside tracked files; no private identifiers or task data
+  were added to these records.
+- **Verification:** regenerated Rust/UniFFI device, simulator and Mac artifacts;
+  three shared callback tests, thirteen shared import/date tests and the mobile
+  engine-import regression pass. Three native RemindersIntegrationTests pass on
+  the available iOS 27 acceptance simulator (isolated test host, synthetic source);
+  the stale PR-review simulator destination was unavailable, so no tests ran there.
+  Xcode 27 production iOS Debug build passes with
+  development signing. Logs are local `/tmp/momentum-crash-*.log` files.
+- **Physical action/evidence:** over-installed the signed production app as 0.4.5
+  (405), preserving its existing container through ordinary app replacement.
+  CoreDevice confirms installation and foreground launch. Repeated process
+  inspection shows the same process remains alive; the system crash-log list
+  remains at its twelve pre-install reports. This proves install/launch/process
+  survival, not manually initiated Import Now results or UI visibility.
+- **Status/limits:** B-095's physical crash cause is confirmed and corrected binary
+  installed. F-055 remains Implemented on both Apple platforms; explicit manual
+  import, permission/revocation, spoken VoiceOver and longer-use acceptance remain
+  open. Linux/Android have no EventKit adapter. No personal data was inspected or
+  changed for test fixtures, and no device permissions/settings were changed.
+
+
+## 2026-10-02 — PR #4 branch rerun on dip17pm (B-095 / F-055)
+
+- **Revision:** `task/apple-reminders-import`, `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`;
+  inherited uncommitted ledger updates preserved. The committed shared EventKit
+  adapter retains the explicit Sendable callback and nonisolated snapshot projection
+  from B-095. No additional source fix was required.
+- **Automated/live evidence:** Xcode 27 development-signed production iOS Debug build
+  and strict signature verification passed. Regenerated shared Rust/UniFFI artifacts.
+  Over-installed 0.4.5 (405), then launched with CoreDevice. Installed-app and process
+  readback confirmed the replacement app running; the crash-log inventory remained
+  at twelve older reports, latest 2026-10-02 12:17 CDT. Build log:
+  `/tmp/momentum-pr4-device-build.log`; install/launch JSON:
+  `/tmp/momentum-pr4-device-install.json` and `/tmp/momentum-pr4-device-launch.json`.
+- **Limits:** install and process launch verified; manual Import Now, permission
+  recovery, spoken VoiceOver and longer-use acceptance remain open. F-055 stays
+  Implemented. Existing app data preserved through ordinary replacement. No merge,
+  release or additional commit/push performed.
+
+
+## 2026-10-02 — 0.4.6 release preparation (F-055 / B-095–B-098)
+
+- **Base:** merged PR #4, `fff159dd9f04a881ab0e3b590fe3905758c4f924`.
+  Release scope includes native Apple Reminders import, callback/retry/accessibility/
+  identity fixes and the existing Unreleased documentation/screenshot changes.
+- **Local release gate:** the opt-in MomentumKit NearbySyncTests passed on this Mac
+  on 2026-10-02: one test, temporary nodes, bidirectional task exchange and unlink.
+  Executed on `200f686`, whose tracked tree matches the merged base. Log:
+  `/tmp/momentum-046-nearby.log`. This does not prove physical discovery or Linux/Mac
+  interoperability.
+- **Publication gate:** user authorized 0.4.6 after all CI jobs finish successfully.
+  Await post-merge CI, then CI on the version/notes commit, before pushing the tag.
+  The release workflow must pass and publish its expected assets before reporting
+  publication complete. F-055 remains Implemented; previously recorded manual import,
+  permission/revocation, spoken VoiceOver and longer-use limits remain open.
+
+## 2026-10-05 — F-056 optional completion sound
+
+Based on clean `main` at `3e762d3` (0.4.6) in worktree branch
+`task/task-completion-sound-8bf089`; local changes only, no commit authorized yet.
+
+- Asset: Kenney "Interface Sounds" `confirmation_001` (CC0-1.0), chosen from the four
+  confirmation clips by pitch analysis as the warm, mid-register rising chime (G–D–G–D,
+  0.29 s); converted to 16-bit mono WAV (25 KB) and bundled twice (gresource and the
+  MomentumKit resource bundle). `LICENSES/CC0-1.0.txt`, REUSE.toml annotation and a
+  NOTICE.md section record the origin.
+- Shared decision: one key, `completion-sound`, default false everywhere; the chime is
+  gated on the core's four completion `Message` variants, so bulk completions chime once
+  and reopen/undo never do.
+- Linux: GSettings key, Preferences › Tasks `SwitchRow`, `crates/app/src/sound.rs`
+  (`gtk::MediaFile::for_resource`, error logged via tracing), hook in `Window::apply`,
+  `--socket=pulseaudio` in all three Flatpak manifests, German po entries (non-fuzzy),
+  new logic test and prefs binding assertion. `cargo check -p momentum --tests` passes on
+  this Mac; Blueprint, strict schema and gresource compile and the resource path
+  resolves. GTK tests not run (no Broadway here); no Linux runtime or audio heard.
+- macOS: `PrefKey.completionSound`, `Preferences.completionSound`, `SoundPlayer`
+  protocol, `CompletionSound` (AudioToolbox system sound), `AppState.sounds` injected by
+  AppDelegate, Settings › General › Tasks toggle with caption, German catalog entries.
+  `swift test` MomentumKit: 165 passed including the new chime and defaults tests.
+  `xcodegen` + Debug `xcodebuild` succeeded; `task-complete.wav` is inside
+  `MomentumKit_MomentumKit.bundle`; `localize.py --sync --import-gettext` then
+  `--require-complete`: 332/332 app, 186/186 package, 3/3 InfoPlist, 5/5 AppShortcuts
+  (the sync's key reordering was not kept; the hand-edited catalog is JSON-equal to it).
+  A scratch Swift check confirmed `AudioServicesCreateSystemSoundID` accepts the clip
+  without playing it. Caption kept to "A short chime when you mark a task done." because
+  the alert-volume behaviour was not verified live.
+- iOS: Settings › Text & Feedback › Completion sound (footer notes the Ring/Silent
+  switch); RootView plays on the `completionFeedback` change through
+  `InteractionFeedbackPolicy`; German catalog entries; the hosted label test now also
+  asserts "Completion sound" / "Ton beim Erledigen". `ios/scripts/test.py prepare` +
+  `fast`: 158 passed; `views --filter …testHapticFeedbackSettingUsesFullScopeLabelInEnglishAndGerman`
+  passed on the iOS 27.0 iPhone 18 Pro simulator (iOS 18 devices fail the test host's
+  deployment target); `ios/scripts/localize.py`: 397/397. Simulator left shut down.
+- Not verified: the chime has not been heard live on any platform (no app was activated
+  on this Mac); GTK tests and Linux runtime; Flathub review of the new PulseAudio socket;
+  Linux behaviour without a GTK media backend beyond the logged error path.
+- Next: hear it once per platform with the switch on and off; run `build-aux/test.sh`
+  on Linux; commit when authorized.
+
+## 2026-10-06 — F-056 sound-only main publication and patch release
+
+Dan authorized committing/pushing the completion-sound changes to main and cutting
+one normal patch release if none was underway. Refreshed main is `3e762d3` (0.4.6),
+latest published release is 0.4.6, and no release run was active. A separate checkout
+snapshots only F-056; the external worktree's F-057 share-sheet/core/App Group changes
+and the older Reminders worktree's ledger edits remain untouched. No accounts,
+credentials, legal terms or App Store submission were added.
+
+- Checked code scope: completion-sound defaults off and persists locally; single and
+  bulk completion chime once, reopening/undo are silent. The Mac regression now also
+  proves switching back off is respected; a fresh preferences object reads both values.
+- Isolated local checks: 166 MomentumKit tests pass with the documented Xcode resource
+  backend; 158 MomentumMobile tests pass; the required opt-in nearby-sync loopback test
+  passes. Native SwiftPM failed two localization-resource tests because it does not
+  compile the catalog; the proper backend passes them. Linux app/tests type-check,
+  project Rust formatting and Mac/iOS German completeness checks pass (332/332,
+  186/186, 397/397). The iOS simulator SDK app build passes.
+- AudioToolbox accepted the bundled WAV and returned its system-playback completion
+  callback on this Mac, without launching Momentum or reading tasks. Audible output is
+  not independently confirmed; iOS/Linux audible and device behavior remain unverified.
+- Scope limits remain: iOS notification Done/URL/Shortcuts completions and `mo done`
+  do not chime. No physical-device installation, personal task access or permission grant.
+- Publication/release outcome and exact-head CI must be confirmed from Actions; normal
+  release workflow publishes desktop/CLI assets, Homebrew and Flatpak, not an iOS IPA.
+
+Final local native checks before publication: Mac and iOS simulator app builds pass
+and both contain the bundled WAV. Three hosted iOS 27 Settings/feedback tests pass.
+The initial combined run timed out waiting for keyboard selection commands; that
+broader test passes on clean `3e762d3`, on the sound branch alone, and in the combined
+retry. The timeout is retained as a test-flakiness observation, not a concealed pass.
+Strict ASP preflight and staged secret scan pass; the display keyword acknowledgement
+covers existing Wayland manifest context, with no OS display configuration changed.
+
+## 2026-10-05 — F-057 iOS share sheet
+
+Same worktree and base as F-056 above; local changes only.
+
+- Shared core: `SharedTaskDraft` record and `text::shared_task_draft` (title from the
+  item's own title, else the first readable text line, else the link; whitespace, quote
+  and trailing-punctuation cleanup; 120-character word-boundary cut; link first in notes,
+  longer selection below). Exposed as the free FFI function `shared_task_draft`; bindings
+  regenerated through `ios/scripts/test.py prepare`. `cargo test -p momentum-core
+  --features ffi`: 152 passed, 1 ignored; `mo` and the GTK app compile against it.
+- MomentumKit: `SharedTaskInbox` / `SharedTaskItem` (atomic JSON files in the App Group
+  folder, oldest first, unreadable files kept); 2 tests.
+- MomentumMobile: `EngineWorker.importSharedTask` over `import_task_once` with identity
+  `share:v1:<uuid>`; test proves once-only across a relaunch and Inbox placement.
+- App: `MobileAppModel.importSharedTasks()` runs in `foreground()`, removes imported
+  files, keeps items whose save failed, and toasts the count; isolated/demo models only
+  read an injected inbox. Hosted `SharedTaskIntegrationTests` covers two items, the
+  toast, the notes, and a repeated drain adding nothing.
+- Extension: `ios/MomentumShare` (principal `ShareViewController`, `SharedPayload`
+  loader for `public.url` and `public.plain-text`, SwiftUI `ShareComposeView` with
+  Cancel/Add and an Inbox footnote), activation rule one web URL or text, App Group
+  entitlements on both targets, registered in `ios/project.yml` and the `Momentum`
+  scheme. German entries added for the five new strings (Add/Title/Notes/New Task
+  already existed).
+- Verification: core 152 tests (5 new); MomentumKit 2 inbox tests; MomentumMobile fast
+  lane 159 (1 new); hosted `SharedTaskIntegrationTests` passed on the iOS 27.0 iPhone 18
+  Pro simulator; `xcodebuild` of the `Momentum` scheme for the simulator succeeded with
+  `MomentumShare.appex` embedded; iOS catalog 402/402 German. Live: the built app was
+  installed on that simulator, Momentum showed up in Safari's share sheet for a kenney.nl
+  page and the compose sheet opened, but with the message that Momentum can't receive
+  shared items, because the simulator build (ad-hoc, `ENTITLEMENTS_ALLOWED=NO`) carried
+  no App Group entitlement; a rebuild with the local team did not change that without
+  provisioning updates. The app was uninstalled and the simulator shut down afterwards.
+- Later the same day: the "can't receive shared items" result was caused by the two
+  entitlements files being regenerated as empty dictionaries by `xcodegen generate`
+  (a `path`-only `entitlements` entry); the group is now declared under
+  `entitlements.properties` in `ios/project.yml`. A simulator rebuild then embedded the
+  group, and the full flow passed live on the iOS 27.0 iPhone 18 Pro simulator: Safari
+  share sheet → Momentum compose sheet (title "Interface Sounds · Kenney", link in Notes)
+  → Add → one JSON file in the App Group container → launching Momentum drained it →
+  Search shows the task in Inbox with notes. The test app was uninstalled and the
+  simulator shut down afterwards.
+- Account (with Dan's approval, through `asc`): the App Group
+  `group.com.codedbydan.Momentum` was registered on the signing team, both App IDs
+  (`com.codedbydan.Momentum.ios`, `com.codedbydan.Momentum.ios.Share`) were created,
+  and the group was assigned to each; the App Groups capability is confirmed on both.
+  Creating bundle IDs over the API needs an Admin-role key; Developer is refused. Device
+  builds still need development profiles (a certificate and a registered device), which
+  were not created; nothing was pushed or committed.
+- Next after that: decide whether a "Today" switch belongs in the sheet; consider a
+  macOS share extension over the same inbox.
+
+## 2026-10-07 — B-099 background sync re-arm and window-return catch-up
+
+Branch `task/background-sync-refresh` from the 0.4.8 bump (PR #6); local changes only
+until Dan merges. Investigation prompted by "background sync doesn't update the UI the
+next time it runs" on iOS.
+
+- Finding: the refresh plumbing was sound on every platform (commit → `didCommit` →
+  `revision` on iOS; unconditional `refresh()` after a Nextcloud exchange on macOS and
+  Linux). The iOS defect was in scheduling: `syncInBackground` never re-armed the
+  foreground poll and ignored a foreground return during the wake (B-033 again, on the
+  F-049 path), and a 25 s budget timeout on a large sync file was shown as a failure.
+  Desktops with background sync on skipped both the redraw and the catch-up on window
+  return; the Mac also had no App Nap opt-out while windowless.
+- Shared core: `PERIODIC_SYNC_MS` and `window_return_sync_due` (FFI), one rule for
+  both desktops; bindings regenerated through `ios/scripts/test.py prepare`.
+- iOS: background exchange ends through `schedule(after:)` like `run()`; timeout
+  not recorded. macOS: `setMainWindowVisible(true)` redraws, catches up by the rule,
+  and `keepsRunningInBackground` holds a `ProcessInfo` activity while hidden with
+  automatic background sync configured. Linux: `sync_availability_changed` redraws
+  and catches up by the rule.
+- Evidence (2026-10-07, this worktree): core 153 tests incl. `window_return_tests`;
+  MomentumKit 170 incl. `theWindowsReturnRedrawsAndDecidesCatchUpFromTheSharedRule`;
+  MomentumMobile `NextcloudSyncStateTests` 27 incl. the two new cases, which fail
+  within 2 s against the unfixed `syncInBackground` ("Expectation failed: rearmed",
+  and the budget timeout recorded as a failure) and pass with the fix; GTK app
+  type-checks with tests; rustfmt and whitespace clean. Not verified: a real
+  background wake on a device, GTK runtime, and the App Nap effect.
+
+## 2026-10-10 — F-058 sync performance and recovery handoff
+
+- **Revision/source:** dirty task/sync-performance-recovery based on 200f686;
+  automated local fixtures/builds and independent source review. Inherited Apple
+  Reminders ledger changes were preserved. No commit, push, deployment or release.
+- **Platforms touched:** toolkit-independent Rust Engine/Nextcloud/LibreSync/store,
+  GTK English/German error wording, the catalog shared by macOS/iOS, and iOS's
+  loopback transport fixture. Android requirements are recorded without scaffolding.
+- **Changes:** process-local validated Nextcloud polling, metadata-only idle commits,
+  bounded safe-read retries, strong overwrite guards and paired upload validators,
+  same-version replacement adoption, damaged-gzip recovery classification, one durable
+  LibreSync backlog publication and staged retryable receipts/snapshots. Provider policy,
+  task formats, offline edits, deletion/conflict semantics and dependencies are preserved.
+- **Benchmarks:** complete 10,000-task encrypted/compressed Engine idle polls:
+  1.582 s uncached → 136.146 ms validated for ten polls (11.6×), including cloning and
+  durable metadata persistence. Both paths use the new metadata commit, so this is a
+  conservative reference rather than the exact old full-save path. Transport-only
+  2.505 s → 28.729 ms (87.2×), 6,852,680 → 0 body bytes. Publishing 1,000 operations:
+  original unsynced per-op serialization/rename 13.235 s → one durable batch 54.271 ms
+  (243.9×). The synthetic healthy/transient matrix succeeds 10/20 → 20/20; worst
+  one-fault recovery 262.698 ms. [Method and limits](SYNC-PERFORMANCE.md).
+
+| Check | Actual result | Scope / limitation |
+|---|---|---|
+| Rust workspace, excluding GTK executable, all features/targets | 309 passed; 5 opt-in ignored; zero failures | Includes core, store, sync, real two-peer LibreSync, CLI and FFI consumers; the four new ignored benchmark cases were run separately and passed |
+| Complete-engine HTTP regressions after extending the fixture | 14 passed, one opt-in benchmark ignored | Real loopback; conditional polling preserves concurrent completion, pending IDs, vector clock, undo and disk |
+| macOS MomentumKit | 164 tests in 36 suites passed | Hostless production state/wording/resources, isolated fixtures; no UI automation or spoken accessibility claim |
+| iOS portable MomentumMobile | 158 tests in 24 suites passed | Final compiled Apple wording/core artifacts; does not prove UIKit or system background scheduling |
+| iOS native transport, iOS 27.0 and 26.5 | Eight passed and one hosted-TLS skip per runtime; zero failures | Real Swift/UniFFI/Rust HTTP, Keychain and two LibreSync socket peers in disposable test-host stores; validated poll/transient retry, encrypted convergence, auth and wrong-password recovery, cancellation |
+| macOS production Debug build | Passed, signing disabled | Generated bindings and shipping frontend compile; no over-install or live user-store sync |
+| iOS production Debug simulator build | Passed, signing disabled | Shipping frontend and Apple slices compile; no physical installation or scheduler-originated background claim |
+| Linux GTK consumer compilation | cargo check -p momentum --tests passed | Built on macOS with installed GTK dependencies; Linux runtime unavailable here |
+| Android shared-core/FFI compilation | aarch64-linux-android all-features code check passed | Installed Rust 1.91.1 and NDK 27.2/API-26 compiler tooling, isolated target output; no native Android client, Kotlin bindings, linked product or device claim |
+| Formatting/localization/docs | Rust formatting, diff whitespace, gettext validation, Apple catalog JSON and local document-link checks passed | English/German resources retained; manual spoken delivery remains open |
+
+- **Evidence files:** local /tmp/momentum-sync-* logs hold the workspace, package,
+  benchmark, GTK/Android checks and production builds. Native reports are the ignored
+  ios/DerivedData/TestReports/transport-1791681413297331000.xcresult (iOS 27) and
+  transport-1791681491040583000.xcresult (iOS 26.5). The final prepare step regenerates
+  bindings/static slices and refreshes the test runner's source/artifact fingerprint.
+- **Review:** corrected an upload acknowledgement/validator race and an error callback
+  that held owner/provider locks. Regressions cover missing/mismatched validators and
+  callback reentrancy. A later wording review removed the unsupported truncation claim
+  from the generalized upload-verification error. No remaining concrete source findings.
+- **Status/next:** F-058 remains Implemented on Linux/macOS/iOS, with automated scopes
+  above verified, and Planned on Android. Finish supported Linux native acceptance,
+  disposable hosted Nextcloud/TLS and separate-device LibreSync, physical/background
+  timing/energy and spoken recovery acceptance before broad native/production claims.
+  Android needs its approved native client and the same provider/credential/lifecycle
+  recovery contract. Existing unrelated manual deferrals stay separate.
+
+
+## 2026-10-10 — 0.4.9 integration and release preparation (F-058)
+
+- **Authorization/scope:** Dan requested merge to main and a new patch release. The
+  isolated `task/sync-release-0-4-9` worktree starts at `13f469d`, preserving main's
+  completion sound, iOS share extension and background-sync re-arm. Only the sync diff
+  was transferred; unrelated original-checkout changes remain there.
+- **Records:** new sync IDs are F-058 / B-100–B-103 because current main already uses
+  F-056 for the completion sound and B-099 for background scheduling. The original
+  measured sync handoff above retains its original workload/revision context.
+- **Local automated verification, dirty 13f469d integration:** all-features/all-targets
+  Rust workspace excluding GTK: 315 passed, 5 opt-in ignored, zero failures; GTK tests
+  type-check; Android aarch64 core/FFI code check passes with Rust 1.91.1/NDK 27.2.
+  Regenerated Apple bindings; MomentumKit: 170 tests in 37 suites passed; required
+  opt-in nearby Swift/Rust integration: one passed; MomentumMobile: 161 tests in 25
+  suites passed. iOS 27 native transport: eight passed, one hosted-TLS skip, zero
+  failures (`transport-1791683390718615000.xcresult`). Formatting, gettext, catalog JSON,
+  whitespace and 66 local Markdown target checks pass. Read-only integration review
+  found no concrete remaining findings. The shipping iOS Debug simulator build
+  passes with the share extension embedded; both bundle versions read back as 0.4.9 (409).
+- **Release preparation:** all version copies and build numbers are 0.4.9 (409) through
+  `build-aux/release.py`; changelog/metainfo include both sync work and the unreleased
+  background fixes. Main's exact-head CI/macOS gates and the tag's Release workflow
+  remain required before publication is called complete.
+- **Limits:** known hosted TLS, separate-device, physical/background/energy and spoken
+  accessibility acceptance remain open. Android still lacks a native client. GitHub's
+  normal release produces desktop/CLI assets, not an iOS App Store distribution.
+
+
+## 2026-10-10 — 0.4.9 Linux release gate correction (F-007 / F-058)
+
+- Main integration `a7bb85c` passed core/version/translation/format checks, but CI
+  [38103321967](https://github.com/dan-hart/momentum/actions/runs/38103321967)
+  failed one of 85 ARM GTK tests and cancelled the paired x86 job.
+- Confirmed test defect: on the runner's Sunday (2026-10-11 UTC), Tomorrow and Next
+  Week both resolve to Monday. The unchanged shared rule correctly treats the second
+  move as a no-op; the old GTK test wrongly expected it to create an undo batch.
+- Correction is limited to the GTK regression: undo Tomorrow before testing Next Week,
+  verify each restores the original day, then move to Tomorrow again before checking
+  Plan for Today. Date rules, undo behavior and shipping app code are unchanged.
+- The corrected test type-checks locally; its Linux runtime result and the new exact-head
+  CI/macOS gates remain required before the 0.4.9 tag. No failed check is waived.

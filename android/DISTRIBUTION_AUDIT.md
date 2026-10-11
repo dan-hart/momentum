@@ -174,8 +174,17 @@ Developer registration/verification for intended stores and regions is a later
 distribution decision; current [Android developer verification guidance](https://developer.android.com/developer-verification/guides)
 does not require adding a proprietary SDK or changing free source builds.
 
-The [Android CI workflow](../.github/workflows/android.yml) is source-build verification
-only: pinned public sources, host/generated-binding regression, JVM tests, unsigned
-APK/AAB, release lint, bundled notice checks, ELF/ZIP alignment and AAB alignment
-configuration. It has read-only repository permissions and no publishing/artifact
-upload step. Its first hosted Linux run is still outstanding.
+The [Android CI workflow](../.github/workflows/android.yml) checks pinned public source,
+host/generated-binding and Python/JVM regressions, APK/AAB, release lint, notices,
+ELF/ZIP alignment and actual bundle-produced APK alignment. Ordinary CI has read-only
+permissions, no signing secrets and no artifact upload. The user-authorized release
+integration calls it at the exact tag with optional explicit signing secrets and
+uploads verified Android products for the unified GitHub Release. No Play/F-Droid
+submission occurs. Partial signing fails; absent signing produces labelled unsigned
+artifacts. Matching committed Momentum, pinned LibreSync and original locked Rust
+crate sources, notices, R8 mapping and provenance accompany the binaries. Fresh local
+packaging is recorded in PROGRESS; first hosted execution, official key/update
+continuity, physical release acceptance and independent store-builder gates remain open.
+Release packaging builds a fresh committed-source snapshot and never accepts local
+stale outputs or untracked production inputs. The configured certificate must match
+the APK signer and every AAB payload; appended unsigned or altered signed entries fail.

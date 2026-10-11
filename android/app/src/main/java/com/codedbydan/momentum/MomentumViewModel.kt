@@ -327,10 +327,24 @@ class MomentumViewModel(
         saved.remove<String>("editor")
         mutable.update { it.copy(editor = draft, editorError = false, editorUnavailable = false, editorCapacityError = false) }
         persistJob?.cancel()
-        persistJob = viewModelScope.launch { delay(100); try { persistDraft() } catch(e: Exception) { fail(e) } }
+        persistJob = viewModelScope.launch {
+            delay(100)
+            try { writeCurrentDraft() }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { fail(e) }
+        }
         return true
     }
-    suspend fun persistDraft() = withContext(Dispatchers.IO) {
+    suspend fun persistDraft() {
+        // A manual/lifecycle flush owns publication after the debounced writer drains.
+        // Join before taking draftLock: the cancelled writer may still hold it during I/O.
+        val pending = withContext(Dispatchers.Main.immediate) {
+            persistJob.also { persistJob = null }
+        }
+        pending?.cancelAndJoin()
+        writeCurrentDraft()
+    }
+    private suspend fun writeCurrentDraft() = withContext(Dispatchers.IO) {
         draftLock.withLock {
             val id = draftId ?: return@withLock
             mutable.value.editor?.let { drafts.write(id, it) }

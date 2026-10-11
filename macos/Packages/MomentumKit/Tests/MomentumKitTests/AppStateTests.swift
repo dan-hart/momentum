@@ -58,6 +58,28 @@ import Testing
         #expect(h.state.toasts.last?.celebratesCompletion == false)
     }
 
+    @Test func theCompletionChimePlaysOnlyWhenAskedForAndOnlyForCompletions() {
+        let h = Harness()
+        let id = h.id("Write release notes for 0.1")
+        h.state.setDone(id, true)
+        #expect(h.sounds.completions == 0, "off by default")
+        h.state.undo()
+        h.defaults.set(true, forKey: PrefKey.completionSound)
+        h.state.setDone(id, true)
+        #expect(h.sounds.completions == 1)
+        h.state.setDone(id, false)
+        #expect(h.sounds.completions == 1, "reopening is silent")
+        h.state.undo()
+        #expect(h.sounds.completions == 1, "undo is silent")
+        h.state.toggleDone([id, h.id("Test with Orca and high contrast")])
+        #expect(h.sounds.completions == 2, "a bulk completion chimes once")
+        h.defaults.set(false, forKey: PrefKey.completionSound)
+        h.state.setDone(id, false)
+        h.state.setDone(id, true)
+        #expect(h.sounds.completions == 2, "turning the switch back off is respected immediately")
+        #expect(CompletionSound.url != nil, "the clip ships with the package")
+    }
+
     @Test func aToastsUndoButtonRevertsThatChangeAndOnlyOnce() throws {
         let h = Harness()
         let first = h.id("Write release notes for 0.1")
@@ -604,6 +626,19 @@ import Testing
         h.defaults.set(true, forKey: PrefKey.autoSync)
         h.state.setMainWindowVisible(true)
         #expect(h.state.mainWindowVisible, "reporting the same state twice is harmless")
+    }
+
+    @Test func theWindowsReturnRedrawsAndDecidesCatchUpFromTheSharedRule() {
+        let h = Harness()
+        h.state.setMainWindowVisible(false)
+        let before = h.notifier.badges.count
+        h.state.setMainWindowVisible(true)
+        #expect(h.notifier.badges.count == before + 1, "coming back rebuilds the listing and the badge")
+        #expect(!h.state.keepsRunningInBackground, "no sync is configured, so nothing holds the process awake")
+        let now = nowMs()
+        #expect(windowReturnSyncDue(backgroundSync: false, lastSyncMs: now - 1_000, nowMs: now))
+        #expect(!windowReturnSyncDue(backgroundSync: true, lastSyncMs: now - 1_000, nowMs: now))
+        #expect(windowReturnSyncDue(backgroundSync: true, lastSyncMs: now - 150_000, nowMs: now))
     }
 }
 

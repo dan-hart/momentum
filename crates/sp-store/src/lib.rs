@@ -90,6 +90,15 @@ impl Store {
             ],
         )
     }
+    /// An unchanged network poll changes only its success timestamp. Keep task and
+    /// pending files intact, and publish the timestamp only after an atomic write.
+    pub fn record_nextcloud_success(&mut self, timestamp: u64) -> std::io::Result<()> {
+        let mut meta = self.meta.clone();
+        meta.last_nextcloud_ms = timestamp;
+        durability::save_metadata(&self.dir, &serde_json::to_vec(&meta)?)?;
+        self.meta = meta;
+        Ok(())
+    }
     /// Apply locally, record as pending for sync, persist.
     pub fn dispatch(&mut self, action: Action) {
         self.dispatch_batch([action]);

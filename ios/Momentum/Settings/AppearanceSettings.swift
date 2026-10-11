@@ -9,6 +9,7 @@ struct AppearanceSettings: View {
     @AppStorage(MobileAppearance.contentScaleKey) private var contentScale = 1.0
     @AppStorage(MobileAppearance.interfaceScaleKey) private var interfaceScale = 1.0
     @AppStorage(MobileAppearance.hapticsKey) private var haptics = true
+    @AppStorage(PrefKey.completionSound) private var completionSound = false
     @State private var pickingFont = false
 
     var body: some View {
@@ -34,8 +35,13 @@ struct AppearanceSettings: View {
                 Text("Text also follows your device's Dynamic Type size. Navigation and system controls keep their native styles.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
-            Section { Toggle("Haptic feedback", isOn: $haptics) }
-                header: { Text("Feedback").foregroundStyle(AccentTheme.secondaryText) }
+            Section {
+                Toggle("Haptic feedback", isOn: $haptics)
+                Toggle("Completion sound", isOn: $completionSound)
+            } header: { Text("Feedback").foregroundStyle(AccentTheme.secondaryText) } footer: {
+                Text("The completion sound is a short chime when you mark a task done. It follows the Ring/Silent switch.")
+                    .foregroundStyle(AccentTheme.secondaryText)
+            }
         }
         .navigationTitle("Text & Feedback")
         .momentumNavigationCanvas()

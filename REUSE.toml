@@ -12,6 +12,12 @@ SPDX-FileCopyrightText = "2026 Dan Hart"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = ["data/resources/sounds/task-complete.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/task-complete.wav"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Kenney (www.kenney.nl)"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
 path = ["meson.build", "data/meson.build", "data/icons/meson.build", "data/resources/meson.build", ".gitlab-ci.yml", "hooks/pre-commit.hook", "build-aux/dist-vendor.sh"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Bilal Elmoussaoui and the gtk-rust-template contributors"

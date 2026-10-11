@@ -111,6 +111,8 @@ class BoundedSourceImeTest {
         Assert.assertTrue("A native composing edit preserves the entire source",
             vm.state.value.editor!!.notes == expected)
         runBlocking { vm.persistDraft() }
+        Assert.assertNull("Draining autosave must not report expected cancellation as an error",
+            vm.state.value.error)
         Assert.assertTrue("The complete admitted source remains in the private draft",
             DraftStore(directory).read(saved.get<String>("editor-id")!!)!!.notes == expected)
     }

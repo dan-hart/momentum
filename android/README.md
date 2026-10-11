@@ -183,8 +183,14 @@ Source archives and a release license review still accompany distribution.
 [Distribution audit](DISTRIBUTION_AUDIT.md) records current provenance, permission
 and store gates. [Android CI](../.github/workflows/android.yml) prepares public pinned
 source and checks JVM tests, unsigned release APK/AAB, lint, native/ZIP alignment,
-bundle configuration and packaged notices. It requires no signing key and has no
-artifact upload or publishing step. Its first Linux runner execution is outstanding.
+bundle configuration and packaged notices. Ordinary CI requires no signing key and uploads no artifacts. The tag-driven
+Release workflow calls the same build at the exact tag and attaches verified APK/AAB,
+matching source, notices, R8 mapping and provenance, with optional distribution signing
+and explicit unsigned names otherwise. No Play/F-Droid submission runs. See
+[Releasing](../docs/RELEASING.md). Its first Linux runner execution is outstanding.
+Release packaging builds a fresh committed snapshot, excluding existing outputs and
+untracked local inputs. APK and all AAB payload certificates must match the configured
+alias. The source archive, binaries and provenance therefore identify the same commit.
 
 Task/credential files are excluded from Android cloud backup and device transfer;
 use the explicit native export/restore flow. Sync is opt-in. Target SDK 37 requires

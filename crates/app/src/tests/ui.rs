@@ -241,11 +241,17 @@ fn day_moves_tomorrow_next_week_tonight_and_plan_today() {
     on_gtk(|| {
         let (win, _dir) = demo_window();
         let id = id_of(&win, "Write release notes for 0.1");
+        let due = |w: &MomentumWindow| w.engine().with_store(|s| s.state.task.entities[&id].due_day.clone());
+        let original_day = due(&win);
         win.move_to_tomorrow(&[id.clone()]);
         pump();
-        let due = |w: &MomentumWindow| w.engine().with_store(|s| s.state.task.entities[&id].due_day.clone());
         assert_eq!(due(&win).as_deref(), Some(day_str(today_n() + 1).as_str()));
         assert!(!row_ids(&win).contains(&id), "no longer in Today");
+        win.undo_last();
+        pump();
+        assert_eq!(due(&win), original_day, "undo restores the day before Tomorrow");
+        // On Sunday, Tomorrow and Next Week both mean Monday. Test each real move
+        // independently so a no-op cannot accidentally undo the preceding move.
         win.move_to_next_week(&[id.clone()]);
         pump();
         let monday = day_number(&due(&win).unwrap()).unwrap();
@@ -253,11 +259,9 @@ fn day_moves_tomorrow_next_week_tonight_and_plan_today() {
         assert!(monday > today_n() && monday <= today_n() + 7);
         win.undo_last();
         pump();
-        assert_eq!(
-            due(&win).as_deref(),
-            Some(day_str(today_n() + 1).as_str()),
-            "undo restores the previous day"
-        );
+        assert_eq!(due(&win), original_day, "undo restores the day before Next Week");
+        win.move_to_tomorrow(&[id.clone()]);
+        pump();
         win.dispatch(Action::PlanForToday {
             task_ids: vec![id.clone()],
             today: today_str(),
@@ -1144,6 +1148,13 @@ fn preferences_rows_are_bound_to_settings() {
         imp.auto_archive_row.set_active(true);
         assert!(settings().boolean("auto-archive"));
         imp.auto_archive_row.set_active(false);
+        assert!(
+            !imp.completion_sound_row.is_active(),
+            "the completion sound is off until asked for"
+        );
+        imp.completion_sound_row.set_active(true);
+        assert!(settings().boolean("completion-sound"));
+        imp.completion_sound_row.set_active(false);
         let choices = crate::modifier::choices();
         let super_idx = choices.iter().position(|(k, _)| *k == "super").unwrap();
         imp.modifier_row.set_selected(super_idx as u32);

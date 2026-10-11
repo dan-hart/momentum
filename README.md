@@ -15,14 +15,15 @@
   <a href="#install"><img src="https://img.shields.io/badge/Linux-GTK_4_%2B_libadwaita-343A40?style=for-the-badge&amp;logo=linux&amp;logoColor=FCC624&amp;labelColor=202124" alt="Linux: GTK 4 and libadwaita"></a>
   <a href="macos/README.md"><img src="https://img.shields.io/badge/macOS-native-343A40?style=for-the-badge&amp;logo=apple&amp;logoColor=white&amp;labelColor=202124" alt="Native macOS app"></a>
   <a href="ios/README.md"><img src="https://img.shields.io/badge/iOS_26_%26_27-native,_build_from_source-343A40?style=for-the-badge&amp;logo=apple&amp;logoColor=FF6600&amp;labelColor=202124" alt="iOS 26 and 27: native app, build from source"></a>
+  <a href="android/README.md"><img src="https://img.shields.io/badge/Android_8%2B-Kotlin_%2B_Compose-343A40?style=for-the-badge&amp;logo=android&amp;logoColor=3DDC84&amp;labelColor=202124" alt="Android 8 and later: Kotlin and Jetpack Compose"></a>
 </p>
 
 <p align="center">
   <strong>Plan your day. Native task planning, one shared core, and your data under your control.</strong>
 </p>
 
-Momentum is an offline-first task planner with native apps for Linux, macOS and
-iOS/iPadOS, and Android planned. Core task management works without an account or
+Momentum is an offline-first task planner with native apps for Linux, macOS,
+iOS/iPadOS and Android. Core task management works without an account or
 internet connection. One Rust engine owns task rules, queries, persistence,
 recurrence, undo and sync; each app owns its native interface and system
 integrations.
@@ -65,19 +66,34 @@ Linux views were rendered on a Mac, are in the
   <img src="data/resources/screenshots/new-task.png" width="440" alt="Momentum Linux: the New Task dialog with project, due day, time, reminder, estimate, tags and notes">
 </p>
 
-## Platform status · October 1, 2026
+### Android
+
+Captured on October 11, 2026 (UTC), from the minified 0.4.5 development build on an
+Android 17 emulator with isolated synthetic tasks and sync off. These show the native
+Material 3 task list and editor; acceptance details are in the
+[Android checklist](docs/ANDROID-PARITY-CHECKLIST.md).
+
+<p align="center">
+  <img src="data/resources/screenshots/android-today.png" width="300" alt="Momentum Android: Today, inline Quick Add, a synthetic task with notes, Add Task and the Today, Upcoming, Search and Settings navigation bar">
+  &nbsp;&nbsp;
+  <img src="data/resources/screenshots/android-editor.png" width="300" alt="Momentum Android: native task editor with title, project, date, time, reminder, estimate, tags and Unicode notes">
+</p>
+
+## Platform status · October 11, 2026
 
 | Platform | Native app | Current status |
 |---|---|---|
 | Linux | Rust, GTK 4 and libadwaita | Established. Ships as a signed Flatpak repository and bundles from every release. GTK UI tests run headless in CI; the app also builds and runs natively on a Mac for development. |
 | macOS | SwiftUI with AppKit and system services | Established. Single main window, customizable toolbar, multi-item drag, menu bar item, Spotlight, Shortcuts, Keychain and the bundled `mo`. Distributed as a signed zip on every release. |
-| iOS / iPadOS | Swift and SwiftUI through UniFFI | Native app for iOS 26 and 27 with Today, Upcoming, Search and Settings, Nextcloud and LibreSync, background sync and the Shortcuts actions. Built from source and tested on a real iPhone; no store distribution yet. |
-| Android | Planned native frontend to the same Rust core | No app implementation yet. |
+| iOS / iPadOS | Swift and SwiftUI through UniFFI | Native app for iOS 26 and 27 with Today, Upcoming, Search and Settings, Nextcloud and LibreSync, background sync and Shortcuts actions. Build from source; internal TestFlight distribution is established. Public App Store distribution and physical acceptance of that build remain separate. |
+| Android | Kotlin, Jetpack Compose and Material 3 through UniFFI | Native app for Android 8+ on arm64-v8a/x86_64: offline tasks, full editor, organization, search, recurrence, reminders, optional Nextcloud/LibreSync and explicit backups. API26/API37 emulator acceptance and 16 KiB minified runtime checks are recorded. Parity and physical accessibility remain in progress. Future tagged releases build APK/AAB and matching source; unsigned files require signing before installation. F-Droid and Play submission are not established. |
 
 The [feature ledger](docs/FEATURES.md), [known issues](docs/BUGS.md) and
 [progress log](docs/PROGRESS.md) distinguish implementation from verification, per
 platform. The [iOS parity checklist](docs/IOS-PARITY-CHECKLIST.md) lists what the iOS
-app still lacks against the desktop baseline.
+app still lacks against the desktop baseline. The
+[Android parity checklist](docs/ANDROID-PARITY-CHECKLIST.md) tracks native Android
+differences, incomplete features and remaining acceptance.
 
 ## What's new in 0.4
 
@@ -98,19 +114,22 @@ The [changelog](CHANGELOG.md) has every release. Since 0.4.0:
 - **iOS:** pull to refresh, background sync, Liquid Glass headers, a sync status badge
   in the toolbar, a round Add button, and the sidebar beside the list in landscape on
   larger iPhones.
+- **Android development:** native Kotlin/Compose screens, adaptive Material navigation,
+  Android Keystore, opt-in reminders, private draft recovery, and SAF backup/restore,
+  without Google Play services or a store account. See the [Android guide](android/README.md).
 
 ## How it is built
 
 - **Share behavior, keep interfaces native.** Linux calls the Rust engine directly;
-  Apple apps use generated UniFFI bindings and a reusable Swift package for wording and
-  preferences. Layout, navigation, gestures, accessibility and OS services belong to
+  Apple apps use generated UniFFI bindings and reusable Swift packages; Android uses
+  generated Kotlin bindings with Compose. Layout, navigation, gestures, accessibility and OS services belong to
   each platform. No web views, no cross-platform UI toolkit.
 - **One grouping layer.** Morning & Night is the default; project, first tag, time
   estimate or None replaces it. Coming Up is always one section per day. Completed
   tasks stay separate. See [Grouping](docs/GROUPING.md).
 - **Optional sync, one provider at a time.** Off, Nextcloud or LibreSync. Only the
   selected provider runs; switching preserves tasks and saved connections. Secrets live
-  in the platform keychain. Sync compatibility with Super Productivity's file format
+  in the platform credential store, including Android Keystore. Sync compatibility with Super Productivity's file format
   and encryption is preserved while a future independent format stays undecided.
 - **Privacy by construction.** No ads, tracking or analytics. Preview mode uses sample
   data in a temporary directory and never starts a transport.
@@ -124,7 +143,7 @@ The [changelog](CHANGELOG.md) has every release. Since 0.4.0:
 
 ## Task-planning highlights
 
-These describe the desktop baseline; the iOS app covers most of it with native
+These describe the desktop baseline; the mobile apps cover much of it with native
 equivalents. The [feature ledger](docs/FEATURES.md) gives exact per-platform scope.
 
 - **Today, Morning, Tonight, Coming Up, projects and tags.** Today is the plan: Morning
@@ -191,6 +210,28 @@ Build from source with Xcode 27, XcodeGen and the Rust iOS targets. The minimum
 deployment target is iOS/iPadOS 26. See the [iOS build guide](ios/README.md) for
 device/simulator builds and signing. Release readiness is tracked in the parity
 checklist; a development build does not establish feature parity.
+
+### Android
+
+Android 8 or later, on arm64-v8a or x86_64. Install the pinned JDK 17, Android SDK/NDK
+and Rust targets described in the [Android build guide](android/README.md), then:
+
+```sh
+python3 android/scripts/build_core.py --prepare-source
+cd android
+./gradlew :app:assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+The debug APK uses a local development key. Future tagged releases attach
+`Momentum-vX.Y.Z-android.apk` and `.aab` when distribution signing is configured;
+otherwise their names contain `-unsigned`. An unsigned APK cannot be installed until
+signed; an AAB is an input for an app store or bundletool. Matching source, dependency
+notices, R8 mapping and checksums accompany those files. See
+[release signing and channels](docs/RELEASING.md#android-artifacts-and-future-store-distribution)
+before choosing an update channel. The disabled [F-Droid recipe](android/fdroid/README.md)
+still needs independent builder verification and admission. There is no Play/F-Droid
+listing or automatic store upload.
 
 ### Linux
 

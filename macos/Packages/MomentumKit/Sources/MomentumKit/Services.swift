@@ -22,6 +22,12 @@ public protocol SearchIndexer: AnyObject {
     func reindex(_ tasks: [TaskBrief])
 }
 
+/// Short audible feedback. The state object asks for it only when the preference is on.
+@MainActor
+public protocol SoundPlayer: AnyObject {
+    func playCompletion()
+}
+
 #if os(macOS)
 /// Watches one file for writes by another process (`mo` when the app's socket is not up).
 /// Atomic writes replace the file rather than changing it, so the watch is re-armed after

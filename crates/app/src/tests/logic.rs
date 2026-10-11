@@ -360,3 +360,37 @@ fn demo_data_is_what_the_screenshots_and_tests_rely_on() {
         .iter()
         .any(|t| t.due_with_time.is_some() && t.remind_at.is_some()));
 }
+
+#[test]
+fn completion_sound_celebrates_only_completions_and_is_off_by_default() {
+    use momentum_core::Message;
+    on_gtk(|| {
+        reset_settings();
+        let s = settings();
+        for m in [
+            Message::TaskCompleted,
+            Message::TaskCompletedArchived,
+            Message::TasksCompleted { n: 2 },
+            Message::TasksCompletedArchived { n: 2 },
+        ] {
+            assert!(crate::sound::celebrates(&m), "{m:?} completes tasks");
+            assert!(!crate::sound::should_play(&s, &m), "silent until the setting is on");
+        }
+        for m in [
+            Message::TaskAdded,
+            Message::TaskDeleted,
+            Message::Undone,
+            Message::MovedToToday,
+        ] {
+            assert!(!crate::sound::celebrates(&m), "{m:?} is not a completion");
+        }
+        s.set_boolean("completion-sound", true).unwrap();
+        assert!(crate::sound::should_play(&s, &Message::TaskCompleted));
+        assert!(crate::sound::should_play(&s, &Message::TasksCompletedArchived { n: 3 }));
+        assert!(
+            !crate::sound::should_play(&s, &Message::TaskAdded),
+            "other changes stay silent"
+        );
+        reset_settings();
+    });
+}

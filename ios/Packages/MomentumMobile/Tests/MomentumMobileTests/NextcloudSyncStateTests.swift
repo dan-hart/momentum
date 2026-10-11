@@ -167,6 +167,58 @@ import Testing
         #expect(await fixture.backgroundFactory.count == 1, "Low Power Mode and Off never start an exchange")
     }
 
+    @Test func foregroundReturnDuringABackgroundWakeRetriesAtOnceAndReArmsTheCycle() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        var commits = 0
+        fixture.state.didCommit = { commits += 1 }
+        await fixture.state.load()
+        await fixture.state.select(.nextcloud)
+        let running = Task { await fixture.state.syncInBackground() }
+        await fixture.backgroundOperation.waitUntilRunning()
+        // The person opens the app while the wake's exchange is still running.
+        fixture.state.setForeground(true)
+        #expect(fixture.state.isSyncing)
+        fixture.backgroundOperation.finish(.success(SyncReport(downloaded: true, uploaded: false, opsUploaded: 0)))
+        #expect(await running.value)
+        #expect(commits == 1, "the wake's commit refreshes the app")
+        let rearmed = await settles { await fixture.clock.waitForCount(1) }
+        #expect(rearmed, "the wake's end must schedule something")
+        guard rearmed else { return }
+        #expect(await fixture.clock.lastDelay == .zero, "the foreground return missed during the wake retries at once")
+        await fixture.clock.advanceLatest()
+        await fixture.operation.waitUntilRunning()
+        fixture.operation.finish(.success(SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)))
+        await fixture.state.drain()
+        await fixture.clock.waitForCount(2)
+        #expect(await fixture.clock.lastDelay == .seconds(150), "and the idle cycle is armed again")
+        #expect(await fixture.factory.count == 1)
+        #expect(await fixture.backgroundFactory.count == 1)
+    }
+
+    @Test func aWakeThatRunsOutOfBudgetIsNotAFailureAndTheForegroundRetries() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        await fixture.state.load()
+        await fixture.state.select(.nextcloud)
+        let running = Task { await fixture.state.syncInBackground() }
+        await fixture.backgroundOperation.waitUntilRunning()
+        fixture.state.setForeground(true)
+        fixture.backgroundOperation.finish(.failure(CoreError.Transient(kind: .timedOut, message: "budget")))
+        #expect(await !running.value)
+        #expect(fixture.state.failure == nil, "a discretionary wake running out of its budget is not a sync failure")
+        #expect(fixture.state.lastAttemptAt != nil)
+        let rearmed = await settles { await fixture.clock.waitForCount(1) }
+        #expect(rearmed, "the wake's end must schedule the foreground retry")
+        guard rearmed else { return }
+        #expect(await fixture.clock.lastDelay == .zero)
+        await fixture.clock.advanceLatest()
+        await fixture.operation.waitUntilRunning()
+        fixture.operation.finish(.failure(CoreError.Transient(kind: .timedOut, message: "still slow")))
+        await fixture.state.drain()
+        #expect(fixture.state.failure == .network, "the foreground exchange, with the full budget, reports its own result")
+    }
+
     @Test func backgroundExchangeWithoutAutomaticSyncIsNotPossible() async {
         let fixture = SyncFixture(automatic: false)
         defer { fixture.clean() }
@@ -467,6 +519,33 @@ import Testing
         await fixture.clock.advanceLatest()
         await runtime.waitForSyncCount(1)
         #expect(await runtime.syncs == 1)
+    }
+}
+
+/// True when `work` finishes within a short bound; a test that would otherwise wait on
+/// a controlled clock forever fails instead. The waiting task is left suspended on a
+/// timeout rather than awaited, which is why this is not a task group.
+private func settles(within seconds: Double = 2, _ work: @escaping @Sendable () async -> Void) async -> Bool {
+    let once = ResumeOnce()
+    Task { await work(); once.resume(true) }
+    Task { try? await Task.sleep(for: .seconds(seconds)); once.resume(false) }
+    return await withCheckedContinuation { once.arm($0) }
+}
+
+private final class ResumeOnce: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Bool, Never>?
+    private var pending: Bool?
+    func arm(_ c: CheckedContinuation<Bool, Never>) {
+        lock.withLock {
+            if let pending { c.resume(returning: pending) } else { continuation = c }
+        }
+    }
+    func resume(_ value: Bool) {
+        lock.withLock {
+            if let c = continuation { continuation = nil; c.resume(returning: value) }
+            else if pending == nil { pending = value }
+        }
     }
 }
 

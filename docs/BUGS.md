@@ -10,6 +10,41 @@ Severity: Critical = data loss/security/core unusable; High = major workflow imp
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
 
+## 2026-10-10 — internal TestFlight preparation assessment
+
+F-059 changes the iOS app and share-extension identifiers for the requested App Store
+Connect record. Source inspection also found missing required-reason API manifests
+(B-104). Signed packaging, Apple processing, and internal distribution are verified in
+[PROGRESS.md](PROGRESS.md). Existing native interaction
+and sync acceptance gaps retain their individual statuses.
+
+## B-104 — iOS app and share extension omit privacy manifests
+
+- **Severity:** Medium. **Feature:** F-059. **Impact:** missing packaging reproduced
+  by source inspection; App Store Connect rejection has not been reproduced.
+- **Reproduction:** inspect the 0.4.9 (`1ade8ab`) iOS targets: neither includes a
+  `PrivacyInfo.xcprivacy`, although the app reads/writes its preferences and the
+  linked Rust library references `stat`, `fstat`, and `lstat`.
+- **Expected:** each shipping bundle declares the reasons for its required-reason
+  APIs before TestFlight upload. The app uses private preferences, private/group files,
+  and user-selected backup files; the share extension writes its App Group inbox.
+- **Fix:** add native privacy resources to the app and extension. App preferences use
+  `CA92.1`; private/group file metadata uses `C617.1`; user-selected backup metadata
+  uses `3B52.1`. No tracking or developer data collection is added. Reason meanings
+  were checked against [Apple's API reference](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype).
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Not applicable — no Apple bundle | Not applicable — this request concerns the iOS TestFlight targets; desktop distribution is separate | Verified — signed app/extension manifests packaged and Apple processing accepted | Not applicable — no Apple bundle |
+
+- **Evidence:** both manifest property lists pass `plutil -lint` in the dirty
+  `task/ios-testflight` worktree on 2026-10-10. The successful unsigned device Release
+  archive and final signed IPA package and parse both manifests. Binary imports agree
+  with the declared preference/file API scope. Apple accepted 0.4.9 (409), reports
+  VALID processing and IN_BETA_TESTING, and the internal group has build access. This
+  verifies manifest packaging/server acceptance; physical installation and native
+  feature QA remain separate.
+
 ## B-001 — Linked LibreSync devices do not populate the Mac
 
 - **Severity:** High. **Feature:** [F-026](FEATURES.md).
@@ -2335,9 +2370,13 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 
 ## B-095 — Apple Reminders import traps in a background EventKit callback
 
-- **Severity:** High. **Feature:** F-055. **Status:** Implemented on iOS; physical-device confirmation deferred.
-- **Reported:** importing a reminder on the installed iOS app crashes. The phone is
-  unavailable; its crash report has not been retrieved.
+- **Severity:** High. **Feature:** F-055. **Status:** Implemented on iOS; physical crash signature confirmed and corrected build installed; manual import acceptance remains open.
+- **Reported:** importing a reminder on the installed iOS app crashes. On 2026-10-02,
+  the first 2026-10-01 evening report and latest 2026-10-02 12:17 CDT report were
+  retrieved from the paired phone. Both identify the old non-Sendable nested
+  projection in `EventKitRemindersSource.incompleteReminders(in:)`, with
+  `_dispatch_assert_queue_fail` and `_swift_task_checkIsolatedSwift` on
+  `com.apple.eventkit.reminders.search` (`EXC_BREAKPOINT` / `SIGTRAP`).
 - **Reproduced:** original PR head `4a40345` traps with `EXC_BREAKPOINT`/`SIGTRAP`
   when real EventKit returns one synthetic reminder in a fresh iOS 27 simulator.
   The stack enters Swift's actor-executor check from the nested projection closure
@@ -2354,11 +2393,15 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 
 | Linux | macOS | iOS | Android |
 |---|---|---|---|
-| Unaffected — no adapter | Unaffected — integration deferred | Implemented; reproduced/fixed in isolated iOS 27 simulator | Not applicable — no app |
+| Unaffected — no adapter | Uses corrected shared adapter; callback tests pass | Implemented; simulator regression passes; physical cause confirmed, corrected app installed/launched | Not applicable — no app |
 
-- **Remaining:** compare the phone's crash report and over-install the corrected
-  signed app when the device is reachable. Simulator evidence does not establish
-  the cause or resolution of the reported physical-device crash.
+- **2026-10-02 device follow-up:** the existing correction in `f49160b`, retained
+  in the dirty `task/apple-reminders-import` checkout after the shared-adapter move,
+  was development-signed and over-installed as 0.4.5 (405). Launch succeeded.
+  Current regression/build and post-launch evidence is recorded in PROGRESS.
+- **Remaining:** explicit manual Import Now, permission/revocation and longer-use
+  acceptance on the phone. Process survival and absent new reports do not prove
+  a manually initiated import or its resulting task content.
 
 
 ## B-096 — Apple Reminders recovery reloads lists without retrying import
@@ -2409,6 +2452,103 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Evidence:** coordinator feedback-event and native view checks are recorded in the
   PR #4 review-fix handoff in [PROGRESS.md](PROGRESS.md). Spoken VoiceOver acceptance
   remains separate and must not be inferred from accessible labels or unit tests.
+
+## B-099 — a background sync exchange never re-arms automatic sync (iOS); desktops skip the catch-up when the window returns
+
+- **Severity:** High. **Features:** F-049/F-025. **Affected:** iOS, reproduced in code
+  and by a new package test; macOS and Linux assessed from code, not reproduced live.
+- **Reproduction (iOS):** with Sync in the background on, let a background wake start
+  an exchange and open Momentum before it finishes. Expected: the exchange's result
+  shows and automatic sync continues. Actual: the foreground return was remembered
+  but the wake's completion scheduled nothing, so no automatic exchange ran again
+  until a local edit, a pull-to-refresh or another background/foreground cycle; edits
+  made during the wake also missed the 10 s upload. A wake that hit its 25 s budget
+  was recorded as a network failure.
+- **Cause/fix:** `syncInBackground` ended without the `schedule(after:)` hand-off that
+  `run()` has (B-033's fix had only reached the foreground path). It now ends through
+  the same scheduling, resets the retry flag at admission, and treats a budget
+  timeout like an expired wake: not recorded, the next foreground exchange reports
+  its own result. macOS/Linux: with background sync on, a returning window neither
+  redrew nor synced; now it always redraws and syncs when the shared core rule
+  `window_return_sync_due` says the idle cycle was missed (or background sync is
+  off). macOS additionally declines App Nap while hidden with automatic background
+  sync configured, so the 150 s timer keeps its cadence.
+- **Regression:** iOS `foregroundReturnDuringABackgroundWakeRetriesAtOnceAndReArmsTheCycle`
+  and `aWakeThatRunsOutOfBudgetIsNotAFailureAndTheForegroundRetries`; core
+  `window_return_tests`; macOS `theWindowsReturnRedrawsAndDecidesCatchUpFromTheSharedRule`.
+  Linux wiring compiles; GTK runtime not exercised here. Remaining: a real background
+  wake on a device, and the App Nap effect observed only by reasoning.
+
+## 2026-10-06 — F-056 sound verification assessment
+
+No product defect was reproduced in the sound setting/completion paths. Tests prove
+that the default is off, the enabled switch is respected, disabling takes effect,
+reopen/undo stay silent, and bulk completion produces one sound request. Native
+SwiftPM's uncompiled localization resources are a build-backend limitation; the
+full Xcode-backend package suite passes. Audible output and the documented iOS
+non-app completion scope remain explicitly unverified/limited, not claimed as fixed.
+
+## B-100 — unverifiable Nextcloud uploads can be acknowledged
+
+- **Severity:** High. **Features:** F-054/F-058. **Impact:** reproduced in isolated
+  Rust WebDAV regression tests; native occurrence not independently reproduced.
+- **Reproduction:** PUT returns success but the verification read returns 404, or an
+  existing file's GET omits its ETag. The original code could acknowledge an absent
+  copy or overwrite without a precondition. Review also found that trusting a missing
+  PUT validator or a different verification validator could cache an unadopted copy.
+- **Expected/fix:** require strong overwrite preconditions, actual stored length and
+  matching PUT/PROPFIND validators. Keep edits queued on missing/mismatched evidence;
+  do not replay a PUT with uncertain effects. Recovery wording no longer promises the
+  earlier server copy survived a partial write.
+- **Platforms:** Linux/macOS/iOS Implemented through the shared core; Android Planned
+  when its native consumer exists. Shared reproduction is not an OS-specific runtime claim.
+- **Evidence:** missing size, missing download/upload/verification validators, different
+  validator and partial-upload regressions pass. Native gates and limits: F-058 in
+  [PROGRESS.md](PROGRESS.md); [benchmark scope](SYNC-PERFORMANCE.md).
+
+## B-101 — failed LibreSync journal writes suppress retry
+
+- **Severity:** High. **Feature:** F-058. **Impact:** reproduced in isolated adapter
+  tests by making the journal scratch path unwritable.
+- **Reproduction:** receive an operation or publish a snapshot while the journal save
+  fails. The original code mutated seen/inbox/dirty flags first, so another delivery
+  could be discarded or a failed snapshot treated as published. Local publication also
+  swallowed journal errors and serialized the entire backlog once per operation.
+- **Expected/fix:** persist a staged journal before publishing memory changes, batch
+  pending operations once, skip unchanged journal writes and surface errors with retry.
+  Successful writes sync both the file and its parent directory.
+- **Platforms:** Linux/macOS/iOS Implemented; shared reproduction confirmed, native
+  failure injection not performed. Android Planned for the eventual core consumer.
+- **Evidence:** inbound redelivery after failed save, snapshot retry, batch persistence,
+  no-op adapter load and reentrant engine error callback pass. Two real Rust LibreSync
+  peers converge. Remaining native/physical checks are recorded under F-058.
+
+## B-102 — a same-version server replacement is ignored
+
+- **Severity:** High. **Feature:** F-058. **Impact:** reproduced in the Rust fixture.
+- **Reproduction:** replace the remote sync file with different task data/ETag while
+  retaining its numeric sync version. The original comparison ignored the replacement.
+- **Expected/fix:** adopt changed remote data when either version or ETag changes;
+  permit body-free polling only for a successfully validated engine session without
+  pending edits and with unchanged connection/options/version/validator.
+- **Platforms:** Linux/macOS/iOS Implemented through Rust; Android Planned. No real
+  server incident or platform-specific reproduction is claimed.
+- **Evidence:** replacement adoption and cache invalidation regressions pass. A paused
+  no-change exchange also preserves concurrent edits, vector clocks, undo and disk.
+  See [F-058 evidence](SYNC-PERFORMANCE.md) and native limits in PROGRESS.
+
+## B-103 — corrupt gzip lacks damaged-copy recovery
+
+- **Severity:** Medium. **Features:** F-028/F-058. **Impact:** reproduced by decoding
+  an invalid compressed fixture, without modifying any user or hosted server data.
+- **Reproduction:** a syntactically prefixed compressed sync file has invalid gzip
+  bytes. The decoder returned generic I/O failure, hiding damaged-copy replacement.
+- **Expected/fix:** classify compressed decoding failure as RemoteFileDamaged,
+  preserving the existing explicit replacement/backup workflow and pending edits.
+- **Platforms:** Linux/macOS/iOS Implemented through shared classification; Android
+  Planned. Native spoken/action acceptance remains unverified.
+- **Evidence:** invalid-gzip classification regression passes; replacement and encrypted
+  damage regressions remain green. Native gates are recorded in PROGRESS.
 
 ## B-105 — generated Kotlin error payloads redeclare Throwable.message
 
@@ -3296,3 +3436,57 @@ assistive-technology acceptance remain in [the progress ledger](PROGRESS.md).
 - **Remaining:** broader physical/low-memory/process-failure acceptance, distinct
   from these controlled 48 MiB API26 fixtures. A VM memory error propagates rather
   than being silently classified as a corrupt saved draft.
+
+## B-135 — Shared link title decoding panics on malformed percent escapes with Unicode
+
+- **Severity:** High; shared-core input crash. **Feature:** F-057.
+  **Affected:** the new shared task draft/title parser used by iOS share capture.
+  The defect was reproduced in Rust tests, not a physical Apple share-sheet crash.
+  Android's existing capture adapter does not yet call this newer helper; generated
+  bindings expose the corrected core API for its future F-057 adaptation.
+- **Reproduction/cause:** a URL path such as `%🧪` or `%A漢` causes the percent decoder
+  to slice a Rust String at byte positions inside a UTF-8 character. Both new
+  regression tests fail with a character-boundary panic before the correction;
+  `android/rust-target/integration-shared-url-red.log` records the two failures.
+- **Fix/status:** Verified for shared parsing and consumer compilation. Decode
+  hexadecimal escape digits from ASCII bytes; preserve invalid escapes literally
+  and keep the existing lossy handling of invalid decoded UTF-8. No task/store
+  format or FFI signature changes.
+- **Evidence:** two behavioral tests cover malformed, incomplete, mixed Unicode,
+  valid UTF-8, upper/lowercase hexadecimal and invalid decoded bytes, retaining the
+  original notes/link. The integrated all-feature/all-target Rust lane passes
+  323 tests with five pre-existing ignored cases. Regenerated Apple core/bindings
+  and 170 MomentumKit plus 161 MomentumMobile tests pass on 2026-10-11 in the dirty
+  Android integration worktree. Full app build evidence is recorded in PROGRESS.
+- **Remaining:** physical Apple share-sheet acceptance remains a separate gate.
+
+## B-136 — Explicit Android draft save leaves a delayed atomic writer active
+
+- **Severity:** High; private draft publication/recovery ordering.
+  **Features:** F-006/F-015/F-040. **Affected:** Android presentation/private drafts.
+  No shared task/store format, Apple or Linux defect is claimed.
+- **Reproduction:** the first integrated API26 full suite fails the exact private
+  file hash assertion in `NativeDraftAdmissionTest` and a standalone private read
+  in `BoundedSourceImeTest`. API37 passes. Repeating the two API26 cases on the same
+  installed APK reproduces the admission failure. A read-only publication watcher
+  sees a 5,311,302-byte base file reset to 4,796 bytes while a complete 5,333,448-byte
+  backup remains; the pending debounced writer is still publishing after an explicit
+  flush returned. Source/identity/refused-edit assertions pass; the hash failure
+  alone does not show that rejected input was saved.
+- **Cause:** `persistDraft` serialized one write but did not cancel/drain the
+  scheduled autosave. A subsequent independent reader could race Android 8
+  AtomicFile's base-to-backup rename/replacement. The
+  [AtomicFile contract](https://developer.android.com/reference/android/util/AtomicFile)
+  requires caller mutual exclusion.
+- **Fix/status:** Implemented; fresh native verification is in progress. Explicit
+  persistence cancels and joins the pending autosave before entering the draft lock,
+  then writes the current accepted draft. The delayed job uses a private writer to
+  avoid self-joining; cancellation propagates instead of becoming a UI error.
+  Existing exact source/file hash/identity/restoration/IME assertions and deadlines
+  remain, with additional checks that cancellation did not publish a false error.
+- **Evidence:** original combined app SHA-256
+  `6409e2c82a79f93fd714cc06055128677acd148509453aee3011f7f310279552`;
+  `android/rust-target/integration-main-api26-full.log` records 119 passes, six
+  expected skips and two failures. That artifact predates the B-135/B-136 fixes.
+  Final artifact identities and results are recorded in PROGRESS.
+- **Remaining:** broader physical low-memory/process-failure and lifecycle acceptance.

@@ -161,6 +161,7 @@ pub fn reset_settings() {
         "auto-sync",
         "background-sync",
         "auto-archive",
+        "completion-sound",
         "run-in-background",
         "background-count-mode",
         "morning-summary-enabled",

@@ -38,6 +38,7 @@ class NativeDraftAdmissionTest {
             await { !vm.state.value.loading && !vm.state.value.editorLoading }
             main { vm.setEditor(initial) }
             vm.persistDraft()
+            assertNull("A manual flush must not report cancelled autosave as an error", vm.state.value.error)
             val id = requireNotNull(saved.get<String>("editor-id"))
             val payload = File(directory, "android-drafts/$id.draft")
             val before = signature(payload)
@@ -47,6 +48,7 @@ class NativeDraftAdmissionTest {
             assertTrue("Rejected edit explains the existing draft capacity", vm.state.value.editorCapacityError)
             assertEquals(id, saved.get<String>("editor-id"))
             vm.persistDraft()
+            assertNull("Refusal and manual flush must preserve useful error state", vm.state.value.error)
             assertTrue("Rejected edit must preserve private draft bytes", before == signature(payload))
             assertTrue("Rejected edit must preserve decoded private source", DraftStore(directory).read(id) == initial)
 

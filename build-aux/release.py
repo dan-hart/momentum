@@ -5,13 +5,14 @@
 
 Cargo.toml's workspace version is the source of truth. The GTK app, the macOS app, the
 iOS app, the Flatpak metadata and the changelog each carry a copy, and this tool keeps
-them equal:
+them equal. Android reads the workspace version directly:
 
   build-aux/release.py version                 print the version
   build-aux/release.py check [--tag vX.Y.Z]    every copy agrees (and matches the tag)
   build-aux/release.py bump X.Y.Z [--summary]  set every copy, close the changelog section,
                                                add the metainfo <release>
   build-aux/release.py notes X.Y.Z             the changelog section, for the GitHub Release
+  build-aux/release.py checksums --assets dist write digests for every distribution asset
   build-aux/release.py homebrew ...            render the tap formula and cask from assets
   build-aux/release.py flathub ...             render the Flathub manifest for a tag
 
@@ -274,6 +275,21 @@ def sha256_of(path):
     return h.hexdigest()
 
 
+def write_checksums(assets):
+    """Cover every top-level distribution asset, including mobile and source metadata."""
+    assets = Path(assets)
+    files = sorted(path for path in assets.iterdir() if path.is_file() and path.name != "SHA256SUMS.txt")
+    if not files:
+        raise ValueError("No release assets to checksum")
+    text = "".join(f"{sha256_of(path)}  {path.name}\n" for path in files)
+    write(assets / "SHA256SUMS.txt", text)
+    return text
+
+
+def cmd_checksums(args):
+    sys.stdout.write(write_checksums(args.assets))
+
+
 def cmd_homebrew(args):
     version = args.version or current_version()
     assets = Path(args.assets)
@@ -357,6 +373,10 @@ def main():
     p = sub.add_parser("notes", help="print the changelog section for a version")
     p.add_argument("version", nargs="?")
     p.set_defaults(func=cmd_notes)
+
+    p = sub.add_parser("checksums", help="write SHA256SUMS.txt for every top-level release asset")
+    p.add_argument("--assets", required=True)
+    p.set_defaults(func=cmd_checksums)
 
     p = sub.add_parser("homebrew", help="render the tap's formula and cask from downloaded release assets")
     p.add_argument("--version")

@@ -27,6 +27,7 @@ import Testing
         #expect(p.core.direction == .ascending)
         #expect(p.core.upcomingDays == 7)
         #expect(p.core.autoArchive == false)
+        #expect(p.completionSound == false, "no sound until the user turns it on")
         #expect(p.core.morningSummaryEnabled == false)
         #expect(p.core.morningSummaryTime == ClockTime(hour: 8, minute: 0))
         #expect(p.syncEnabled == false, "nothing leaves the device until sync is turned on")
@@ -36,6 +37,15 @@ import Testing
         #expect(p.colorful == true)
         #expect(d.string(forKey: PrefKey.nextcloudFolder) == "super-productivity")
         #expect(d.string(forKey: PrefKey.rowDensity) == "regular", "iOS lists start at the regular density")
+    }
+
+    @Test func completionSoundPersistsWhenPreferencesAreRecreated() {
+        let (d, name) = freshDefaults()
+        defer { d.removePersistentDomain(forName: name) }
+        d.set(true, forKey: PrefKey.completionSound)
+        #expect(Preferences(UserDefaults(suiteName: name)!).completionSound)
+        d.set(false, forKey: PrefKey.completionSound)
+        #expect(!Preferences(UserDefaults(suiteName: name)!).completionSound)
     }
 
     @Test func groupingChoicesPersistAndUnknownValuesFallBackToMorningNight() {

@@ -8,18 +8,35 @@ on:
   pull_request:
     paths: ["android/**", "crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/android.yml"]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+      release_artifacts:
+        type: boolean
+        default: false
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: android-${{ github.ref }}
-  cancel-in-progress: true
+  group: android-${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: ${{ !inputs.release_artifacts }}
 
 jobs:
   source-build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CARGO_TERM_COLOR: always
       GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -27,6 +44,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -43,22 +61,35 @@ jobs:
           python3 android/scripts/build_core.py --prepare-source
           python3 android/scripts/build_core.py --bindings-only
           python3 -m unittest discover -s android/scripts/tests -v
-      - name: Build unsigned APK/AAB, JVM tests and release lint
+      - name: Configure optional distribution signing
+        if: inputs.release_artifacts
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: python3 android/scripts/configure_signing.py
+      - name: Build APK/AAB, JVM tests and release lint
+        if: ${{ !inputs.release_artifacts }}
         working-directory: android
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease :app:bundleRelease :app:lintRelease
       - name: Verify APK native alignment and shipped notices
+        if: ${{ !inputs.release_artifacts }}
         run: |
-          python3 android/scripts/build_core.py --check-apk android/app/build/outputs/apk/release/app-release-unsigned.apk
+          APK=android/app/build/outputs/apk/release/app-release-unsigned.apk
+          [ -z "${MOMENTUM_KEYSTORE:-}" ] || APK=android/app/build/outputs/apk/release/app-release.apk
+          python3 android/scripts/build_core.py --check-apk "$APK"
+          export APK
           python3 - <<'PY'
-          import zipfile
-          path = 'android/app/build/outputs/apk/release/app-release-unsigned.apk'
+          import os, zipfile
+          path = os.environ['APK']
           with zipfile.ZipFile(path) as apk:
               notices = apk.read('assets/THIRD_PARTY_NOTICES.txt').decode()
               assert 'LibreSync/LICENSE' in notices and 'JNA-libffi-LICENSE.txt' in notices
               assert 'Maven: net.java.dev.jna:jna:5.19.1' in notices
               print('Packaged native dependency notices verified')
           PY
-      - name: Verify AAB requests 16 KiB ZIP alignment
+      - name: Download checksum-pinned bundletool
         run: |
           python3 - <<'PY'
           import hashlib, json, pathlib, urllib.request
@@ -67,6 +98,9 @@ jobs:
           assert hashlib.sha256(data).hexdigest() == pin['sha256'], 'bundletool checksum mismatch'
           pathlib.Path('android/rust-target/bundletool.jar').write_bytes(data)
           PY
+      - name: Verify AAB requests 16 KiB ZIP alignment
+        if: ${{ !inputs.release_artifacts }}
+        run: |
           java -jar android/rust-target/bundletool.jar validate --bundle=android/app/build/outputs/bundle/release/app-release.aab
           java -jar android/rust-target/bundletool.jar dump config --bundle=android/app/build/outputs/bundle/release/app-release.aab > android/rust-target/bundle-config.json
           python3 - <<'PY'
@@ -74,8 +108,49 @@ jobs:
           assert 'PAGE_ALIGNMENT_16K' in Path('android/rust-target/bundle-config.json').read_text()
           print('AAB requests 16 KiB APK alignment')
           PY
+      - name: Verify bundle-produced APK alignment
+        if: ${{ !inputs.release_artifacts }}
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/android-bundle-validation.jks" -storepass android \
+            -keypass android -alias validation -dname 'CN=Temporary Bundle Validation' \
+            -keyalg RSA -keysize 2048 -validity 1 -noprompt
+          java -jar android/rust-target/bundletool.jar build-apks \
+            --bundle=android/app/build/outputs/bundle/release/app-release.aab \
+            --output=android/rust-target/bundle-validation.apks --mode=universal --overwrite \
+            --ks="$RUNNER_TEMP/android-bundle-validation.jks" --ks-key-alias=validation \
+            --ks-pass=pass:android --key-pass=pass:android
+          unzip -p android/rust-target/bundle-validation.apks universal.apk > android/rust-target/bundle-validation.apk
+          python3 android/scripts/build_core.py --check-apk android/rust-target/bundle-validation.apk
+      - name: Package verified Android release and matching source
+        if: inputs.release_artifacts
+        run: python3 android/scripts/package_release.py --out dist/android --bundletool android/rust-target/bundletool.jar
+        # The packager builds/tests/lints a fresh git-archive snapshot of this tag,
+        # then validates its APK/AAB and bundle-produced APK before copying assets.
+      - uses: actions/upload-artifact@v4
+        if: inputs.release_artifacts
+        with:
+          name: android-release
+          path: dist/android/*
+          if-no-files-found: error
+      - name: Remove temporary signing keys
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          temporary = Path(os.environ['RUNNER_TEMP']).resolve()
+          key = os.environ.get('MOMENTUM_KEYSTORE')
+          if key:
+              path = Path(key)
+              assert path.parent.resolve() == temporary and path.name.startswith('momentum-android-key-')
+              path.unlink(missing_ok=True)
+          (temporary / 'android-bundle-validation.jks').unlink(missing_ok=True)
+          PY
       - name: Print verification reports
         if: always()
         run: |
-          find android/app/build/reports -maxdepth 4 -type f -name '*results*' -o -name 'lint-results*.txt'
-        # Deliberately no upload action, store credentials or signing keys.
+          if [ -d android/app/build/reports ]; then
+            find android/app/build/reports -maxdepth 4 -type f \( -name '*results*' -o -name 'lint-results*.txt' \)
+          fi
+        # Ordinary CI has no signing/upload. A release caller attaches build products;
+        # no Google Play or F-Droid store submission runs here.

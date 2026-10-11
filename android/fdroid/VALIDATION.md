@@ -12,8 +12,8 @@ The fresh offline native-build snapshot copied **654** tracked/nonignored source
 LibreSync files from dirty `task/android-native`, base
 `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`, at
 `2026-10-11T02:37:18Z` (2026-10-10 local time), excluding ignored outputs and the
-worktree Git link. This source includes B-114's atomic notification action and
-restore-generation source identity; the earlier offline proof predates that change
+worktree Git link. This source includes B-108's atomic notification action and
+B-114's restore-generation source identity; the earlier offline proof predates that change
 and is superseded here. The snapshot manifest SHA-256 is
 `075625bf213a82a448a0f9cae03632dc56f610e20a846eec12434437e8160990`.
 It added the verified pinned LibreSync source and **395** locked registry packages
@@ -30,7 +30,7 @@ source notices, the frozen B-127 imported-name/completion fixes and fixtures,
 B-128 bounded lossless source-field presentation and B-129 composition/Undo
 history corrections, exact notification-count readback fixtures, the separate
 opt-in 1,000-task timing case, all six pinned Rust standard-library notice files,
-B-130–126 native fixture corrections, and B-133–128 exact private-draft admission
+B-130–132 native fixture corrections, and B-133–134 exact private-draft admission
 and format-preserving streaming storage with their JVM/native regressions.
 Its manifest SHA-256 is
 `33e23c055c43f02b91d6c7a9623204eb251da2e7cf14fe96fb70f20e9e34c151`.
@@ -157,3 +157,15 @@ metadata lint, dependency/source/license review and independent Linux build/stor
 admission. It does not prove native binary source equivalence or reproducibility.
 The installed Docker client has no running daemon on this host; no VM/service was
 started or installed. Independent Linux builder provisioning remains outstanding.
+
+## Integration with main — 2026-10-11
+
+The records above describe exact pre-integration gate11h source and 0.4.5 artifacts.
+The user subsequently authorized merging with main `7c583a6` (0.4.9), README updates
+and Android release automation. Android bug IDs 099–128 from the isolated branch
+are now 105–134 to preserve main's independently assigned 099–104; recorded historical
+hashes still identify the original source bytes. The disabled metadata now targets
+0.4.9 / 4009. Earlier prepared-source scans/offline native proofs do not verify the
+newer integrated core/source tree; post-integration checks are recorded in PROGRESS.
+The recipe remains disabled pending an approved actual release commit and independent
+F-Droid builder/admission. No store submission or release was performed.

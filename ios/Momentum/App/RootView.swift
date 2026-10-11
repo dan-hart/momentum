@@ -50,6 +50,7 @@ struct RootView: SwiftUI.View {
     @Environment(MobileAppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(MobileAppearance.hapticsKey) private var haptics = true
+    @AppStorage(PrefKey.completionSound) private var completionSound = false
     @AppStorage(PrefKey.modifierKey) private var modifierRaw = ModifierKey.command.rawValue
     @State private var taskWorkspaceState = TaskWorkspaceState()
     @State private var startupPhase = RootStartupPhase.loadingToday
@@ -162,6 +163,12 @@ struct RootView: SwiftUI.View {
         .scrollEdgeEffectHidden(true, for: .bottom)
         .sensoryFeedback(.success, trigger: model.completionFeedback) { oldValue, newValue in
             InteractionFeedbackPolicy.shouldPresent(enabled: haptics, oldValue: oldValue, newValue: newValue)
+        }
+        // The optional chime follows the same completion signal as the haptic, with its own switch.
+        .onChange(of: model.completionFeedback) { oldValue, newValue in
+            if InteractionFeedbackPolicy.shouldPresent(enabled: completionSound, oldValue: oldValue, newValue: newValue) {
+                CompletionSound.shared.playCompletion()
+            }
         }
         .sensoryFeedback(.selection, trigger: model.selectionFeedback) { oldValue, newValue in
             InteractionFeedbackPolicy.shouldPresent(enabled: haptics, oldValue: oldValue, newValue: newValue)

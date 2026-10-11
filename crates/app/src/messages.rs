@@ -86,7 +86,7 @@ pub fn sync_failure_headline(kind: momentum_core::SyncFailureKind) -> String {
         K::NothingToStartFrom => gettext("Nothing to sync yet"),
         K::Conflict => gettext("Another device is syncing at the same time"),
         K::Cancelled => gettext("Sync was interrupted"),
-        K::UploadIncomplete => gettext("The upload didn’t arrive whole"),
+        K::UploadIncomplete => gettext("The upload could not be verified"),
         K::Other => gettext("Sync couldn’t finish"),
     }
 }
@@ -106,7 +106,7 @@ pub fn sync_failure_remedy(kind: momentum_core::SyncFailureKind) -> String {
         K::NothingToStartFrom => gettext("This computer has no tasks yet and the server has no copy. Sync from a device that has your tasks first, or import a backup here."),
         K::Conflict => gettext("Two devices uploaded at the same moment. Wait a moment and retry."),
         K::Cancelled => gettext("Retry."),
-        K::UploadIncomplete => gettext("The server kept only part of the file, so the previous copy is unchanged and your edits are still waiting here. Retry on a steadier connection."),
+        K::UploadIncomplete => gettext("Your edits are still waiting here. Check the server copy, then retry on a steadier connection."),
         K::Other => gettext("Retry. If it keeps failing, the details below say what the server or this computer reported."),
     }
 }

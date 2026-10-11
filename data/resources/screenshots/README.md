@@ -70,3 +70,15 @@ mode does not start, so it is no longer pictured.
 Preview screenshots are documentation evidence, not feature-parity or accessibility
 acceptance. See the [feature ledger](../../../docs/FEATURES.md) and the
 [iOS audit](../../../docs/audits/2026-09-16-ios-accessibility.md) for those limits.
+
+## Android — October 11, 2026 (UTC)
+
+`android-today.png` and `android-editor.png` are unedited ADB screencaps from the
+minified gate11h 0.4.5 / 4005 universal APK on the owned API37 16 KiB emulator.
+APK SHA-256: `90cee7ad51787171daea6a4a9eb8e3b6951e10ed3256648d6e05720de3ac1949`.
+The “Release backup retained fixture” task and Unicode notes are synthetic, retained
+from the isolated native SAF backup/restore test. Sync is Off. The editor was opened
+and discarded without changing core/preferences/capture/draft bytes; only the
+derived disabled AppSearch receipt changed its `updated-at` field. These pixels
+predate integration with main's 0.4.9 core and are labelled as such in the README.
+They establish appearance, not physical accessibility or complete feature parity.

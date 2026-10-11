@@ -832,7 +832,13 @@ import XCTest
             "Haptisches Feedback"
         )
 
-        for (locale, expected) in [("en", "Haptic feedback"), ("de", "Haptisches Feedback")] {
+        XCTAssertEqual(
+            german.localizedString(forKey: "Completion sound", value: nil, table: nil),
+            "Ton beim Erledigen"
+        )
+
+        for (locale, expected, sound) in [("en", "Haptic feedback", "Completion sound"),
+                                          ("de", "Haptisches Feedback", "Ton beim Erledigen")] {
             let name = "momentum-haptic-setting-label-tests-\(locale)-\(UUID())"
             let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
             let mounted = try HostingFixture.mount(
@@ -847,6 +853,10 @@ import XCTest
                 "Mounted \(locale) accessibility: \(mounted.accessibilitySnapshot())"
             )
             XCTAssertFalse(mounted.hasAccessibilityElement(label: "Completion haptics"))
+            XCTAssertTrue(
+                mounted.hasAccessibilityElement(label: sound),
+                "Mounted \(locale) accessibility: \(mounted.accessibilitySnapshot())"
+            )
         }
     }
 

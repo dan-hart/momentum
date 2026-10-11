@@ -2,13 +2,14 @@
 <!-- Copyright (C) 2026 Dan Hart -->
 # Android parity acceptance
 
-Updated: 2026-10-10. This checklist describes the native Android work in
-`task/android-native`, based on `200f686c5e5c9ca9e35eb97cf434d8e54cee38a6`, with
-uncommitted Android and shared-core changes. It is an acceptance inventory, not a
-claim that Android parity is complete. The user authorized autonomous Kotlin and
-Jetpack Compose implementation through iOS capability parity, F-Droid compatibility,
-and eventual APK/AAB distribution. No commit, upload, store submission or release
-is authorized by this work.
+Updated: 2026-10-11. Android is integrated with main `7c583a6` (0.4.9) on
+`task/android-native` for the user-authorized local main merge and release-process
+work. Earlier gate11h evidence below describes its recorded 0.4.5 artifacts;
+post-integration results are recorded separately in PROGRESS. This is an acceptance
+inventory, not a claim of complete Android parity. Kotlin/Compose, shared Rust,
+F-Droid compatibility and eventual APK/AAB distribution remain approved. The current
+request authorizes committing/merging locally and preparing future release automation;
+it does not authorize a push, tag, actual release or store submission.
 
 The [approved design](superpowers/specs/2026-10-10-android-parity-design.md),
 [feature ledger](FEATURES.md), and [iOS checklist](IOS-PARITY-CHECKLIST.md) define the
@@ -80,6 +81,13 @@ Linux/F-Droid build have separate evidence and limits below. See [source/build d
 | F-049 | Implemented | Saved automatic/background sync preferences; bounded periodic Nextcloud worker runs only for selected/configured/permitted policy. LibreSync stays foreground-only under Android lifecycle limits. | Disabled/default readback, automatic-Off exclusion, worker stop/retry/time budget, process recreation and OS-scheduled run. Mobile background execution is not desktop windowless execution. |
 | F-050 | Implemented | Material pull-to-refresh updates the Rust snapshot and requests selected-provider sync; toolbar Refresh remains accessible. | Actual gesture on short/empty/long lists, provider Off, error/retry, overlapping refresh and cancellation; accessibility alternative and truthful indicator. |
 | F-054 | Implemented | Android reuses shared upload-integrity checks, typed damaged-copy handling and exchange budget; native cancellation token drains work on policy changes. | Fresh shared and native cut-off upload/stalled request/failure/repair tests, bounded worker behavior, actual server fixture and existing consumers after core edits. |
+
+
+| F-056 | Planned | Main added an off-by-default completion sound on Linux/Apple. Android has no completion-sound setting/player yet. | Implement a native resource/player adapter and localized setting reusing core completion messages; verify Off, complete/reopen/Undo and lifecycle. |
+| F-057 | In progress | Android accepts text/plain share and PROCESS_TEXT into a retained, user-confirmed capture draft. Main's newer Rust sharedTaskDraft and Inbox-once share-inbox contract is available through regenerated bindings but not wired to Android. | Preserve existing draft/context behavior. Decide/adapt the explicit shared-link/title normalization and Inbox import contract, then test cross-app cold/warm sharing and once-only persistence. |
+| F-058 | Implemented | Main's faster sync and failure-retaining Rust changes are integrated; Android uses the same generated core with Keystore, selected-provider lifecycle, typed status and retry. | Fresh post-integration native transport/recovery lanes; controlled core timings do not establish physical/server/background Android performance. |
+| F-059 | Not applicable | Apple TestFlight distributes Apple apps; Android uses APK/AAB and independent store/repository channels under F-060. | No Android TestFlight capability is appropriate. |
+| F-060 | Implemented | Exact-tag Android APK/AAB/source release job, optional explicit distribution signing, unsigned labels, metadata/signature/notices/alignment gates and all-asset checksums. No Play/F-Droid submission. | Fresh local packaging/gates and first hosted workflow, actual approved signing identity/upgrade continuity, physical release QA and independent F-Droid builder/admission. |
 
 ## List options and explicit platform differences
 

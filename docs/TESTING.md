@@ -159,6 +159,32 @@ both supported ABIs, final release/bundle-produced APKs and a real device remain
 separate gates. Tests instantiate disposable stores and credentials; platform
 fixtures must not affect the ordinary app's OS notifications or real sync peers.
 
+### Android release tooling
+
+The Python suite also exercises version/SDK/debug metadata refusal, optional/partial
+signing setup, private temporary-key permissions, all-asset checksum inventory,
+committed-source selection and actual JDK signature verification. The signed-JAR
+fixtures use disposable keys and reject a different signer, appended unsigned
+payload and altered signed payload. Run with JDK 17 available; a missing JDK is a
+skipped signing regression, not verified signing acceptance.
+
+On a clean committed checkout with the pinned toolchain and checksum-verified
+bundletool, the release packager builds its own fresh source snapshot:
+
+```sh
+python3 android/scripts/package_release.py --out dist/android --bundletool android/rust-target/bundletool.jar
+python3 build-aux/release.py checksums --assets dist/android
+cd dist/android
+shasum -a 256 -c SHA256SUMS.txt
+```
+
+The output directory must be empty. Existing APKs and untracked/ignored local source
+are never build inputs. This gate runs JVM tests/release lint, checks APK/AAB metadata,
+notices, configured signing identity and every AAB payload signature, and checks the
+actual bundle-produced APK's 16 KiB native/ZIP alignment. Its temporary validation
+key/APK are excluded from distribution. Official-key update continuity, hosted CI,
+physical acceptance, F-Droid builds/admission and store uploads remain separate gates.
+
 SDK 37 requires [local network permission](https://developer.android.com/privacy-and-security/local-network-permission)
 even for loopback transport fixtures. Use the API-conditional test permission fixture.
 For an older already-installed test artifact lacking it, grant only on the selected
@@ -511,3 +537,21 @@ GSETTINGS_SCHEMA_DIR="$OUT/schemas" GSETTINGS_BACKEND=memory MOMENTUM_DEMO=1 tar
 `cargo check -p momentum --tests` works too, but the GTK UI tests do not run natively:
 macOS requires GTK on the process main thread and the harness runs it on a worker
 thread. They stay on `build-aux/run-tests.sh` under Broadway (CI's Flatpak jobs).
+
+
+## Sync performance and failure recovery
+
+The F-058 isolated benchmarks and regression matrix are documented in
+[SYNC-PERFORMANCE.md](SYNC-PERFORMANCE.md). Ordinary Rust tests include transport
+failures, concurrent edits and failed journal persistence. The expensive 10,000-task
+idle-exchange and 1,000-operation publication samples are ignored by default:
+
+```sh
+cargo test -p sp-sync benchmark_ -- --ignored --nocapture --test-threads=1
+cargo test -p sp-p2p benchmark_offline_publish -- --ignored --nocapture
+```
+
+Run the [iOS transport lane](../ios/TESTING.md) after regenerating the core to prove
+conditional HTTP polling, same-cycle transient recovery and real peer convergence
+through Swift/UniFFI. Local fixtures do not replace disposable hosted TLS, Linux runtime,
+separate-device, physical/background, or spoken accessibility acceptance.

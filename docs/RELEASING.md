@@ -8,19 +8,24 @@ whole test suite against the tag, builds every binary, attaches them to a GitHub
 updates the Homebrew tap, publishes the signed Flatpak repository, and opens the Flathub
 update.
 
-Android has a separate local source-build/validation path described below. The
-current Release workflow does not attach or publish Android products; its source
-recipe and APK/AAB targets do not establish store admission or a release.
+Android is a required build in the same tag-driven workflow. It attaches APK/AAB,
+matching source, notices, R8 mapping and provenance to the GitHub Release. Optional
+distribution secrets sign the binaries; without them the files are explicitly
+labelled `-unsigned` and the APK requires signing before installation. There is no
+Google Play/F-Droid upload, and local validation does not establish store admission.
 
 ## One version
 
-`Cargo.toml`'s workspace version is the source of truth. Four other files carry a copy,
-and `build-aux/release.py` keeps them equal:
+`Cargo.toml`'s workspace version is the source of truth. Platform metadata and the
+changelog carry copies, and `build-aux/release.py` keeps them equal. Android reads the
+workspace version directly, so a bump also changes its APK/AAB version automatically:
 
 | File | Copy |
 |---|---|
 | `meson.build` | `project(version:)`, which becomes the GTK app's `--version` and metainfo |
 | `macos/project.yml` | `MARKETING_VERSION`, plus `CURRENT_PROJECT_VERSION` derived as `major*10000 + minor*100 + patch` so `CFBundleVersion` only ever goes up |
+| `ios/project.yml` | The same marketing version and increasing build number for the app and share extension |
+| `android/app/build.gradle.kts` | Reads Cargo directly for `versionName`; derives `versionCode` as `major*1_000_000 + minor*1000 + patch` (minor/patch at most 999, major at most 2099, positive code) |
 | `data/…metainfo.xml.in.in` | the newest `<release>` and the screenshot URLs, which point at the tag |
 | `CHANGELOG.md` | the newest `## [X.Y.Z]` section |
 
@@ -64,6 +69,7 @@ Before tagging, run on a real Mac what CI cannot: the opt-in nearby-sync test in
 | Flatpak bundle | `momentum-vX.Y.Z-{x86_64,aarch64}.flatpak` from the release manifest, tests included | tests passed |
 | macOS app and mo | `Momentum-vX.Y.Z-macos.zip` (universal, `mo` inside `Contents/MacOS`) and `mo-vX.Y.Z-macos-universal.tar.gz`, via `macos/scripts/package-app.sh` | tests passed |
 | mo for Linux | `mo-vX.Y.Z-linux-{x86_64,aarch64}.tar.gz`, built on Ubuntu 22.04 so the binary loads on Homebrew's glibc and on any desktop distribution of the last few years | tests passed |
+| Android APK, bundle and source | Reuses `android.yml` at the exact tag: pinned public native source, Python/JVM tests, release lint, APK and bundle-produced APK 16 KiB alignment, matching APK/AAB metadata/notices/signatures, and committed source with pinned LibreSync and original locked Rust crates. Attaches `Momentum-vX.Y.Z-android[-unsigned].apk`, `.aab`, and `-android-{source.tar.gz,notices.txt,mapping.txt,distribution.txt,provenance.json}` | CI/macOS tests passed; any failed Android check blocks the GitHub Release |
 | Publish Flatpak repository | signed OSTree commits for both architectures on `gh-pages`, the repository behind `flatpak install --user https://dan-hart.github.io/momentum/momentum.flatpakref` | tests passed and the signing key is configured |
 | GitHub Release | the release named *Momentum X.Y.Z* with every file above, `SHA256SUMS.txt`, and `flathub-vX.Y.Z.tar.gz` (the Flathub manifest pinned to the tag plus regenerated `cargo-sources.json`) | every build succeeded |
 | Update Homebrew tap | writes `Formula/momentum-cli.rb` and `Casks/momentum.rb` in `dan-hart/homebrew-tap` from `build-aux/homebrew/*.rb.in` with the assets' digests | the tap token is configured |
@@ -71,6 +77,11 @@ Before tagging, run on a real Mac what CI cannot: the opt-in nearby-sync test in
 
 A release with a missing optional secret still completes: the optional job is skipped
 and the release stays reproducible by rerunning the workflow once the secret is set.
+
+The workflow publishes desktop apps, CLI archives and verified Android APK/AAB/source
+artifacts. The iOS source version also advances, but this workflow does not submit an
+iOS build to App Store Connect. Android store submissions are separate from these
+GitHub release assets.
 
 ## Install channels after a release
 
@@ -93,9 +104,16 @@ one for people who want the app.
 | `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | macOS app and mo | the app is not notarized. The password is an app-specific password for the Apple ID; the team ID is also needed for Developer ID signing |
 | `FLATHUB_TOKEN` | Open the Flathub update | no pull request is opened; the manifest is still attached to the release. A token that can push branches and open pull requests on the Flathub app repository |
 | `LIBRESYNC_TOKEN` | every LibreSync checkout | falls back to the workflow token, which is enough while LibreSync is public |
+| `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Android release build only | all absent: unsigned APK/AAB remain attached with explicit filenames/instructions; partially configured: build fails. The keystore is base64-encoded and temporary on the runner; no development key is used for distribution |
 
 Keep an offline backup of the Flatpak signing key: a lost key means a new repository for
 every user.
+
+Choose and back up the Android app signing identity before the first signed release.
+The workflow does not generate one or enroll an app in Play App Signing. It removes
+its temporary decoded key after the job and does not pass signing secrets to ordinary
+push/PR builds. The bundle alignment fixture uses a separate disposable validation key;
+its APK is never included in the release. Actual store submission needs separate approval.
 
 ## Flathub
 
@@ -201,7 +219,21 @@ vendoring and do not bypass scanners. Before submission, select an approved sour
 revision, run the actual F-Droid builder/scanner, verify license/source availability,
 and compare independently prepared builds for reproducibility. Admission, successful
 F-Droid builds and bit-for-bit reproducibility have not been established locally.
-The [Android workflow](../.github/workflows/android.yml) checks unsigned APK/AAB,
-source pins, JVM tests, lint, notices and alignment with no store credentials,
-artifact upload or publish step. Its first remote execution and Android integration
-into the tag-driven Release workflow remain separate future work.
+The [Android workflow](../.github/workflows/android.yml) checks source pins, Python/JVM
+tests, APK/AAB, lint, notices and alignment on ordinary pushes/PRs without signing or
+uploads. The Release caller selects the exact tag, optionally supplies signing secrets,
+packages verified artifacts and uploads only `android-release` for the GitHub Release.
+The packager builds and runs JVM tests/release lint in a fresh `git archive` snapshot
+of the selected commit. Existing outputs and untracked/ignored local source are never
+release inputs. It rejects dirty tracked source, nonempty output directories, wrong
+versions/SDK/application IDs, debuggable artifacts and debug signing keys. Both APK
+and every signed AAB payload must match the configured distribution certificate;
+unsigned appended entries, altered signed contents and mismatched signers fail.
+It checks alignment on the actual AAB's generated APK with a disposable validation
+key, which is deleted with the snapshot and never attached to the release.
+Its source archive includes committed Momentum, verified LibreSync, original locked
+Rust crates, native sources/licenses and a relocatable Cargo vendor configuration;
+SDK/NDK/Rust and Maven/Gradle inputs remain prerequisites in the build guide.
+`build-aux/release.py checksums --assets dist` includes every top-level distribution
+file and excludes `SHA256SUMS.txt` itself. The first remote Android/tagged release
+execution remains unverified until an explicitly requested push/tag/run occurs.

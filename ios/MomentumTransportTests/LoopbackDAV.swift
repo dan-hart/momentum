@@ -20,6 +20,9 @@ import Network
     private(set) var conflicts = 0
     private(set) var collections = 0
     private(set) var propfinds = 0
+    private(set) var notModified = 0
+    private(set) var downloadedBytes = 0
+    var failGETs = 0
     var rejectAuthentication = false
     var conflictNextPUT = false
     var onHeldGET: (() -> Void)?
@@ -129,6 +132,12 @@ import Network
             } else { propfind(connection, path: path) }
         case "GET":
             gets += 1
+            if failGETs > 0 { failGETs -= 1; respond(connection, status: 503); return }
+            if files[path] != nil, headers["if-none-match"] == etag, onHeldGET == nil {
+                notModified += 1
+                respond(connection, status: 304)
+                return
+            }
             if let onHeldGET {
                 self.onHeldGET = nil
                 heldGET = (connection, path)
@@ -158,12 +167,16 @@ import Network
 
     private func propfind(_ connection: NWConnection, path: String) {
         let accountRoot = "/remote.php/dav/files/fixture/"
-        if path == accountRoot || collectionExists { respond(connection, status: 207) }
+        if let body = files[path] {
+            let xml = "<d:multistatus xmlns:d=\"DAV:\"><d:response><d:propstat><d:prop><d:getcontentlength>\(body.count)</d:getcontentlength><d:getetag>\(etag.replacingOccurrences(of: "\"", with: "&quot;"))</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>"
+            respond(connection, status: 207, body: Data(xml.utf8))
+        } else if path.hasSuffix("sync-data.json") { respond(connection, status: 404) }
+        else if path == accountRoot || collectionExists { respond(connection, status: 207) }
         else { respond(connection, status: 404) }
     }
 
     private func get(_ connection: NWConnection, path: String) {
-        if let body = files[path] { respond(connection, status: 200, body: body) }
+        if let body = files[path] { downloadedBytes += body.count; respond(connection, status: 200, body: body) }
         else { respond(connection, status: 404) }
     }
 

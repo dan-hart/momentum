@@ -483,6 +483,16 @@ pub struct TaskDetail {
     pub repeat: Option<RepeatDescription>,
 }
 
+/// A task drafted from content another app shared: a link, a page, a selection. The
+/// title is normalized and the link, when there is one, leads the notes.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct SharedTaskDraft {
+    pub title: String,
+    pub notes: String,
+    pub url: Option<String>,
+}
+
 /// What the task dialog hands back. Used both to create and to save.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Record))]

@@ -23,8 +23,8 @@ MaintainerNotes: |
   access is disabled. Do not bypass the source scanner with scanignore.
 
 Builds:
-  - versionName: 0.4.5
-    versionCode: 4005
+  - versionName: 0.4.9
+    versionCode: 4009
     disable: No approved Android release commit or F-Droid build-server verification yet
     commit: REPLACE_WITH_APPROVED_ANDROID_RELEASE_COMMIT
     subdir: android
