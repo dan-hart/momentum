@@ -5310,3 +5310,18 @@ next time it runs" on iOS.
 - **Limits:** known hosted TLS, separate-device, physical/background/energy and spoken
   accessibility acceptance remain open. Android still lacks a native client. GitHub's
   normal release produces desktop/CLI assets, not an iOS App Store distribution.
+
+
+## 2026-10-10 — 0.4.9 Linux release gate correction (F-007 / F-058)
+
+- Main integration `a7bb85c` passed core/version/translation/format checks, but CI
+  [38103321967](https://github.com/dan-hart/momentum/actions/runs/38103321967)
+  failed one of 85 ARM GTK tests and cancelled the paired x86 job.
+- Confirmed test defect: on the runner's Sunday (2026-10-11 UTC), Tomorrow and Next
+  Week both resolve to Monday. The unchanged shared rule correctly treats the second
+  move as a no-op; the old GTK test wrongly expected it to create an undo batch.
+- Correction is limited to the GTK regression: undo Tomorrow before testing Next Week,
+  verify each restores the original day, then move to Tomorrow again before checking
+  Plan for Today. Date rules, undo behavior and shipping app code are unchanged.
+- The corrected test type-checks locally; its Linux runtime result and the new exact-head
+  CI/macOS gates remain required before the 0.4.9 tag. No failed check is waived.
