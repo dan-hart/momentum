@@ -32,10 +32,12 @@ audible output and physical-device acceptance are separate verification gates.
 
 | Linux | macOS | iOS | Android |
 |---|---|---|---|
-| Not applicable — Android CI setup | Not applicable — Android CI setup | Not applicable — Android CI setup | Implemented — exact-head hosted execution pending |
+| Not applicable — Android CI setup | Not applicable — Android CI setup | Not applicable — Android CI setup | Verified — SDK setup and source build passed on `74a2a8b` |
 
-- **Evidence/next:** failure log inspected live on 2026-10-11; workflow command
-  updated locally. Exact-head CI after the authorized push is the verification gate.
+- **Evidence:** failure log inspected live on 2026-10-11. The corrected package
+  setup and full unsigned source-build validation passed on `74a2a8b` in
+  [run 38161413954](https://github.com/dan-hart/momentum/actions/runs/38161413954),
+  including release APK/AAB, JVM tests, lint, notices and native alignment.
 
 ## 2026-10-10 — internal TestFlight preparation assessment
 

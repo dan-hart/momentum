@@ -66,8 +66,8 @@ handoff below. This request authorizes a main push, with no tag or release reque
 
 ### 2026-10-11 — F-056 implementation handoff
 
-- **Scope/revision:** dirty `task/completion-sound-choices` based on `4ffb52a`,
-  isolated from the primary checkout. All ten approved files match across Linux,
+- **Scope/revision:** implementation tested in isolated `task/completion-sound-choices`
+  based on `4ffb52a`, then committed and pushed as `74a2a8b`. All ten approved files match across Linux,
   Apple and Android; `check-completion-sounds.py` checks hashes, PCM format,
   duration, catalog ordering, default and pinned public provenance. No Rust task
   rule, persistence format or generated FFI contract changed.
@@ -94,10 +94,20 @@ handoff below. This request authorizes a main push, with no tag or release reque
 - **Acceptance status:** F-056 is Implemented separately on all four platforms.
   Package tests and native fixtures verify their recorded scope; audible playback,
   physical-device silent-switch/volume checks, and VoiceOver/TalkBack interaction
-  remain separate acceptance work. Linux GTK interaction tests need the hosted
-  Linux runtime. No personal task store, sync account or installed app was used.
-- **Integration:** main push is explicitly authorized. Exact-head hosted CI,
-  including B-138 setup verification, is checked after the push; no tag or release.
+  remain separate acceptance work. Headless Linux GTK interaction tests passed
+  on both hosted architectures. No personal task store, sync account or installed
+  app was used.
+- **Hosted CI / integration:** remote main was verified at `74a2a8b` after the
+  explicitly authorized push. All three code-revision workflows passed:
+  [CI 38161413969](https://github.com/dan-hart/momentum/actions/runs/38161413969)
+  includes x86-64/aarch64 Flatpak builds and the full headless GTK/core test suite
+  with all targets/features; [macOS 38161413952](https://github.com/dan-hart/momentum/actions/runs/38161413952)
+  includes 178 package tests, app build and compiled German resources;
+  [Android 38161413954](https://github.com/dan-hart/momentum/actions/runs/38161413954)
+  includes unsigned release APK/AAB, JVM tests, lint, notices, 16 KiB native/ZIP
+  alignment and bundle-produced APK validation. B-138 is Verified. Primary branch,
+  HEAD, status and all 23 inherited file hashes remained unchanged after the push.
+  This follow-up only records verification; no tag or release was requested.
 
 ### 2026-10-11 — Android implementation and acceptance
 
