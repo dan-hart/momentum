@@ -34,6 +34,65 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-10 — internal iOS TestFlight (F-059)
+
+- Dan authorized personal-account app creation and internal iOS TestFlight distribution.
+  Work is isolated on `task/ios-testflight`, based on main/release `1ade8ab`; the primary
+  dirty checkout is preserved. Shared task/sync rules and data formats are unchanged.
+- Live account-holder, provider, and signing-certificate readback confirm the personal
+  Daniel Hart account. App Store Connect provider IDs differ from Developer team IDs.
+  Dan approved **Momentum Tasks by Daniel Hart** after Apple rejected the shorter names.
+  [App Store Connect / TestFlight](https://appstoreconnect.apple.com/apps/6821523171/testflight)
+  confirms the app ID, exact `com.codedbydan.Momentum` bundle, and matching SKU.
+- The installed app and share extension still display **Momentum**. Exact IPA readback
+  verifies both `CFBundleDisplayName` values and no English/German override.
+- Both exact bundle IDs are registered and assigned the existing
+  `group.com.codedbydan.Momentum`; prior development IDs are preserved. App Store
+  profiles for the app and extension match the new Apple Distribution identity.
+  Signing files are protected outside Git in a dedicated signing Keychain.
+- Optimized Rust/Apple production passes for both Mac architectures, iOS device, and
+  both simulators. The canonical device Release build passes (478.681 s, signing
+  disabled); log `/tmp/momentum-testflight-build.log`. The first unsigned archive
+  compiled and packaged both targets and their privacy manifests (B-104).
+- A trial export of that unsigned archive signed both binaries but omitted the source
+  App Group entitlement. No such IPA was uploaded. A new signed archive passes, then
+  `asc xcode export` produces the corrected internal-only TestFlight IPA. A private
+  XcodeGen packaging spec reused the exact-source verified core, omitted only its two
+  redundant producer hooks, and supplied the two signing profiles. The canonical
+  generated project was restored afterwards; shipping source retains the hooks.
+- Final IPA verification passes deep/strict signature checks, both exact bundle IDs,
+  0.4.9 (409), personal signing team/certificate, App Store profile type, App Group
+  entitlements, and both privacy manifests. Protected evidence is in
+  `~/Library/Developer/Momentum-TestFlight/0.4.9-409/ipa-verification-receipt.json`;
+  archive/export logs are `/tmp/momentum-testflight-signed-{archive,export}.log`.
+- **Verified distribution:** Apple reports 0.4.9 (409) `VALID`, `INTERNAL_ONLY`, and
+  `IN_BETA_TESTING`, with a complete server-side membership lookup confirming the
+  **Internal Testers** group. That group has all-build access and feedback enabled.
+  The sole eligible existing internal user, the account holder, has an issued
+  invitation and readback state `INVITED`. English What to Test notes cover sync,
+  recovery, offline/reconnect, task actions, sharing, reminders, and lifecycle checks.
+- Build-level export compliance is cleared. The implementation uses standard Rust
+  encryption rather than OS-only encryption. Apple’s [documentation table](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption/)
+  requires a French declaration for standard third-party algorithms only with French
+  App Store distribution, which is outside this internal-only request. Apple rejected
+  formal declaration creation for the applicable standard/non-French combination;
+  `usesNonExemptEncryption=false` was applied to this build and the missing-compliance
+  state cleared. No broad future-release encryption flag is added to source.
+- Protected upload and final verification receipts are under
+  `~/Library/Developer/Momentum-TestFlight/0.4.9-409/`. Final IPA SHA-256:
+  `78b9c859ec2a4febc82fa321f8d5fc893142353401d0981b4ce99c753df424ff`.
+  Property-list lint, version consistency, 68 changed-document relative links, and
+  `git diff --check` pass. Dan subsequently authorized merging `task/ios-testflight`
+  into main. Fresh pre-merge checks confirm the source manifests match the uploaded
+  IPA, both display names remain Momentum, every version is 0.4.9, both manifests
+  pass lint, all 68 relative document links resolve, and 12 runner regression tests
+  pass. Remote main still matches `1ade8ab`, so integration needs no source conflict
+  resolution. Credentials and signing assets remain outside the repository.
+- **Verification limit / next QA:** invitation acceptance and physical installation,
+  launch, share-sheet use, and sync/recovery behavior from this TestFlight build remain
+  user/device checks. Their existing feature/bug evidence is not upgraded by upload.
+  App Store publication and external beta review were not requested or performed.
+
 ### 2026-10-10 — sync performance and recovery on all platforms
 
 - F-058 / B-100–B-103: sync work is integrated on task/sync-release-0-4-9

@@ -10,6 +10,41 @@ Severity: Critical = data loss/security/core unusable; High = major workflow imp
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
 
+## 2026-10-10 — internal TestFlight preparation assessment
+
+F-059 changes the iOS app and share-extension identifiers for the requested App Store
+Connect record. Source inspection also found missing required-reason API manifests
+(B-104). Signed packaging, Apple processing, and internal distribution are verified in
+[PROGRESS.md](PROGRESS.md). Existing native interaction
+and sync acceptance gaps retain their individual statuses.
+
+## B-104 — iOS app and share extension omit privacy manifests
+
+- **Severity:** Medium. **Feature:** F-059. **Impact:** missing packaging reproduced
+  by source inspection; App Store Connect rejection has not been reproduced.
+- **Reproduction:** inspect the 0.4.9 (`1ade8ab`) iOS targets: neither includes a
+  `PrivacyInfo.xcprivacy`, although the app reads/writes its preferences and the
+  linked Rust library references `stat`, `fstat`, and `lstat`.
+- **Expected:** each shipping bundle declares the reasons for its required-reason
+  APIs before TestFlight upload. The app uses private preferences, private/group files,
+  and user-selected backup files; the share extension writes its App Group inbox.
+- **Fix:** add native privacy resources to the app and extension. App preferences use
+  `CA92.1`; private/group file metadata uses `C617.1`; user-selected backup metadata
+  uses `3B52.1`. No tracking or developer data collection is added. Reason meanings
+  were checked against [Apple's API reference](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype).
+
+| Linux | macOS | iOS | Android |
+|---|---|---|---|
+| Not applicable — no Apple bundle | Not applicable — this request concerns the iOS TestFlight targets; desktop distribution is separate | Verified — signed app/extension manifests packaged and Apple processing accepted | Not applicable — no Apple bundle |
+
+- **Evidence:** both manifest property lists pass `plutil -lint` in the dirty
+  `task/ios-testflight` worktree on 2026-10-10. The successful unsigned device Release
+  archive and final signed IPA package and parse both manifests. Binary imports agree
+  with the declared preference/file API scope. Apple accepted 0.4.9 (409), reports
+  VALID processing and IN_BETA_TESTING, and the internal group has build access. This
+  verifies manifest packaging/server acceptance; physical installation and native
+  feature QA remain separate.
+
 ## B-001 — Linked LibreSync devices do not populate the Mac
 
 - **Severity:** High. **Feature:** [F-026](FEATURES.md).

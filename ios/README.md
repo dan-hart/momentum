@@ -5,8 +5,9 @@ uses Xcode 27 and XcodeGen. The app has Today, Upcoming, Search and Settings tab
 projects, tags, Morning/Evening and the archive behind Lists; View Options on every list
 (grouping, sorting, the Upcoming range and a Compact layout); pull to refresh; Nextcloud
 and LibreSync with background sync; backups; notifications; and the shared Shortcuts
-actions. It is built from source and tested on a real iPhone; there is no store
-distribution yet. The [parity checklist](../docs/IOS-PARITY-CHECKLIST.md) and
+actions. It is built from source and tested on a real iPhone. Internal TestFlight
+distribution is configured; public App Store distribution remains future work. The
+[parity checklist](../docs/IOS-PARITY-CHECKLIST.md) and
 [progress ledger](../docs/PROGRESS.md) record verification and the remaining gaps
 against the desktop apps.
 
@@ -41,6 +42,39 @@ need the group and both App IDs registered on the signing team (Xcode automatic 
 with a team, or `asc web app-groups`), otherwise the wildcard team profile is rejected
 with "doesn't support the App Group". The extension links the Rust core only for drafting
 the title and notes and never opens the task store.
+
+## Internal TestFlight
+
+The requested App Store Connect identity is `com.codedbydan.Momentum`; the embedded
+share extension uses `com.codedbydan.Momentum.Share`. Both require App Store signing
+profiles with `group.com.codedbydan.Momentum` assigned on the same personal signing team.
+The approved App Store Connect name is **Momentum Tasks by Daniel Hart**; the installed
+app and share extension retain the display name **Momentum**.
+Changing the bundle ID creates a separate iOS app identity from earlier development
+builds; preparing a build does not migrate or alter those installations' local tasks.
+
+Use `asc xcode archive` and `asc xcode export` to produce the signed IPA, then
+`asc publish testflight --app APP_ID --ipa PATH --group GROUP_ID --wait` for an internal
+group. Confirm the app's bundle ID/account, signed app and extension entitlements,
+version/build, completed processing, and the group's internal-test access before
+reporting availability. An unsigned build is a compilation check only. Keep certificates,
+private keys, profiles, and upload receipts outside the repository.
+
+Create the final archive with signing enabled for both targets. Exporting an unsigned
+archive with valid profiles can produce signatures that omit the source App Group
+entitlement; check the actual signed app and extension, not just their profiles. The
+2026-10-10 upload preparation reproduced this omission and verified the corrected
+signed archive/IPA before upload.
+
+The shipping bundles include privacy manifests for their private preferences and
+private/group file access; the app also declares user-selected backup file access.
+Sync implements standard encryption in Rust libraries, so answer the beta encryption
+questions from that implementation rather than assuming encryption is OS-only.
+The 0.4.9 (409) build is available in the personal-account
+[Internal TestFlight app](https://appstoreconnect.apple.com/apps/6821523171/testflight).
+The dated [F-059/B-104 progress record](../docs/PROGRESS.md) records server acceptance
+and the remaining invitation-acceptance/device QA. This manual iOS flow is separate
+from the desktop Release workflow.
 
 ## Isolated verification
 
