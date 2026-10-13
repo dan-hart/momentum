@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Dan Hart
 
 use mo::{run_with, OpenActivator};
-use sp_model::{Task, INBOX_PROJECT_ID};
-use sp_oplog::Action;
+use momentum_model::{Task, INBOX_PROJECT_ID};
+use momentum_oplog::Action;
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -49,7 +49,7 @@ fn run(dir: &Path, needle: &str, activator: &dyn OpenActivator) -> (i32, String,
 }
 
 fn task(dir: &Path, id: &str, title: &str) -> Task {
-    let mut store = sp_store::Store::load(dir.into());
+    let mut store = momentum_store::Store::load(dir.into());
     let mut task = Task::new(title, INBOX_PROJECT_ID);
     task.id = id.into();
     store.dispatch(Action::AddTask {
@@ -63,7 +63,7 @@ fn task(dir: &Path, id: &str, title: &str) -> Task {
 fn accepted_open_has_exact_json_and_does_not_mutate_the_store() {
     let dir = tempfile::tempdir().unwrap();
     task(dir.path(), "stable-task-id", "Reveal Me");
-    let task = sp_store::Store::load(dir.path().into()).state.task.entities["stable-task-id"].clone();
+    let task = momentum_store::Store::load(dir.path().into()).state.task.entities["stable-task-id"].clone();
     let state_before = std::fs::read(dir.path().join("state.json")).unwrap();
     let pending_before = std::fs::read(dir.path().join("pending.json")).unwrap();
     let activator = RecordingActivator::default();
@@ -126,7 +126,7 @@ fn missing_ambiguous_archived_and_deleted_tasks_never_reach_activation() {
     task(dir.path(), "second-id", "Same title second");
     let archived = task(dir.path(), "archived-id", "Archived target");
     let deleted = task(dir.path(), "deleted-id", "Deleted target");
-    let mut store = sp_store::Store::load(dir.path().into());
+    let mut store = momentum_store::Store::load(dir.path().into());
     store.dispatch(Action::MoveToArchive {
         tasks: vec![archived],
         sub_tasks: vec![],

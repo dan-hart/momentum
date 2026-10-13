@@ -22,6 +22,7 @@ public enum Sheet: Identifiable, Equatable, Sendable {
     case newTask
     case editTask(String)
     case repeatSchedule(String)
+    case repeatConfiguration(String)
     case moveToProject([String])
     case addTag([String])
     case editContext(View)
@@ -34,6 +35,7 @@ public enum Sheet: Identifiable, Equatable, Sendable {
         case .newTask: return "new-task"
         case .editTask(let id): return "edit-\(id)"
         case .repeatSchedule(let id): return "repeat-\(id)"
+        case .repeatConfiguration(let id): return "repeat-config-\(id)"
         case .moveToProject(let ids): return "move-\(ids.joined(separator: ","))"
         case .addTag(let ids): return "tag-\(ids.joined(separator: ","))"
         case .editContext(let v): return "edit-context-\(v)"
@@ -109,6 +111,17 @@ public final class AppState {
     private var periodicSync: Timer?
     private var fileWatcher: FileWatcher?
     private var defaultsObserver: NSObjectProtocol?
+    private var portableRevision: UInt64?
+    private var lastNativeSettings: String?
+    private var nativeSettingsStageError: String?
+    private var pendingNativeSettingsIntent: String?
+    public var appSettingsSync: SettingsSyncStatus
+    public var appSettingsError: String?
+    public private(set) var folderCopyInProgress = false
+    public private(set) var folderCopyMessage: String?
+    private var folderCopyOperation: (any NextcloudFolderCopying)?
+    private var folderCopyCancellationRequested = false
+    private let folderCopyFactory: @Sendable (Engine, NextcloudSettings) -> any NextcloudFolderCopying
 
     public weak var notifier: Notifier?
     public weak var indexer: SearchIndexer?
@@ -128,17 +141,34 @@ public final class AppState {
                 keychain: Keychain = Keychain(),
                 services: Bool = true,
                 isDemo: Bool = false,
-                remindersSource: (any RemindersSource)? = nil) {
+                remindersSource: (any RemindersSource)? = nil,
+                folderCopyFactory: @escaping @Sendable (Engine, NextcloudSettings) -> any NextcloudFolderCopying = {
+                    NextcloudFolderCopy(engine: $0, settings: $1)
+                }) {
         Preferences.register(defaults)
         self.engine = engine
         self.defaults = defaults
         self.keychain = keychain
         self.isDemo = isDemo
+        self.folderCopyFactory = folderCopyFactory
         self.reminders = RemindersImport(source: isDemo ? nil : remindersSource, defaults: defaults)
         self.dataDir = URL(fileURLWithPath: engine.dataDir())
         let p = Preferences(defaults)
         if !isDemo { p.readCliConfig(from: self.dataDir) }
-        engine.setPreferences(prefs: p.core)
+        do {
+            try PortableAppSettings.initialize(engine: engine, defaults: defaults)
+            self.portableRevision = engine.settingsSyncStatus().revision
+            self.lastNativeSettings = try PortableAppSettings.encode(defaults)
+        } catch {
+            let failure = Strings.error(error)
+            nativeSettingsStageError = failure
+            pendingNativeSettingsIntent = try? PortableAppSettings.encode(defaults)
+            appSettingsError = failure
+        }
+        let initialSettingsStatus = engine.settingsSyncStatus()
+        self.appSettingsSync = initialSettingsStatus
+        do { try engine.setDeviceSummaryPreferences(enabled: p.core.morningSummaryEnabled, time: p.core.morningSummaryTime) }
+        catch { appSettingsError = Strings.error(error) }
         self.selectedSyncMethod = p.syncMethod
         self.modifier = p.modifier
         self.colorful = p.colorful
@@ -279,6 +309,10 @@ public final class AppState {
     /// A preference changed somewhere (Settings, `defaults write`): re-read the ones the
     /// core and the views depend on.
     public func preferencesChanged() {
+        do { try stageNativeAppSettings() }
+        catch { appSettingsError = Strings.error(error) }
+        appSettingsSync = engine.settingsSyncStatus()
+        refreshAppSettings(force: true)
         let p = prefs
         if selectedSyncMethod != p.syncMethod {
             selectedSyncMethod = p.syncMethod
@@ -288,10 +322,9 @@ public final class AppState {
             syncFailureKind = nil
             banner = nil
         }
-        if p.core != engine.preferences() {
-            engine.setPreferences(prefs: p.core)
-            refresh()
-        }
+        do { try engine.setDeviceSummaryPreferences(enabled: p.core.morningSummaryEnabled, time: p.core.morningSummaryTime) }
+        catch { appSettingsError = Strings.error(error) }
+        refresh()
         if p.modifier != modifier { modifier = p.modifier }
         if p.colorful != colorful { colorful = p.colorful }
         updateDockBadge()
@@ -361,6 +394,11 @@ public final class AppState {
 
     /// Recompute what the window shows from the engine.
     public func refresh() {
+        refreshAppSettings()
+        refreshListing()
+    }
+
+    private func refreshListing() {
         sidebar = engine.sidebar()
         if !engine.viewExists(view: view) {
             // The slot emptied, or the project or tag is gone.
@@ -373,6 +411,163 @@ public final class AppState {
         todayOpenCount = engine.todayOpenCount()
         syncStatus = engine.syncStatus()
         updateDockBadge()
+    }
+
+    public func refreshAppSettings(force: Bool = false) {
+        appSettingsSync = engine.settingsSyncStatus()
+        // A failed initial full seed has no applied native baseline. Applying an
+        // empty core or pretending the current defaults were staged loses retry intent.
+        guard lastNativeSettings != nil else { return }
+        guard force || portableRevision != appSettingsSync.revision else { return }
+        do {
+            try PortableAppSettings.apply(engine.portableSettingsJson(), to: defaults)
+            try engine.setDeviceSummaryPreferences(enabled: prefs.core.morningSummaryEnabled, time: prefs.core.morningSummaryTime)
+            portableRevision = appSettingsSync.revision
+            lastNativeSettings = try PortableAppSettings.encode(defaults)
+            colorful = prefs.colorful
+            appSettingsError = nativeSettingsStageError
+            refreshListing()
+        } catch { appSettingsError = Strings.error(error) }
+    }
+
+    private func stageNativeAppSettings(explicit: Bool = false) throws {
+        let current = try PortableAppSettings.encode(defaults)
+        // Rollback emits a defaults notification too. It is not a successful retry.
+        guard explicit || lastNativeSettings != current else { return }
+        let changes = try PortableAppSettings.changes(from: lastNativeSettings, to: current)
+        var intent = try JSONSerialization.jsonObject(with: Data(changes.utf8)) as! [String: Any]
+        if let pendingNativeSettingsIntent {
+            let pending = try JSONSerialization.jsonObject(with: Data(pendingNativeSettingsIntent.utf8)) as! [String: Any]
+            var values = pending["values"] as! [String: Any]
+            values.merge(intent["values"] as! [String: Any]) { _, latest in latest }
+            intent["values"] = values
+        }
+        let document = String(decoding: try JSONSerialization.data(withJSONObject: intent, options: [.sortedKeys]), as: UTF8.self)
+        let previous = try engine.portableSettingsJson()
+        do {
+            _ = try engine.stagePortableSettings(json: document)
+            lastNativeSettings = current
+            pendingNativeSettingsIntent = nil
+            nativeSettingsStageError = nil
+            appSettingsError = nil
+        } catch {
+            pendingNativeSettingsIntent = document
+            nativeSettingsStageError = Strings.error(error)
+            appSettingsError = nativeSettingsStageError
+            try PortableAppSettings.apply(previous, to: defaults)
+            throw error
+        }
+    }
+
+    public func setAppSettingsSync(_ enabled: Bool) {
+        guard !isDemo else { return }
+        do {
+            try stageNativeAppSettings(explicit: true)
+            refreshAppSettings(force: true)
+            appSettingsSync = try engine.setSettingsSyncEnabled(enabled: enabled)
+            appSettingsError = nil
+            if enabled { sync() }
+        } catch { appSettingsError = Strings.error(error) }
+    }
+    public var canRetryAppSettings: Bool { pendingNativeSettingsIntent != nil }
+    public func retryAppSettings() {
+        guard canRetryAppSettings else { return }
+        do {
+            try stageNativeAppSettings(explicit: true)
+            refreshAppSettings(force: true)
+            if appSettingsSync.enabled { sync() }
+        } catch { appSettingsError = Strings.error(error) }
+    }
+
+    public func chooseAppSettingsBootstrap(_ choice: SettingsBootstrapChoice, reviewID: String) {
+        guard lastNativeSettings != nil, !canRetryAppSettings else { return }
+        do {
+            _ = try engine.setSettingsBootstrapChoice(choice: choice, expectedReviewId: reviewID)
+            appSettingsSync = engine.settingsSyncStatus()
+            appSettingsError = nil
+            sync()
+        } catch { appSettingsError = Strings.error(error) }
+    }
+
+    public func exportAppSettings(_ url: URL) {
+        do {
+            try stageNativeAppSettings(explicit: true)
+            refreshAppSettings(force: true)
+            apply(try engine.exportSettings(path: url.path))
+        } catch { appSettingsError = Strings.error(error) }
+    }
+
+    private func adoptImportedAppSettings() throws {
+        // The core has validated and committed the complete import. The old local
+        // retry must never replay over it, including after a failed initial seed.
+        pendingNativeSettingsIntent = nil
+        nativeSettingsStageError = nil
+        appSettingsError = nil
+        let committed = try engine.portableSettingsJson()
+        lastNativeSettings = committed
+        try PortableAppSettings.apply(committed, to: defaults)
+        // The committed values are now the baseline. Only native choices missing
+        // from a partial import need seeding; imported choices are already durable.
+        try stageNativeAppSettings(explicit: true)
+        refreshAppSettings(force: true)
+    }
+
+    public func importAppSettings(_ url: URL) {
+        do {
+            let outcome = try engine.importSettings(path: url.path)
+            try adoptImportedAppSettings()
+            apply(outcome)
+        } catch {
+            if canRetryAppSettings, let nativeSettingsStageError {
+                appSettingsError = nativeSettingsStageError
+                toast(Strings.error(error))
+            } else { appSettingsError = Strings.error(error) }
+        }
+    }
+
+    public func cancelFolderCopy() {
+        guard folderCopyInProgress else { return }
+        folderCopyCancellationRequested = true
+        _ = folderCopyOperation?.cancel()
+    }
+    public var canCopyFolder: Bool {
+        !isDemo && !syncInProgress && prefs.nextcloud(keychain: keychain) != nil
+            && defaults.string(forKey: PrefKey.nextcloudFolder) != "momentum"
+    }
+
+    @discardableResult public func copyToMomentumFolder() async -> Bool {
+        guard canCopyFolder, let source = prefs.nextcloud(keychain: keychain) else { return false }
+        isSyncing = true
+        folderCopyCancellationRequested = false
+        folderCopyInProgress = true
+        folderCopyMessage = nil
+        syncDebounce?.cancel()
+        engine.p2pStop()
+        let operation = folderCopyFactory(engine, source)
+        folderCopyOperation = operation
+        defer {
+            folderCopyOperation = nil
+            folderCopyInProgress = false
+            isSyncing = false
+            applyP2pSetting()
+            refresh()
+        }
+        do {
+            let report = try await withTaskCancellationHandler {
+                try await operation.run()
+            } onCancel: { _ = operation.cancel() }
+            try Task.checkCancellation()
+            if folderCopyCancellationRequested { throw CancellationError() }
+            guard report.verified, report.sourceFolder == source.folder, report.targetFolder == "momentum",
+                  prefs.nextcloud(keychain: keychain) == source else { throw CocoaError(.fileReadCorruptFile) }
+            defaults.set(report.targetFolder, forKey: PrefKey.nextcloudFolder)
+            prefs.writeCliConfig(to: dataDir)
+            folderCopyMessage = String(localized: "Sync folder copied and verified. This device now uses momentum.", bundle: .module)
+            return true
+        } catch is CancellationError {
+            folderCopyMessage = String(localized: "Folder copy was cancelled. The original folder stays intact.", bundle: .module)
+        } catch { folderCopyMessage = Strings.error(error) }
+        return false
     }
 
     private func updateDockBadge() {
@@ -395,7 +590,7 @@ public final class AppState {
     public var allRowIds: [String] {
         listing.sections.flatMap { s in
             s.rows.compactMap { r -> String? in
-                if case .task(let row) = r { return row.id }
+                if case .task(let row) = r, row.occurrence == nil { return row.id }
                 return nil
             }
         }
@@ -415,14 +610,14 @@ public final class AppState {
     }
     /// The one selected task, for the commands that act on a single row.
     public var target: String? {
-        selection.count == 1 ? selection.first : nil
+        targets.count == 1 ? targets.first : nil
     }
     public var selectedTopLevel: [String] {
         targets.filter { row($0)?.isSubtask == false }
     }
 
     public func dragTransfer(for id: String) -> TaskTransfer? {
-        guard row(id)?.archived == false else { return nil }
+        guard let item = row(id), !item.archived, item.occurrence == nil else { return nil }
         let ids = selection.contains(id) ? targets : [id]
         return TaskTransfer(ids: ids.filter { row($0)?.archived == false })
     }
@@ -546,7 +741,9 @@ public final class AppState {
         sheet = .newTask
     }
     public func open(_ id: String) {
-        sheet = .editTask(id)
+        if let configuration = row(id)?.occurrence?.repeatCfgId {
+            sheet = .repeatConfiguration(configuration)
+        } else { sheet = .editTask(id) }
     }
 
     // MARK: Completing, deleting
@@ -808,6 +1005,7 @@ public final class AppState {
             guard let self else { return }
             self.isSyncing = false
             self.syncIsSlow = false
+            self.refreshAppSettings()
             switch result {
             case .success(let r):
                 self.banner = nil
@@ -863,11 +1061,22 @@ public final class AppState {
 
     // MARK: Backup
 
-    public func importBackup(_ url: URL) {
-        do { apply(try engine.importBackup(path: url.path)) } catch { toast(Strings.error(error)) }
+    public func importBackup(_ url: URL, restoreSettings: Bool = false) {
+        do {
+            let outcome = try engine.importBackupWithSettings(path: url.path, restoreSettings: restoreSettings)
+            apply(outcome)
+            if restoreSettings { try adoptImportedAppSettings() }
+            else { refreshAppSettings() }
+        } catch { toast(Strings.error(error)) }
     }
-    public func exportBackup(_ url: URL) {
-        do { apply(try engine.exportBackup(path: url.path)) } catch { toast(Strings.error(error)) }
+    public func exportBackup(_ url: URL, includeSettings: Bool = false) {
+        do {
+            if includeSettings {
+                try stageNativeAppSettings(explicit: true)
+                refreshAppSettings(force: true)
+            }
+            apply(try engine.exportBackupWithSettings(path: url.path, includeSettings: includeSettings))
+        } catch { toast(Strings.error(error)) }
     }
 
     // MARK: Nearby devices
@@ -966,8 +1175,8 @@ public final class AppState {
 
     // MARK: URLs and the command line
 
-    /// `momentum://add?title=&notes=&due=&tags=`, `superproductivity://create-task`,
-    /// `superproductivity://complete-task?title=`.
+    /// `momentum://add?title=&notes=&due=&tags=`, `momentum://create-task`,
+    /// `momentum://complete-task?title=`.
     public func handle(url: URL) {
         guard let action = TaskURLAction(url: url) else { return }
         switch action {

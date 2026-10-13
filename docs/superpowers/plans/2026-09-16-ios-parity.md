@@ -92,7 +92,7 @@ Files: new `ios/Momentum/Settings`, `ios/Momentum/Design`, resource catalogs and
 
 ## 6. Transport lifecycle and backup safety
 
-Files: `crates/momentum-core/src/{engine,p2p,types,tests}.rs`, `crates/sp-sync/src`,
+Files: `crates/momentum-core/src/{engine,p2p,types,tests}.rs`, `crates/momentum-sync/src`,
 new iOS sync/Keychain adapters and document import/export UI/tests.
 
 - [ ] Reproduce sync/import race in isolated tests; add generation/cancellation/deadline

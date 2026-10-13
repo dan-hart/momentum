@@ -7,6 +7,7 @@ import SwiftUI
 struct RepeatEditor: SwiftUI.View {
     let worker: EngineWorker
     let taskID: String
+    var configuration = false
     let onChange: @MainActor () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var draft: RepeatDraft?
@@ -65,7 +66,7 @@ struct RepeatEditor: SwiftUI.View {
             }
             .task {
                 guard !loaded else { return }
-                draft = await worker.repeatDraft(taskID)
+                draft = configuration ? await worker.repeatConfigurationDraft(taskID) : await worker.repeatDraft(taskID)
                 loaded = true
             }
             .task(id: draft) {
@@ -184,14 +185,14 @@ struct RepeatEditor: SwiftUI.View {
         guard let draft, !busy else { return }
         busy = true
         error = nil
-        Task { await finish(worker.saveRepeat(taskID, draft: draft)) }
+        Task { await finish(configuration ? worker.saveRepeatConfiguration(taskID, draft: draft) : worker.saveRepeat(taskID, draft: draft)) }
     }
 
     private func stop() {
         guard !busy else { return }
         busy = true
         error = nil
-        Task { await finish(worker.stopRepeat(taskID)) }
+        Task { await finish(configuration ? worker.stopRepeatConfiguration(taskID) : worker.stopRepeat(taskID)) }
     }
 
     private func finish(_ outcome: Outcome) {

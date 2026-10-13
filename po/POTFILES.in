@@ -10,6 +10,7 @@ crates/app/src/main.rs
 crates/app/src/messages.rs
 crates/app/src/modifier.rs
 crates/app/src/p2p.rs
+crates/app/src/portable_settings.rs
 crates/app/src/prefs.rs
 crates/app/src/quick_add.rs
 crates/app/src/repeat_dialog.rs

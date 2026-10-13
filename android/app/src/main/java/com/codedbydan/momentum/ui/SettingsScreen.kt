@@ -50,14 +50,22 @@ import java.time.format.FormatStyle
         // Retain the explicit opt-in; Android permission remains the delivery gate.
         vm.settings { it.copy(notifications = true) }
     }
-    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { it?.let(vm::export) }
-    val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(vm::prepareImport) }
+    var includeSettings by rememberSaveable { mutableStateOf(false) }
+    var restoreSettings by rememberSaveable { mutableStateOf(false) }
+    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { it?.let { uri -> vm.export(uri, includeSettings) } }
+    val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let { uri -> vm.prepareImport(uri) } }
+    val settingsExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { it?.let { uri -> vm.export(uri, settingsOnly = true) } }
+    val settingsImport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let { uri -> vm.prepareImport(uri, settingsOnly = true) } }
     if(page == "sync") {
         BackHandler { vm.settingsPage("main") }
         Column { TextButton({ vm.settingsPage("main") }) { Text(stringResource(R.string.settings)) }; SyncScreen(state, vm) }
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        state.snapshot?.appSettingsError?.let {
+            Text(stringResource(R.string.app_settings_apply_failed), color = MaterialTheme.colorScheme.error)
+            TextButton(vm::refresh) { Text(stringResource(R.string.retry)) }
+        }
         SettingHeading(R.string.appearance)
         Appearance.entries.forEach { appearance -> ChoiceRow(stringResource(when(appearance) {
             Appearance.System -> R.string.system; Appearance.Light -> R.string.light; Appearance.Dark -> R.string.dark
@@ -127,8 +135,12 @@ import java.time.format.FormatStyle
             LinearProgressIndicator(Modifier.fillMaxWidth())
             TextButton(vm::cancelImport, enabled = !state.restoring) { Text(stringResource(R.string.cancel)) }
         }
+        TransferCheck(R.string.include_app_settings, includeSettings, !state.busy) { includeSettings = it }
         OutlinedButton({ export.launch("momentum-backup.json") }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.export_backup)) }
         OutlinedButton({ restore.launch(arrayOf("application/json", "text/plain")) }, Modifier.fillMaxWidth(), enabled = state.editor == null) { Text(stringResource(R.string.import_backup)) }
+        Text(stringResource(R.string.app_settings_scope), style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton({ settingsExport.launch("momentum-settings.json") }, Modifier.fillMaxWidth(), enabled = !state.busy) { Text(stringResource(R.string.export_app_settings)) }
+        OutlinedButton({ settingsImport.launch(arrayOf("application/json", "text/plain")) }, Modifier.fillMaxWidth(), enabled = !state.busy && !state.importPreparing) { Text(stringResource(R.string.import_app_settings)) }
         SettingHeading(R.string.about)
         Text(stringResource(R.string.about_text), style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(32.dp))
@@ -140,8 +152,8 @@ import java.time.format.FormatStyle
             Text(stringResource(R.string.system_search_confirm))
         } }, dismissButton = { TextButton({ confirmSearch = false }) { Text(stringResource(R.string.cancel)) } })
     if(state.importReady) AlertDialog(onDismissRequest = vm::cancelImport, title = { Text(stringResource(R.string.restore_title)) },
-        text = { Column { Text(stringResource(if(state.editor == null) R.string.restore_hint else R.string.draft_restore_hint)); if(state.restoring) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp)) } },
-        confirmButton = { TextButton(vm::restore, enabled = state.editor == null && !state.editorLoading && !state.busy) { Text(stringResource(R.string.restore)) } },
+        text = { Column { Text(stringResource(if(state.editor == null) R.string.restore_hint else R.string.draft_restore_hint)); TransferCheck(R.string.restore_app_settings, restoreSettings, !state.restoring) { restoreSettings = it }; if(state.restoring) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp)) } },
+        confirmButton = { TextButton({ vm.restore(restoreSettings) }, enabled = state.editor == null && !state.editorLoading && !state.busy) { Text(stringResource(R.string.restore)) } },
         dismissButton = { TextButton(vm::cancelImport, enabled = !state.restoring) { Text(stringResource(R.string.cancel)) } })
 }
 
@@ -149,6 +161,13 @@ import java.time.format.FormatStyle
 @Composable fun SettingSwitch(label: Int, checked: Boolean, enabled: Boolean = true, change: (Boolean) -> Unit) {
     val title = stringResource(label)
     ListItem(headlineContent = { Text(title) }, trailingContent = {
-        Switch(checked, change, enabled = enabled, modifier = Modifier.semantics { contentDescription = title })
+        Switch(checked, change, enabled = enabled, modifier = Modifier.sizeIn(minHeight = 48.dp).semantics { contentDescription = title })
+    })
+}
+
+@Composable internal fun TransferCheck(label: Int, checked: Boolean, enabled: Boolean = true, change: (Boolean) -> Unit) {
+    val title = stringResource(label)
+    ListItem(headlineContent = { Text(title) }, leadingContent = {
+        Checkbox(checked, change, enabled = enabled, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = title })
     })
 }

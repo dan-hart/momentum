@@ -13,12 +13,10 @@ color, portals, undo instead of confirmation dialogs, and no custom widgets. On 
 platform it would mean the equivalent native toolkit and its guidelines, not a port of this
 UI.
 
-Momentum uses [Super Productivity](https://super-productivity.com)'s open data model and
-sync format as its foundation, and adds a second, serverless sync path between its own
-instances (section 2.12) that carries the same operations. That was a deliberate choice: an established schema, an
-existing sync protocol with conflict handling, and a family of clients on other platforms
-that Momentum can sit next to. Momentum is not a clone of Super Productivity's interface
-and does not aim for feature parity; it picks the planning features and does them well.
+Momentum preserves its established open task, backup and sync formats and offers
+serverless synchronization between its own instances (section 2.12). Shared operations
+retain conflict handling and opaque imported data. The app focuses on native task
+planning; interfaces and OS integrations belong to each platform.
 
 The original Linux MVP is the established baseline. Current per-platform implementation
 and verification status is tracked in [FEATURES.md](FEATURES.md); approved product and
@@ -346,7 +344,7 @@ Open, New Task Here…, Edit…, Delete Project… (not Inbox). Tag: Open, Edit�
   persist locally, outside task sync. The font panel's size changes content size.
   Reset restores the system font and both default sizes; missing fonts fall back to
   the system font. macOS-managed menu bars and window titles retain system typography.
-- Backup: import and export Super Productivity backup JSON. Import replaces local state and
+- Backup: import and export task backup JSON. Import replaces local state and
   discards pending ops.
 
 ### 2.10 Appearance
@@ -389,7 +387,7 @@ Open, New Task Here…, Edit…, Delete Project… (not Inbox). Tag: Open, Edit�
 - **Command line**: `momentum --add TITLE`, `--quick-add`, `--today`, `--search QUERY`,
   `--background`. **URL schemes**: `momentum://add?title=&notes=&due=&tags=`,
   `momentum://open-task?id=TASK`,
-  `superproductivity://create-task?title=&notes=`, `superproductivity://complete-task?title=`.
+  `momentum://create-task?title=&notes=`, `momentum://complete-task?title=`.
 - **Global undo**: Ctrl+Z pops the last batch off an undo stack (50 deep) fed by every undo
   toast, plus quiet changes with no toast (drag reorder). Delete, done, archive, day
   moves, tag and project drops, bulk actions and reorders are all on the stack; with
@@ -424,7 +422,7 @@ Sync is off by default; exactly one provider is selected at a time.
   source of truth. Every op is one immutable record `Op/<op id>` (fields: `t`, `origin`,
   `op` JSON, `action` JSON) in namespace `io.github.dan_hart.Momentum`, adapter `ops`.
   Distinct ids never conflict, so the transport's last-writer-wins is loss-free. Received
-  ops are applied through `sp_oplog::apply` in `t` order, their vector clocks merged, and
+  ops are applied through `momentum_oplog::apply` in `t` order, their vector clocks merged, and
   queued for a future Nextcloud upload if the user switches to that provider (skipped
   there if the server already lists the op id). Ops from this client, or already applied, are ignored.
 - **Bootstrap snapshot.** Record `Snapshot/latest` holds a gzip+base64 JSON of the whole
@@ -474,7 +472,7 @@ never loses fields.
 - Fresh state: an `INBOX_PROJECT` project and a `TODAY` tag with upstream's default themes.
 
 Authoritative field lists: upstream `packages/shared-schema` and `src/app/features/*/
-*.model.ts`; Momentum's `crates/sp-model/src/lib.rs`.
+*.model.ts`; Momentum's `crates/momentum-model/src/lib.rs`.
 
 ## 4. Operations Momentum emits and applies
 
@@ -546,7 +544,7 @@ the op format with.
   slice (fresh install); reject the v3 split-file format and schema versions above 4 with
   actionable errors; demo mode never syncs.
 - Verified: two-client convergence test against a mock WebDAV server, including the
-  encrypted path, in `crates/sp-sync`.
+  encrypted path, in `crates/momentum-sync`.
 
 ## 6. Local storage
 
@@ -646,7 +644,7 @@ shortcuts (Settings, Quit, Select All) keep their platform keys.
 
 **For a future iOS port**, the same core applies: link `momentum-ffi`, drive the same
 `Engine`, reuse `Strings.swift` almost unchanged, and replace only the platform services
-(Background portal → BGTaskScheduler; no global shortcuts). `sp-p2p` is plain Rust on
+(Background portal → BGTaskScheduler; no global shortcuts). `momentum-p2p` is plain Rust on
 LibreSync, whose Bonjour service (`_libresync._tcp`) and record shape are already shared,
 so an iOS device would link with a Linux or macOS one as they link with each other.
 
@@ -660,9 +658,9 @@ caps; secrets never in plain storage; sync off by default.
 ## 8b. Test contract
 
 `docs/TESTING.md` describes the suite. For a port, the layers that need no toolkit are the
-specification to keep green: `sp-model` (dates, repeats, Today and Overdue), `sp-oplog`
-(every action's payload and reducer), `sp-store` (persistence, peer ops, snapshots),
-`sp-sync` (the whole Nextcloud cycle against an in-process WebDAV mock), `sp-p2p`
+specification to keep green: `momentum-model` (dates, repeats, Today and Overdue), `momentum-oplog`
+(every action's payload and reducer), `momentum-store` (persistence, peer ops, snapshots),
+`momentum-sync` (the whole Nextcloud cycle against an in-process WebDAV mock), `momentum-p2p`
 (journal, adapter, pairing, two live nodes) and the `mo` CLI. The Linux UI tests in
 `crates/app/src/tests/ui.rs` list the behaviours of section 2 by name; a native UI on
 another platform should have an equivalent for each.
@@ -680,7 +678,7 @@ another platform should have an equivalent for each.
   macOS, GNOME search provider and KRunner runner, notification Done/Snooze buttons and
   the morning summary, background mode with autostart and status line, launcher actions,
   quick-add window, drop and paste to create tasks, `momentum --add/--today/--search/
-  --quick-add/--background`, `momentum://` and `superproductivity://` URL schemes, Ctrl+Z
+  --quick-add/--background`, `momentum://` URL actions, Ctrl+Z
   global undo, German translation; the app window now exists hidden from startup so
   services have a store to talk to; a store file monitor reloads external writes.
 - **0.2.0** (2026-09-14): sync with nearby devices over LibreSync (2.12), including the

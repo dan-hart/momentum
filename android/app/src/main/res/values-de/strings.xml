@@ -299,4 +299,7 @@
     <string name="sound_click_and_glow">8 Klick und Glanz</string>
     <string name="sound_tiny_ta_da">9 Kleines Ta-Da</string>
     <string name="sound_warm_spark">10 Warmer Funke</string>
+    <string name="notes_copied">Notizen kopiert</string>
+    <string name="recurring_preview">Wiederholungsvorschau</string>
+    <string name="edit_repeat_schedule">Wiederholungsplan bearbeiten</string>
 </resources>

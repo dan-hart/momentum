@@ -8,7 +8,7 @@
   <summary>Plan your day</summary>
   <description>
     <p>Momentum is a task planner for GNOME. Plan what you will do today, keep projects and tags tidy, and get out of the way.</p>
-    <p>It reads, writes and syncs the same data as Super Productivity, so it works alongside the desktop, Android and iOS apps through a shared Nextcloud folder.</p>
+    <p>Keep tasks available offline and optionally sync your devices through Nextcloud or LibreSync.</p>
     <ul>
       <li>Today, project and tag views</li>
       <li>Guided task creation with due day, estimate, tags and notes</li>
@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.9/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.10/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.9/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.10/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.9/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.10/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.9/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.10/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,30 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.4.10" date="2026-10-13">
+      <description>
+        <p>Fix task entry and navigation, add recurring previews and optional settings transfer and sync.</p>
+        <ul>
+          <li>Ten short CC0 task-completion sounds to choose and preview on Linux, macOS, iOS and Android. Sound stays off by default; when enabled, the default choice is 6 · Bright Finish.</li>
+          <li>Native Android app in Kotlin and Jetpack Compose with the shared Rust core: offline tasks, organization, search, recurrence, reminders, optional Nextcloud/LibreSync, Android Keystore, private drafts and SAF backups. Native parity and physical accessibility acceptance remain in progress.</li>
+          <li>Android APK/AAB, matching source, dependency notices, R8 mapping and provenance in the unified tagged release, with optional distribution signing and explicit unsigned filenames otherwise. Release checksums cover all distribution assets. No store upload.</li>
+          <li>Optional app-settings import/export, including an independent unchecked option on task backups, and settings-only files. Credentials and device controls stay local.</li>
+          <li>Optional settings sync over the selected Nextcloud or LibreSync connection, with explicit initial-device choices and durable retry after interrupted exchanges.</li>
+          <li>Read-only future recurring occurrences in Upcoming, with Edit repeat schedule.</li>
+          <li>An opt-in, verified Nextcloud folder copy to momentum that retains the original.</li>
+          <li>Overdue tasks show a labeled callout and date across the native apps.</li>
+          <li>Copy Notes confirms success inside the editor, with native Apple/Android feedback.</li>
+          <li>Momentum owns its crate names, URL entry points and customer-facing naming while preserving existing task, backup and sync formats and required license notices.</li>
+          <li>Linux task entry has concise guidance with a native tooltip and accessibility text.</li>
+          <li>Linux: project selection in the task editor now displays and saves the selected ID, including duplicate project names. Preferences fits independently of a short parent.</li>
+          <li>iOS: the first project selection from Lists loads its tasks without a second tap.</li>
+          <li>iOS: share-sheet tasks capture Today when added, retaining that day across a delayed import or timezone change.</li>
+          <li>Fresh Nextcloud stores can create the required initial configuration safely.</li>
+          <li>Damaged task stores fail visibly before a network exchange instead of opening empty.</li>
+          <li>Folder-copy cancellation retains the original connection, including a late cancel, and resumes automatic sync after cancellation.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.9" date="2026-10-10">
       <description>
         <p>Faster sync with safer retries and recovery</p>
@@ -201,7 +225,7 @@
           <li>Reminders with Done and Snooze buttons, and a morning summary</li>
           <li>Run in the background with autostart and a Background Apps status line</li>
           <li>Launcher actions, a quick-add window, drop or paste text to create tasks</li>
-          <li>Command line, momentum:// and superproductivity:// links, Ctrl+Z undo</li>
+          <li>Command line, momentum:// links, Ctrl+Z undo</li>
           <li>The mo command-line companion for Linux and macOS</li>
           <li>German translation</li>
         </ul>
@@ -223,7 +247,7 @@
         <p>First preview.</p>
         <ul>
           <li>Today, project and tag views with a guided New Task dialog</li>
-          <li>Nextcloud sync compatible with Super Productivity</li>
+          <li>Nextcloud task sync with conflict recovery</li>
           <li>Backup import and export</li>
           <li>System-wide shortcuts through the GlobalShortcuts portal</li>
         </ul>

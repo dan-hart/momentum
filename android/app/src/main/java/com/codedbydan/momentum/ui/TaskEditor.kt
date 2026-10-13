@@ -17,6 +17,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -37,9 +38,20 @@ import java.time.*
 import java.util.Locale
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import android.os.Build
+import android.view.HapticFeedbackConstants
+import android.content.Context
+import android.view.View
+
+/** Native side effects can be observed without depending on emulator vibration. */
+internal data class NotesCopyActions(
+    val copy: suspend (Context, String, String) -> Unit = { context, label, text -> PrivateClipboard.copy(context, label, text) },
+    val haptic: (View, Int) -> Unit = { view, feedback -> view.performHapticFeedback(feedback); Unit },
+)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable fun TaskEditor(state: UiState, vm: MomentumViewModel) {
+@Composable internal fun TaskEditor(state: UiState, vm: MomentumViewModel, notesCopyActions: NotesCopyActions = NotesCopyActions()) {
     val draft = state.editor ?: return
     if(draft.isTextImport) { TextImportEditor(state, vm); return }
     var discard by remember { mutableStateOf(false) }
@@ -52,12 +64,15 @@ import kotlinx.coroutines.CancellationException
     var preparingTime by remember { mutableStateOf(false) }
     var copyingNotes by remember { mutableStateOf(false) }
     var copyNotesFailure by remember { mutableStateOf<Int?>(null) }
+    val copyFeedback = remember { SnackbarHostState() }
+    var copyFeedbackJob by remember { mutableStateOf<Job?>(null) }
     var sharingNotes by remember { mutableStateOf(false) }
     var shareNotesFailure by remember { mutableStateOf<Int?>(null) }
     var detail by remember { mutableStateOf<TaskDetail?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val clipboardNotes = stringResource(R.string.notes)
+    val copiedNotes = stringResource(R.string.notes_copied)
     val subtaskLabel = stringResource(R.string.subtask)
     val containerWidth = LocalWindowInfo.current.containerSize.width
     val expanded = with(LocalDensity.current) { containerWidth.toDp() >= 600.dp }
@@ -69,11 +84,13 @@ import kotlinx.coroutines.CancellationException
     fun change(value: EditorDraft) { if(!state.busy) vm.setEditor(value) }
     fun close() { if(!state.busy) { if(draft.hasContent) discard = true else vm.dismissEditor() } }
     Dialog(onDismissRequest = ::close, properties = DialogProperties(usePlatformDefaultWidth = expanded, decorFitsSystemWindows = false)) {
+        val editorView = LocalView.current
         Surface(Modifier.fillMaxSize()) {
             Scaffold(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).imePadding().editorKeyboardShortcuts(vm,
                 canSave = draft.problem() == null && !state.editorUnavailable,
                 blocked = discard || calendar || subtask || repeat || projectMenu || reminderMenu || preparingTime || pickerTime != null,
                 save = vm::saveEditor, cancel = ::close),
+                snackbarHost = { SnackbarHost(copyFeedback) },
                 topBar = { TopAppBar(title = { AdaptiveTopAppBarTitle(stringResource(if(draft.id == null) R.string.add_task else R.string.edit_task)) },
                     expandedHeight = adaptiveTopAppBarHeight(),
                     navigationIcon = { IconButton(onClick = ::close, enabled = !state.busy,
@@ -162,7 +179,13 @@ import kotlinx.coroutines.CancellationException
                     TextButton(onClick = {
                         copyingNotes = true; copyNotesFailure = null
                         scope.launch {
-                            try { PrivateClipboard.copy(context, clipboardNotes, draft.notes) }
+                            try {
+                                notesCopyActions.copy(context, clipboardNotes, draft.notes)
+                                notesCopyActions.haptic(editorView, if(Build.VERSION.SDK_INT >= 30)
+                                    HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY)
+                                copyFeedbackJob?.cancel()
+                                copyFeedbackJob = scope.launch { copyFeedback.showSnackbar(copiedNotes, duration = SnackbarDuration.Short) }
+                            }
                             catch(e: CancellationException) { throw e }
                             catch(_: ClipboardUriUnsupportedException) { copyNotesFailure = R.string.clipboard_large_unsupported }
                             catch(_: Exception) { copyNotesFailure = R.string.clipboard_copy_failed }

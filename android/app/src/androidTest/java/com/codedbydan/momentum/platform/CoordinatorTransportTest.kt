@@ -101,7 +101,7 @@ class CoordinatorTransportTest {
             fixture.connect(server.socket.localPort)
             val id = fixture.repo.create(TaskDraft("Recovery fixture", "INBOX_PROJECT", null, null, null,
                 0.0, "", emptyList(), emptyList()), View.Today).id!!
-            // The core intentionally requires a full SP dataset for server replacement.
+            // The core intentionally requires a complete task dataset for server replacement.
             val backup = File(fixture.directory, "fixture-backup.json")
             fixture.repo.read { exportBackup(backup.absolutePath) }
             val json = JSONObject(backup.readText())

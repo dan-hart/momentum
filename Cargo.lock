@@ -1891,26 +1891,26 @@ dependencies = [
 
 [[package]]
 name = "mo"
-version = "0.4.9"
+version = "0.4.10"
 dependencies = [
  "clap",
  "dirs",
  "keyring",
  "momentum-core",
+ "momentum-model",
+ "momentum-oplog",
+ "momentum-store",
+ "momentum-sync",
  "rpassword",
  "serde",
  "serde_json",
- "sp-model",
- "sp-oplog",
- "sp-store",
- "sp-sync",
  "tempfile",
  "zbus 5.19.0",
 ]
 
 [[package]]
 name = "momentum"
-version = "0.4.9"
+version = "0.4.10"
 dependencies = [
  "ashpd",
  "async-io",
@@ -1919,11 +1919,11 @@ dependencies = [
  "gtk4",
  "libadwaita",
  "momentum-core",
+ "momentum-model",
+ "momentum-oplog",
+ "momentum-store",
  "oo7",
  "serde_json",
- "sp-model",
- "sp-oplog",
- "sp-store",
  "tempfile",
  "tracing",
  "tracing-subscriber",
@@ -1931,16 +1931,16 @@ dependencies = [
 
 [[package]]
 name = "momentum-core"
-version = "0.4.9"
+version = "0.4.10"
 dependencies = [
  "log",
+ "momentum-model",
+ "momentum-oplog",
+ "momentum-p2p",
+ "momentum-store",
+ "momentum-sync",
  "serde",
  "serde_json",
- "sp-model",
- "sp-oplog",
- "sp-p2p",
- "sp-store",
- "sp-sync",
  "tempfile",
  "thiserror",
  "uniffi",
@@ -1948,10 +1948,81 @@ dependencies = [
 
 [[package]]
 name = "momentum-ffi"
-version = "0.4.9"
+version = "0.4.10"
 dependencies = [
  "momentum-core",
  "uniffi",
+]
+
+[[package]]
+name = "momentum-model"
+version = "0.4.10"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "momentum-oplog"
+version = "0.4.10"
+dependencies = [
+ "momentum-model",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "momentum-p2p"
+version = "0.4.10"
+dependencies = [
+ "base64",
+ "flate2",
+ "libresync",
+ "log",
+ "momentum-model",
+ "momentum-oplog",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "momentum-store"
+version = "0.4.10"
+dependencies = [
+ "momentum-model",
+ "momentum-oplog",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "momentum-sync"
+version = "0.4.10"
+dependencies = [
+ "aes-gcm",
+ "argon2",
+ "base64",
+ "flate2",
+ "getrandom 0.4.3",
+ "hmac 0.13.0",
+ "momentum-model",
+ "momentum-oplog",
+ "momentum-store",
+ "pbkdf2 0.13.0",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror",
+ "ureq",
 ]
 
 [[package]]
@@ -2941,77 +3012,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-model"
-version = "0.4.9"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "sp-oplog"
-version = "0.4.9"
-dependencies = [
- "serde",
- "serde_json",
- "sp-model",
- "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "sp-p2p"
-version = "0.4.9"
-dependencies = [
- "base64",
- "flate2",
- "libresync",
- "log",
- "serde",
- "serde_json",
- "sp-model",
- "sp-oplog",
- "tempfile",
-]
-
-[[package]]
-name = "sp-store"
-version = "0.4.9"
-dependencies = [
- "serde",
- "serde_json",
- "sp-model",
- "sp-oplog",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "sp-sync"
-version = "0.4.9"
-dependencies = [
- "aes-gcm",
- "argon2",
- "base64",
- "flate2",
- "getrandom 0.4.3",
- "hmac 0.13.0",
- "pbkdf2 0.13.0",
- "serde",
- "serde_json",
- "sha1",
- "sha2 0.11.0",
- "sp-model",
- "sp-oplog",
- "sp-store",
- "tempfile",
- "thiserror",
- "ureq",
-]
-
-[[package]]
 name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3346,7 +3346,7 @@ dependencies = [
 
 [[package]]
 name = "uniffi-bindgen"
-version = "0.4.9"
+version = "0.4.10"
 dependencies = [
  "uniffi",
 ]

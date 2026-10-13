@@ -3,7 +3,7 @@ name: Android source build
 
 on:
   push:
-    branches: [main]
+    branches: [main, "task/**"]
     paths: ["android/**", "crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/android.yml"]
   pull_request:
     paths: ["android/**", "crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/android.yml"]

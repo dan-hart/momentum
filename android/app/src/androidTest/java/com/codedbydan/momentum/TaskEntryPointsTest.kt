@@ -50,6 +50,20 @@ class TaskEntryPointsTest {
     private suspend fun create(title: String) = repository.create(TaskDraft(title, "INBOX_PROJECT", null, null, null,
         0.0, "", emptyList(), emptyList()), View.Today).id!!
 
+    @Test fun retiredSchemeCannotCaptureOrMutateTasksEvenWhenLocked() = runBlocking {
+        val retiredScheme = listOf("super", "productivity").joinToString("")
+        for(locked in listOf(false, true)) {
+            capture(Intent(Intent.ACTION_VIEW, Uri.Builder().scheme(retiredScheme).authority("add")
+                .appendQueryParameter("title", "Retired capture").build()), locked)
+            Assert.assertNull(vm.state.value.editor)
+            Assert.assertEquals(0, vm.state.value.queuedCaptures)
+        }
+        val id = create("Current task")
+        capture(Intent(Intent.ACTION_VIEW, Uri.Builder().scheme(retiredScheme).authority("complete-task")
+            .appendQueryParameter("title", "Current task").build()))
+        Assert.assertFalse(repository.detail(id)!!.isDone)
+    }
+
     @Test fun warmDraftCapturePreservesEditorAndColdReconstructionKeepsFullParameters() = runBlocking {
         main { vm.newTask("Existing editor") }
         val notes = "Private source 📝\nSecond line\n".repeat(300)

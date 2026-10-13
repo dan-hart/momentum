@@ -3,9 +3,9 @@
 //! Sample data for screenshots, previews and tests: two projects, four tags, a day's worth
 //! of tasks in every slot, an overdue one, a timed one with a reminder, upcoming days and
 //! a weekly repeat.
-use sp_model::*;
-use sp_oplog::Action;
-use sp_store::Store;
+use momentum_model::*;
+use momentum_oplog::Action;
+use momentum_store::Store;
 
 pub fn store(dir: std::path::PathBuf) -> Store {
     let _ = std::fs::remove_dir_all(&dir);

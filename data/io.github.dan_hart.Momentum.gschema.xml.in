@@ -15,7 +15,8 @@
     </key>
     <key name="nextcloud-server" type="s"><default>''</default><summary>Nextcloud server URL</summary></key>
     <key name="nextcloud-user" type="s"><default>''</default><summary>Nextcloud username</summary></key>
-    <key name="nextcloud-folder" type="s"><default>'super-productivity'</default><summary>Sync folder on Nextcloud</summary></key>
+    <key name="nextcloud-folder" type="s"><default>'momentum'</default><summary>Sync folder on Nextcloud</summary></key>
+    <key name="nextcloud-folder-default-pinned" type="b"><default>false</default><summary>Existing connection folder has been preserved</summary></key>
     <key name="auto-sync" type="b"><default>true</default><summary>Sync automatically</summary></key>
     <key name="background-sync" type="b"><default>true</default><summary>Keep automatic sync running while the window is hidden</summary></key>
     <key name="compress" type="b"><default>false</default><summary>Gzip the sync file</summary></key>

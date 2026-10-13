@@ -207,7 +207,7 @@ struct RootView: SwiftUI.View {
     }
 }
 
-private struct FeedbackToastView: SwiftUI.View {
+struct FeedbackToastView: SwiftUI.View {
     @Environment(MobileAppModel.self) private var model
     @AccessibilityFocusState private var focused: Bool
     let toast: FeedbackToast

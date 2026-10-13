@@ -33,7 +33,7 @@ import java.time.temporal.WeekFields
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-@Composable fun RepeatEditor(id: String, vm: MomentumViewModel, dismiss: () -> Unit) {
+@Composable fun RepeatEditor(id: String, vm: MomentumViewModel, configuration: Boolean = false, dismiss: () -> Unit) {
     var draft by remember { mutableStateOf<RepeatDraft?>(null) }
     var every by remember { mutableStateOf("1") }
     var error by remember { mutableIntStateOf(0) }
@@ -56,7 +56,11 @@ import kotlinx.coroutines.launch
         }
     }
     LaunchedEffect(id) {
-        try { draft = vm.repository.read { repeatDraft(id) }; every = draft?.every?.toString() ?: "1" }
+        try {
+            draft = vm.repository.read { if(configuration) repeatConfigDraft(id) else repeatDraft(id) }
+            if(draft == null) { dismiss(); return@LaunchedEffect }
+            every = draft?.every?.toString() ?: "1"
+        }
         catch(e: Exception) { vm.reportError(e); dismiss() }
     }
     val current = draft
@@ -133,7 +137,7 @@ import kotlinx.coroutines.launch
                 if(error != 0) Text(stringResource(error), color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive })
                 if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                if(current.existing) TextButton({ apply { stopRepeat(id) } }, enabled = !busy) { Text(stringResource(R.string.stop_repeat)) }
+                if(current.existing) TextButton({ apply { if(configuration) stopRepeatConfig(id) else stopRepeat(id) } }, enabled = !busy) { Text(stringResource(R.string.stop_repeat)) }
             }
         },
         confirmButton = { TextButton(onClick = {
@@ -145,7 +149,7 @@ import kotlinx.coroutines.launch
                 return@TextButton
             }
             if(value.startDate != null && runCatching { LocalDate.parse(value.startDate) }.isFailure) { error = R.string.repeat_invalid_date; return@TextButton }
-            apply { saveRepeat(id, value.copy(every = interval)) }
+            apply { if(configuration) saveRepeatConfig(id, value.copy(every = interval)) else saveRepeat(id, value.copy(every = interval)) }
         }, enabled = !busy && current != null && every.toUIntOrNull()?.let { it > 0u } == true) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(dismiss, enabled = !busy) { Text(stringResource(R.string.cancel)) } })
     if(calendar && current != null) {

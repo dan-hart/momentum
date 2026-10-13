@@ -9,7 +9,7 @@
 # Settings changes never leave the process (GSETTINGS_BACKEND=memory).
 #
 #   build-aux/run-tests.sh                 # everything
-#   build-aux/run-tests.sh -p sp-sync      # extra args go to cargo test
+#   build-aux/run-tests.sh -p momentum-sync      # extra args go to cargo test
 #
 # Requires: cargo, blueprint-compiler, glib-compile-resources, glib-compile-schemas,
 # gtk4-broadwayd (all in org.gnome.Sdk; build-aux/test.sh enters that sandbox for you).

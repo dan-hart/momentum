@@ -4,7 +4,7 @@
 //! estimates, clock times, colours, relative days, repeat descriptions, quick-add syntax.
 //! Nothing here produces localised prose; that stays with the toolkit.
 use crate::types::*;
-use sp_model::*;
+use momentum_model::*;
 
 /// "1h 30m", "45m", "2h" → milliseconds. Only complete duration tokens count.
 pub fn parse_estimate(s: &str) -> Option<f64> {

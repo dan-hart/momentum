@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-10-11. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-10-13. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in
@@ -9,6 +9,132 @@ Keep resolved entries. Verification gaps without a known product defect belong i
 Severity: Critical = data loss/security/core unusable; High = major workflow impaired;
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
+
+## 2026-10-12 — native feature and release work
+
+Evidence below is from the dirty isolated task/native-features-release worktree based on 69682872. Final exact-head and release gates remain in progress; see [PROGRESS.md](PROGRESS.md).
+
+## B-139 — Linux task editor project picker selects the wrong item
+
+- **Severity:** Medium. **Impact:** Linux reproduced in a mapped GTK combo, including nonfirst/duplicate-title projects. Other native pickers are unaffected by this GTK factory bug.
+- **Cause/fix:** Factory rendering used the filtered list-item position instead of the original StringList object identity. Resolve the project by model object identity; display/color and saved project ID regression passes.
+- **Status/remaining:** Implemented on Linux; final renamed shipping/runtime checks pending.
+
+## B-140 — Linux Preferences is clamped to a short parent window
+
+- **Severity:** Medium. **Impact:** Linux reproduced with a 600 × 400 task window. Other platform settings presentations use different native containers.
+- **Cause/fix:** The embedded AdwDialog inherited the small parent allocation. Prefer useful 720 × 700 sizing and independent native presentation for short desktop parents, retaining compact adaptation. Allocation and 250% typography tests pass.
+- **Status/remaining:** Implemented on Linux; final localized runtime checks pending.
+
+## B-141 — Linux quick entry shows dense guidance inline
+
+- **Severity:** Low. **Impact:** Linux user-reported presentation issue.
+- **Cause/fix:** Use concise Add a task… placeholder with native tooltip and accessibility description for entry, tags, estimate and Escape. Parsing/destination context remains in the shared core.
+- **Status/remaining:** Implemented on Linux; final native/localized inspection pending.
+
+## B-142 — Reported iOS project view spinner needs a second tap
+
+- **Severity:** Medium. **Impact:** iOS user-reported and now reproduced on 2026-10-13 using actual simulator touch through Lists → Home, on both a prior 0.4.9 build and current-source disposable app. First tap leaves Loading tasks; returning to Lists and tapping again loads the tasks. Owned iOS 26.5 shipping demo loads Search → Home on one tap; first compact sidebar and controlled delayed snapshot tests pass. Android first/rapid/deleted-project boundary tests pass. GTK/macOS list queries are synchronous.
+- **Cause/fix:** Actual touch causes the new project screen to disappear and its completed snapshot to be cancelled while an old Today screen reappears; no replacement load starts. Hosted accessibility activation did not reproduce that transition. Move route identity to the enclosing NavigationStack, so the stateful navigation container owns the selected route. Stale results remain cancelled/rejected. The same opt-in real-touch regression fails before the change and passes on iOS26.5/27 after it, with first selection, reentry, project switching and Today return. Hosted current/stale load regressions pass.
+- **Status/remaining:** Verified on iOS for the recorded scope: actual 0.4.10/410 first-touch/reentry/switch/Today routes and full 113 hosted views (three existing skips) pass on 26.5/27; independent review approved. GTK/macOS synchronous queries and Android first/rapid/deleted-project regressions do not share this navigation-container cause. Other-platform assessments remain scoped to tested paths.
+
+## B-143 — iOS share-sheet capture has no Today plan
+
+- **Severity:** Medium. **Impact:** iOS existing share import left new tasks unplanned. Other platforms do not use this extension queue.
+- **Cause/fix:** Capture the local Gregorian day on Add, persist optional plannedDay, and import through the existing Rust draft rule. Legacy queued items preserve their missing day. Midnight/timezone/retry/dedup and hosted Today import tests pass.
+- **Status/remaining:** Implemented on iOS; final shipping extension and supported-runtime checks pending.
+
+## B-144 — Upcoming omits future recurring occurrences
+
+- **Severity:** Medium. **Impact:** Shared listing only read persisted tasks, affecting all native clients.
+- **Cause/fix:** Shared read-only recurrence projection supplies preview metadata, respects horizon/start/paused rules and suppresses existing/moved/archived IDs without task writes. Native rows expose only Edit repeat schedule.
+- **Status/remaining:** Implemented on all platforms; core and scoped native regressions pass, final interaction/layout checks pending.
+
+## B-145 — Copy Notes lacks acknowledged success feedback
+
+- **Severity:** Low. **Impact:** User-reported gap across platforms.
+- **Cause/fix:** After successful full copy, show editor-local toast and native Apple/Android haptic. GTK provides accessible visual feedback. Exact payload, modal visibility, failure/disabled silence and repeated deadlines are tested.
+- **Status/remaining:** Implemented on all platforms; scoped native tests pass. Physical vibration/spoken accessibility output is not claimed.
+
+## B-146 — Native settings changes can replace an unseen synced key
+
+- **Severity:** High. **Impact:** Reproduced during feature implementation on Apple and GTK; Android received the same boundary regression.
+- **Cause/fix:** Stage only local native deltas, read core status before its values, reject stale asynchronous applications and update device summary fields through an atomic core API. Preserve equivalent unsupported native fallbacks. Unseen-sort/local-color tests pass; Android raw-sound preservation repair passes its native regressions and independent review.
+- **Status/remaining:** Implemented on all platforms; final consumers pending.
+
+## B-147 — Fresh native stores cannot seed an empty Nextcloud folder
+
+- **Severity:** High. **Impact:** Public Engine loopback reproduction failed for empty, local-task and reimported native-backup stores because absent opaque globalConfig triggered FreshState.
+- **Cause/fix:** Ordinary sync fills absent globalConfig with an empty object only in the detached candidate, preserving existing opaque values. Successful upload persists it; failure/cancel/damage/encryption/unsupported/conflict/persistence cases preserve live data and pending work. Lower-level fresh-state and explicit replacement protections remain.
+- **Status/remaining:** Implemented in shared core; independent spec/quality review approved. Final renamed consumer/runtime checks pending.
+
+## B-148 — Damaged local snapshot can be treated as an empty store
+
+- **Severity:** Critical. **Impact:** Public checked-startup harness reproduced malformed JSON and structurally incomplete {} snapshots becoming empty, allowing bootstrap to acknowledge real pending work. This was detected while verifying B-147.
+- **Cause/fix:** Present unreadable/malformed state/pending/meta fail startup with privacy-safe file errors. Task collection ids/entities are structurally required; absent snapshot plus task history/pending data also fails. Preserve all original bytes. Legitimate fresh/settings-only stores and optional legacy/opaque fields remain supported.
+- **Status/remaining:** Implemented in shared storage; independent public failure/positive harnesses and store/core tests pass. Final consumers pending.
+
+## B-149 — Cancelling folder-copy ownership can lose cancellation or service recovery
+
+- **Severity:** Medium. **Impact:** New iOS migration tests reproduced Cancel during factory admission being ignored and connection Save being accepted during copy. Android review found cancelled caller context prevents resuming automatic foreground sync.
+- **Cause/fix:** iOS latches cancellation before operation creation and blocks Save while copy owns the connection; cancellation, stale/save-failure boundaries pass. Android resumes automatic foreground ownership in a non-cancellable recovery boundary, with native regression and independent approval.
+- **Status/remaining:** Implemented on iOS/Android. GTK/core cancellation and original-connection retention tests pass; final native scope pending.
+
+## B-150 — Opening a GTK repeat editor invents a start date
+
+- **Severity:** Medium. **Impact:** Mapped GTK regression reproduced saving an existing paused schedule with no start day assigning today.
+- **Cause/fix:** Only the calendar selection updates the start day; add an accessible Clear start day action. Opening/saving no longer mutates the anchor.
+- **Status/remaining:** Implemented on Linux; RED/GREEN regression passes, final localized native checks pending.
+
+## B-151 — macOS portable settings changes leave the visible list stale
+
+- **Severity:** Medium. **Impact:** macOS reproduced by the existing grouping test. Other platforms refresh through their own native adapters.
+- **Cause:** Staging changes the core before the old equality check, so the check no longer detects the changed listing preferences.
+- **Fix/status:** Rebuild the visible listing after portable preferences apply. Implemented on macOS; the original grouping regression and native remote-apply regression pass. Final shipping checks pending.
+
+## B-152 — macOS settings-save failure loses its visible error
+
+- **Severity:** Medium. **Impact:** macOS independently reproduced using a denied temporary settings-file write.
+- **Cause:** Rollback succeeds, then forced native refresh clears the failure immediately.
+- **Fix/status:** Retain the rejected partial intent and its error through no-op notifications. A local Retry saves that intent without replacing unseen keys. Bootstrap choices wait for local recovery and task-sync errors have separate actions. Implemented on macOS; native regressions pass and specification review approved. Final shipping checks pending.
+
+## B-153 — Failed initial native settings seed exports an empty document
+
+- **Severity:** Medium. **Impact:** macOS independently reproduced; the same unconditional baseline assignment is present on iOS, with equivalent missing full-seed retry on GTK. Android retains its bootstrap flag and is unaffected in the reviewed scope.
+- **Cause:** Native adapters mark their values applied despite a failed durable full seed. The next export stages an empty delta.
+- **Fix/status:** Mark a baseline only after successful full seeding. Native Retry/edit/export/consent recover all nine values, with visible local errors. Core validates and commits settings-only or opted combined imports before native adapters supersede rejected intent. Invalid imports preserve native/core values, pending Retry and durable bytes; valid partial imports retain missing choices and cannot replay old intent. Task-only restore remains usable. GTK captures the imported revision before applying callbacks so later commits remain observable. Implemented on Mac/iOS/GTK; Mac15/iOS18 and GTK atomicity/callback regressions pass with fresh specification and independent quality approval. Final shipping checks pending.
+
+## B-154 — Failed Linux legacy-folder pin marks migration complete
+
+- **Severity:** High; existing remote connection could be redirected. **Impact:** Linux reproduced with a denied folder-write fixture. Native Apple/Android adapters use separate preservation logic.
+- **Cause/fix:** The marker was written after an ignored folder-save failure. Propagate the error, save the marker only after success, and use the safe effective legacy folder in transport, CLI export and Preferences until pinning succeeds.
+- **Regression evidence:** The failure test was red with the marker incorrectly set and passes after the repair, including retry. Task 7 specification review approved the preservation contract on 2026-10-12.
+- **Status/remaining:** Implemented on Linux; final complete native suite and exact-revision checks pending.
+
+## B-155 — Android optional settings failure blocks local device controls
+
+- **Severity:** High; turning off local sync or notifications must stay usable. **Impact:** Isolated API26/API37 tests reproduced local controls being blocked after a denied initial portable seed. Mac/iOS/GTK keep local summary/device writes separate from portable failure in the reviewed paths.
+- **Cause:** `updateSettings` and `updatePreferences` guard portable application even for transformations that only change device controls.
+- **Fix/status:** Compute the nine-key portable delta before guarding or staging. Device-only controls persist and refresh local summary behavior while retaining the portable error/recovery state; portable edits/transfers remain guarded. Implemented on Android, with ten repository tests passing on API26/API37 and specification/independent quality approval. Final full native suite and shipping checks pending.
+
+## B-156 — Recurring previews copy full notes for every date
+
+- **Severity:** High; long notes cause avoidable memory growth. **Impact:** Isolated public-core fixture with one daily schedule and 30 previews retained about 128.52 MiB additional peak memory for a 4 MiB note, while returning only 2,490 snippet bytes. This is measured amplification, not a reproduced out-of-memory crash.
+- **Cause/fix:** Each projected date cloned the complete template note. Bound notes once on cloned preview configurations using the existing snippet rule; stored templates and materialized tasks retain full notes and metadata.
+- **Regression evidence:** The projection test failed on the original full-note copies and now verifies bounded Unicode/multiline/blank snippets, unchanged state/cursors and full-note materialization. Both Rust workspace lanes pass 396 tests with five existing ignores.
+- **Status/remaining:** Implemented in the shared core; independent review approved. The same bounded 4 MiB/30-preview fixture now peaks at 15.97 MiB versus 136.33 MiB before, with identical output and unchanged task/pending/cursor checks. These are individual synthetic desktop samples. Final consumers pending.
+
+## B-157 — macOS recurring preview compresses large text and hides its callout
+
+- **Severity:** Medium. **Impact:** Reproduced in the current native demo at minimum 680px width, German, and 32pt content/interface sizes. The trailing schedule button steals row width and the preview callout clips inside its combined subtitle. Other platforms use distinct preview layouts and remain assessed separately.
+- **Cause/fix:** Put the schedule action below the full-width row, explicitly apply native title/action typography, and render the preview callout on its own wrapping line. Keep the shared accessible subtitle and read-only action restrictions.
+- **Status/remaining:** Verified on macOS for the recorded native scope: rebuilt universal Release app, German 32pt/680px full callout/action, action activation/cancel and English first-project/preview/settings regression pass. Row 346pt contains child 338pt; catalog 358/358 German entries passes. Physical/spoken/network limits remain in PROGRESS.
+
+## B-158 — iOS recurring preview callout disappears in clipped large-text metadata
+
+- **Severity:** Medium. **Impact:** Reproduced in the 0.4.10/410 demo on iOS27, compact phone, German and maximum accessibility text. The title/project metadata ellipsis hides the appended preview label. Android already uses a separate label; GTK has a dedicated preview presentation; B-157 records the distinct Mac layout defect.
+- **Cause/fix:** Give Recurring preview its own wrapping caption and omit only its duplicate visual metadata part. Keep the complete shared accessibility value and schedule-only action.
+- **Status/remaining:** Verified on iOS for the recorded scope: rebuilt 0.4.10/410 native German maximum-text screenshot shows the full wrapping callout and schedule action; both 113-test hosted view suites and first-touch routes pass again. Compiled German 442/442 entries and shared/app strings pass. Physical/spoken limits remain in PROGRESS.
 
 ## 2026-10-11 — F-056 completion-sound choices assessment
 
@@ -664,7 +790,7 @@ Android is Planned and has no implemented UI to reproduce these defects.
   Unknown/incomplete journals fail closed and remain available for recovery.
 - **Evidence:** actual child-process exits at six write boundaries recover a coherent
   old or committed image; first-save interruption, failed writes, corrupt/incomplete
-  records and orphan cleanup are covered by `sp-store` tests. Core tests exercise failed
+  records and orphan cleanup are covered by `momentum-store` tests. Core tests exercise failed
   import and checked startup; CLI returns its normal JSON error instead of a panic.
 - **Platform boundary:** iOS implements an unavailable screen with retry; macOS a
   native retry/quit alert. Linux still uses the legacy fatal startup boundary when a
@@ -1814,7 +1940,7 @@ No source fallback or standalone-test bundle substitutes for these packaged chec
   Safari `momentum://add` acceptance. Before the fix, iOS could activate the QA host
   instead of `com.codedbydan.Momentum.ios`; the production test then waited on UI owned
   by the wrong process.
-- **Expected:** only the shipping app registers `momentum` and `superproductivity`.
+- **Expected:** only the shipping app registers `momentum`.
   The loopback host may export the shared public task UTType for Spotlight activities,
   but it must not own application URL schemes.
 - **Cause/fix:** the fixture source excluded the production plist, but XcodeGen still
@@ -2153,7 +2279,7 @@ their explicit manual acceptance boundaries.
   collection after the account root succeeds. LibreSync starts or joins an outbound cycle
   and awaits only that cycle ID, including the event-before-return race. Neither path changes
   tasks, pending operations or persistent last-sync state.
-- **Evidence:** `sp-sync` and `momentum-core` regressions cover read-only success, missing
+- **Evidence:** `momentum-sync` and `momentum-core` regressions cover read-only success, missing
   collection, auth, deadline, cancellation and no state mutation. MomentumMobile covers
   provider lifecycle, exact-cycle attribution, unrelated events, timeout and cancellation.
   The iOS 27 transport Nextcloud suite passed seven tests with one intentional hosted-TLS
@@ -2359,7 +2485,7 @@ their explicit manual acceptance boundaries.
   of both stores under the Mac's Momentum `backups/` folder; `mo sync --replace-remote`
   published the Mac's copy (version 84); the phone downloaded it, re-applied its nine
   edits and published version 85; the Mac downloaded version 85.
-- **Regression evidence:** sp-sync tests `a_cut_off_upload_is_reported_and_never_replaces_the_previous_copy`,
+- **Regression evidence:** momentum-sync tests `a_cut_off_upload_is_reported_and_never_replaces_the_previous_copy`,
   `a_damaged_server_copy_is_told_apart_from_a_wrong_password_and_can_be_replaced`,
   `replace_remote_refuses_a_fresh_device_and_works_without_a_server_copy` (mock proxy keeps
   half a body; truncated encrypted body; COPY aside); core transport tests answer the

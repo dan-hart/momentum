@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.codedbydan.momentum
 
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.test.espresso.Espresso.onView
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.semantics.SemanticsActions
@@ -105,6 +108,13 @@ class QuickAddBoundaryTest {
         Assert.assertEquals(tag, runBlocking { repository.read { tags() } }.single().title)
     }
 
+    private fun scrollIntoSettledViewport(node: SemanticsNodeInteraction): SemanticsNodeInteraction {
+        // Editor autofocus/IME layout is external to the Compose clock. A fresh
+        // scroll after each layout keeps the real target inside the final viewport.
+        compose.waitUntil(5_000) { node.performScrollTo().isDisplayed() }
+        return node.assertIsDisplayed()
+    }
+
     @Test fun importedLongTagKeepsFullSemanticsAndNotesShareControlsReachableInTheActualEditor() {
         val tag = "Oversized" + "📝".repeat(4096)
         runBlocking { repository.read { addTag(tag)!! } }
@@ -114,11 +124,21 @@ class QuickAddBoundaryTest {
         compose.runOnUiThread { vm.newTask() }
         compose.waitUntil(15_000) { vm.state.value.editor != null && !vm.state.value.editorLoading }
         compose.runOnUiThread { vm.setEditor(vm.state.value.editor!!.copy(title = "Disposable editor", notes = "Retained full notes")) }
-        val chip = compose.onNodeWithText(tag).performScrollTo().assertIsDisplayed()
+        // A new editor autofocuses Title. Let the real keyboard finish opening
+        // before scrolling lower controls; its resize also brings Title into view.
+        compose.onNode(hasSetTextAction() and hasText(app.getString(R.string.title))).performClick().assertIsFocused()
+        compose.waitUntil(5_000) {
+            var imeVisible = false
+            onView(androidx.test.espresso.matcher.ViewMatchers.isRoot()).check { view, _ ->
+                imeVisible = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            }
+            imeVisible
+        }
+        val chip = scrollIntoSettledViewport(compose.onNodeWithText(tag))
         val bounds = chip.getUnclippedBoundsInRoot()
         Assert.assertTrue("Imported editor tag stays within a compact chip", bounds.bottom - bounds.top <= 64.dp)
-        compose.onNode(hasSetTextAction() and hasText(app.getString(R.string.notes))).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(app.getString(R.string.share_notes)).performScrollTo().assertIsDisplayed().assertIsEnabled()
+        scrollIntoSettledViewport(compose.onNode(hasSetTextAction() and hasText(app.getString(R.string.notes))))
+        scrollIntoSettledViewport(compose.onNodeWithText(app.getString(R.string.share_notes))).assertIsEnabled()
         Assert.assertEquals("Retained full notes", vm.state.value.editor!!.notes)
         Assert.assertEquals(tag, runBlocking { repository.read { tags() } }.single().title)
     }

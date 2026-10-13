@@ -6,7 +6,7 @@ cask "momentum" do
 
   url "https://github.com/dan-hart/momentum/releases/download/v#{version}/Momentum-v#{version}-macos.zip"
   name "Momentum"
-  desc "Plan your day: native task planner that syncs with Super Productivity"
+  desc "Plan your day: native task planner with optional sync"
   homepage "https://github.com/dan-hart/momentum"
 
   livecheck do

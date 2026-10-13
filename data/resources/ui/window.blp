@@ -338,7 +338,8 @@ template $MomentumWindow: Adw.ApplicationWindow {
             margin-bottom: 6;
 
             child: Entry add_entry {
-              placeholder-text: _("Add a task…  #tag  1h 30m");
+              placeholder-text: _("Add a task…");
+              tooltip-text: _("Type a title; #tag adds a tag and 1h 30m sets an estimate. Press Enter to add.");
               primary-icon-name: "list-add-symbolic";
 
               accessibility {

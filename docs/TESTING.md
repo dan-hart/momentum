@@ -22,7 +22,7 @@ output remains a separate native acceptance check.
 
 ```sh
 build-aux/test.sh                 # everything, inside the GNOME SDK sandbox (recommended)
-build-aux/test.sh -p sp-oplog     # arguments go to cargo test
+build-aux/test.sh -p momentum-oplog     # arguments go to cargo test
 cargo test --workspace --exclude momentum   # core crates only, on any OS, no GTK needed
 swift test --package-path macos/Packages/MomentumKit   # the macOS app's own tests
 python3 macos/scripts/tests/test_repeat_catalogs.py    # compiled Apple plural resources (Xcode required)
@@ -274,12 +274,12 @@ when reporting either gate; do not infer a pass for later source changes.
 
 | Layer | Where | Needs | Covers |
 |---|---|---|---|
-| Model | `crates/sp-model/src/feature_tests.rs` | nothing | dates, repeat rules and catch-up, Today and Overdue membership, unknown-field round trips |
+| Model | `crates/momentum-model/src/feature_tests.rs` | nothing | dates, repeat rules and catch-up, Today and Overdue membership, unknown-field round trips |
 | App core | `crates/momentum-core/src/tests.rs` | tempdir | every behaviour of section 2 through the engine both apps drive: view listings and sections, quick add, day moves, selection and bulk actions, drops and reordering, repeats, reminders, undo, auto-archive, backup, the `mo` socket |
-| Op log | `crates/sp-oplog/src/feature_tests.rs` | nothing | every `Action`: upstream payload, op envelope, vector clocks, `apply` on state |
-| Store | `crates/sp-store/src/feature_tests.rs` | tempdir | persistence, pending queue, peer ops, snapshot adoption |
-| Sync | `crates/sp-sync/src/feature_tests.rs` + `mock_dav.rs` | tempdir, loopback | first upload, download-only, two-client convergence, conflict retry, relayed-op dedup, archives, encryption errors, op cap |
-| P2P | `crates/sp-p2p/src/feature_tests.rs`, `tests/two_devices.rs` | loopback | journal, record adapter, tombstones, snapshots, pairing handler; then two real nodes linking and exchanging |
+| Op log | `crates/momentum-oplog/src/feature_tests.rs` | nothing | every `Action`: upstream payload, op envelope, vector clocks, `apply` on state |
+| Store | `crates/momentum-store/src/feature_tests.rs` | tempdir | persistence, pending queue, peer ops, snapshot adoption |
+| Sync | `crates/momentum-sync/src/feature_tests.rs` + `mock_dav.rs` | tempdir, loopback | first upload, download-only, two-client convergence, conflict retry, relayed-op dedup, archives, encryption errors, op cap |
+| P2P | `crates/momentum-p2p/src/feature_tests.rs`, `tests/two_devices.rs` | loopback | journal, record adapter, tombstones, snapshots, pairing handler; then two real nodes linking and exchanging |
 | CLI | `crates/mo/tests/cli.rs` | the built binary | every `mo` command as a black box, JSON output, the queued ops |
 | App logic | `crates/app/src/tests/logic.rs` | GTK thread | formatting, parsing, colours, repeat text, modifier key, demo data |
 | macOS logic | `macos/Packages/MomentumKit/Tests` | nothing | the Swift half: navigation and selection order, outcomes becoming toasts and undo, every `Message`, `EmptyState` and `RepeatDescription` turned into words, preferences and the Keychain, URL and command-line handling |
@@ -293,8 +293,8 @@ demo store (`demo_window`) or an empty one (`empty_window`), and offers `pump`,
 
 ## Writing a test
 
-- Put behaviour in the crate that owns it: a reducer rule belongs in `sp-oplog`, a
-  membership rule in `sp-model`, and only what needs widgets in `ui.rs`.
+- Put behaviour in the crate that owns it: a reducer rule belongs in `momentum-oplog`, a
+  membership rule in `momentum-model`, and only what needs widgets in `ui.rs`.
 - UI tests: create the window, act through the same methods the UI uses (`add_task`,
   `set_done`, `go_to`, actions via `activate_action`), call `pump()` after anything that
   queues work, then assert on the store, `row_ids` and `headings`. Windows are never
@@ -342,7 +342,7 @@ receives completion in the opposite direction, and unlinks. Assertions inspect t
 Swift `AppState` and its recording search index after the native `P2pBridge` callbacks.
 The normal test run skips this test, and **CI does not run it at all**: it uses local
 sockets *and the transport's discovery service*, and the exchange after pairing never
-lands on a hosted runner, though `sp-p2p`'s own two-device test passes there in under a
+lands on a hosted runner, though `momentum-p2p`'s own two-device test passes there in under a
 second. Run it yourself before a release. It needs no app host and does not touch personal
 tasks or Keychain entries. This does not substitute for physical-device discovery or
 macOS-to-Linux acceptance.
@@ -384,6 +384,31 @@ The read-only macOS accessibility audit is `swift macos/scripts/a11y-audit.swift
 `--self-test` to verify the checker without an app or accessibility permission. A passing
 unit suite does not substitute for the live drag/drop and accessibility acceptance checks.
 
+## iOS first-project touch regression
+
+`ios/scripts/test_project_navigation.py` is an opt-in native touch check for B-142.
+Hosted view tests exercise accessibility activation; they do not reproduce the
+compact navigation transition that cancelled the first project snapshot.
+The script requires an explicit, booted disposable iPhone 17 Pro simulator, a
+simulator app bundle, the existing AXe CLI and `--confirm-disposable`. It launches
+only demo data in English; it never erases a store or contacts a sync account.
+It checks first Home selection, selected-project reentry, another project, Today
+return and further switches, using one touch per selection and collecting evidence.
+It settles native slides before the next touch; this is a correctness regression,
+not a timing benchmark. The compact toolbar fallback is scoped to the documented
+402 × 874 point viewport; all project rows use their current accessibility labels.
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode-26.5.0.app/Contents/Developer \
+  python3 ios/scripts/test_project_navigation.py \
+  --udid YOUR_DISPOSABLE_SIMULATOR --app /path/to/Simulator/Momentum.app \
+  --output /tmp/momentum-project-navigation --confirm-disposable
+```
+
+On this host AXe needs Xcode26.5's SimulatorKit, including when targeting the
+installed iOS27 simulator. Set `DEVELOPER_DIR` only for that command. This changes
+no global Xcode selection. Do not use a personal simulator or physical device.
+
 ## iOS accessibility inventory
 
 For the ordinary iOS edit/test loop, see [Fast iOS regression tests](../ios/TESTING.md).
@@ -405,7 +430,7 @@ verification limits.
 
 ## Interrupted store writes
 
-`cargo test -p sp-store` runs a child process that exits without destructors at every
+`cargo test -p momentum-store` runs a child process that exits without destructors at every
 journal publication/file-replacement/commit boundary. Reopening must return either
 all three old files or all three committed files. Additional fixtures cover a failed
 later write, interrupted first save, invalid/incomplete recovery records and safe
@@ -454,12 +479,12 @@ Native keyboard/dismissal and physical-device performance remain separate accept
 `cargo test -p momentum-core p2p::tests` uses disposable keys/stores and isolated
 runtimes to cover durable received batches, store-write failure with retry, provider
 exclusion, concurrent startup, stopped late application, restore/restart epochs and
-corrupt-journal preservation. `cargo test -p sp-p2p --lib` covers non-destructive inbox
+corrupt-journal preservation. `cargo test -p momentum-p2p --lib` covers non-destructive inbox
 reads, exact acknowledgement with newer arrivals and acknowledgement write failure.
 It also stalls a local TLS peer to verify that Sync All shutdown cancels active I/O
 instead of waiting for its five-second timeout. Discovery retains a two-second bound.
 
-Run `cargo test -p sp-p2p --test two_devices` for actual local pairing/exchange/bootstrap
+Run `cargo test -p momentum-p2p --test two_devices` for actual local pairing/exchange/bootstrap
 compatibility. These checks do not prove native permission handling, physical-device
 reachability, background expiration or battery behavior. A restored store is locally
 authoritative at replacement; future new remote operations still follow normal sync
@@ -557,8 +582,8 @@ failures, concurrent edits and failed journal persistence. The expensive 10,000-
 idle-exchange and 1,000-operation publication samples are ignored by default:
 
 ```sh
-cargo test -p sp-sync benchmark_ -- --ignored --nocapture --test-threads=1
-cargo test -p sp-p2p benchmark_offline_publish -- --ignored --nocapture
+cargo test -p momentum-sync benchmark_ -- --ignored --nocapture --test-threads=1
+cargo test -p momentum-p2p benchmark_offline_publish -- --ignored --nocapture
 ```
 
 Run the [iOS transport lane](../ios/TESTING.md) after regenerating the core to prove

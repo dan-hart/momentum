@@ -13,6 +13,7 @@ struct RepeatSheet: SwiftUI.View {
     @Environment(AppState.self) private var state
     @Environment(\.dismiss) private var dismiss
     let taskId: String
+    var configuration = false
 
     @State private var draft: RepeatDraft?
 
@@ -87,7 +88,8 @@ struct RepeatSheet: SwiftUI.View {
                     if d.existing {
                         Section {
                             Button(String(localized: "Stop Repeating"), role: .destructive) {
-                                state.stopRepeat(taskId)
+                                if configuration { state.apply(state.engine.stopRepeatConfig(configId: taskId)) }
+                                else { state.stopRepeat(taskId) }
                                 dismiss()
                             }
                         }
@@ -105,12 +107,18 @@ struct RepeatSheet: SwiftUI.View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button(draft?.existing == true ? String(localized: "Save") : String(localized: "Repeat")) {
-                    if let d = draft, state.saveRepeat(taskId, d) { dismiss() }
+                    if let d = draft {
+                        if configuration {
+                            let result = state.engine.saveRepeatConfig(configId: taskId, draft: d)
+                            state.apply(result)
+                            if result.changed { dismiss() }
+                        } else if state.saveRepeat(taskId, d) { dismiss() }
+                    }
                 }
                 .disabled(draft == nil)
             }
         }
-        .onAppear { draft = state.engine.repeatDraft(taskId: taskId) }
+        .onAppear { draft = configuration ? state.engine.repeatConfigDraft(configId: taskId) : state.engine.repeatDraft(taskId: taskId) }
     }
 
     private func binding<T>(_ key: WritableKeyPath<RepeatDraft, T>) -> Binding<T> {

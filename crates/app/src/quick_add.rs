@@ -10,12 +10,20 @@ use crate::application::MomentumApplication;
 pub fn open(app: &MomentumApplication) {
     let main = app.ensure_window();
     let entry = gtk::Entry::builder()
-        .placeholder_text(gettext("Add a task…  #tag  1h 30m  (Enter to add, Esc to close)"))
+        .placeholder_text(gettext("Add a task…"))
+        .tooltip_text(gettext(
+            "Type a title; #tag adds a tag and 1h 30m sets an estimate. Press Enter to add or Esc to close.",
+        ))
         .primary_icon_name("list-add-symbolic")
         .width_chars(48)
         .build();
     crate::typography::register_content_root(&entry);
-    entry.update_property(&[gtk::accessible::Property::Label(&gettext("Add a task"))]);
+    entry.update_property(&[
+        gtk::accessible::Property::Label(&gettext("Add a task")),
+        gtk::accessible::Property::Description(&gettext(
+            "Type a title; #tag adds a tag and 1h 30m sets an estimate. Press Enter to add or Esc to close.",
+        )),
+    ]);
     let hint = gtk::Label::builder()
         .label(gettext("Added to Today"))
         .css_classes(["dim-label", "caption"])

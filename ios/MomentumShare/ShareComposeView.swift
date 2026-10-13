@@ -56,7 +56,7 @@ struct ShareComposeView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if failure == nil {
-                    Text(String(localized: "Momentum adds the task to Inbox when it next opens."))
+                    Text(String(localized: "Momentum plans the task for today when it next opens."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

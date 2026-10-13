@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Durable logical edits: observers see one complete action, never its intermediate operations.
 use crate::*;
-use sp_model::{Task, INBOX_PROJECT_ID};
-use sp_oplog::Action;
+use momentum_model::{Task, INBOX_PROJECT_ID};
+use momentum_oplog::Action;
 use std::sync::{Arc, Mutex};
 
 fn seeded(count: usize) -> (Arc<Engine>, tempfile::TempDir, Vec<String>) {
@@ -28,7 +28,7 @@ fn bulk_completion_and_undo_each_publish_one_complete_durable_change() {
     let records = observed.clone();
     let path = dir.path().to_path_buf();
     engine.lock().change_signal = Some(Arc::new(move || {
-        let store = sp_store::Store::try_load(path.clone()).unwrap();
+        let store = momentum_store::Store::try_load(path.clone()).unwrap();
         records
             .lock()
             .unwrap()

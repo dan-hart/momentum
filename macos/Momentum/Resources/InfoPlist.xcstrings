@@ -18,6 +18,23 @@
         }
       }
     },
+    "NSRemindersFullAccessUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum importiert Erinnerungen aus der von dir ausgewählten Liste. Deine Apple-Erinnerungen werden niemals geändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum imports reminders from the list you choose. Your Apple Reminders are never changed."
+          }
+        }
+      }
+    },
     "NSUserNotificationsUsageDescription": {
       "extractionState": "manual",
       "localizations": {
@@ -31,23 +48,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reminders and a morning summary of the day's tasks."
-          }
-        }
-      }
-    },
-    "NSRemindersFullAccessUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Momentum imports reminders from the list you choose. Your Apple Reminders are never changed."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Momentum importiert Erinnerungen aus der von dir ausgewählten Liste. Deine Apple-Erinnerungen werden niemals geändert."
           }
         }
       }

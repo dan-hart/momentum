@@ -11,7 +11,7 @@ use crate::window::{ago_text, fmt_clock, fmt_day, fmt_ms, hex_color, parse_ms, r
 use gtk::prelude::*;
 use momentum_core::text::{day_label, describe_repeat, parse_time, tag_color};
 use momentum_core::ClockTime;
-use sp_model::*;
+use momentum_model::*;
 
 #[test]
 fn background_status_controller_serializes_coalesces_and_acknowledges() {

@@ -2,9 +2,9 @@
 // Copyright (C) 2026 Dan Hart
 //! Pure, bounded notification snapshots. Planning is not scheduling or delivery.
 use crate::{listing, ClockTime, MorningSummary, Slot};
+use momentum_model::{day_number, day_of_ms, day_str, local_ms, time_of_ms};
+use momentum_store::Store;
 use serde::{Deserialize, Serialize};
-use sp_model::{day_number, day_of_ms, day_str, local_ms, time_of_ms, INBOX_PROJECT_ID};
-use sp_store::Store;
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,43 +128,17 @@ pub fn plan(store: &Store, options: &NotificationPlanningOptions) -> Notificatio
         return result;
     }
 
-    // Advance only cloned cursors. Like spawn_repeats, the first date can produce
-    // one newest missed occurrence; its old date never contributes to today's count.
+    // The shared projection advances only cloned cursors. Its newest missed
+    // occurrence retains its old date and never contributes to today's count.
     let mut state = store.state.clone();
-    let fallback_project = store
-        .state
-        .project
-        .ids
-        .first()
-        .map(String::as_str)
-        .unwrap_or(INBOX_PROJECT_ID);
-    let mut configs: Vec<_> = state.task_repeat_cfg.iter().cloned().collect();
-    configs.sort_by(|a, b| a.id.cmp(&b.id));
-    let archived: HashSet<_> = listing::archived_tasks(store).into_iter().map(|t| t.id).collect();
+    for projected in crate::occurrences::project(store, &today, 7, options.now_ms) {
+        state.task.insert(&projected.task.id.clone(), projected.task);
+        result.projected_occurrences.push(projected.occurrence);
+    }
     let summary_capacity = (60 - result.requests.len()).min(4);
     let mut summaries = 0;
     for n in 0..7 {
         let day = day_str(first_day + n);
-        for cfg in &mut configs {
-            let Some(due_day) = cfg.newest_due_day(&day) else {
-                continue;
-            };
-            let id = format!("rpt_{}_{}", cfg.id, due_day);
-            // An existing or archived occurrence counts as already materialized.
-            // Moving this temporary cursor also avoids repeatedly considering it.
-            cfg.last_task_creation_day = Some(due_day.clone());
-            if state.task.entities.contains_key(&id) || archived.contains(&id) {
-                continue;
-            }
-            state
-                .task
-                .insert(&id, cfg.task_for_day(&due_day, fallback_project, options.now_ms));
-            result.projected_occurrences.push(ProjectedOccurrence {
-                task_id: id,
-                repeat_cfg_id: cfg.id.clone(),
-                day: due_day,
-            });
-        }
         let id = format!("summary:{day}");
         if store.meta.last_summary_day == day || options.consumed_ids.contains(&id) {
             continue;

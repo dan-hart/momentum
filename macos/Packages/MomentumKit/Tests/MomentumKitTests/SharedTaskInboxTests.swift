@@ -6,6 +6,22 @@ import Testing
 @testable import MomentumKit
 
 @Suite struct SharedTaskInboxTests {
+    @Test func capturedSharesKeepTheirLocalDayWhileOldQueuedItemsRemainUnscheduled() throws {
+        let date = try #require(ISO8601DateFormatter().date(from: "2026-10-12T04:59:00Z"))
+        let chicago = try #require(TimeZone(identifier: "America/Chicago"))
+        let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        let item = SharedTaskItem.captured(title: "Late share", notes: "Notes", url: nil, at: date, timeZone: chicago)
+        #expect(item.sharedAt == date)
+        #expect(item.plannedDay == "2026-10-11")
+        #expect(SharedTaskItem.captured(title: "Same instant", notes: "", url: nil, at: date, timeZone: tokyo).plannedDay == "2026-10-12")
+        let dir = TempDir().url.appendingPathComponent("SharedTasks")
+        try SharedTaskInbox.write(item, in: dir)
+        #expect(SharedTaskInbox.pending(in: dir).first?.plannedDay == "2026-10-11")
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let old = try decoder.decode(SharedTaskItem.self, from: Data(#"{"id":"old","title":"Old share","notes":"","sharedAt":"2026-10-12T04:59:00Z"}"#.utf8))
+        #expect(old.plannedDay == nil)
+    }
     @Test func itemsRoundTripInOrderAndLeaveWhenRemoved() throws {
         let dir = TempDir().url.appendingPathComponent("SharedTasks")
         #expect(SharedTaskInbox.pending(in: dir).isEmpty, "a missing folder is an empty inbox")

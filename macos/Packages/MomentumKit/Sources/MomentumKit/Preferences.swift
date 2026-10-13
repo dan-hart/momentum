@@ -36,7 +36,7 @@ public enum PrefKey {
     public static let morningSummaryMinute = "morning-summary-minute"
     public static let p2pEnabled = "p2p-enabled"
     public static let sidebarVisible = "sidebar-visible"
-    /// iOS list density: "regular" or "compact". A presentation choice, never synced.
+    /// Portable list density: "regular" or "compact".
     public static let rowDensity = "row-density"
     // Mac-only presentation preferences; never written to the shared task store.
     public static let dockBadgeMode = "dock-badge-mode"
@@ -109,6 +109,9 @@ public enum ModifierKey: String, CaseIterable, Identifiable {
 
 /// Typed access to the defaults, with the same defaults as the GSettings schema.
 public struct Preferences {
+    // Compatibility only: older connections inherited this unstored folder.
+    private static let inheritedNextcloudFolder = "super-productivity"
+
     /// Bundle-ID changes move UserDefaults to a new domain. Copy once, preserving
     /// any choices already made in the new app and leaving the old domain untouched.
     public static func migrateLegacyDomain(
@@ -126,9 +129,27 @@ public struct Preferences {
         defaults.setPersistentDomain(current, forName: targetDomain)
     }
 
-    public static func register(_ defaults: UserDefaults = .standard) {
+    public static func register(_ defaults: UserDefaults = .standard,
+                                domain: String? = nil) {
+        // Older configured desktop connections could rely on an unstored folder
+        // default. Pin it once before introducing the new-connection default.
+        let marker = "nextcloud-folder-default-pinned"
+        let knownDomain = domain ?? (defaults === UserDefaults.standard
+            ? Bundle.main.bundleIdentifier ?? "com.codedbydan.Momentum" : nil)
+        let stored = knownDomain.flatMap { defaults.persistentDomain(forName: $0) } ?? [:]
+        if !defaults.bool(forKey: marker) {
+            let configured = !(defaults.string(forKey: PrefKey.nextcloudServer) ?? "").isEmpty
+                && !(defaults.string(forKey: PrefKey.nextcloudUser) ?? "").isEmpty
+            if configured, stored[PrefKey.nextcloudFolder] == nil {
+                // A caller can provide a custom UserDefaults suite without its
+                // domain name. Preserve its explicit/effective folder too.
+                let effective = knownDomain == nil ? defaults.string(forKey: PrefKey.nextcloudFolder) : nil
+                defaults.set(effective ?? inheritedNextcloudFolder, forKey: PrefKey.nextcloudFolder)
+            }
+            defaults.set(true, forKey: marker)
+        }
         defaults.register(defaults: [
-            PrefKey.nextcloudFolder: "super-productivity",
+            PrefKey.nextcloudFolder: "momentum",
             PrefKey.autoSync: true,
             PrefKey.backgroundSync: true,
             PrefKey.compress: false,
@@ -234,7 +255,7 @@ public struct Preferences {
             serverUrl: defaults.string(forKey: PrefKey.nextcloudServer) ?? "",
             userName: defaults.string(forKey: PrefKey.nextcloudUser) ?? "",
             password: keychain.get(Keychain.nextcloud) ?? "",
-            folder: defaults.string(forKey: PrefKey.nextcloudFolder) ?? "super-productivity",
+            folder: defaults.string(forKey: PrefKey.nextcloudFolder) ?? "momentum",
             compress: defaults.bool(forKey: PrefKey.compress),
             encryptionPassword: keychain.get(Keychain.encryption))
         let complete = !s.serverUrl.trimmingCharacters(in: .whitespaces).isEmpty
@@ -246,9 +267,20 @@ public struct Preferences {
     public var syncConfigured: Bool { nextcloud() != nil }
 
     /// Import only shared, non-secret settings. Local switches and credentials stay local.
-    public func readCliConfig(from dir: URL) {
+    public func readCliConfig(from dir: URL, domain: String? = nil) {
         guard let data = try? Data(contentsOf: dir.appendingPathComponent("cli-config.json")),
               let cfg = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        let knownDomain = domain ?? (defaults === UserDefaults.standard
+            ? Bundle.main.bundleIdentifier ?? "com.codedbydan.Momentum" : nil)
+        if cfg["folder"] as? String == nil,
+           let server = cfg["server"] as? String, !server.isEmpty,
+           let user = cfg["user"] as? String, !user.isEmpty,
+           let knownDomain,
+           defaults.persistentDomain(forName: knownDomain)?[PrefKey.nextcloudFolder] == nil {
+            // Importing a connection must not replace its previous inherited folder
+            // with the registered default for newly created connections.
+            defaults.set(Self.inheritedNextcloudFolder, forKey: PrefKey.nextcloudFolder)
+        }
         for (field, key) in [("server", PrefKey.nextcloudServer), ("user", PrefKey.nextcloudUser),
                              ("folder", PrefKey.nextcloudFolder)] {
             if let value = cfg[field] as? String, defaults.string(forKey: key) != value {
@@ -266,7 +298,7 @@ public struct Preferences {
             "method": syncMethod.rawValue,
             "server": defaults.string(forKey: PrefKey.nextcloudServer) ?? "",
             "user": defaults.string(forKey: PrefKey.nextcloudUser) ?? "",
-            "folder": defaults.string(forKey: PrefKey.nextcloudFolder) ?? "super-productivity",
+            "folder": defaults.string(forKey: PrefKey.nextcloudFolder) ?? "momentum",
             "compress": defaults.bool(forKey: PrefKey.compress),
         ]
         if let data = try? JSONSerialization.data(withJSONObject: cfg, options: [.prettyPrinted, .sortedKeys]) {

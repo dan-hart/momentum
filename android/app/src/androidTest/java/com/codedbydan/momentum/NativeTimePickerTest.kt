@@ -6,6 +6,7 @@ import android.widget.TimePicker
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
@@ -32,6 +33,7 @@ class NativeTimePickerTest {
     private lateinit var repo: MomentumRepository
     private lateinit var directory: File
     private lateinit var vm: MomentumViewModel
+    private var previousTouchMode: Boolean? = null
     private val app get() = ApplicationProvider.getApplicationContext<MomentumApplication>()
     @Before fun prepare() {
         directory = File(app.cacheDir, "native-clock-${UUID.randomUUID()}")
@@ -40,19 +42,34 @@ class NativeTimePickerTest {
         compose.setContent { MomentumApp(vm) }
         compose.waitUntil(15_000) { !vm.state.value.loading }
     }
-    @After fun cleanup() = runBlocking { repo.close(); directory.deleteRecursively(); Unit }
+    @After fun cleanup() = runBlocking {
+        previousTouchMode?.let { InstrumentationRegistry.getInstrumentation().setInTouchMode(it) }
+        repo.close(); directory.deleteRecursively(); Unit
+    }
 
     @Test fun frameworkClockConfirmsCanonicalTimeAndPreservesReminderDateAndNotes() {
         val day = "2026-12-31"
         compose.runOnUiThread { vm.newTask(); vm.setEditor(EditorDraft(title = "Native clock fixture",
             time = "2pm", dueDay = day, reminder = 5, notes = "Unrelated note stays intact")) }
-        compose.onNodeWithContentDescription(app.getString(R.string.choose_time)).performScrollTo().performClick()
+        // Radial accessibility actions and physical header taps must share touch
+        // mode. Android8 restores a stale numeric header on losing keyboard focus.
+        onView(androidx.test.espresso.matcher.ViewMatchers.isRoot()).perform(object : ViewAction {
+            override fun getConstraints(): Matcher<View> = androidx.test.espresso.matcher.ViewMatchers.isRoot()
+            override fun getDescription() = "Capture the fixture input mode"
+            override fun perform(controller: UiController, view: View) { previousTouchMode = view.isInTouchMode }
+        })
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.setInTouchMode(true)
+        instrumentation.waitForIdleSync()
+        compose.onNodeWithContentDescription(app.getString(R.string.choose_time)).performScrollTo().assertIsEnabled()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
         awaitNativeClock()
         onView(isAssignableFrom(TimePicker::class.java)).check(matches(isDisplayed())).perform(object : ViewAction {
             override fun getConstraints(): Matcher<View> = isAssignableFrom(TimePicker::class.java)
             override fun getDescription() = "Verify the parsed initial native clock value"
             override fun perform(controller: UiController, view: View) {
                 val clock = view as TimePicker
+                Assert.assertTrue("The native input fixture starts in touch mode", clock.isInTouchMode)
                 Assert.assertEquals("Rust parses the existing 2pm field for the native picker", 14, clock.hour)
                 Assert.assertEquals(0, clock.minute)
                 controller.loopMainThreadUntilIdle()
@@ -61,10 +78,12 @@ class NativeTimePickerTest {
         // Exercise the framework clock's actual accessible hour/minute actions.
         // Direct property setters bypass its header/radial input coordination on API26.
         clickClockValue(if(android.text.format.DateFormat.is24HourFormat(app)) "17" else "5")
+        awaitClockValue(hour = 17)
         // API26's radial accessibility action changes the hour without advancing
         // the dial. Select the native minute header before its own dial action.
         onView(withResourceName("minutes")).perform(click())
         clickClockValue("45")
+        awaitClockValue(hour = 17, minute = 45)
         onView(isAssignableFrom(TimePicker::class.java)).perform(object : ViewAction {
             override fun getConstraints(): Matcher<View> = isAssignableFrom(TimePicker::class.java)
             override fun getDescription() = "Verify the selected native clock value"
@@ -130,5 +149,22 @@ class NativeTimePickerTest {
             SystemClock.sleep(20)
         }
         Assert.fail("Native clock exposes an accessible selectable value: $value")
+    }
+
+    private fun awaitClockValue(hour: Int, minute: Int? = null) {
+        onView(isAssignableFrom(TimePicker::class.java)).perform(object : ViewAction {
+            override fun getConstraints(): Matcher<View> = isAssignableFrom(TimePicker::class.java)
+            override fun getDescription() = "Wait for the accessible clock action to commit"
+            override fun perform(controller: UiController, view: View) {
+                val clock = view as TimePicker
+                val deadline = SystemClock.elapsedRealtime() + 5_000
+                while((clock.hour != hour || (minute != null && clock.minute != minute)) &&
+                    SystemClock.elapsedRealtime() < deadline) {
+                    controller.loopMainThreadForAtLeast(16)
+                }
+                Assert.assertEquals("Native clock has committed the selected hour", hour, clock.hour)
+                if(minute != null) Assert.assertEquals("Native clock has committed the selected minute", minute, clock.minute)
+            }
+        })
     }
 }

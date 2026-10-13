@@ -20,20 +20,32 @@ struct BackupSettings: View {
     @Environment(MobileAppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var state = BackupState()
+    @State private var settingsState = BackupState()
     @State private var importing = false
     @State private var exporting = false
     @State private var confirmingRestore = false
+    @State private var includeSettings = false
+    @State private var restoreSettings = false
+    @State private var settingsOnly = false
+    @State private var exportingSettings = false
     @AccessibilityFocusState private var statusFocused: Bool
 
-    private var document: BackupDocument? { state.preparedExport.map(BackupDocument.init(data:)) }
-    private var available: Bool { state.canStart && model.worker != nil && !importing && !exporting }
+    private var currentState: BackupState { settingsOnly ? settingsState : state }
+    private var document: BackupDocument? { currentState.preparedExport.map(BackupDocument.init(data:)) }
+    private var available: Bool {
+        state.canStart && settingsState.canStart && model.worker != nil
+            && !importing && !exporting && !exportingSettings && !model.sync.folderCopyInProgress
+    }
 
     var body: some View {
         Form {
             Section {
+                Toggle("Include app settings", isOn: $includeSettings)
+                    .disabled(!available)
                 Button {
+                    settingsOnly = false
                     Task {
-                        if await state.prepareExport(operation: { try await model.exportBackup() }) { exporting = true }
+                        if await state.prepareExport(operation: { try await model.exportBackup(includeSettings: includeSettings) }) { exporting = true }
                     }
                 } label: {
                     SettingsLabel("Export Backup", symbol: "square.and.arrow.up",
@@ -48,9 +60,11 @@ struct BackupSettings: View {
             }
 
             Section {
-                Button { importing = true } label: {
+                Toggle("Restore included app settings", isOn: $restoreSettings)
+                    .disabled(!available)
+                Button { settingsOnly = false; importing = true } label: {
                     SettingsLabel("Import Backup", symbol: "square.and.arrow.down",
-                                  subtitle: "Choose a Momentum or Super Productivity backup")
+                                  subtitle: "Choose a Momentum backup")
                         .frame(minHeight: 44)
                 }
                 .accessibilityIdentifier("backup-import")
@@ -61,13 +75,13 @@ struct BackupSettings: View {
                         Text(verbatim: selected.name).fixedSize(horizontal: false, vertical: true)
                     }
                     .accessibilityElement(children: .combine)
-                    Button(role: .destructive) { confirmingRestore = true } label: {
+                    Button(role: .destructive) { settingsOnly = false; confirmingRestore = true } label: {
                         Label("Restore Backup", systemImage: "arrow.counterclockwise")
                             .frame(minHeight: 44)
                     }
                     .accessibilityIdentifier("backup-restore")
                     .disabled(!available)
-                    Button("Choose Another File", systemImage: "folder") { importing = true }
+                    Button("Choose Another File", systemImage: "folder") { settingsOnly = false; importing = true }
                         .foregroundStyle(Color.primary).disabled(!available)
                 }
             } footer: {
@@ -75,7 +89,31 @@ struct BackupSettings: View {
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
-            if let activity = state.activity {
+            Section {
+                Button("Import app settings", systemImage: "square.and.arrow.down") {
+                    settingsOnly = true; importing = true
+                }.disabled(!available)
+                Button("Export app settings", systemImage: "square.and.arrow.up") {
+                    settingsOnly = true
+                    Task {
+                        if await settingsState.prepareExport(operation: { try await model.exportAppSettings() }) { exportingSettings = true }
+                    }
+                }.disabled(!available)
+                if let selected = settingsState.selection {
+                    Text(verbatim: selected.name).fixedSize(horizontal: false, vertical: true)
+                    Button("Retry importing app settings") {
+                        settingsOnly = true
+                        Task { await settingsState.restore { try await model.importAppSettings($0) } }
+                    }.disabled(!available)
+                    Button("Choose Another File", systemImage: "folder") { settingsOnly = true; importing = true }
+                        .disabled(!available)
+                }
+            } header: { Text("App settings only") } footer: {
+                Text("Task display, grouping, sorting, archive and sound preferences. Credentials, connections, permissions and device controls stay local.")
+                    .foregroundStyle(AccentTheme.secondaryText)
+            }
+
+            if let activity = currentState.activity {
                 Section {
                     switch activity {
                     case .reading: ProgressView("Reading Backup…")
@@ -104,6 +142,18 @@ struct BackupSettings: View {
                         .accessibilityFocused($statusFocused)
                 }
             }
+            if let error = settingsState.error {
+                Section {
+                    Label("App settings couldn’t be transferred", systemImage: "exclamationmark.circle")
+                    Text(error).textSelection(.enabled).accessibilityFocused($statusFocused)
+                }
+            }
+            if let completion = settingsState.completion {
+                Section {
+                    Label(completion == .restored ? "App settings imported" : "App settings saved", systemImage: "checkmark.circle.fill")
+                        .accessibilityFocused($statusFocused)
+                }
+            }
         }
         .navigationTitle("Backups")
         .momentumNavigationCanvas()
@@ -111,21 +161,31 @@ struct BackupSettings: View {
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: state.completion)
         .onChange(of: state.error) { _, error in if error != nil { statusFocused = true } }
         .onChange(of: state.completion) { _, completion in if completion != nil { statusFocused = true } }
+        .onChange(of: settingsState.error) { _, error in if error != nil { statusFocused = true } }
+        .onChange(of: settingsState.completion) { _, completion in if completion != nil { statusFocused = true } }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json], allowsMultipleSelection: false) { result in
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    Task { if await state.load(url) { confirmingRestore = true } }
+                    Task {
+                        if await currentState.load(url) {
+                            if settingsOnly { await settingsState.restore { try await model.importAppSettings($0) } }
+                            else { confirmingRestore = true }
+                        }
+                    }
                 }
-            case .failure(let error): state.report(error)
+            case .failure(let error): currentState.report(error)
             }
         }
         .fileExporter(isPresented: $exporting, document: document, contentTypes: [.json],
                       defaultFilename: String(localized: "Momentum Backup"), onCompletion: { state.finishExport($0) },
                       onCancellation: { state.finishExport(nil) })
+        .fileExporter(isPresented: $exportingSettings, document: document, contentTypes: [.json],
+                      defaultFilename: "momentum-settings", onCompletion: { settingsState.finishExport($0) },
+                      onCancellation: { settingsState.finishExport(nil) })
         .alert("Replace All Tasks?", isPresented: $confirmingRestore) {
             Button("Restore Backup", role: .destructive) {
-                Task { await state.restore { try await model.restoreBackup($0) } }
+                Task { await state.restore { try await model.restoreBackup($0, restoreSettings: restoreSettings) } }
             }
             Button("Cancel", role: .cancel) { state.discardSelection() }
         } message: {

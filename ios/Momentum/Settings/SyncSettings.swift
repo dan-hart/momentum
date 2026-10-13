@@ -5,10 +5,12 @@ import MomentumMobile
 import SwiftUI
 
 struct SyncSettings: View {
+    @Environment(MobileAppModel.self) private var model
     @Bindable var state: NextcloudSyncState
     @AppStorage(PrefKey.backgroundSync) private var backgroundSync = true
     @AccessibilityFocusState private var failureFocused: Bool
     @AccessibilityFocusState private var savedFocused: Bool
+    @State private var confirmingFolderCopy = false
 
     var body: some View {
         Form {
@@ -30,6 +32,53 @@ struct SyncSettings: View {
                 }
             } footer: {
                 Text("Sync is optional. Turning it off keeps your tasks and saved connection on this device.")
+                    .foregroundStyle(AccentTheme.secondaryText)
+            }
+            Section {
+                Toggle("Sync app settings", isOn: Binding(
+                    get: { model.appSettingsSync?.enabled == true },
+                    set: { value in Task { await model.setAppSettingsSync(value) } }))
+                    .disabled(!state.allowed || model.worker == nil)
+                if let status = model.appSettingsSync, status.enabled, !status.bootstrapRequired {
+                    if status.pendingKeys > 0 {
+                        Label("App settings waiting to sync", systemImage: "clock")
+                    } else if status.lastSuccessMs > 0, status.error == nil {
+                        Label("App settings are up to date", systemImage: "checkmark.circle")
+                    }
+                    if status.lastSuccessMs > 0 {
+                        LabeledContent("Last settings sync") {
+                            Text(Date(timeIntervalSince1970: Double(status.lastSuccessMs) / 1_000), style: .relative)
+                        }
+                    }
+                }
+                if model.appSettingsSync?.bootstrapRequired == true, let reviewID = model.appSettingsSync?.reviewId,
+                   let remote = model.appSettingsSync?.remoteSettingsJson {
+                    Text("This device and your other devices have saved settings. Choose which settings to start with.")
+                    DisclosureGroup("This device") {
+                        ForEach(PortableAppSettings.summary((try? PortableAppSettings.encode(model.defaults)) ?? "")) { item in
+                            LabeledContent(item.label, value: item.value)
+                        }
+                    }
+                    DisclosureGroup("Synced settings") {
+                        ForEach(PortableAppSettings.summary(remote)) { item in LabeledContent(item.label, value: item.value) }
+                    }
+                    Button("Use this device’s settings") { Task { await model.chooseAppSettingsBootstrap(.useLocal, reviewID: reviewID) } }
+                        .disabled(model.canRetryAppSettings)
+                    Button("Use synced settings") { Task { await model.chooseAppSettingsBootstrap(.useRemote, reviewID: reviewID) } }
+                        .disabled(model.canRetryAppSettings)
+                }
+                if let error = model.appSettingsError {
+                    Text(error).foregroundStyle(.red).textSelection(.enabled)
+                    if model.canRetryAppSettings {
+                        Button("Retry") { Task { await model.retryAppSettings() } }
+                    }
+                }
+                if let error = model.appSettingsSync?.error {
+                    Text(error).foregroundStyle(.red).textSelection(.enabled)
+                    Button("Retry") { Task { await state.syncNow(); await model.refreshAppSettings() } }
+                }
+            } header: { Text("App settings") } footer: {
+                Text("Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
             if state.provider != .off, state.allowed {
@@ -63,6 +112,14 @@ struct SyncSettings: View {
         .navigationBarTitleDisplayMode(.inline)
         .momentumNavigationCanvas()
         .onChange(of: state.failure) { _, failure in if failure != nil { failureFocused = true } }
+        .task { await model.refreshAppSettings() }
+        .onDisappear { state.cancelFolderCopy() }
+        .alert("Copy to Momentum folder?", isPresented: $confirmingFolderCopy) {
+            Button("Cancel", role: .cancel) {}
+            Button("Copy and switch") { Task { await state.copyToMomentumFolder() } }
+        } message: {
+            Text("Copy and verify your sync files in the momentum folder, then switch this device to it. The original folder stays intact. Choose the new folder on your other devices after the copy succeeds.")
+        }
     }
 
     private var connectionTest: some View {
@@ -212,6 +269,31 @@ struct SyncSettings: View {
             }
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .disabled(state.folderCopyInProgress)
+
+            if state.draft.folder != "momentum" || state.folderCopy != .idle {
+                Section {
+                    switch state.folderCopy {
+                    case .copying:
+                        ProgressView("Copying and verifying files…")
+                        Button("Cancel") { state.cancelFolderCopy() }
+                    case .saving:
+                        ProgressView("Saving connection…")
+                    case .copied:
+                        Label("Sync folder copied and verified. This device now uses momentum.", systemImage: "checkmark.circle")
+                    case .failure(let message):
+                        AccessibleErrorMessage(message)
+                    case .idle: EmptyView()
+                    }
+                    if !state.folderCopyInProgress, state.draft.folder != "momentum" {
+                        Button("Copy to Momentum folder…") { confirmingFolderCopy = true }
+                            .disabled(!state.canCopyFolder || model.isRestoringBackup)
+                            .accessibilityIdentifier("sync-copy-folder")
+                    }
+                } footer: {
+                    Text("The original folder stays intact. The saved folder changes only after every copied file is verified.")
+                }
+            }
 
             Section {
                 Toggle("Sync Automatically", isOn: $state.draft.automatic)
@@ -233,6 +315,7 @@ struct SyncSettings: View {
                 }
                 .foregroundStyle(AccentTheme.secondaryText)
             }
+            .disabled(state.folderCopyInProgress)
             if state.hasUnsavedChanges || state.saving {
                 Section {
                     if state.failure == .configuration, let issue = state.configurationIssue {
@@ -392,7 +475,7 @@ private struct SyncProviderSettings: View {
                 }
                 .accessibilityAddTraits(state.provider == provider ? .isSelected : [])
                 .accessibilityIdentifier("sync-provider-\(provider.rawValue)")
-                .disabled(!state.allowed || state.isStopping || state.nearby?.phase == .stopping)
+                .disabled(!state.allowed || state.folderCopyInProgress || state.isStopping || state.nearby?.phase == .stopping)
             }
             if state.isStopping { ProgressView("Stopping Sync…") }
         }

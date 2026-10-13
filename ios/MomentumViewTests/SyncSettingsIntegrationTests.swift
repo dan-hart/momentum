@@ -6,19 +6,261 @@ import SwiftUI
 import XCTest
 
 @MainActor final class SyncSettingsIntegrationTests: XCTestCase {
+    func testFailedInitialPortableSeedRetriesFullSnapshotOnExportAndEdit() async throws {
+        for recovery in ["export", "edit", "retry", "import"] {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let name = "momentum-portable-seed-retry-\(UUID())"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+            Preferences.register(defaults)
+            defaults.set("compact", forKey: PrefKey.rowDensity)
+            defaults.set("title", forKey: PrefKey.taskSort)
+            defaults.set(true, forKey: PrefKey.morningSummaryEnabled)
+            defaults.set(9, forKey: PrefKey.morningSummaryHour)
+            defaults.set(45, forKey: PrefKey.morningSummaryMinute)
+            let blocked = directory.appendingPathComponent("portable-settings.json.tmp")
+            try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: true)
+            let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+            await model.start()
+            let worker = try XCTUnwrap(model.worker)
+            let failure = try XCTUnwrap(model.appSettingsError)
+            await model.chooseAppSettingsBootstrap(.useLocal, reviewID: "fixture-review")
+            XCTAssertEqual(model.appSettingsError, failure)
+            XCTAssertTrue(model.canRetryAppSettings)
+            await model.refreshAppSettings(force: true)
+            XCTAssertEqual(defaults.string(forKey: PrefKey.rowDensity), "compact")
+            XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "title")
+            try FileManager.default.removeItem(at: blocked)
+            if recovery == "export" { _ = try await model.exportAppSettings() }
+            else if recovery == "retry" { await model.retryAppSettings() }
+            else if recovery == "import" { try await model.importAppSettings(BackupFile(name: "partial.json", data: Data(#"{"version":1,"values":{"sort":"due"}}"#.utf8))) }
+            else { defaults.set(true, forKey: PrefKey.autoArchive); await model.preferencesChanged() }
+            let json = try await worker.portableSettingsJSON()
+            let document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+            let values = try XCTUnwrap(document["values"] as? [String: Any])
+            XCTAssertEqual(values.count, 9)
+            XCTAssertEqual(values["rowDensity"] as? String, "compact")
+            XCTAssertEqual(values["sort"] as? String, recovery == "import" ? "due" : "title")
+            XCTAssertNil(model.appSettingsError)
+            defaults.removePersistentDomain(forName: name)
+            try FileManager.default.removeItem(at: directory)
+        }
+    }
+
+    func testLocalSettingsRetryKeepsRejectedIntentAndUnseenRemoteKeys() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let name = "momentum-portable-retry-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.start()
+        let worker = try XCTUnwrap(model.worker)
+        defaults.set("title", forKey: PrefKey.taskSort)
+        await model.preferencesChanged()
+        let blocked = directory.appendingPathComponent("portable-settings.json.tmp")
+        try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: false)
+        defaults.set("created", forKey: PrefKey.taskSort)
+        await model.preferencesChanged()
+        let failure = try XCTUnwrap(model.appSettingsError)
+        XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "title")
+        await model.refreshAppSettings(force: true)
+        await model.preferencesChanged()
+        XCTAssertEqual(model.appSettingsError, failure)
+        XCTAssertTrue(model.canRetryAppSettings)
+        try FileManager.default.removeItem(at: blocked)
+        await model.chooseAppSettingsBootstrap(.useLocal, reviewID: "fixture-review")
+        XCTAssertEqual(model.appSettingsError, failure)
+        XCTAssertTrue(model.canRetryAppSettings)
+        try await worker.stagePortableSettings(#"{"version":1,"values":{"grouping":"project"}}"#)
+        await model.retryAppSettings()
+        let json = try await worker.portableSettingsJSON()
+        let document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        let values = try XCTUnwrap(document["values"] as? [String: Any])
+        XCTAssertEqual(values["sort"] as? String, "created")
+        XCTAssertEqual(values["grouping"] as? String, "project")
+        XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "created")
+        XCTAssertEqual(defaults.string(forKey: PrefKey.groupBy), "project")
+        XCTAssertNil(model.appSettingsError)
+        XCTAssertFalse(model.canRetryAppSettings)
+    }
+
+    func testLocalSettingsAndExportPreserveAnUnseenSyncedChoice() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let name = "momentum-portable-intent-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.foreground()
+        let worker = try XCTUnwrap(model.worker)
+        try await worker.stagePortableSettings(#"{"version":1,"values":{"sort":"title"}}"#)
+        defaults.set(false, forKey: PrefKey.colorfulLabels)
+        await model.preferencesChanged()
+        let data = try await model.exportAppSettings()
+        let document = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let values = try XCTUnwrap(document["values"] as? [String: Any])
+        XCTAssertEqual(values["sort"] as? String, "title")
+        XCTAssertEqual(values["colorfulLabels"] as? Bool, false)
+        XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "title")
+        XCTAssertFalse(model.appSettingsSync?.enabled ?? true)
+    }
+
+    func testCombinedRestoreSupersedesFailedNativeSeedAndKeepsTaskOnlyRestoreIndependent() async throws {
+        for initialSeed in [true, false] {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let name = "momentum-portable-restore-retry-\(UUID())"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+            defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
+            Preferences.register(defaults)
+            defaults.set("title", forKey: PrefKey.taskSort)
+            let source = Engine.open(dir: directory.appendingPathComponent("source").path)
+            _ = source.addTask(text: "Restored fixture", view: .today)
+            _ = try source.stagePortableSettings(json: #"{"version":1,"values":{"sort":"created","rowDensity":"compact"}}"#)
+            let backup = directory.appendingPathComponent("combined.json")
+            _ = try source.exportBackupWithSettings(path: backup.path, includeSettings: true)
+            let file = BackupFile(name: "combined.json", data: try Data(contentsOf: backup))
+            let target = directory.appendingPathComponent("target")
+            let blocked = target.appendingPathComponent("portable-settings.json.tmp")
+            if initialSeed { try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: true) }
+            let model = MobileAppModel(isolatedDirectory: target, defaults: defaults)
+            await model.start()
+            let worker = try XCTUnwrap(model.worker)
+            _ = await worker.perform(.add("Existing fixture", .today))
+            if !initialSeed {
+                try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: false)
+                defaults.set("due", forKey: PrefKey.taskSort)
+                await model.preferencesChanged()
+            }
+            XCTAssertTrue(model.canRetryAppSettings)
+            do { try await model.restoreBackup(file, restoreSettings: true); XCTFail("Blocked combined restore should fail") }
+            catch { }
+            let retained = await worker.snapshot(view: .today)
+            XCTAssertEqual(retained.tasks.map(\.title), ["Existing fixture"])
+            try await model.restoreBackup(file, restoreSettings: false)
+            let restored = await worker.snapshot(view: .today)
+            XCTAssertEqual(restored.tasks.map(\.title), ["Restored fixture"])
+            XCTAssertTrue(model.canRetryAppSettings)
+            XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "title")
+            try FileManager.default.removeItem(at: blocked)
+            try await model.restoreBackup(file, restoreSettings: true)
+            XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "created")
+            XCTAssertEqual(defaults.string(forKey: PrefKey.rowDensity), "compact")
+            XCTAssertFalse(model.canRetryAppSettings)
+            XCTAssertNil(model.appSettingsError)
+            await model.retryAppSettings()
+            let json = try await worker.portableSettingsJSON()
+            let document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+            let values = try XCTUnwrap(document["values"] as? [String: Any])
+            XCTAssertEqual(values["sort"] as? String, "created")
+            XCTAssertEqual(values["rowDensity"] as? String, "compact")
+        }
+    }
+
+    func testFailedSettingsImportsDoNotCommitRejectedLocalIntent() async throws {
+        for combined in [false, true] {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let name = "momentum-portable-import-atomic-\(UUID())"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+            defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
+            let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+            await model.start()
+            let worker = try XCTUnwrap(model.worker)
+            _ = await worker.perform(.add("Keep this task", .today))
+            defaults.set("title", forKey: PrefKey.taskSort)
+            defaults.set("compact", forKey: PrefKey.rowDensity)
+            await model.preferencesChanged()
+            let blocked = directory.appendingPathComponent("portable-settings.json.tmp")
+            try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: false)
+            defaults.set("created", forKey: PrefKey.taskSort)
+            await model.preferencesChanged()
+            XCTAssertTrue(model.canRetryAppSettings)
+            try FileManager.default.removeItem(at: blocked)
+            let before = try await worker.portableSettingsJSON()
+            let stateFile = directory.appendingPathComponent("state.json")
+            let pendingFile = directory.appendingPathComponent("pending.json")
+            let portableFile = directory.appendingPathComponent("portable-settings.json")
+            let taskBytes = try Data(contentsOf: stateFile)
+            let pendingBytes = try Data(contentsOf: pendingFile)
+            let portableBytes = try Data(contentsOf: portableFile)
+            let invalid = BackupFile(name: "invalid.json", data: Data(#"{"version":1,"values":{"sort":17}}"#.utf8))
+            if combined {
+                let backupData = try await model.exportBackup()
+                var body = try XCTUnwrap(JSONSerialization.jsonObject(with: backupData) as? [String: Any])
+                body["momentumSettings"] = ["version": 1, "values": ["sort": 17]]
+                let file = BackupFile(name: "invalid-combined.json", data: try JSONSerialization.data(withJSONObject: body))
+                do { try await model.restoreBackup(file, restoreSettings: true); XCTFail("Invalid settings must fail") } catch { }
+            } else {
+                do { try await model.importAppSettings(invalid); XCTFail("Invalid settings must fail") } catch { }
+            }
+            let after = try await worker.portableSettingsJSON()
+            XCTAssertEqual(after, before)
+            XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "title")
+            XCTAssertEqual(defaults.string(forKey: PrefKey.rowDensity), "compact")
+            XCTAssertTrue(model.canRetryAppSettings)
+            XCTAssertEqual(try Data(contentsOf: stateFile), taskBytes)
+            XCTAssertEqual(try Data(contentsOf: pendingFile), pendingBytes)
+            XCTAssertEqual(try Data(contentsOf: portableFile), portableBytes)
+            await model.refreshAppSettings(force: true)
+            XCTAssertTrue(model.canRetryAppSettings)
+            try await model.importAppSettings(BackupFile(name: "partial.json", data: Data(#"{"version":1,"values":{"sort":"due"}}"#.utf8)))
+            XCTAssertEqual(defaults.string(forKey: PrefKey.taskSort), "due")
+            XCTAssertEqual(defaults.string(forKey: PrefKey.rowDensity), "compact")
+            XCTAssertFalse(model.canRetryAppSettings)
+            await model.retryAppSettings()
+            let current = try await worker.portableSettingsJSON()
+            XCTAssertTrue(current.contains("due"))
+        }
+    }
+
+    func testBackupSettingsRequireIndependentExportAndRestoreOptIns() async throws {
+        for include in [false, true] {
+            for restore in [false, true] {
+                let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                let name = "momentum-portable-backup-\(UUID())"
+                let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+                let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+                await model.foreground()
+                let worker = try XCTUnwrap(model.worker)
+                _ = await worker.perform(.add("Portable task fixture", .today))
+                defaults.set("compact", forKey: PrefKey.rowDensity)
+                defaults.set("private-source-sentinel", forKey: PrefKey.nextcloudServer)
+                defaults.set(true, forKey: PrefKey.morningSummaryEnabled)
+                await model.preferencesChanged()
+                let data = try await model.exportBackup(includeSettings: include)
+                let document = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+                XCTAssertEqual(document["momentumSettings"] != nil, include)
+                XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("source-sentinel"))
+                defaults.set("regular", forKey: PrefKey.rowDensity)
+                defaults.set(false, forKey: PrefKey.morningSummaryEnabled)
+                defaults.set("local-device-sentinel", forKey: PrefKey.nextcloudServer)
+                await model.preferencesChanged()
+                _ = await worker.perform(.add("Task that should be replaced", .today))
+                try await model.restoreBackup(BackupFile(name: "fixture.json", data: data), restoreSettings: restore)
+                let snapshot = await worker.snapshot(view: .today)
+                XCTAssertEqual(snapshot.tasks.map(\.title), ["Portable task fixture"])
+                XCTAssertEqual(defaults.string(forKey: PrefKey.rowDensity), include && restore ? "compact" : "regular")
+                XCTAssertFalse(defaults.bool(forKey: PrefKey.morningSummaryEnabled))
+                XCTAssertEqual(defaults.string(forKey: PrefKey.nextcloudServer), "local-device-sentinel")
+                XCTAssertFalse(model.appSettingsSync?.enabled ?? true)
+                defaults.removePersistentDomain(forName: name)
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
+    }
+
     func testSyncScreenPresentationDoesNotOwnStateLoading() async throws {
         let name = "momentum-sync-presentation-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
         let probe = PresentationSyncProbe()
         let state = NextcloudSyncState(defaults: defaults, persistence: probe)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
         state.connect(makeOperation: { _ in RenderOperation() }, status: { await probe.readStatus() })
         let appeared = expectation(description: "Sync settings appeared")
         let mounted = try HostingFixture.mount(
-            NavigationStack { SyncSettings(state: state).onAppear { appeared.fulfill() } },
+            NavigationStack { SyncSettings(state: state).onAppear { appeared.fulfill() } }.environment(model),
             defaults: defaults,
             defaultsName: name
         )
-        defer { mounted.unmount() }
+        defer { mounted.unmount(); try? FileManager.default.removeItem(at: directory) }
 
         await fulfillment(of: [appeared], timeout: 5)
         for _ in 0..<10 { await Task.yield() }
@@ -68,6 +310,9 @@ import XCTest
         defer { defaults.removePersistentDomain(forName: name) }
         let store = RenderConnection()
         let state = NextcloudSyncState(defaults: defaults, persistence: store)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        defer { try? FileManager.default.removeItem(at: directory) }
         state.connect(makeOperation: { _ in RenderOperation() }, status: {
             SyncStatus(syncing: false, pendingOps: 3, lastNextcloudMs: 0,
                        lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0)
@@ -77,7 +322,7 @@ import XCTest
         for scheme in [ColorScheme.light, .dark] {
             for large in [false, true] {
                 let render = try HostingFixture.render(
-                    NavigationStack { SyncSettings(state: state) }.frame(height: 700), width: 320,
+                    NavigationStack { SyncSettings(state: state) }.environment(model).frame(height: 700), width: 320,
                     size: large ? .accessibility5 : .large, scheme: scheme, locale: large ? "de" : "en")
                 XCTAssertLessThanOrEqual(render.size.width, 320)
                 let attachment = XCTAttachment(image: render.image)

@@ -6,11 +6,18 @@ import Testing
 @testable import MomentumMobile
 
 @Suite struct URLActionTests {
-    @Test func parsesBothSchemesAndRetainsDesktopParameterSemantics() throws {
+    @Test func parsesMomentumActionsAndRetainsDesktopParameterSemantics() throws {
         let url = try #require(URL(string: "momentum://add?title=Review%20%23Work%2030m&notes=Line%201%0ALine%202&due=2030-01-02&tags=Home,%20Errands%20,,&title=Ignored"))
         #expect(TaskURLAction(url: url) == .create(text: "Review #Work 30m #Home #Errands", notes: "Line 1\nLine 2", due: "2030-01-02"))
-        #expect(TaskURLAction(url: URL(string: "superproductivity://create-task?title=Read")!) == .create(text: "Read", notes: nil, due: nil))
-        #expect(TaskURLAction(url: URL(string: "superproductivity://complete-task?title=Read")!) == .complete(title: "Read"))
+        #expect(TaskURLAction(url: URL(string: "momentum://create-task?title=Read")!) == .create(text: "Read", notes: nil, due: nil))
+        #expect(TaskURLAction(url: URL(string: "momentum://complete-task?title=Read")!) == .complete(title: "Read"))
+    }
+
+    @Test func retiredUrlAliasIsRejected() {
+        let scheme = ["super", "productivity"].joined()
+        for host in ["create-task", "complete-task"] {
+            #expect(TaskURLAction(url: URL(string: "\(scheme)://\(host)?title=Retired")!) == nil)
+        }
     }
 
     @Test func rejectsUnrelatedOrInvalidActionsWithoutMutation() {

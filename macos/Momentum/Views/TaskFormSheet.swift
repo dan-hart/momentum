@@ -19,6 +19,7 @@ struct TaskFormSheet: SwiftUI.View {
     @State private var newSubtask = ""
     @State private var loaded = false
     @State private var saveError: String?
+    @State private var copyFeedback = NoteCopyFeedback()
     @FocusState private var titleFocused: Bool
 
     private var isNew: Bool { taskId == nil }
@@ -95,8 +96,7 @@ struct TaskFormSheet: SwiftUI.View {
                         Text(String(localized: "Notes"))
                         Spacer()
                         Button {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(form.notes, forType: .string)
+                            copyFeedback.copy(form.notes)
                         } label: {
                             Image(systemName: "doc.on.doc")
                         }
@@ -151,6 +151,14 @@ struct TaskFormSheet: SwiftUI.View {
         }
         .frame(width: formWidth)
         .frame(minHeight: 440, idealHeight: 620, maxHeight: 760)
+        .overlay(alignment: .bottom) {
+            if let message = copyFeedback.message {
+                Label(message, systemImage: "checkmark.circle.fill")
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(.regularMaterial, in: Capsule()).padding(12)
+                    .accessibilityIdentifier("notes-copy-feedback")
+            }
+        }
         .toolbar {
             if isNew {
                 ToolbarItem(placement: .cancellationAction) {
@@ -174,7 +182,7 @@ struct TaskFormSheet: SwiftUI.View {
             Text(saveError ?? "")
         }
         .onAppear(perform: load)
-        .onDisappear { if !isNew { applyEdit() } }
+        .onDisappear { copyFeedback.dismiss(); if !isNew { applyEdit() } }
     }
 
     private func load() {

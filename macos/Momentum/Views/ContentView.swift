@@ -88,6 +88,7 @@ struct ContentView: SwiftUI.View {
         case .newTask: TaskFormSheet(taskId: nil)
         case .editTask(let id): TaskFormSheet(taskId: id)
         case .repeatSchedule(let id): RepeatSheet(taskId: id)
+        case .repeatConfiguration(let id): RepeatSheet(taskId: id, configuration: true)
         case .moveToProject(let ids): MoveToProjectSheet(ids: ids)
         case .addTag(let ids): AddTagSheet(ids: ids)
         case .editContext(let v): EditContextSheet(view: v)

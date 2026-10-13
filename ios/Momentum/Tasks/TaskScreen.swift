@@ -98,11 +98,12 @@ struct TaskScreen: SwiftUI.View {
     }
     @FocusState private var searchFocused: Bool
     private enum TaskSheet: Identifiable {
-        case edit(String), repeatSchedule(String), moveToProject([String])
+        case edit(String), repeatSchedule(String), repeatConfiguration(String), moveToProject([String])
         var id: String {
             switch self {
             case .edit(let id): "edit-" + id
             case .repeatSchedule(let id): "repeat-" + id
+            case .repeatConfiguration(let id): "repeat-config-" + id
             case .moveToProject(let ids): "move-" + ids.joined(separator: ",")
             }
         }
@@ -198,7 +199,7 @@ struct TaskScreen: SwiftUI.View {
                                     taskRow(task, snapshot: snapshot)
                                         .listRowInsets(TaskRowDensity.from(rowDensity).rowInsets)
                                         .tag(task.id)
-                                        .selectionDisabled(task.archived)
+                                        .selectionDisabled(task.archived || task.occurrence != nil)
                                 case .project(let project):
                                     NavigationLink(project.title) { TaskScreen(view: .project(id: project.id)) }
                                 case .tag(let tag):
@@ -310,7 +311,7 @@ struct TaskScreen: SwiftUI.View {
                         }
                         Button("Select All") {
                             transitionSelection(
-                                to: Set(snapshot?.tasks.filter { !$0.archived }.map(\.id) ?? []),
+                                to: Set(snapshot?.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id) ?? []),
                                 editing: true,
                                 feedback: .selection
                             )
@@ -342,7 +343,7 @@ struct TaskScreen: SwiftUI.View {
             let result = await snapshotLoader(worker, view, query, archiveLimit)
             guard !Task.isCancelled else { return }
             onSnapshotChange(result)
-            selection.formIntersection(result.tasks.filter { !$0.archived }.map(\.id))
+            selection.formIntersection(result.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id))
             let transition = TaskSnapshotTransition.decision(
                 hasSnapshot: snapshot != nil,
                 reduceMotion: reduceMotion,
@@ -390,6 +391,10 @@ struct TaskScreen: SwiftUI.View {
                 TaskEditor(worker: worker, view: view, taskID: id) { model.refreshAfterEdit() }
             case .repeatSchedule(let id):
                 RepeatEditor(worker: worker, taskID: id) { model.refreshAfterEdit() }
+                    .onAppear { model.activeTaskEditors += 1 }
+                    .onDisappear { model.activeTaskEditors = max(0, model.activeTaskEditors - 1) }
+            case .repeatConfiguration(let id):
+                RepeatEditor(worker: worker, taskID: id, configuration: true) { model.refreshAfterEdit() }
                     .onAppear { model.activeTaskEditors += 1 }
                     .onDisappear { model.activeTaskEditors = max(0, model.activeTaskEditors - 1) }
             case .moveToProject(let ids):
@@ -461,7 +466,10 @@ struct TaskScreen: SwiftUI.View {
 
     @ViewBuilder private func taskRow(_ task: TaskRow, snapshot: TaskSnapshot) -> some SwiftUI.View {
         let parentTitle = task.parentId.flatMap { snapshot.parentTitles[$0] }
-        if task.archived {
+        if let occurrence = task.occurrence {
+            TaskRowContent(task: task, parentTitle: parentTitle, toggle: {},
+                open: { taskSheet = .repeatConfiguration(occurrence.repeatCfgId) })
+        } else if task.archived {
             TaskRowContent(task: task, parentTitle: parentTitle, toggle: {}, open: {})
         } else {
             let transfer = TaskTransfer(ids: selection.contains(task.id)
@@ -571,7 +579,7 @@ struct TaskScreen: SwiftUI.View {
         guard isVisible, !searchFocused, taskSheet == nil, !showingNewTag,
               !model.showingAdd, !model.showingNewProject, model.activeTaskEditors == 0, model.notificationTask == nil,
               !model.showingKeyboardHelp, !model.isRestoringBackup, let snapshot else { return nil }
-        let tasks = snapshot.tasks.filter { !$0.archived }
+        let tasks = snapshot.tasks.filter { !$0.archived && $0.occurrence == nil }
         let selected = tasks.filter { selection.contains($0.id) }
         let topLevel = selected.filter { !$0.isSubtask }
         let reopens = selected.count == 1 && selected[0].isDone
@@ -698,7 +706,9 @@ struct TaskRowContent: SwiftUI.View {
 
     var body: some SwiftUI.View {
         HStack(spacing: 10) {
-            if !task.archived, presentation == .browsing {
+            if task.occurrence != nil {
+                Image(systemName: "repeat").foregroundStyle(AccentTheme.secondaryText).accessibilityHidden(true)
+            } else if !task.archived, presentation == .browsing {
                 Button(action: toggle) {
                     Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
                         .font(.title2).frame(minWidth: 44, minHeight: density.minimumRowHeight)
@@ -713,7 +723,13 @@ struct TaskRowContent: SwiftUI.View {
             } else if task.archived {
                 Image(systemName: "checkmark.circle").accessibilityHidden(true)
             }
-            if task.archived {
+            if task.occurrence != nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    details.accessibilityElement(children: .combine).accessibilityValue(accessibleDetails)
+                    Button("Edit repeat schedule", action: open).buttonStyle(.borderless)
+                        .frame(minHeight: 44)
+                }
+            } else if task.archived {
                 details
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(actionLabel(Text(task.title)))
@@ -735,11 +751,22 @@ struct TaskRowContent: SwiftUI.View {
     private var details: some SwiftUI.View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: density.subtitleSpacing) {
+                if task.overdue {
+                    Label("Overdue", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red).mobileFont(content: true, caption: true).accessibilityHidden(true)
+                }
                 Text(task.title).mobileFont(content: true)
                     .lineLimit(density.titleLines)
                     .strikethrough(task.isDone && !task.archived)
                     .foregroundStyle(task.isDone || task.archived ? AccentTheme.secondaryText : Color.primary)
-                let parts = TaskSubtitle.parts(for: task)
+                if task.occurrence != nil {
+                    Text("Recurring preview")
+                        .mobileFont(content: true, caption: true)
+                        .foregroundStyle(AccentTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityHidden(true)
+                }
+                let parts = TaskSubtitle.parts(for: task).filter { $0.kind != .overdue && $0.kind != .occurrence }
                 if !parts.isEmpty {
                     parts.enumerated().reduce(Text("")) { result, item in
                         let color = colorful && contrast != .increased && !differentiate

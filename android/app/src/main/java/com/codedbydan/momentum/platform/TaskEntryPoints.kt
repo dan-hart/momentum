@@ -26,7 +26,7 @@ internal class TaskEntryPoints(private val context: Context, private val vm: Mom
                 }
             }
             Intent.ACTION_VIEW -> intent.data?.let { uri ->
-                if(uri.scheme !in listOf("momentum", "superproductivity")) return
+                if(uri.scheme != "momentum") return
                 if(uri.toString().length > 1_000_000) { vm.reportError(IllegalArgumentException(context.getString(R.string.capture_too_large))); return }
                 when(uri.host) {
                     "add", "create-task" -> {
@@ -61,7 +61,7 @@ internal class TaskEntryPoints(private val context: Context, private val vm: Mom
                 return
             }
             Intent.ACTION_VIEW -> intent.data?.let { uri ->
-                if(uri.scheme !in listOf("momentum", "superproductivity")) return
+                if(uri.scheme != "momentum") return
                 if(uri.toString().length > 1_000_000) { vm.reportError(IllegalArgumentException(context.getString(R.string.capture_too_large))); return }
                 if(uri.host == "add" || uri.host == "create-task") {
                     uri.getQueryParameter("title")?.let { title ->

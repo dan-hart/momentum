@@ -4,8 +4,8 @@
 //! is the contract both apps rest on: the GTK window tests and the Swift unit tests check
 //! that each toolkit renders what the engine says, and this file checks what it says.
 use crate::*;
-use sp_model::*;
-use sp_oplog::Action;
+use momentum_model::*;
+use momentum_oplog::Action;
 use std::sync::Arc;
 
 fn today_n() -> i64 {
@@ -73,6 +73,367 @@ fn kinds(l: &Listing) -> Vec<SectionKind> {
 }
 fn sidebar_has(e: &Engine, v: View) -> bool {
     e.sidebar().fixed.iter().any(|x| x.view == v)
+}
+
+#[test]
+fn upcoming_projects_daily_occurrences_without_changing_the_store() {
+    let (e, _dir) = empty();
+    let today = today_str();
+    let tomorrow = day_str(today_n() + 1);
+    let mut cfg = RepeatCfg::for_task(&Task::new("Future standup", INBOX_PROJECT_ID));
+    cfg.id = "daily-preview".into();
+    cfg.repeat_cycle = "DAILY".into();
+    cfg.start_date = Some(today.clone());
+    cfg.last_task_creation_day = Some(today);
+    e.with_store_mut(|s| {
+        s.state.task_repeat_cfg.insert("daily-preview", cfg);
+        s.save().unwrap();
+    });
+    let snapshot = || {
+        e.with_store(|s| {
+            (
+                serde_json::json!([s.state, s.pending, s.meta]),
+                ["state.json", "pending.json", "meta.json"].map(|name| std::fs::read(s.dir().join(name)).unwrap()),
+            )
+        })
+    };
+    let before = snapshot();
+    let listing = e.listing(View::Upcoming, 100);
+
+    assert!(row_ids(&listing).contains(&format!("rpt_daily-preview_{tomorrow}")));
+    assert_eq!(listing, e.listing(View::Upcoming, 100));
+    assert_eq!(
+        before,
+        snapshot(),
+        "viewing previews never persists instances or cursor advances"
+    );
+    assert!(
+        e.upcoming_task_ids(false).is_empty(),
+        "automation still queries stored tasks"
+    );
+}
+
+#[test]
+fn upcoming_preview_rows_are_explicit_date_only_and_cannot_be_mutated_as_tasks() {
+    let (e, _dir) = demo();
+    let project_id = project_id(&e, "Home");
+    let tag_id = tag_id(&e, "Morning");
+    let mut template = Task::new("Preview meaning", &project_id);
+    template.notes = Some("Preview note\nSecond line".into());
+    template.tag_ids = vec![tag_id.clone(), TODAY_TAG_ID.into()];
+    template.time_estimate = 600_000.0;
+    template.due_with_time = local_ms(&today_str(), 9, 0);
+    template.remind_at = local_ms(&today_str(), 8, 45);
+    let mut cfg = RepeatCfg::for_task(&template);
+    cfg.id = "metadata-preview".into();
+    cfg.repeat_cycle = "DAILY".into();
+    cfg.start_date = Some(today_str());
+    cfg.last_task_creation_day = Some(today_str());
+    e.with_store_mut(|s| s.state.task_repeat_cfg.insert("metadata-preview", cfg));
+    let id = format!("rpt_metadata-preview_{}", day_str(today_n() + 1));
+    let listing = e.listing(View::Upcoming, 100);
+    let row = listing
+        .sections
+        .iter()
+        .flat_map(|s| &s.rows)
+        .find_map(|r| match r {
+            Row::Task { row } if row.id == id => Some(row),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(
+        row.occurrence,
+        Some(ProjectedOccurrence {
+            task_id: id.clone(),
+            repeat_cfg_id: "metadata-preview".into(),
+            day: day_str(today_n() + 1),
+        })
+    );
+    assert!(!row.archived && !row.is_done && !row.overdue && !row.is_subtask);
+    assert_eq!(row.project.as_ref().unwrap().id, project_id);
+    assert_eq!(row.repeat, Some(RepeatDescription::Daily));
+    assert_eq!(row.estimate_ms, 600_000.0);
+    assert_eq!(row.notes_preview.as_deref(), Some("Preview note"));
+    assert_eq!(row.tags.iter().map(|t| &t.id).collect::<Vec<_>>(), [&tag_id]);
+    assert!(row.time.is_none() && row.reminder.is_none() && row.day.is_none());
+    assert!(row.parent_id.is_none() && row.sub_task_ids.is_empty());
+    let before = e.with_store(|s| serde_json::json!([s.state, s.pending, s.meta]));
+    assert!(e.task_row(id.clone()).is_none());
+    assert!(e.task_detail(id.clone()).is_none());
+    assert!(e.task_menu(id.clone()).is_none());
+    assert!(e.repeat_draft(id.clone()).is_none());
+    assert!(!e.toggle_done(id.clone()).changed);
+    assert!(!e.move_to_day(vec![id.clone()], today_str()).changed);
+    assert!(
+        !e.reorder(id.clone(), id_of(&e, "Write release notes for 0.1"), View::Today)
+            .changed
+    );
+    assert!(!e.delete_task(id).changed);
+    assert_eq!(
+        before,
+        e.with_store(|s| serde_json::json!([s.state, s.pending, s.meta]))
+    );
+}
+
+#[test]
+fn upcoming_preview_horizons_and_sort_preserve_day_sections_and_stored_order() {
+    let (e, _dir) = empty();
+    let mut cfg = RepeatCfg::for_task(&Task::new("Alpha preview", INBOX_PROJECT_ID));
+    cfg.id = "horizon-preview".into();
+    cfg.repeat_cycle = "DAILY".into();
+    cfg.start_date = Some(today_str());
+    cfg.last_task_creation_day = Some(today_str());
+    e.with_store_mut(|s| s.state.task_repeat_cfg.insert("horizon-preview", cfg));
+    let stored = add_count_task(&e, "Zulu stored", Some(day_str(today_n() + 1)), None, false, None);
+    let state = e.with_store(|s| serde_json::json!([s.state, s.pending, s.meta]));
+    for horizon in [7, 30] {
+        e.set_preferences(Preferences {
+            upcoming_days: horizon,
+            sort: SortKey::Title,
+            group_by: GroupBy::Project,
+            ..Default::default()
+        });
+        let listing = e.listing(View::Upcoming, 100);
+        assert_eq!(listing.sections.len(), horizon as usize);
+        assert_eq!(listing.sections[0].count, 2);
+        assert_eq!(listing.sections.last().unwrap().count, 1);
+        assert!(listing
+            .sections
+            .iter()
+            .all(|s| s.group.is_none() && matches!(s.kind, SectionKind::Day { .. })));
+        assert_eq!(row_ids(&listing)[1], stored);
+        assert_eq!(
+            row_ids(&listing).last().unwrap(),
+            &format!("rpt_horizon-preview_{}", day_str(today_n() + i64::from(horizon)))
+        );
+        e.set_preferences(Preferences {
+            upcoming_days: horizon,
+            sort: SortKey::Title,
+            direction: SortDirection::Descending,
+            ..Default::default()
+        });
+        assert_eq!(row_ids(&e.listing(View::Upcoming, 100))[0], stored);
+        assert_eq!(state, e.with_store(|s| serde_json::json!([s.state, s.pending, s.meta])));
+    }
+    e.set_preferences(Preferences {
+        upcoming_days: 0,
+        ..Default::default()
+    });
+    assert!(e.listing(View::Upcoming, 100).sections.is_empty());
+}
+
+#[test]
+fn upcoming_extreme_preference_returns_a_bounded_snapshot_without_mutation() {
+    let (e, _dir) = empty();
+    let mut cfg = RepeatCfg::for_task(&Task::new("Bounded preview", INBOX_PROJECT_ID));
+    cfg.id = "bounded-preview".into();
+    cfg.repeat_cycle = "DAILY".into();
+    cfg.start_date = Some(today_str());
+    cfg.last_task_creation_day = Some(today_str());
+    e.with_store_mut(|s| s.state.task_repeat_cfg.insert("bounded-preview", cfg));
+    let inside = add_count_task(&e, "Day 30", Some(day_str(today_n() + 30)), None, false, None);
+    let outside = add_count_task(&e, "Day 31", Some(day_str(today_n() + 31)), None, false, None);
+    let snapshot = || {
+        e.with_store(|s| {
+            (
+                serde_json::json!([s.state, s.pending, s.meta]),
+                ["state.json", "pending.json", "meta.json"].map(|name| std::fs::read(s.dir().join(name)).unwrap()),
+            )
+        })
+    };
+    let before = snapshot();
+    for days in [u32::MAX, 31] {
+        e.set_preferences(Preferences {
+            upcoming_days: days,
+            ..Default::default()
+        });
+        let worker = e.clone();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || sender.send(worker.listing(View::Upcoming, 100)).unwrap());
+        let listing = receiver
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .expect("a huge preference must return within the bounded projection workload");
+        assert_eq!(listing.sections.len(), 30);
+        let ids = row_ids(&listing);
+        assert!(ids.contains(&inside));
+        assert!(
+            !ids.contains(&outside),
+            "stored task filtering uses the same capped horizon"
+        );
+        assert_eq!(
+            e.upcoming_task_ids(false),
+            [inside.clone()],
+            "automation uses the same capped horizon"
+        );
+        assert_eq!(before, snapshot());
+    }
+}
+
+#[test]
+fn overdue_rows_use_effective_local_day_for_open_tasks_including_subtasks() {
+    let (e, _dir) = empty();
+    let today = today_str();
+    let yesterday = day_str(today_n() - 1);
+    let tomorrow = day_str(today_n() + 1);
+    let parent = add_count_task(&e, "Parent", Some(today.clone()), None, false, None);
+    let cases = [
+        ("Past day", Some(yesterday.clone()), None, false, None, true),
+        (
+            "Timed past wins",
+            Some(tomorrow),
+            local_ms(&yesterday, 23, 59),
+            false,
+            None,
+            true,
+        ),
+        (
+            "Timed today wins",
+            Some(yesterday.clone()),
+            local_ms(&today, 0, 0),
+            false,
+            None,
+            false,
+        ),
+        ("Done", Some(yesterday.clone()), None, true, None, false),
+        ("Undated", None, None, false, None, false),
+        ("Child", Some(yesterday), None, false, Some(parent), true),
+    ];
+    for (title, day, time, done, parent, expected) in cases {
+        let id = add_count_task(&e, title, day, time, done, parent);
+        let row = e.task_row(id).unwrap();
+        assert_eq!(row.overdue, expected, "{title}");
+        assert!(row.occurrence.is_none(), "stored tasks are never previews");
+    }
+}
+
+#[test]
+fn archived_rows_never_have_a_live_overdue_warning() {
+    let (e, _dir) = empty();
+    let task = Task {
+        due_day: Some(day_str(today_n() - 1)),
+        ..Task::new("Archived unfinished payload", INBOX_PROJECT_ID)
+    };
+    // Archive membership alone makes the row read-only, even for legacy payloads
+    // that did not record completion consistently.
+    let row = e.with_store(|s| crate::listing::task_row(s, &View::Archive, &task, true));
+    assert!(row.archived);
+    assert!(!row.overdue);
+}
+
+#[test]
+fn overdue_row_rule_recomputes_after_local_calendar_day_rollover() {
+    for time in [None, local_ms("2026-12-31", 23, 59)] {
+        let mut task = Task {
+            due_day: Some("2026-12-31".into()),
+            due_with_time: time,
+            ..Task::new("New year boundary", INBOX_PROJECT_ID)
+        };
+        assert!(!crate::listing::row_is_overdue(&task, false, "2026-12-31"));
+        assert!(crate::listing::row_is_overdue(&task, false, "2027-01-01"));
+        assert!(!crate::listing::row_is_overdue(&task, true, "2027-01-01"));
+        task.is_done = true;
+        assert!(!crate::listing::row_is_overdue(&task, false, "2027-01-01"));
+    }
+}
+
+#[test]
+fn preview_repeat_schedule_can_be_edited_without_materializing_a_task() {
+    let (e, _dir) = empty();
+    let mut cfg = RepeatCfg::for_task(&Task::new("Only a schedule", INBOX_PROJECT_ID));
+    cfg.id = "preview-edit".into();
+    cfg.repeat_cycle = "DAILY".into();
+    cfg.last_task_creation_day = Some(today_str());
+    e.with_store_mut(|s| s.state.task_repeat_cfg.insert("preview-edit", cfg));
+    let before = e.with_store(|s| s.state.task.ids.clone());
+    let mut draft = e
+        .repeat_config_draft("preview-edit".into())
+        .expect("a schedule needs no stored task");
+    assert!(draft.existing);
+    draft.every = 2;
+    draft.paused = true;
+    assert!(e.save_repeat_config("preview-edit".into(), draft.clone()).changed);
+    assert_eq!(e.repeat_config_draft("preview-edit".into()), Some(draft));
+    assert!(
+        e.listing(View::Upcoming, 100).sections.is_empty(),
+        "a paused schedule has no previews"
+    );
+    assert_eq!(before, e.with_store(|s| s.state.task.ids.clone()));
+    assert!(e.stop_repeat_config("preview-edit".into()).changed);
+    assert!(e.repeat_config_draft("preview-edit".into()).is_none());
+}
+
+#[test]
+fn preview_repeat_editor_rejects_empty_weekdays_or_a_removed_schedule() {
+    let (e, _dir) = empty();
+    let mut cfg = RepeatCfg::for_task(&Task::new("Schedule", INBOX_PROJECT_ID));
+    cfg.id = "preview-validation".into();
+    e.with_store_mut(|s| s.state.task_repeat_cfg.insert("preview-validation", cfg));
+    let mut draft = e.repeat_config_draft("preview-validation".into()).unwrap();
+    draft.weekdays = vec![false; 7];
+    let pending = e.pending_count();
+    let invalid = e.save_repeat_config("preview-validation".into(), draft.clone());
+    assert!(!invalid.changed);
+    assert_eq!(invalid.message, Some(Message::PickAWeekday));
+    assert_eq!(e.pending_count(), pending);
+    draft.weekdays[1] = true;
+    assert!(!e.save_repeat_config("removed".into(), draft).changed);
+    assert!(!e.stop_repeat_config("removed".into()).changed);
+    assert_eq!(e.pending_count(), pending);
+}
+
+#[test]
+fn preview_repeat_editor_clears_start_date_durably_without_changing_tasks_or_cursor() {
+    let (e, _dir) = empty();
+    let id = add_count_task(&e, "Stored instance", Some(today_str()), None, false, None);
+    let mut cfg = RepeatCfg::for_task(&task(&e, &id));
+    cfg.id = "clear-start-preview".into();
+    let cursor = cfg.last_task_creation_day.clone();
+    e.with_store_mut(|s| {
+        s.state.task_repeat_cfg.insert("clear-start-preview", cfg);
+        s.save().unwrap();
+    });
+    let tasks = e.with_store(|s| serde_json::to_value(&s.state.task).unwrap());
+    let mut draft = e.repeat_config_draft("clear-start-preview".into()).unwrap();
+    assert!(draft.start_date.is_some());
+    draft.start_date = None;
+    assert!(e.save_repeat_config("clear-start-preview".into(), draft).changed);
+    assert_eq!(
+        e.repeat_config_draft("clear-start-preview".into()).unwrap().start_date,
+        None
+    );
+    e.with_store(|s| {
+        assert_eq!(serde_json::to_value(&s.state.task).unwrap(), tasks);
+        assert_eq!(
+            s.state.task_repeat_cfg.entities["clear-start-preview"].last_task_creation_day,
+            cursor
+        );
+        match &s.pending.last().unwrap().action {
+            Action::UpdateRepeatCfg { id, changes } => {
+                assert_eq!(id, "clear-start-preview");
+                assert!(
+                    changes.contains_key("startDate"),
+                    "the pending edit explicitly clears the field"
+                );
+                assert!(changes["startDate"].is_null());
+            }
+            action => panic!("expected a repeat config update, got {action:?}"),
+        }
+    });
+    let reopened = Engine::open(e.data_dir());
+    assert_eq!(
+        reopened
+            .repeat_config_draft("clear-start-preview".into())
+            .unwrap()
+            .start_date,
+        None
+    );
+    reopened.with_store(|s| {
+        assert_eq!(serde_json::to_value(&s.state.task).unwrap(), tasks);
+        assert_eq!(
+            s.state.task_repeat_cfg.entities["clear-start-preview"].last_task_creation_day,
+            cursor
+        );
+    });
 }
 
 fn add_count_task(
@@ -429,7 +790,7 @@ fn archive_view_pages_in_batches() {
     for i in 0..230 {
         let mut t = Task::new(&format!("old {i}"), INBOX_PROJECT_ID);
         t.is_done = true;
-        t.done_on = Some(sp_model::now_ms() - i);
+        t.done_on = Some(momentum_model::now_ms() - i);
         tasks.push(t);
     }
     e.dispatch(Action::MoveToArchive {
@@ -1454,7 +1815,7 @@ fn paste_and_drop_text_become_tasks() {
 fn reminders_fire_once_for_due_tasks() {
     let (e, _d) = empty();
     let mut t = Task::new("Ping", INBOX_PROJECT_ID);
-    t.remind_at = Some(sp_model::now_ms() - 1000);
+    t.remind_at = Some(momentum_model::now_ms() - 1000);
     t.due_with_time = local_ms(&today_str(), 9, 0);
     let id = t.id.clone();
     e.dispatch(Action::AddTask { task: t, bottom: true });
@@ -1465,7 +1826,7 @@ fn reminders_fire_once_for_due_tasks() {
     assert!(e.due_reminders().is_empty(), "fires once");
     assert_eq!(e.snooze(id.clone(), 60).message, Some(Message::Snoozed { minutes: 60 }));
     let at = task(&e, &id).remind_at.unwrap();
-    assert!(at > sp_model::now_ms() + 59 * 60_000);
+    assert!(at > momentum_model::now_ms() + 59 * 60_000);
     assert!(!e.notified_contains(&id), "a snooze re-arms the reminder");
     assert!(e.due_reminders().is_empty(), "and it does not fire before its time");
     // The notification's Done button and complete-task URL.
@@ -1575,7 +1936,7 @@ fn morning_summary_disabling_preserves_time_and_does_not_affect_reminders() {
     let id = id_of(&e, "Write release notes for 0.1");
     e.with_store_mut(|s| {
         let t = s.state.task.entities.get_mut(&id).unwrap();
-        t.remind_at = Some(sp_model::now_ms() - 1);
+        t.remind_at = Some(momentum_model::now_ms() - 1);
     });
     assert!(e.due_reminders().iter().any(|r| r.task_id == id));
     prefs.morning_summary_enabled = true;
@@ -1760,7 +2121,7 @@ fn external_writes_are_picked_up_and_cli_actions_dispatched() {
     e.add_task("mine".into(), View::Today);
     assert!(!e.reload_from_disk(), "nothing changed on disk");
     // Another process writes the same store.
-    let mut other = sp_store::Store::load(std::path::PathBuf::from(e.data_dir()));
+    let mut other = momentum_store::Store::load(std::path::PathBuf::from(e.data_dir()));
     other.dispatch(Action::AddTask {
         task: Task::new("theirs", INBOX_PROJECT_ID),
         bottom: true,
@@ -2657,7 +3018,7 @@ fn reminder_reconciliation_updates_archives_but_never_resurrects_deleted_tasks()
         .is_none());
     let pending = e.with_store(|s| s.pending.last().unwrap().clone());
     let receiver_dir = tempfile::tempdir().unwrap();
-    let mut receiver = sp_store::Store::load(receiver_dir.path().to_owned());
+    let mut receiver = momentum_store::Store::load(receiver_dir.path().to_owned());
     receiver.state = archived_snapshot;
     assert!(receiver.apply_remote(pending.op, pending.action));
     receiver.save().unwrap();
@@ -2719,7 +3080,7 @@ fn reminder_reconciliation_rolls_back_failed_save_and_replays_on_another_device(
     );
     let pending = e.with_store(|s| s.pending.last().unwrap().clone());
     let receiver_dir = tempfile::tempdir().unwrap();
-    let mut receiver = sp_store::Store::load(receiver_dir.path().to_owned());
+    let mut receiver = momentum_store::Store::load(receiver_dir.path().to_owned());
     receiver.state = snapshot;
     assert!(receiver.apply_remote(pending.op, pending.action));
     receiver.save().unwrap();

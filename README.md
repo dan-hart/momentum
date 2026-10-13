@@ -129,8 +129,8 @@ The [changelog](CHANGELOG.md) has every release. Since 0.4.0:
   tasks stay separate. See [Grouping](docs/GROUPING.md).
 - **Optional sync, one provider at a time.** Off, Nextcloud or LibreSync. Only the
   selected provider runs; switching preserves tasks and saved connections. Secrets live
-  in the platform credential store, including Android Keystore. Sync compatibility with Super Productivity's file format
-  and encryption is preserved while a future independent format stays undecided.
+  in the platform credential store, including Android Keystore. Existing task, backup
+  and sync formats and encryption are preserved.
 - **Privacy by construction.** No ads, tracking or analytics. Preview mode uses sample
   data in a temporary directory and never starts a transport.
 - **Accessibility is required and still being verified.** The
@@ -154,10 +154,10 @@ equivalents. The [feature ledger](docs/FEATURES.md) gives exact per-platform sco
 - **Guided task creation.** Title, project, due day with a calendar, estimate, tag chips
   and notes in one dialog. Or type `Fix the bug #work 1h 30m` into the quick-add box, with
   `#` autocomplete for your tags.
-- **Repeating tasks.** Create and edit daily, weekly, monthly and yearly schedules, and the
-  ones from Super Productivity spawn their instances here too, badged with a plain-language
-  "Repeats every Monday".
-- **Sync you can trust.** Compatible with Super Productivity's `sync-data.json`, including
+- **Repeating tasks.** Create and edit daily, weekly, monthly and yearly schedules.
+  Imported schedules keep their rules and produce instances with a plain-language
+  "Repeats every Monday" badge.
+- **Sync you can trust.** Uses the established `sync-data.json` format, including
   end-to-end encrypted files. Conflicts are resolved by rebasing your changes, never by
   overwriting. Secrets live in the system keyring.
 - **Or no server at all.** Link two devices once with a six-digit code and they sync
@@ -260,11 +260,13 @@ attaches `mo-vX.Y.Z-{macos-universal,linux-x86_64,linux-aarch64}.tar.gz`.
 
 ### Set up sync
 
-1. In Super Productivity, note the Nextcloud folder and encryption password you use.
+1. Choose a Nextcloud server and create an app password. If you already sync tasks,
+   keep using their saved folder and encryption password. New connections use `momentum`.
 2. In Momentum, press <kbd>Ctrl</kbd>+<kbd>,</kbd>, choose **Sync → Nextcloud**, and
    enter the server URL, username, an app password (Nextcloud → Settings → Security), the
    folder, and the encryption password.
-3. Press <kbd>Ctrl</kbd>+<kbd>R</kbd>. The first sync only downloads, so it is safe to try.
+3. Press <kbd>Ctrl</kbd>+<kbd>R</kbd>. An existing remote copy is merged with local
+   tasks; an empty folder receives the initial task snapshot.
 
 The last sync time shows under the task list. Automatic sync uploads edits ten seconds
 after they settle, polls every two and a half minutes while the switch is on, and
@@ -316,8 +318,7 @@ changes and saved connections. Details in
 - **Drop and paste.** Drag a link or some text from another app onto the list to make a task;
   paste several lines into the add box to create several tasks.
 - **Links and scripts.** `momentum --add "Call the bank"` from a script, or open
-  `momentum://add?title=Call%20the%20bank` and Super Productivity's
-  `superproductivity://create-task` links.
+  `momentum://add?title=Call%20the%20bank` or `momentum://create-task` links.
 - **Global undo.** Ctrl+Z reverses the last change, even after its toast is gone.
 
 ## The `mo` command line
@@ -336,7 +337,7 @@ mo list Work        mo list "#admin"       mo search bank
 mo done bank        mo plan slides         mo rm 01a0835a
 mo open bank
 mo projects         mo tags               mo sync
-mo config --server https://cloud.example.com --user dan --folder super-productivity --password
+mo config --server https://cloud.example.com --user dan --folder momentum --password
 ```
 
 Add `--json` for machine-readable output. Set `MO_DATA_DIR` to point at another store.
@@ -424,11 +425,11 @@ is in [docs/TESTING.md](docs/TESTING.md#running-the-linux-app-natively-on-macos)
 | `macos/Packages/MomentumKit` | Reusable Apple wording/preferences and platform-specific adapters |
 | `ios/Momentum` | Native SwiftUI iOS/iPadOS app |
 | `ios/Packages/MomentumMobile` | Mobile engine coordination, lifecycle and notification support |
-| `crates/sp-model` | Super Productivity data model, schema v4 |
-| `crates/sp-oplog` | Operation log: envelope, vector clocks, action codes, `apply()` |
-| `crates/sp-store` | Local persistence (JSON snapshot, pending ops, sync metadata) |
-| `crates/sp-sync` | Nextcloud WebDAV sync, gzip, Argon2id + AES-GCM encryption |
-| `crates/sp-p2p` | Sync with nearby devices over LibreSync (ops as records, bootstrap snapshot) |
+| `crates/momentum-model` | Task data model, schema v4 |
+| `crates/momentum-oplog` | Operation log: envelope, vector clocks, action codes, `apply()` |
+| `crates/momentum-store` | Local persistence (JSON snapshot, pending ops, sync metadata) |
+| `crates/momentum-sync` | Nextcloud WebDAV sync, gzip, Argon2id + AES-GCM encryption |
+| `crates/momentum-p2p` | Sync with nearby devices over LibreSync (ops as records, bootstrap snapshot) |
 | `data/` | Desktop file, metainfo, GSettings schema, icons, Blueprint UI |
 | `build-aux/` | Flatpak manifests, Flathub files, Homebrew templates, `release.py` (one version everywhere) |
 | `docs/PLAN.md` | Architecture and roadmap |
@@ -450,8 +451,8 @@ tests run on a Broadway display so they work in CI. See [docs/TESTING.md](docs/T
 
 ### Test sync without a server
 
-The sync tests start an in-process WebDAV stand-in (`crates/sp-sync/src/mock_dav.rs`),
-so `cargo test -p sp-sync` covers first upload, convergence of two clients, conflict
+The sync tests start an in-process WebDAV stand-in (`crates/momentum-sync/src/mock_dav.rs`),
+so `cargo test -p momentum-sync` covers first upload, convergence of two clients, conflict
 retry and encryption with nothing else running.
 
 ### Reproducible screenshots
@@ -470,10 +471,10 @@ Add `MOMENTUM_SCREENSHOT_DIALOG=1`, `MOMENTUM_SCREENSHOT_UPCOMING=1` or
 `MOMENTUM_SCREENSHOT_SEARCH=query` for the other views. The capture renders as the
 active window even when launched from a terminal. Demo mode never syncs.
 
-## How it works with Super Productivity
+## How synchronization works
 
-Super Productivity keeps an operation log: every change is an op with a vector clock, and
-all clients converge by applying each other's ops. Momentum speaks that format. Locally it
+Every change is an operation with a vector clock, and devices converge by applying
+each other's operations. Momentum preserves the established format. Locally it
 keeps a snapshot plus its own pending ops; on sync it downloads the remote file, rebases
 its pending ops onto the remote snapshot, and uploads with an ETag compare-and-swap. Other
 clients then apply Momentum's ops through their normal reducers.
@@ -499,10 +500,8 @@ remaining gaps; a successful build or automated traversal is not full acceptance
 ## License
 
 Momentum is free software under the
-[GNU General Public License v3.0 or later](LICENSE). It implements the data model and sync
-protocol of Super Productivity, Copyright (c) 2018 Johannes Millan, MIT License; see
-[NOTICE.md](NOTICE.md). Momentum is an independent project, not affiliated with Super
-Productivity.
+[GNU General Public License v3.0 or later](LICENSE). Required upstream copyright,
+license and source attribution are preserved in [NOTICE.md](NOTICE.md).
 
 ## Support
 

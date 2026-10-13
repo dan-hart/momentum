@@ -14,8 +14,8 @@ use momentum_core::{
     Preferences, RepeatDescription, Row, SectionKind, SectionNote, Slot, SortDirection, SortKey, TaskGroup, TaskRow,
     ViewTitle,
 };
-use sp_model::{day_number, day_str, now_ms, today_str, INBOX_PROJECT_ID};
-use sp_oplog::Action;
+use momentum_model::{day_number, day_str, now_ms, today_str, INBOX_PROJECT_ID};
+use momentum_oplog::Action;
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -113,6 +113,10 @@ mod imp {
         pub store_monitor: RefCell<Option<gio::FileMonitor>>,
         pub background_status: Rc<RefCell<crate::background_status::BackgroundStatusController>>,
         pub p2p_dialog: RefCell<Option<Rc<dyn Fn()>>>,
+        pub portable_revision: Cell<Option<u64>>,
+        pub portable_stage_error: RefCell<Option<String>>,
+        pub portable_pending_intent: RefCell<Option<String>>,
+        pub applying_portable_settings: Cell<bool>,
     }
 
     impl Default for MomentumWindow {
@@ -177,6 +181,10 @@ mod imp {
                 store_monitor: Default::default(),
                 background_status: Default::default(),
                 p2p_dialog: Default::default(),
+                portable_revision: Default::default(),
+                portable_stage_error: Default::default(),
+                portable_pending_intent: Default::default(),
+                applying_portable_settings: Default::default(),
             }
         }
     }
@@ -482,6 +490,49 @@ impl MomentumWindow {
         crate::typography::register_content_root(&*imp.add_entry);
         self.apply_preferences();
         self.import_cli_config();
+        if let Err(error) = crate::prefs::pin_existing_nextcloud_folder(&imp.settings) {
+            self.toast(&format!("{}: {error}", gettext("Could not save app settings")));
+        }
+        imp.applying_portable_settings.set(true);
+        let initialized = self
+            .engine()
+            .portable_settings_json()
+            .map_err(|error| error.to_string())
+            .and_then(|json| crate::portable_settings::apply(&json, &imp.settings))
+            .and_then(|_| crate::portable_settings::stage(&self.engine(), &imp.settings));
+        imp.applying_portable_settings.set(false);
+        match initialized {
+            Ok(()) => imp
+                .portable_revision
+                .set(Some(self.engine().settings_sync_status().revision)),
+            Err(error) => {
+                *imp.portable_pending_intent.borrow_mut() = Some(crate::portable_settings::encode(&imp.settings));
+                *imp.portable_stage_error.borrow_mut() = Some(error.clone());
+                self.toast(&format!("{}: {error}", gettext("Could not save app settings")));
+            }
+        }
+        self.apply_preferences();
+        imp.settings.connect_changed(
+            None,
+            glib::clone!(
+                #[weak(rename_to = win)]
+                self,
+                move |_, key| {
+                    if win.imp().applying_portable_settings.get()
+                        || !crate::portable_settings::KEYS.iter().any(|(_, native)| *native == key)
+                    {
+                        return;
+                    }
+                    let result = win.stage_app_settings(Some(key));
+                    win.refresh_app_settings();
+                    win.apply_preferences();
+                    win.refresh_tasks();
+                    if let Err(error) = result {
+                        win.toast(&format!("{}: {error}", gettext("Could not save app settings")));
+                    }
+                }
+            ),
+        );
         self.export_cli_config();
         imp.settings.connect_changed(
             Some("sync-method"),
@@ -1070,39 +1121,19 @@ impl MomentumWindow {
         }
     }
 
-    /// The sort, direction, Coming Up range and auto-archive preferences, as the core needs them.
+    /// Device-local notification choices. Portable task rules are already owned
+    /// by the core and must not be replaced from a native snapshot.
     fn apply_preferences(&self) {
         let s = &self.imp().settings;
-        let sort = match s.string("task-sort").as_str() {
-            "title" => SortKey::Title,
-            "due" => SortKey::Due,
-            "estimate" => SortKey::Estimate,
-            "created" => SortKey::Created,
-            _ => SortKey::Manual,
-        };
-        let direction = if s.string("sort-direction") == "descending" {
-            SortDirection::Descending
-        } else {
-            SortDirection::Ascending
-        };
-        self.engine().set_preferences(Preferences {
-            group_by: match s.string("group-by").as_str() {
-                "none" => GroupBy::None,
-                "project" => GroupBy::Project,
-                "tag" => GroupBy::Tag,
-                "estimate" => GroupBy::Estimate,
-                _ => GroupBy::MorningNight,
-            },
-            sort,
-            direction,
-            upcoming_days: s.string("upcoming-range").parse().unwrap_or(7),
-            auto_archive: s.boolean("auto-archive"),
-            morning_summary_enabled: s.boolean("morning-summary-enabled"),
-            morning_summary_time: ClockTime {
+        if let Err(error) = self.engine().set_device_summary_preferences(
+            s.boolean("morning-summary-enabled"),
+            ClockTime {
                 hour: s.int("morning-summary-hour") as u32,
                 minute: s.int("morning-summary-minute") as u32,
             },
-        });
+        ) {
+            self.toast(&error.to_string());
+        }
     }
 
     /// What a change did: rebuild the views, say so in a toast (with Undo when the change
@@ -1379,7 +1410,7 @@ impl MomentumWindow {
             "method": if std::env::var_os("MOMENTUM_DEMO").is_some() { "off".into() } else { crate::prefs::sync_method(settings) },
             "server": settings.string("nextcloud-server").as_str(),
             "user": settings.string("nextcloud-user").as_str(),
-            "folder": settings.string("nextcloud-folder").as_str(),
+            "folder": crate::prefs::effective_nextcloud_folder(settings),
             "compress": settings.boolean("compress"),
         });
         let path = PathBuf::from(self.engine().data_dir()).join("cli-config.json");
@@ -1492,11 +1523,13 @@ impl MomentumWindow {
 
     fn select_all(&self) {
         let imp = self.imp();
+        let engine = self.engine();
         let ids: Vec<String> = imp
             .rows
             .borrow()
             .iter()
             .filter(|r| !r.is_empty() && !r.contains(':'))
+            .filter(|r| engine.task_row((*r).clone()).is_some())
             .cloned()
             .collect();
         let all = ids.iter().all(|id| imp.selected.borrow().contains(id));
@@ -2245,7 +2278,159 @@ impl MomentumWindow {
         *imp.sync_debounce.borrow_mut() = Some(id);
     }
 
+    pub fn app_settings_error(&self) -> Option<String> {
+        self.imp().portable_stage_error.borrow().clone()
+    }
+
+    pub fn can_retry_app_settings(&self) -> bool {
+        self.imp().portable_pending_intent.borrow().is_some()
+    }
+
+    /// Initial failure keeps the full native snapshot pending. Later retries
+    /// carry only rejected keys, preserving unseen changes to other core values.
+    pub fn stage_app_settings(&self, key: Option<&str>) -> Result<(), String> {
+        let imp = self.imp();
+        let fresh = if imp.portable_revision.get().is_none() {
+            Some(crate::portable_settings::encode(&imp.settings))
+        } else if let Some(key) = key {
+            Some(crate::portable_settings::changed_document(&imp.settings, key)?)
+        } else {
+            None
+        };
+        let pending = imp.portable_pending_intent.borrow().clone();
+        let document = match (pending, fresh) {
+            (Some(pending), Some(fresh)) => {
+                let mut pending: serde_json::Value =
+                    serde_json::from_str(&pending).map_err(|error| error.to_string())?;
+                let fresh: serde_json::Value = serde_json::from_str(&fresh).map_err(|error| error.to_string())?;
+                let values = pending["values"].as_object_mut().ok_or("Invalid app settings intent")?;
+                values.extend(
+                    fresh["values"]
+                        .as_object()
+                        .ok_or("Invalid app settings intent")?
+                        .clone(),
+                );
+                pending.to_string()
+            }
+            (Some(document), None) | (None, Some(document)) => document,
+            (None, None) => return Ok(()),
+        };
+        imp.applying_portable_settings.set(true);
+        let result = crate::portable_settings::stage_document(&self.engine(), &imp.settings, document.clone());
+        imp.applying_portable_settings.set(false);
+        match result {
+            Ok(()) => {
+                imp.portable_pending_intent.borrow_mut().take();
+                imp.portable_stage_error.borrow_mut().take();
+                self.apply_app_settings(self.engine().settings_sync_status().revision)
+            }
+            Err(error) => {
+                *imp.portable_pending_intent.borrow_mut() = Some(document);
+                *imp.portable_stage_error.borrow_mut() = Some(error.clone());
+                Err(error)
+            }
+        }
+    }
+
+    pub fn retry_app_settings(&self) -> Result<(), String> {
+        self.stage_app_settings(None)?;
+        self.refresh_tasks();
+        if self.engine().settings_sync_status().enabled && crate::prefs::sync_method(&self.imp().settings) != "off" {
+            self.sync();
+        }
+        Ok(())
+    }
+
+    pub fn export_app_settings_to(&self, path: String) -> Result<Outcome, String> {
+        self.stage_app_settings(None)?;
+        self.refresh_app_settings();
+        self.engine().export_settings(path).map_err(|error| error.to_string())
+    }
+
+    fn adopt_imported_app_settings(&self) -> Result<(), String> {
+        let imp = self.imp();
+        // Import validation and its atomic commit have succeeded. An old rejected
+        // seed or delta must never replay over the imported values.
+        imp.portable_pending_intent.borrow_mut().take();
+        imp.portable_stage_error.borrow_mut().take();
+        // Native changed callbacks may commit newer core values while this
+        // readback is applied. Keep that later revision observable to refresh.
+        let revision = self.engine().settings_sync_status().revision;
+        let committed = self
+            .engine()
+            .portable_settings_json()
+            .map_err(|error| error.to_string())?;
+        imp.applying_portable_settings.set(true);
+        let applied = crate::portable_settings::apply(&committed, &imp.settings);
+        imp.applying_portable_settings.set(false);
+        applied?;
+        imp.portable_revision.set(Some(revision));
+        let committed: serde_json::Value = serde_json::from_str(&committed).map_err(|error| error.to_string())?;
+        let committed_values = committed["values"].as_object().ok_or("Invalid app settings document")?;
+        let mut missing: serde_json::Value = serde_json::from_str(&crate::portable_settings::encode(&imp.settings))
+            .map_err(|error| error.to_string())?;
+        let values = missing["values"]
+            .as_object_mut()
+            .ok_or("Invalid app settings document")?;
+        values.retain(|key, _| !committed_values.contains_key(key));
+        if !values.is_empty() {
+            *imp.portable_pending_intent.borrow_mut() = Some(missing.to_string());
+            self.stage_app_settings(None)?;
+        }
+        self.apply_preferences();
+        self.refresh_tasks();
+        Ok(())
+    }
+
+    pub fn import_app_settings_from(&self, path: String) -> Result<Outcome, String> {
+        let outcome = self.engine().import_settings(path).map_err(|error| error.to_string())?;
+        self.adopt_imported_app_settings()?;
+        Ok(outcome)
+    }
+
+    pub fn restore_backup_from(&self, path: String, restore_settings: bool) -> Result<Outcome, String> {
+        let outcome = self
+            .engine()
+            .import_backup_with_settings(path, restore_settings)
+            .map_err(|error| error.to_string())?;
+        if restore_settings {
+            self.adopt_imported_app_settings()?;
+        } else {
+            self.refresh_app_settings();
+        }
+        Ok(outcome)
+    }
+
+    pub fn refresh_app_settings(&self) {
+        let revision = self.engine().settings_sync_status().revision;
+        let Some(applied) = self.imp().portable_revision.get() else {
+            return;
+        };
+        if revision == applied {
+            return;
+        }
+        if let Err(error) = self.apply_app_settings(revision) {
+            self.toast(&format!("{}: {error}", gettext("Could not apply app settings")));
+        }
+    }
+
+    fn apply_app_settings(&self, revision: u64) -> Result<(), String> {
+        self.imp().applying_portable_settings.set(true);
+        let result = self
+            .engine()
+            .portable_settings_json()
+            .map_err(|error| error.to_string())
+            .and_then(|json| crate::portable_settings::apply(&json, &self.imp().settings));
+        self.imp().applying_portable_settings.set(false);
+        if result.is_ok() {
+            self.imp().portable_revision.set(Some(revision));
+            self.apply_preferences();
+        }
+        result
+    }
+
     pub fn refresh(&self) {
+        self.refresh_app_settings();
         self.update_background_status();
         if self.engine().pending_count() > 0 {
             self.schedule_sync();
@@ -2686,6 +2871,12 @@ impl MomentumWindow {
         if !when.is_empty() {
             sub.push(glib::markup_escape_text(&when).to_string());
         }
+        if t.overdue {
+            sub.push(glib::markup_escape_text(&gettext("Overdue")).to_string());
+        }
+        if t.occurrence.is_some() {
+            sub.push(glib::markup_escape_text(&gettext("Recurring preview")).to_string());
+        }
         for g in &t.tags {
             let name = glib::markup_escape_text(&g.title);
             sub.push(match g.color.as_deref().filter(|_| colorful).and_then(hex_color) {
@@ -2696,7 +2887,7 @@ impl MomentumWindow {
         let row = adw::ActionRow::builder()
             .title(glib::markup_escape_text(&t.title))
             .subtitle(sub.join("  ·  "))
-            .activatable(!t.archived)
+            .activatable(!t.archived && t.occurrence.is_none())
             .build();
         crate::typography::register_content_root(&row);
         if self.compact_rows() {
@@ -2707,6 +2898,34 @@ impl MomentumWindow {
         }
         if t.is_done {
             row.add_css_class("dim-label");
+        }
+        if t.overdue {
+            let warning = gtk::Image::builder()
+                .icon_name("dialog-warning-symbolic")
+                .tooltip_text(gettext("Overdue"))
+                .css_classes(["warning"])
+                .build();
+            warning.update_property(&[gtk::accessible::Property::Label(&gettext("Overdue"))]);
+            row.add_prefix(&warning);
+        }
+        if let Some(occurrence) = &t.occurrence {
+            row.add_prefix(&gtk::Image::from_icon_name("media-playlist-repeat-symbolic"));
+            let edit = gtk::Button::builder()
+                .label(gettext("Edit repeat schedule"))
+                .valign(gtk::Align::Center)
+                .css_classes(["flat"])
+                .build();
+            let configuration = occurrence.repeat_cfg_id.clone();
+            edit.connect_clicked(glib::clone!(
+                #[weak(rename_to = win)]
+                self,
+                move |_| {
+                    crate::repeat_dialog::open_configuration(&win, &configuration);
+                }
+            ));
+            row.add_suffix(&edit);
+            self.append_row(&row, &t.id);
+            return;
         }
         let archived = t.archived;
         let selecting = imp.selecting.get() && !archived;
@@ -3366,11 +3585,13 @@ impl MomentumWindow {
         let tv = adw::ToolbarView::new();
         tv.add_top_bar(header);
         tv.set_content(Some(&form.page));
+        let feedback = adw::ToastOverlay::new();
+        feedback.set_child(Some(&tv));
         let dialog = adw::Dialog::builder()
             .title(title)
             .content_width(520)
             .content_height(860)
-            .child(&tv)
+            .child(&feedback)
             .build();
         crate::typography::register_interface_root(&dialog);
         dialog
@@ -3381,7 +3602,7 @@ impl MomentumWindow {
         let imp = self.imp();
         let view = imp.view.borrow().clone();
         let project = imp.engine.project_for(&view);
-        let due = view.is_day().then(sp_model::today_str);
+        let due = view.is_day().then(momentum_model::today_str);
         let form = Rc::new(crate::task_form::TaskForm::new(self, None, &project, due));
         let header = adw::HeaderBar::builder()
             .show_start_title_buttons(false)
@@ -3584,7 +3805,7 @@ impl MomentumWindow {
         momentum_core::NextcloudSettings {
             server_url: s.string("nextcloud-server").into(),
             user_name: s.string("nextcloud-user").into(),
-            folder: s.string("nextcloud-folder").into(),
+            folder: crate::prefs::effective_nextcloud_folder(s),
             compress: s.boolean("compress"),
             password: String::new(),
             encryption_password: None,
@@ -3629,6 +3850,7 @@ impl MomentumWindow {
                 .unwrap();
                 let imp = w.imp();
                 imp.syncing.set(false);
+                w.refresh_app_settings();
                 // Apply a provider switch only after the in-flight Nextcloud cycle has ended.
                 w.p2p_apply_setting();
                 if crate::prefs::sync_method(&imp.settings) != "nextcloud" {
@@ -3671,15 +3893,28 @@ impl MomentumWindow {
             self,
             async move {
                 let Ok(file) = gtk::FileDialog::builder()
-                    .title(gettext("Import Super Productivity backup"))
+                    .title(gettext("Import Momentum backup"))
                     .build()
                     .open_future(Some(&w))
                     .await
                 else {
                     return;
                 };
-                let path = file.path().unwrap().to_string_lossy().into_owned();
-                match w.engine().import_backup(path) {
+                let Some(path) = file.path() else {
+                    w.toast(&gettext("Choose a local file"));
+                    return;
+                };
+                let restore_settings = gtk::CheckButton::with_label(&gettext("Restore included app settings"));
+                let confirmation = adw::AlertDialog::builder().heading(gettext("Replace all tasks?"))
+                    .body(gettext("This replaces tasks on this device and discards unsynced task changes. App settings are optional; credentials and device controls stay local."))
+                    .extra_child(&restore_settings).build();
+                confirmation.add_responses(&[("cancel", &gettext("Cancel")), ("restore", &gettext("Restore Backup"))]);
+                confirmation.set_response_appearance("restore", adw::ResponseAppearance::Destructive);
+                confirmation.set_close_response("cancel");
+                if confirmation.choose_future(Some(&w)).await != "restore" {
+                    return;
+                }
+                match w.restore_backup_from(path.to_string_lossy().into_owned(), restore_settings.is_active()) {
                     Ok(out) => w.apply(out),
                     Err(e) => w.toast(&e.to_string()),
                 }
@@ -3691,20 +3926,299 @@ impl MomentumWindow {
             #[weak(rename_to = w)]
             self,
             async move {
+                let include_settings = gtk::CheckButton::with_label(&gettext("Include app settings"));
+                let options = adw::AlertDialog::builder().heading(gettext("Export backup"))
+                    .body(gettext("Save tasks, projects, tags, and repeat schedules. App settings are optional; credentials and device controls stay local."))
+                    .extra_child(&include_settings).build();
+                options.add_responses(&[("cancel", &gettext("Cancel")), ("export", &gettext("Continue"))]);
+                options.set_default_response(Some("export"));
+                options.set_close_response("cancel");
+                if options.choose_future(Some(&w)).await != "export" {
+                    return;
+                }
                 let dialog = gtk::FileDialog::builder()
                     .title(gettext("Export backup"))
-                    .initial_name(format!("{}.json", sp_model::today_str()))
+                    .initial_name(format!("{}.json", momentum_model::today_str()))
                     .build();
                 let Ok(file) = dialog.save_future(Some(&w)).await else {
                     return;
                 };
-                let path = file.path().unwrap().to_string_lossy().into_owned();
-                match w.engine().export_backup(path) {
+                let Some(path) = file.path() else {
+                    w.toast(&gettext("Choose a local file"));
+                    return;
+                };
+                if include_settings.is_active() {
+                    if let Err(error) = w.stage_app_settings(None) {
+                        w.toast(&error);
+                        return;
+                    }
+                    w.refresh_app_settings();
+                }
+                match w
+                    .engine()
+                    .export_backup_with_settings(path.to_string_lossy().into_owned(), include_settings.is_active())
+                {
                     Ok(out) => w.apply(out),
                     Err(e) => w.toast(&e.to_string()),
                 }
             }
         ));
+    }
+
+    pub fn transfer_app_settings(&self, export: bool) {
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = win)]
+            self,
+            async move {
+                let dialog = gtk::FileDialog::builder()
+                    .title(if export {
+                        gettext("Export app settings")
+                    } else {
+                        gettext("Import app settings")
+                    })
+                    .initial_name("momentum-settings.json")
+                    .build();
+                let result = if export {
+                    dialog.save_future(Some(&win)).await
+                } else {
+                    dialog.open_future(Some(&win)).await
+                };
+                let Ok(file) = result else {
+                    return;
+                };
+                let Some(path) = file.path() else {
+                    win.toast(&gettext("Choose a local file"));
+                    return;
+                };
+                let result = if export {
+                    win.export_app_settings_to(path.to_string_lossy().into_owned())
+                } else {
+                    win.import_app_settings_from(path.to_string_lossy().into_owned())
+                };
+                match result {
+                    Ok(_) => {
+                        win.refresh();
+                        win.toast(&if export {
+                            gettext("App settings saved")
+                        } else {
+                            gettext("App settings imported")
+                        });
+                    }
+                    Err(error) => win.toast(&error),
+                }
+            }
+        ));
+    }
+
+    pub fn can_review_app_settings(&self) -> bool {
+        self.imp().portable_revision.get().is_some() && !self.can_retry_app_settings()
+    }
+
+    pub fn choose_app_settings_bootstrap(
+        &self,
+        choice: momentum_core::SettingsBootstrapChoice,
+        review_id: String,
+    ) -> Result<(), String> {
+        if !self.can_review_app_settings() {
+            return Err(self
+                .app_settings_error()
+                .unwrap_or_else(|| gettext("Could not save app settings")));
+        }
+        self.engine()
+            .set_settings_bootstrap_choice(choice, review_id)
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    }
+
+    pub fn review_app_settings(&self) {
+        if !self.can_review_app_settings() {
+            return;
+        }
+        let engine = self.engine();
+        let status = engine.settings_sync_status();
+        let (Some(review_id), Some(remote)) = (status.review_id, status.remote_settings_json) else {
+            return;
+        };
+        let local = engine.portable_settings_json().and_then(|json| {
+            crate::portable_settings::summary(&json).map_err(|message| momentum_core::CoreError::Invalid { message })
+        });
+        let summaries = local.and_then(|local| {
+            crate::portable_settings::summary(&remote)
+                .map(|remote| (local, remote))
+                .map_err(|message| momentum_core::CoreError::Invalid { message })
+        });
+        let (local, remote) = match summaries {
+            Ok(summaries) => summaries,
+            Err(error) => {
+                self.toast(&error.to_string());
+                return;
+            }
+        };
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        for (heading, summary) in [(gettext("This device"), local), (gettext("Synced settings"), remote)] {
+            let label = gtk::Label::new(Some(&format!("{heading}\n{summary}")));
+            label.set_xalign(0.0);
+            label.set_wrap(true);
+            label.set_selectable(true);
+            content.append(&label);
+        }
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Choose app settings"))
+            .body(gettext(
+                "Choose which saved settings to start with. Later changes merge across devices.",
+            ))
+            .extra_child(&content)
+            .build();
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancel")),
+            ("local", &gettext("Use this device’s settings")),
+            ("remote", &gettext("Use synced settings")),
+        ]);
+        dialog.set_close_response("cancel");
+        dialog.connect_response(
+            None,
+            glib::clone!(
+                #[weak(rename_to = win)]
+                self,
+                move |_, response| {
+                    let choice = match response {
+                        "local" => momentum_core::SettingsBootstrapChoice::UseLocal,
+                        "remote" => momentum_core::SettingsBootstrapChoice::UseRemote,
+                        _ => return,
+                    };
+                    match win.choose_app_settings_bootstrap(choice, review_id.clone()) {
+                        Ok(_) => {
+                            win.refresh();
+                            win.sync();
+                        }
+                        Err(error) => win.toast(&error.to_string()),
+                    }
+                }
+            ),
+        );
+        dialog.present(Some(self));
+    }
+
+    pub fn migrate_nextcloud_folder(&self) {
+        if std::env::var_os("MOMENTUM_DEMO").is_some() || crate::prefs::sync_method(&self.imp().settings) != "nextcloud"
+        {
+            return;
+        }
+        let confirmation = adw::AlertDialog::builder().heading(gettext("Copy to Momentum folder?"))
+            .body(gettext("Copy and verify your sync files in the momentum folder, then switch this device to it. The original folder stays intact. Choose the new folder on your other devices after the copy succeeds."))
+            .build();
+        confirmation.add_responses(&[("cancel", &gettext("Cancel")), ("copy", &gettext("Copy and switch"))]);
+        confirmation.set_close_response("cancel");
+        confirmation.connect_response(
+            Some("copy"),
+            glib::clone!(
+                #[weak(rename_to = win)]
+                self,
+                move |_, _| {
+                    if win.imp().syncing.replace(true) {
+                        win.toast(&gettext("A sync operation is already running"));
+                        return;
+                    }
+                    if let Some(timer) = win.imp().sync_debounce.borrow_mut().take() {
+                        timer.remove();
+                    }
+                    win.engine().p2p_stop();
+                    win.update_sync_button();
+                    let source = win.nextcloud_settings();
+                    let mut settings = source.clone();
+                    let cancellation = momentum_core::SyncCancellation::new();
+                    let (progress, cancelled, cancel_handler) = win.folder_copy_progress(cancellation.clone());
+                    progress.present(Some(&win));
+                    let engine = win.engine();
+                    glib::spawn_future_local(glib::clone!(
+                        #[weak]
+                        win,
+                        async move {
+                            let result = gio::spawn_blocking(move || {
+                                settings.password = crate::keyring::get("nextcloud").unwrap_or_default();
+                                settings.encryption_password = crate::keyring::get("encryption");
+                                engine.migrate_nextcloud_folder(settings, "momentum".into(), cancellation, 180_000)
+                            })
+                            .await;
+                            progress.disconnect(cancel_handler);
+                            progress.close();
+                            win.imp().syncing.set(false);
+                            match result {
+                                Ok(Ok(report)) => {
+                                    win.apply_folder_copy_report(&source, &report, cancelled.get());
+                                }
+                                Ok(Err(error)) => win.toast(&error.to_string()),
+                                Err(_) => win.toast(&gettext("Folder copy could not finish.")),
+                            }
+                            win.p2p_apply_setting();
+                            win.refresh();
+                        }
+                    ));
+                }
+            ),
+        );
+        confirmation.present(Some(self));
+    }
+
+    fn folder_copy_progress(
+        &self,
+        cancellation: Arc<momentum_core::SyncCancellation>,
+    ) -> (adw::AlertDialog, Rc<Cell<bool>>, glib::SignalHandlerId) {
+        let progress = adw::AlertDialog::builder()
+            .heading(gettext("Copying and verifying files…"))
+            .body(gettext("The original folder stays intact. You can cancel the copy."))
+            .extra_child(&gtk::Spinner::builder().spinning(true).build())
+            .build();
+        progress.add_response("cancel", &gettext("Cancel"));
+        progress.set_close_response("cancel");
+        let cancelled = Rc::new(Cell::new(false));
+        let flag = cancelled.clone();
+        let handler = progress.connect_response(None, move |_, _| {
+            flag.set(true);
+            cancellation.cancel();
+        });
+        (progress, cancelled, handler)
+    }
+
+    fn apply_folder_copy_report(
+        &self,
+        source: &momentum_core::NextcloudSettings,
+        report: &momentum_core::NextcloudFolderMigrationReport,
+        cancelled: bool,
+    ) -> bool {
+        if cancelled {
+            self.toast(&gettext("Folder copy was cancelled. The original folder stays intact."));
+            return false;
+        }
+        let current = self.nextcloud_settings();
+        if report.verified
+            && report.source_folder == source.folder
+            && report.target_folder == "momentum"
+            && crate::prefs::sync_method(&self.imp().settings) == "nextcloud"
+            && current.server_url == source.server_url
+            && current.user_name == source.user_name
+            && current.folder == source.folder
+        {
+            match self
+                .imp()
+                .settings
+                .set_string("nextcloud-folder", &report.target_folder)
+            {
+                Ok(_) => {
+                    self.toast(&gettext(
+                        "Sync folder copied and verified. This device now uses momentum.",
+                    ));
+                    true
+                }
+                Err(error) => {
+                    self.toast(&error.to_string());
+                    false
+                }
+            }
+        } else {
+            self.toast(&gettext("The saved connection changed. The folder was not switched."));
+            false
+        }
     }
 
     fn save_window_size(&self) -> Result<(), glib::BoolError> {

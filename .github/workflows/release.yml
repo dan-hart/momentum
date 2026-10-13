@@ -135,7 +135,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
-      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      - name: Check out LibreSync (path dependency of crates/momentum-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync
@@ -165,7 +165,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
-      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      - name: Check out LibreSync (path dependency of crates/momentum-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync
@@ -234,7 +234,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
-      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      - name: Check out LibreSync (path dependency of crates/momentum-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync
@@ -277,7 +277,7 @@ jobs:
         with:
           ref: ${{ env.TAG }}
           path: src
-      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      - name: Check out LibreSync (path dependency of crates/momentum-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync

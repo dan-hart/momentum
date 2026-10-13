@@ -35,8 +35,34 @@ import Testing
         #expect(p.autoSync == true)
         #expect(p.backgroundSync == true, "closing the window does not stop sync unless asked")
         #expect(p.colorful == true)
-        #expect(d.string(forKey: PrefKey.nextcloudFolder) == "super-productivity")
+        #expect(d.string(forKey: PrefKey.nextcloudFolder) == "momentum")
         #expect(d.string(forKey: PrefKey.rowDensity) == "regular", "iOS lists start at the regular density")
+    }
+
+    @Test func anExistingExplicitFolderInACustomDomainIsRetained() {
+        let name = "momentum-folder-domain-\(UUID())"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set("https://fixture.invalid", forKey: PrefKey.nextcloudServer)
+        defaults.set("fixture-user", forKey: PrefKey.nextcloudUser)
+        defaults.set("chosen-folder", forKey: PrefKey.nextcloudFolder)
+        Preferences.register(defaults)
+        #expect(defaults.string(forKey: PrefKey.nextcloudFolder) == "chosen-folder")
+    }
+
+    @Test func anExistingImplicitFolderIsPinnedBeforeNewDefaultsAreRegistered() {
+        let name = "momentum-prefs-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set("https://fixture.invalid", forKey: PrefKey.nextcloudServer)
+        defaults.set("fixture", forKey: PrefKey.nextcloudUser)
+        Preferences.register(defaults, domain: name)
+        #expect(defaults.string(forKey: PrefKey.nextcloudFolder) == "super-productivity")
+        #expect(defaults.persistentDomain(forName: name)?[PrefKey.nextcloudFolder] as? String == "super-productivity")
+        defaults.set("chosen-folder", forKey: PrefKey.nextcloudFolder)
+        Preferences.register(defaults, domain: name)
+        #expect(defaults.string(forKey: PrefKey.nextcloudFolder) == "chosen-folder")
+        #expect(defaults.string(forKey: PrefKey.nextcloudServer) == "https://fixture.invalid")
     }
 
     @Test func completionSoundStartsWithBrightFinishWhileRemainingOff() {
@@ -166,7 +192,7 @@ import Testing
         #expect(settings.serverUrl == "https://cloud.example.com")
         #expect(settings.userName == "dan")
         #expect(settings.password == "app-password")
-        #expect(settings.folder == "super-productivity")
+        #expect(settings.folder == "momentum")
         d.set(false, forKey: PrefKey.syncEnabled)
         #expect(Preferences(d).nextcloud(keychain: keychain) == nil, "the switch is off: nothing is handed over")
     }
@@ -182,13 +208,30 @@ import Testing
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         #expect(json["server"] as? String == "https://cloud.example.com")
         #expect(json["user"] as? String == "dan")
-        #expect(json["folder"] as? String == "super-productivity")
+        #expect(json["folder"] as? String == "momentum")
     }
 
     @Test func theDataDirectoryFollowsTheEnvironmentOverride() {
         // The app and `mo` must agree on one directory; the override is how tests and a
         // second profile point both at another one.
         #expect(DataDirectory.url.path.hasSuffix("momentum"))
+    }
+
+    @Test func implicitCliConnectionPinsItsInheritedFolderWithoutChangingExplicitNativeFolders() throws {
+        let dir = TempDir()
+        try Data(#"{"server":"https://example.test","user":"cli-user"}"#.utf8)
+            .write(to: dir.url.appendingPathComponent("cli-config.json"))
+        let (d, name) = freshDefaults()
+        defer { d.removePersistentDomain(forName: name) }
+        Preferences(d).readCliConfig(from: dir.url, domain: name)
+        let legacy = ["super", "productivity"].joined(separator: "-")
+        #expect(d.string(forKey: PrefKey.nextcloudFolder) == legacy)
+        #expect(d.persistentDomain(forName: name)?[PrefKey.nextcloudFolder] as? String == legacy)
+        for explicit in ["chosen-folder", "momentum"] {
+            d.set(explicit, forKey: PrefKey.nextcloudFolder)
+            Preferences(d).readCliConfig(from: dir.url, domain: name)
+            #expect(d.string(forKey: PrefKey.nextcloudFolder) == explicit)
+        }
     }
 
     @Test func cliConfigurationImportsOnlySharedNonsecretFields() throws {

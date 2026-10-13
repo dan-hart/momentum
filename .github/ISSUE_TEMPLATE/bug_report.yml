@@ -49,4 +49,4 @@ body:
     attributes:
       label: Sync
       options:
-        - label: This involves Nextcloud sync with Super Productivity
+        - label: This involves Nextcloud sync

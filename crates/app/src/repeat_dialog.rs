@@ -19,8 +19,20 @@ const CYCLES: [RepeatCycle; 4] = [
 ];
 
 pub fn open(win: &MomentumWindow, task_id: &str) {
+    open_target(win, task_id, false);
+}
+
+pub fn open_configuration(win: &MomentumWindow, configuration: &str) {
+    open_target(win, configuration, true);
+}
+
+fn open_target(win: &MomentumWindow, task_id: &str, configuration: bool) {
     let engine = win.engine();
-    let Some(initial) = engine.repeat_draft(task_id.to_string()) else {
+    let Some(initial) = (if configuration {
+        engine.repeat_config_draft(task_id.to_string())
+    } else {
+        engine.repeat_draft(task_id.to_string())
+    }) else {
         return;
     };
     let existing = initial.existing;
@@ -146,12 +158,20 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         .build();
     pick.update_property(&[gtk::accessible::Property::Label(&gettext("Pick a start day"))]);
     let cal = gtk::Calendar::new();
-    if let Some((y, m, d)) = draft.borrow().start_date.as_deref().and_then(sp_model::parse_day) {
+    if let Some((y, m, d)) = draft.borrow().start_date.as_deref().and_then(momentum_model::parse_day) {
         if let Ok(dt) = glib::DateTime::from_local(y as i32, m as i32, d as i32, 0, 0, 0.0) {
             cal.select_day(&dt);
         }
     }
     pick.set_popover(Some(&gtk::Popover::builder().child(&cal).build()));
+    let clear_start = gtk::Button::builder()
+        .icon_name("edit-clear-symbolic")
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .tooltip_text(gettext("Clear start day"))
+        .build();
+    clear_start.update_property(&[gtk::accessible::Property::Label(&gettext("Clear start day"))]);
+    start_row.add_suffix(&clear_start);
     start_row.add_suffix(&pick);
     group.add(&start_row);
 
@@ -184,7 +204,11 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
                     .and_downcast::<gtk::Window>()
                     .and_then(|_| b.ancestor(adw::Dialog::static_type()))
                     .and_downcast::<adw::Dialog>();
-                let out = win.engine().stop_repeat(task_id.clone());
+                let out = if configuration {
+                    win.engine().stop_repeat_config(task_id.clone())
+                } else {
+                    win.engine().stop_repeat(task_id.clone())
+                };
                 win.apply(out);
                 if let Some(d) = dialog {
                     d.close();
@@ -198,7 +222,7 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         let draft = draft.clone();
         let group = group.clone();
         let engine = engine.clone();
-        let (cycle, every, days_row, monthly, nth_week, nth_day, start_row, paused, cal) = (
+        let (cycle, every, days_row, monthly, nth_week, nth_day, start_row, paused, clear_start) = (
             cycle.clone(),
             every.clone(),
             days_row.clone(),
@@ -207,7 +231,7 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
             nth_day.clone(),
             start_row.clone(),
             paused.clone(),
-            cal.clone(),
+            clear_start.clone(),
         );
         let chips = chip_widgets.clone();
         move || {
@@ -234,7 +258,7 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
                 MonthlyRule::SameDay
             };
             d.paused = paused.is_active();
-            d.start_date = cal.date().format("%Y-%m-%d").ok().map(|g| g.to_string());
+            clear_start.set_sensitive(d.start_date.is_some());
             start_row.set_subtitle(
                 &d.start_date
                     .as_deref()
@@ -282,7 +306,22 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
     cal.connect_day_selected(glib::clone!(
         #[strong]
         r,
-        move |_| r()
+        #[strong]
+        draft,
+        move |cal| {
+            draft.borrow_mut().start_date = cal.date().format("%Y-%m-%d").ok().map(|g| g.to_string());
+            r();
+        }
+    ));
+    clear_start.connect_clicked(glib::clone!(
+        #[strong]
+        r,
+        #[strong]
+        draft,
+        move |_| {
+            draft.borrow_mut().start_date = None;
+            r();
+        }
     ));
     for (_, b) in &chip_widgets {
         b.connect_toggled(glib::clone!(
@@ -334,7 +373,11 @@ pub fn open(win: &MomentumWindow, task_id: &str) {
         task_id,
         move |_| {
             let d = draft.borrow().clone();
-            let out = win.engine().save_repeat(task_id.clone(), d);
+            let out = if configuration {
+                win.engine().save_repeat_config(task_id.clone(), d)
+            } else {
+                win.engine().save_repeat(task_id.clone(), d)
+            };
             let ok = out.changed;
             win.apply(out);
             if ok {

@@ -11,6 +11,16 @@
         }
       }
     },
+    "%lld days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Tage"
+          }
+        }
+      }
+    },
     "%llu days ago": {
       "localizations": {
         "de": {
@@ -731,6 +741,26 @@
         }
       }
     },
+    "1 Wood Pop": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Holzklang"
+          }
+        }
+      }
+    },
+    "10 Warm Spark": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 Warmer Funke"
+          }
+        }
+      }
+    },
     "16–30 min": {
       "extractionState": "manual",
       "localizations": {
@@ -753,6 +783,26 @@
         }
       }
     },
+    "2 Double Check": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2 Doppeltes Häkchen"
+          }
+        }
+      }
+    },
+    "3 Rounded Lift": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 Sanfter Aufstieg"
+          }
+        }
+      }
+    },
     "31–60 min": {
       "extractionState": "manual",
       "localizations": {
@@ -760,6 +810,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "31–60 Min."
+          }
+        }
+      }
+    },
+    "4 Pocket Piano": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 Taschenklavier"
+          }
+        }
+      }
+    },
+    "5 String Flick": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 Saitenzupfer"
+          }
+        }
+      }
+    },
+    "6 Bright Finish": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 Heller Abschluss"
+          }
+        }
+      }
+    },
+    "7 Harp Snap": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 Harfenzupfer"
+          }
+        }
+      }
+    },
+    "8 Click and Glow": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "8 Klick und Glanz"
+          }
+        }
+      }
+    },
+    "9 Tiny Ta-Da": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "9 Kleines Ta-Da"
           }
         }
       }
@@ -854,12 +964,32 @@
         }
       }
     },
+    "Archive completed tasks immediately": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erledigte Aufgaben sofort archivieren"
+          }
+        }
+      }
+    },
     "Archived (%u)": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Archiviert (%u)"
+          }
+        }
+      }
+    },
+    "Ascending": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufsteigend"
           }
         }
       }
@@ -914,6 +1044,16 @@
         }
       }
     },
+    "Colorful labels": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farbige Beschriftungen"
+          }
+        }
+      }
+    },
     "Coming Up": {
       "localizations": {
         "de": {
@@ -930,6 +1070,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Befehlstaste"
+          }
+        }
+      }
+    },
+    "Compact": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompakt"
           }
         }
       }
@@ -960,6 +1110,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Erledigte Aufgaben erscheinen hier, wenn du sie mit %@E archivierst."
+          }
+        }
+      }
+    },
+    "Completion sound": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ton beim Erledigen"
+          }
+        }
+      }
+    },
+    "Completion sounds": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erledigungstöne"
           }
         }
       }
@@ -1004,12 +1174,32 @@
         }
       }
     },
+    "Created": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erstellt"
+          }
+        }
+      }
+    },
     "Delete": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Löschen"
+          }
+        }
+      }
+    },
+    "Descending": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Absteigend"
           }
         }
       }
@@ -1054,6 +1244,16 @@
         }
       }
     },
+    "Due date": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fälligkeitsdatum"
+          }
+        }
+      }
+    },
     "Due or scheduled today": {
       "localizations": {
         "de": {
@@ -1070,6 +1270,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Duplizieren"
+          }
+        }
+      }
+    },
+    "Edit repeat schedule": {
+      "extractionState": "stale",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholungsplan bearbeiten"
           }
         }
       }
@@ -1114,6 +1325,16 @@
         }
       }
     },
+    "Estimate": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitschätzung"
+          }
+        }
+      }
+    },
     "Evening": {
       "extractionState": "manual",
       "localizations": {
@@ -1131,6 +1352,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alle Aufgaben hier sind erledigt."
+          }
+        }
+      }
+    },
+    "Folder copy was cancelled. The original folder stays intact.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Kopieren des Ordners wurde abgebrochen. Der ursprüngliche Ordner bleibt erhalten."
+          }
+        }
+      }
+    },
+    "Group By": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gruppieren nach"
           }
         }
       }
@@ -1165,6 +1406,16 @@
         }
       }
     },
+    "Manual": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manuell"
+          }
+        }
+      }
+    },
     "Momentum can’t reach your server": {
       "localizations": {
         "de": {
@@ -1191,6 +1442,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Heute Morgen"
+          }
+        }
+      }
+    },
+    "Morning & Night": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgen & Abend"
           }
         }
       }
@@ -1407,6 +1668,16 @@
         }
       }
     },
+    "Notes copied": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notizen kopiert"
+          }
+        }
+      }
+    },
     "Nothing coming up": {
       "localizations": {
         "de": {
@@ -1477,6 +1748,16 @@
         }
       }
     },
+    "On": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein"
+          }
+        }
+      }
+    },
     "Option": {
       "localizations": {
         "de": {
@@ -1504,6 +1785,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Über 2 Stunden"
+          }
+        }
+      }
+    },
+    "Overdue": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überfällig"
           }
         }
       }
@@ -1568,12 +1859,42 @@
         }
       }
     },
+    "Project": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projekt"
+          }
+        }
+      }
+    },
     "Projects": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Projekte"
+          }
+        }
+      }
+    },
+    "Recurring preview": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholungsvorschau"
+          }
+        }
+      }
+    },
+    "Regular": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
           }
         }
       }
@@ -1782,6 +2103,16 @@
         }
       }
     },
+    "Row density": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeilendichte"
+          }
+        }
+      }
+    },
     "Search": {
       "localizations": {
         "de": {
@@ -1874,6 +2205,26 @@
         }
       }
     },
+    "Sort By": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortieren nach"
+          }
+        }
+      }
+    },
+    "Sort direction": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortierrichtung"
+          }
+        }
+      }
+    },
     "Switch to Manual Order to rearrange tasks": {
       "localizations": {
         "de": {
@@ -1900,6 +2251,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronisierung fehlgeschlagen: %@"
+          }
+        }
+      }
+    },
+    "Sync folder copied and verified. This device now uses momentum.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierungsordner kopiert und überprüft. Dieses Gerät verwendet jetzt momentum."
           }
         }
       }
@@ -2234,16 +2595,6 @@
         }
       }
     },
-    "Your edits are still waiting here. Check the server copy, then try again on a steadier connection.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Änderungen warten weiter hier. Prüfe die Serverkopie und versuche es dann über eine stabilere Verbindung erneut."
-          }
-        }
-      }
-    },
     "The server ran into a problem": {
       "localizations": {
         "de": {
@@ -2290,6 +2641,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieses Projekt ist nicht mehr verfügbar. Wähle ein anderes Projekt."
+          }
+        }
+      }
+    },
+    "Title": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titel"
           }
         }
       }
@@ -2424,6 +2785,16 @@
         }
       }
     },
+    "Unknown": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannt"
+          }
+        }
+      }
+    },
     "Untagged": {
       "extractionState": "manual",
       "localizations": {
@@ -2442,6 +2813,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bis zu 15 Min."
+          }
+        }
+      }
+    },
+    "Upcoming range": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschauzeitraum"
           }
         }
       }
@@ -2502,6 +2883,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Your edits are still waiting here. Check the server copy, then try again on a steadier connection.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Änderungen warten weiter hier. Prüfe die Serverkopie und versuche es dann über eine stabilere Verbindung erneut."
           }
         }
       }
@@ -2602,106 +2993,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "„%@“ wird nicht mehr wiederholt"
-          }
-        }
-      }
-    },
-    "1 Wood Pop": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 Holzklang"
-          }
-        }
-      }
-    },
-    "10 Warm Spark": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "10 Warmer Funke"
-          }
-        }
-      }
-    },
-    "2 Double Check": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "2 Doppeltes Häkchen"
-          }
-        }
-      }
-    },
-    "3 Rounded Lift": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "3 Sanfter Aufstieg"
-          }
-        }
-      }
-    },
-    "4 Pocket Piano": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "4 Taschenklavier"
-          }
-        }
-      }
-    },
-    "5 String Flick": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "5 Saitenzupfer"
-          }
-        }
-      }
-    },
-    "6 Bright Finish": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "6 Heller Abschluss"
-          }
-        }
-      }
-    },
-    "7 Harp Snap": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "7 Harfenzupfer"
-          }
-        }
-      }
-    },
-    "8 Click and Glow": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "8 Klick und Glanz"
-          }
-        }
-      }
-    },
-    "9 Tiny Ta-Da": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "9 Kleines Ta-Da"
           }
         }
       }

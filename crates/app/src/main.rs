@@ -9,6 +9,7 @@ mod keyring;
 mod messages;
 mod modifier;
 mod p2p;
+mod portable_settings;
 mod prefs;
 mod quick_add;
 mod repeat_dialog;

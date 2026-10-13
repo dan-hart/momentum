@@ -7,6 +7,39 @@ import Testing
 
 @MainActor
 @Suite struct TaskPresentation {
+    @Test func recurringPreviewsCannotEnterTaskSelectionOrDragAndOpenTheirSchedule() throws {
+        let h = Harness(demo: false)
+        let result = h.engine.createTaskWithId(draft: TaskDraft(title: "Future repeat", projectId: "", dueDay: nil,
+            time: nil, reminderMinutesBefore: nil, estimateMs: 0, notes: "", tagIds: [], newTags: []), view: .today)
+        let seed = try #require(result.id)
+        var draft = try #require(h.engine.repeatDraft(taskId: seed))
+        draft.cycle = .daily
+        draft.startDate = dayOffset(day: today(), days: 1)
+        #expect(h.engine.saveRepeat(taskId: seed, draft: draft).changed)
+        let count = h.engine.allTasks().count
+        h.state.go(to: .upcoming)
+        let row = try #require(h.state.listing.sections.flatMap(\.rows).compactMap { row -> TaskRow? in
+            if case .task(let task) = row, task.occurrence != nil { return task }; return nil
+        }.first)
+        let occurrence = try #require(row.occurrence)
+        #expect(TaskSubtitle.parts(for: row).contains { $0.text == "Recurring preview" })
+        #expect(h.state.allRowIds.isEmpty)
+        h.state.selection = [row.id]
+        #expect(h.state.targets.isEmpty)
+        #expect(h.state.dragTransfer(for: row.id) == nil)
+        h.state.open(row.id)
+        #expect(h.state.sheet?.id == "repeat-config-\(occurrence.repeatCfgId)")
+        #expect(h.engine.allTasks().count == count)
+    }
+
+    @Test func overdueSubtitleIncludesAnExplicitCalloutAndOriginalDate() throws {
+        let h = Harness()
+        let row = try #require(h.engine.taskRow(id: h.id("Renew library books")))
+        #expect(row.overdue)
+        let parts = TaskSubtitle.parts(for: row)
+        #expect(parts.contains { $0.text == "Overdue" })
+        #expect(parts.contains { $0.kind == .schedule && $0.text.contains(Strings.day(row.day!)) })
+    }
     @Test func subtitleFollowsProjectEstimateDayRepeatTags() throws {
         let h = Harness()
         var row = try #require(h.engine.taskRow(id: h.id("Dentist appointment")))

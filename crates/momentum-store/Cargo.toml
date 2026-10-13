@@ -1,0 +1,17 @@
+[package]
+name = "momentum-store"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+momentum-model = { path = "../momentum-model" }
+momentum-oplog = { path = "../momentum-oplog" }
+
+[dev-dependencies]
+tempfile = "3"

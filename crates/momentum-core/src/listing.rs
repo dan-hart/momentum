@@ -4,8 +4,8 @@
 //! view, search results, and the slot rules (Morning, Tonight) that shape Today.
 use crate::text::*;
 use crate::types::*;
-use sp_model::*;
-use sp_store::Store;
+use momentum_model::*;
+use momentum_store::Store;
 
 pub(crate) const SEARCH_LIMIT: usize = 60;
 
@@ -18,7 +18,7 @@ pub(crate) struct SearchIndex {
     tags: Vec<(String, String)>,       // (tag id, lower title)
 }
 
-/// Tasks in `archiveYoung` and `archiveOld` (kept in `state.rest` by sp-sync).
+/// Tasks in `archiveYoung` and `archiveOld` (kept in `state.rest` by momentum-sync).
 pub(crate) fn archived_tasks(store: &Store) -> Vec<Task> {
     ["archiveYoung", "archiveOld"]
         .iter()
@@ -160,6 +160,7 @@ pub(crate) fn tag_ref(g: &Tag) -> TagRef {
 }
 
 pub(crate) fn task_row(store: &Store, view: &View, t: &Task, archived: bool) -> TaskRow {
+    let today = today_str();
     let in_project_view = matches!(view, View::Project { .. });
     let project = if in_project_view {
         None
@@ -175,7 +176,7 @@ pub(crate) fn task_row(store: &Store, view: &View, t: &Task, archived: bool) -> 
     // Day views already say which day it is, except for overdue tasks, whose day is the point.
     // Coming Up's day headings already say which day each row belongs to.
     let day = due_day.as_deref().and_then(|d| {
-        let day_known = (matches!(view, View::Today | View::Morning | View::Tonight) && d >= today_str().as_str())
+        let day_known = (matches!(view, View::Today | View::Morning | View::Tonight) && d >= today.as_str())
             || *view == View::Upcoming;
         (!day_known).then(|| day_label(d))
     });
@@ -190,6 +191,8 @@ pub(crate) fn task_row(store: &Store, view: &View, t: &Task, archived: bool) -> 
         is_done: t.is_done,
         is_subtask: t.parent_id.is_some(),
         archived,
+        overdue: row_is_overdue(t, archived, &today),
+        occurrence: None,
         project,
         estimate_ms: t.time_estimate,
         day,
@@ -208,6 +211,12 @@ pub(crate) fn task_row(store: &Store, view: &View, t: &Task, archived: bool) -> 
         sub_task_ids: t.sub_task_ids.clone(),
         parent_id: t.parent_id.clone(),
     }
+}
+
+/// Archive membership suppresses live warnings even for incomplete legacy payloads.
+/// Passing the snapshot day keeps this date rule independent of the system clock.
+pub(crate) fn row_is_overdue(task: &Task, archived: bool, today: &str) -> bool {
+    !archived && task.is_overdue(today)
 }
 
 /// A task row followed by its subtasks, as list views show them.
@@ -259,7 +268,7 @@ pub(crate) fn empty_state(store: &Store, view: &View, prefs: &Preferences) -> Em
         View::Morning => EmptyState::Morning,
         View::Tonight => EmptyState::Tonight,
         View::Upcoming => EmptyState::Upcoming {
-            days: prefs.upcoming_days,
+            days: prefs.upcoming_days_bounded(),
         },
         View::Archive => EmptyState::Archive,
         View::Search => EmptyState::Search,
@@ -449,18 +458,23 @@ pub(crate) fn listing(
             return out;
         }
         View::Upcoming => {
-            let today_n = day_number(&today_str()).unwrap_or(0);
-            let range = prefs.upcoming_days as i64;
+            let today = today_str();
+            let today_n = day_number(&today).unwrap_or(0);
+            let range = prefs.upcoming_days_bounded();
+            let projected = crate::occurrences::project(store, &today, range + 1, now_ms());
+            let occurrences: std::collections::HashMap<_, _> =
+                projected.iter().map(|p| (p.task.id.as_str(), &p.occurrence)).collect();
             let mut tasks: Vec<&Task> = store
                 .state
                 .task
                 .iter()
+                .chain(projected.iter().map(|p| &p.task))
                 .filter(|t| !t.is_done && t.parent_id.is_none())
                 .filter(|t| {
                     t.plan_day()
                         .as_deref()
                         .and_then(day_number)
-                        .is_some_and(|d| d > today_n && d <= today_n + range)
+                        .is_some_and(|d| d > today_n && d <= today_n + i64::from(range))
                 })
                 .collect();
             tasks.sort_by(|a, b| {
@@ -488,8 +502,10 @@ pub(crate) fn listing(
                     count: list.len() as u32,
                     rows: list
                         .into_iter()
-                        .map(|t| Row::Task {
-                            row: task_row(store, view, t, false),
+                        .map(|t| {
+                            let mut row = task_row(store, view, t, false);
+                            row.occurrence = occurrences.get(t.id.as_str()).map(|p| (**p).clone());
+                            Row::Task { row }
                         })
                         .collect(),
                     note: None,

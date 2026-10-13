@@ -7,8 +7,8 @@
 //! holds `Arc<momentum_core::Engine>` now.
 use super::*;
 use crate::tests::support::*;
+use momentum_model::*;
 use serde_json::json;
-use sp_model::*;
 
 fn today_n() -> i64 {
     day_number(&today_str()).unwrap()
@@ -440,6 +440,81 @@ fn coming_up_groups_by_day_and_honours_the_range() {
         reset_settings();
     });
 }
+
+#[test]
+fn upcoming_recurring_previews_offer_schedule_editing_without_task_controls() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        let mut configuration = RepeatCfg::for_task(&Task::new("Future repeat", INBOX_PROJECT_ID));
+        configuration.id = "native-preview".into();
+        configuration.repeat_cycle = "DAILY".into();
+        configuration.start_date = Some(day_str(today_n() + 1));
+        win.engine()
+            .with_store_mut(|store| store.state.task_repeat_cfg.insert("native-preview", configuration));
+        let before = win
+            .engine()
+            .with_store(|store| serde_json::to_value(&store.state).unwrap());
+        win.go_to(View::Upcoming);
+        let previews = win
+            .engine()
+            .listing(View::Upcoming, 100)
+            .sections
+            .into_iter()
+            .flat_map(|section| section.rows)
+            .filter_map(|row| match row {
+                Row::Task { row } if row.occurrence.is_some() => Some(row),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(previews.len(), 7);
+        let widgets = descendants(win.imp().task_box.upcast_ref());
+        let first = widgets
+            .iter()
+            .find(|widget| widget.widget_name() == previews[0].id)
+            .unwrap();
+        let controls = descendants(first);
+        assert!(!first.downcast_ref::<adw::ActionRow>().unwrap().is_activatable());
+        assert!(!controls.iter().any(|widget| widget.is::<gtk::CheckButton>()));
+        assert!(controls.iter().any(|widget| widget
+            .downcast_ref::<gtk::Button>()
+            .is_some_and(|button| button.label().as_deref() == Some("Edit repeat schedule"))));
+        win.select_all();
+        assert!(
+            win.imp().selected.borrow().is_empty(),
+            "previews cannot enter a bulk task command"
+        );
+        assert_eq!(
+            win.engine()
+                .with_store(|store| serde_json::to_value(&store.state).unwrap()),
+            before
+        );
+    });
+}
+
+#[test]
+fn overdue_rows_show_a_warning_and_explicit_label_without_changing_grouping() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        let overdue = id_of(&win, "Renew library books");
+        win.engine().with_store_mut(|store| {
+            let task = store.state.task.entities.get_mut(&overdue).unwrap();
+            task.due_day = Some(day_str(today_n() - 1));
+            task.due_with_time = None;
+        });
+        win.refresh();
+        let groups = headings(&win);
+        let widgets = descendants(win.imp().task_box.upcast_ref());
+        let row = widgets.iter().find(|widget| widget.widget_name() == overdue).unwrap();
+        let row = row.downcast_ref::<adw::ActionRow>().unwrap();
+        let subtitle = row.subtitle().unwrap_or_default();
+        assert!(subtitle.contains("Overdue"));
+        assert!(subtitle.contains("Yesterday"));
+        assert!(descendants(row.upcast_ref()).iter().any(|widget| widget
+            .downcast_ref::<gtk::Image>()
+            .is_some_and(|image| image.icon_name().as_deref() == Some("dialog-warning-symbolic"))));
+        assert_eq!(headings(&win), groups);
+    });
+}
 #[test]
 fn search_finds_tasks_notes_projects_and_tags_after_the_debounce() {
     on_gtk(|| {
@@ -582,6 +657,38 @@ fn invalid_open_task_requests_cover_archived_deleted_and_stale_ids_without_mutat
             .with_store(|store| serde_json::to_vec(&store.state).unwrap());
         assert_eq!(after, before);
         assert!(win.visible_dialog().is_none());
+    });
+}
+
+#[test]
+fn retired_and_unrelated_uri_schemes_do_not_create_or_complete_tasks() {
+    on_gtk(|| {
+        let app = app();
+        let win = app.main_window();
+        let retired = ["super", "productivity"].join("");
+        let before = win.engine().with_store(|store| store.state.task.ids.clone());
+        for scheme in [&retired, "https"] {
+            app.open(
+                &[gio::File::for_uri(&format!("{scheme}://add?title=Retired+capture"))],
+                "",
+            );
+            pump();
+            assert_eq!(win.engine().with_store(|store| store.state.task.ids.clone()), before);
+        }
+        app.open(&[gio::File::for_uri("momentum://add?title=Owned+URI+capture")], "");
+        pump();
+        app.open(
+            &[gio::File::for_uri(&format!(
+                "{retired}://complete-task?title=Owned+URI+capture"
+            ))],
+            "",
+        );
+        pump();
+        assert!(win.engine().with_store(|store| store
+            .state
+            .task
+            .iter()
+            .any(|task| task.title == "Owned URI capture" && !task.is_done)));
     });
 }
 
@@ -927,6 +1034,127 @@ fn task_form_builds_a_task_with_time_reminder_estimate_and_tags() {
         assert_eq!(plain.due_day.as_deref(), Some(today_str().as_str()));
     });
 }
+
+#[test]
+fn task_project_picker_displays_the_selected_model_item_and_saves_its_identity() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        let engine = win.engine();
+        let first = engine.add_project("Matching names".into()).unwrap();
+        let selected = engine.add_project("Matching names".into()).unwrap();
+        engine.update_project(first, "Matching names".into(), Some("#ff4f00".into()));
+        engine.update_project(selected.clone(), "Matching names".into(), Some("#28a745".into()));
+        let expected_color = win.color_class("#28a745").unwrap();
+        let form = crate::task_form::TaskForm::new(&win, None, INBOX_PROJECT_ID, None);
+        let picker = descendants(form.page.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::ComboRow>().ok())
+            .find(|row| row.title() == "Project")
+            .unwrap();
+        let index = engine
+            .projects()
+            .iter()
+            .position(|project| project.id == selected)
+            .unwrap();
+        let dialog = win.dialog("Project fixture", &form, &adw::HeaderBar::new());
+        win.present();
+        dialog.present(Some(&win));
+        pump_ms(1_000);
+        picker.set_selected(index as u32);
+        pump_ms(1_000);
+        let displayed = descendants(picker.upcast_ref());
+        assert!(
+            displayed.iter().any(|widget| {
+                widget
+                    .downcast_ref::<gtk::Label>()
+                    .is_some_and(|label| label.is_mapped() && label.label() == "Matching names")
+            }),
+            "the selected project's name must be visible instead of Inbox"
+        );
+        assert!(
+            displayed.iter().any(|widget| {
+                widget.downcast_ref::<gtk::Image>().is_some_and(|image| {
+                    image.is_mapped()
+                        && image.icon_name().as_deref() == Some("folder-symbolic")
+                        && image.has_css_class(&expected_color)
+                })
+            }),
+            "duplicate project titles must retain the selected project's color and identity"
+        );
+        form.title.set_text("Chosen project task");
+        let result = engine.create_task_with_id(form.into_draft(), View::Today);
+        let task = engine.task_detail(result.id.unwrap()).unwrap();
+        assert_eq!(task.project_id, selected);
+        dialog.close();
+        win.close();
+    });
+}
+
+#[test]
+fn copying_notes_shows_feedback_inside_the_open_editor_and_copies_complete_text() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        let form = crate::task_form::TaskForm::new(&win, None, INBOX_PROJECT_ID, None);
+        let widgets = descendants(form.page.upcast_ref());
+        let notes = widgets
+            .iter()
+            .find_map(|widget| widget.downcast_ref::<gtk::TextView>())
+            .unwrap();
+        let text = "Complete notes 📝\nSecond line — Grüße";
+        notes.buffer().set_text(text);
+        let copy = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| button.tooltip_text().as_deref() == Some("Copy Notes"))
+            .unwrap();
+        let dialog = win.dialog("Copy fixture", &form, &adw::HeaderBar::new());
+        win.present();
+        dialog.present(Some(&win));
+        pump_ms(1_000);
+        copy.emit_clicked();
+        pump_ms(1_000);
+        let copied = glib::MainContext::default()
+            .block_on(copy.clipboard().read_text_future())
+            .unwrap();
+        assert_eq!(copied.as_deref(), Some(text));
+        assert!(
+            descendants(dialog.upcast_ref()).iter().any(|widget| {
+                widget
+                    .downcast_ref::<gtk::Label>()
+                    .is_some_and(|label| label.is_mapped() && label.label() == "Notes copied")
+            }),
+            "copy success must be visible inside the active editor"
+        );
+        dialog.close();
+        win.close();
+    });
+}
+
+#[test]
+fn preferences_on_a_short_desktop_window_have_a_useful_independent_height() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        win.set_default_size(600, 400);
+        win.present();
+        pump_ms(1_000);
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        pump_ms(1_000);
+        assert!(
+            prefs.height() >= 600,
+            "Preferences need usable desktop height, got {}",
+            prefs.height()
+        );
+        assert!(
+            prefs.width() >= 600,
+            "Preferences need usable desktop width, got {}",
+            prefs.width()
+        );
+        prefs.close();
+        win.close();
+    });
+}
+
 #[test]
 fn editing_an_existing_task_prefills_the_form() {
     on_gtk(|| {
@@ -941,6 +1169,36 @@ fn editing_an_existing_task_prefills_the_form() {
         assert_eq!(form.due_day().as_deref(), Some(today_str().as_str()));
     });
 }
+#[test]
+fn saving_a_repeat_configuration_does_not_invent_a_start_date() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        let mut cfg = RepeatCfg::for_task(&Task::new("Unanchored repeat", INBOX_PROJECT_ID));
+        cfg.id = "unanchored-repeat".into();
+        cfg.start_date = None;
+        cfg.is_paused = true;
+        win.engine().with_store_mut(|store| {
+            store.state.task_repeat_cfg.insert(&cfg.id, cfg.clone());
+            store.save().unwrap();
+        });
+        win.present();
+        crate::repeat_dialog::open_configuration(&win, &cfg.id);
+        pump_ms(300);
+        let dialog = win.visible_dialog().expect("repeat editor");
+        descendants(dialog.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<gtk::Button>().ok())
+            .find(|button| button.label().as_deref() == Some("Save"))
+            .expect("Save schedule")
+            .emit_clicked();
+        pump();
+        win.engine()
+            .with_store(|store| assert_eq!(store.state.task_repeat_cfg.entities[&cfg.id].start_date, None));
+        dialog.close();
+        win.close();
+    });
+}
+
 #[test]
 fn repeat_instances_are_spawned_once_per_day() {
     on_gtk(|| {
@@ -1500,6 +1758,462 @@ fn typography_preferences_bind_native_controls_and_reset_in_focus_order() {
         assert_eq!(external_font.style(), gtk::pango::Style::Italic);
         reset_settings();
         reset_typography_settings();
+    });
+}
+
+#[test]
+fn a_verified_folder_copy_after_native_cancel_keeps_the_original_connection() {
+    on_gtk(|| {
+        reset_settings();
+        let (win, _dir) = empty_window();
+        settings().set_boolean("auto-sync", false).unwrap();
+        settings().set_string("sync-method", "nextcloud").unwrap();
+        settings()
+            .set_string("nextcloud-server", "https://fixture.invalid")
+            .unwrap();
+        settings().set_string("nextcloud-user", "fixture-user").unwrap();
+        settings().set_string("nextcloud-folder", "original-folder").unwrap();
+        let source = win.nextcloud_settings();
+        let report = momentum_core::NextcloudFolderMigrationReport {
+            source_folder: source.folder.clone(),
+            target_folder: "momentum".into(),
+            copied_files: 1,
+            target_files: vec!["sync-data.json".into()],
+            verified: true,
+        };
+        win.present();
+        let (progress, cancelled, handler) = win.folder_copy_progress(momentum_core::SyncCancellation::new());
+        progress.present(Some(&win));
+        pump_ms(300);
+        descendants(progress.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<gtk::Button>().ok())
+            .find(|button| button.label().as_deref() == Some("Cancel"))
+            .expect("native Cancel button")
+            .emit_clicked();
+        pump();
+        assert!(cancelled.get());
+        progress.disconnect(handler);
+        assert!(!win.apply_folder_copy_report(&source, &report, cancelled.get()));
+        assert_eq!(settings().string("nextcloud-folder"), "original-folder");
+        assert!(
+            win.apply_folder_copy_report(&source, &report, false),
+            "an uncancelled retry can switch after verification"
+        );
+        assert_eq!(settings().string("nextcloud-folder"), "momentum");
+        win.close();
+        reset_settings();
+    });
+}
+
+#[test]
+fn preferences_settings_sync_is_an_independent_opt_in() {
+    on_gtk(|| {
+        reset_settings();
+        let (win, _) = empty_window();
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        pump_ms(300);
+        let row = descendants(prefs.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::SwitchRow>().ok())
+            .find(|row| row.title() == "Sync app settings")
+            .expect("Preferences offer app settings sync");
+        assert!(!row.is_active());
+        assert!(!win.engine().settings_sync_status().enabled);
+        row.set_active(true);
+        pump();
+        assert!(win.engine().settings_sync_status().enabled);
+        assert_eq!(
+            crate::prefs::sync_method(&settings()),
+            "off",
+            "settings consent does not select a provider"
+        );
+        settings().set_string("task-sort", "title").unwrap();
+        pump();
+        let document: serde_json::Value =
+            serde_json::from_str(&win.engine().portable_settings_json().unwrap()).unwrap();
+        assert_eq!(document["values"]["sort"], "title");
+        row.set_active(false);
+        pump();
+        assert!(!win.engine().settings_sync_status().enabled);
+        assert_eq!(settings().string("task-sort"), "title");
+        prefs.close();
+        reset_settings();
+    });
+}
+
+#[test]
+fn a_local_native_setting_does_not_overwrite_an_unseen_synced_setting() {
+    on_gtk(|| {
+        reset_settings();
+        let (win, _) = empty_window();
+        win.engine()
+            .stage_portable_settings(r#"{"version":1,"values":{"sort":"title"}}"#.into())
+            .unwrap();
+        assert_eq!(settings().string("task-sort"), "manual");
+        settings().set_boolean("colorful-labels", false).unwrap();
+        pump();
+        assert_eq!(win.engine().preferences().sort, momentum_core::SortKey::Title);
+        assert_eq!(settings().string("task-sort"), "title");
+        assert!(!settings().boolean("colorful-labels"));
+        reset_settings();
+    });
+}
+
+#[test]
+fn failed_initial_portable_seed_retries_all_values_on_edit_and_consent() {
+    on_gtk(|| {
+        // Each regression has one isolated store. Other fixture windows share the
+        // process-wide native backend and must not react to this store's rollback.
+        for window in app().windows() {
+            window.destroy();
+        }
+        for recovery in ["edit", "consent", "export", "retry", "import"] {
+            reset_settings();
+            settings().set_string("row-density", "compact").unwrap();
+            settings().set_string("task-sort", "title").unwrap();
+            let directory = tempfile::tempdir().unwrap();
+            let blocked = directory.path().join("portable-settings.json.tmp");
+            std::fs::create_dir(&blocked).unwrap();
+            set_test_data_dir(Some(directory.path().to_path_buf()));
+            let win = MomentumWindow::new(&app());
+            pump();
+            win.refresh_app_settings();
+            assert_eq!(settings().string("row-density"), "compact");
+            assert_eq!(settings().string("task-sort"), "title");
+            assert!(win.imp().portable_revision.get().is_none());
+            win.present();
+            pump();
+            let prefs = crate::prefs::MomentumPrefs::default();
+            prefs.present(Some(&win));
+            pump_ms(300);
+            let widgets = descendants(prefs.upcast_ref());
+            let consent = widgets
+                .iter()
+                .filter_map(|widget| widget.clone().downcast::<adw::SwitchRow>().ok())
+                .find(|row| row.title() == "Sync app settings")
+                .unwrap();
+            let status = widgets
+                .iter()
+                .filter_map(|widget| widget.clone().downcast::<adw::ActionRow>().ok())
+                .find(|row| row.title() == "App settings sync")
+                .unwrap();
+            let retry = widgets
+                .iter()
+                .filter_map(|widget| widget.clone().downcast::<adw::ButtonRow>().ok())
+                .find(|row| row.title() == "Retry app settings sync")
+                .unwrap();
+            assert!(
+                status.is_visible() && retry.is_visible(),
+                "{recovery}: status={}, retry={}, error={:?}, pending={}",
+                status.is_visible(),
+                retry.is_visible(),
+                win.app_settings_error(),
+                win.can_retry_app_settings()
+            );
+            assert!(status.subtitle().unwrap().contains("not a regular file"));
+            let export = directory.path().join("settings-export.json");
+            assert!(win
+                .export_app_settings_to(export.to_string_lossy().into_owned())
+                .is_err());
+            assert!(!export.exists());
+            consent.set_active(true);
+            pump();
+            assert!(!win.engine().settings_sync_status().enabled);
+            assert!(!consent.is_active());
+            win.refresh_app_settings();
+            assert!(win.app_settings_error().is_some());
+            std::fs::remove_dir(&blocked).unwrap();
+            match recovery {
+                "edit" => {
+                    settings().set_boolean("colorful-labels", false).unwrap();
+                    pump();
+                }
+                "consent" => {
+                    consent.set_active(true);
+                    pump();
+                    assert!(win.engine().settings_sync_status().enabled);
+                }
+                "export" => {
+                    win.export_app_settings_to(export.to_string_lossy().into_owned())
+                        .unwrap();
+                    assert!(export.exists());
+                }
+                "import" => {
+                    std::fs::write(&export, r#"{"version":1,"values":{"sort":"due"}}"#).unwrap();
+                    win.import_app_settings_from(export.to_string_lossy().into_owned())
+                        .unwrap();
+                }
+                _ => {
+                    retry.emit_by_name::<()>("activated", &[]);
+                    pump();
+                }
+            }
+            let document: serde_json::Value =
+                serde_json::from_str(&win.engine().portable_settings_json().unwrap()).unwrap();
+            assert_eq!(document["values"].as_object().unwrap().len(), 9, "{recovery}");
+            assert_eq!(document["values"]["rowDensity"], "compact");
+            assert_eq!(
+                document["values"]["sort"],
+                if recovery == "import" { "due" } else { "title" }
+            );
+            assert!(win.app_settings_error().is_none());
+            assert!(!win.can_retry_app_settings());
+            assert!(win.imp().portable_revision.get().is_some());
+            prefs.close();
+            win.destroy();
+        }
+        reset_settings();
+    });
+}
+
+#[test]
+fn rejected_native_settings_keep_a_local_retry_without_overwriting_unseen_values() {
+    on_gtk(|| {
+        for window in app().windows() {
+            window.destroy();
+        }
+        reset_settings();
+        let (win, directory) = empty_window();
+        settings().set_string("task-sort", "title").unwrap();
+        pump();
+        let blocked = directory.join("portable-settings.json.tmp");
+        std::fs::create_dir(&blocked).unwrap();
+        settings().set_string("task-sort", "created").unwrap();
+        pump();
+        assert_eq!(settings().string("task-sort"), "title");
+        let failure = win.app_settings_error().unwrap();
+        assert!(!win.can_review_app_settings());
+        assert_eq!(
+            win.choose_app_settings_bootstrap(
+                momentum_core::SettingsBootstrapChoice::UseLocal,
+                "fixture-review".into()
+            )
+            .unwrap_err(),
+            failure
+        );
+        assert!(win.can_retry_app_settings());
+        win.refresh();
+        assert_eq!(win.app_settings_error().as_deref(), Some(failure.as_str()));
+        win.present();
+        pump();
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        pump_ms(300);
+        let retry = descendants(prefs.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::ButtonRow>().ok())
+            .find(|row| row.title() == "Retry app settings sync")
+            .unwrap();
+        assert!(retry.is_visible());
+        std::fs::remove_dir(&blocked).unwrap();
+        win.engine()
+            .stage_portable_settings(r#"{"version":1,"values":{"grouping":"project"}}"#.into())
+            .unwrap();
+        retry.emit_by_name::<()>("activated", &[]);
+        pump();
+        assert_eq!(win.engine().preferences().sort, momentum_core::SortKey::Created);
+        assert_eq!(win.engine().preferences().group_by, momentum_core::GroupBy::Project);
+        assert_eq!(
+            settings().string("task-sort"),
+            "created",
+            "core={}, own={}, revision={:?}",
+            win.engine().portable_settings_json().unwrap(),
+            win.imp().settings.string("task-sort"),
+            win.imp().portable_revision.get()
+        );
+        assert_eq!(settings().string("group-by"), "project");
+        assert!(win.app_settings_error().is_none());
+        assert!(!retry.is_visible());
+        prefs.close();
+        win.destroy();
+        reset_settings();
+    });
+}
+
+#[test]
+fn combined_restore_supersedes_failed_native_settings_and_keeps_task_only_restore_independent() {
+    on_gtk(|| {
+        for window in app().windows() {
+            window.destroy();
+        }
+        for initial_seed in [true, false] {
+            reset_settings();
+            settings().set_string("task-sort", "title").unwrap();
+            let directory = tempfile::tempdir().unwrap();
+            let source = Engine::open(directory.path().join("source").to_string_lossy().into_owned());
+            source.add_task("Restored fixture".into(), View::Today);
+            source
+                .stage_portable_settings(r#"{"version":1,"values":{"sort":"created","rowDensity":"compact"}}"#.into())
+                .unwrap();
+            let backup = directory.path().join("combined.json");
+            source
+                .export_backup_with_settings(backup.to_string_lossy().into_owned(), true)
+                .unwrap();
+            let target = directory.path().join("target");
+            std::fs::create_dir(&target).unwrap();
+            let blocked = target.join("portable-settings.json.tmp");
+            if initial_seed {
+                std::fs::create_dir(&blocked).unwrap();
+            }
+            set_test_data_dir(Some(target));
+            let win = MomentumWindow::new(&app());
+            pump();
+            win.engine().add_task("Existing fixture".into(), View::Today);
+            if !initial_seed {
+                std::fs::create_dir(&blocked).unwrap();
+                settings().set_string("task-sort", "due").unwrap();
+                pump();
+            }
+            assert!(win.can_retry_app_settings());
+            assert!(win
+                .restore_backup_from(backup.to_string_lossy().into_owned(), true)
+                .is_err());
+            assert_eq!(
+                win.engine()
+                    .all_tasks()
+                    .iter()
+                    .map(|task| task.title.as_str())
+                    .collect::<Vec<_>>(),
+                ["Existing fixture"]
+            );
+            win.restore_backup_from(backup.to_string_lossy().into_owned(), false)
+                .unwrap();
+            assert_eq!(
+                win.engine()
+                    .all_tasks()
+                    .iter()
+                    .map(|task| task.title.as_str())
+                    .collect::<Vec<_>>(),
+                ["Restored fixture"]
+            );
+            assert_eq!(settings().string("task-sort"), "title");
+            assert!(win.can_retry_app_settings());
+            std::fs::remove_dir(&blocked).unwrap();
+            win.restore_backup_from(backup.to_string_lossy().into_owned(), true)
+                .unwrap();
+            assert_eq!(settings().string("task-sort"), "created");
+            assert_eq!(settings().string("row-density"), "compact");
+            assert!(win.app_settings_error().is_none());
+            assert!(!win.can_retry_app_settings());
+            win.retry_app_settings().unwrap();
+            assert_eq!(win.engine().preferences().sort, momentum_core::SortKey::Created);
+            assert_eq!(settings().string("row-density"), "compact");
+            win.destroy();
+        }
+        reset_settings();
+    });
+}
+
+#[test]
+fn invalid_settings_imports_preserve_rejected_intent_and_all_durable_files() {
+    on_gtk(|| {
+        for window in app().windows() {
+            window.destroy();
+        }
+        for combined in [false, true] {
+            reset_settings();
+            let (win, directory) = empty_window();
+            win.engine().add_task("Keep this task".into(), View::Today);
+            settings().set_string("task-sort", "title").unwrap();
+            settings().set_string("row-density", "compact").unwrap();
+            pump();
+            let blocked = directory.join("portable-settings.json.tmp");
+            std::fs::create_dir(&blocked).unwrap();
+            settings().set_string("task-sort", "created").unwrap();
+            pump();
+            assert!(win.can_retry_app_settings());
+            std::fs::remove_dir(&blocked).unwrap();
+            let before = win.engine().portable_settings_json().unwrap();
+            let files = ["state.json", "pending.json", "portable-settings.json"];
+            let bytes: Vec<_> = files
+                .iter()
+                .map(|file| std::fs::read(directory.join(file)).unwrap())
+                .collect();
+            let invalid = directory.join("invalid.json");
+            if combined {
+                win.engine()
+                    .export_backup_with_settings(invalid.to_string_lossy().into_owned(), true)
+                    .unwrap();
+                let mut backup: serde_json::Value = serde_json::from_slice(&std::fs::read(&invalid).unwrap()).unwrap();
+                backup["momentumSettings"] = json!({"version":1,"values":{"sort":17}});
+                std::fs::write(&invalid, backup.to_string()).unwrap();
+                assert!(win
+                    .restore_backup_from(invalid.to_string_lossy().into_owned(), true)
+                    .is_err());
+            } else {
+                std::fs::write(&invalid, r#"{"version":1,"values":{"sort":17}}"#).unwrap();
+                assert!(win
+                    .import_app_settings_from(invalid.to_string_lossy().into_owned())
+                    .is_err());
+            }
+            assert_eq!(win.engine().portable_settings_json().unwrap(), before);
+            assert_eq!(settings().string("task-sort"), "title");
+            assert_eq!(settings().string("row-density"), "compact");
+            assert!(win.can_retry_app_settings());
+            for (file, before) in files.iter().zip(bytes) {
+                assert_eq!(std::fs::read(directory.join(file)).unwrap(), before);
+            }
+            win.refresh_app_settings();
+            assert!(win.can_retry_app_settings());
+            std::fs::write(&invalid, r#"{"version":1,"values":{"sort":"due"}}"#).unwrap();
+            win.import_app_settings_from(invalid.to_string_lossy().into_owned())
+                .unwrap();
+            assert_eq!(settings().string("task-sort"), "due");
+            assert_eq!(settings().string("row-density"), "compact");
+            assert!(!win.can_retry_app_settings());
+            win.retry_app_settings().unwrap();
+            assert_eq!(win.engine().preferences().sort, momentum_core::SortKey::Due);
+            win.destroy();
+        }
+        reset_settings();
+    });
+}
+
+#[test]
+fn an_import_refresh_does_not_hide_a_core_commit_from_a_native_changed_callback() {
+    on_gtk(|| {
+        for window in app().windows() {
+            window.destroy();
+        }
+        reset_settings();
+        let (win, directory) = empty_window();
+        let native = win.imp().settings.clone();
+        let engine = win.engine();
+        let injected = Rc::new(Cell::new(false));
+        let did_inject = injected.clone();
+        let callback = native.connect_changed(Some("task-sort"), move |settings, _| {
+            if settings.string("task-sort") == "due" && !did_inject.replace(true) {
+                engine
+                    .stage_portable_settings(r#"{"version":1,"values":{"grouping":"project"}}"#.into())
+                    .unwrap();
+            }
+        });
+        let file = directory.join("settings.json");
+        std::fs::write(&file, r#"{"version":1,"values":{"sort":"due"}}"#).unwrap();
+        win.import_app_settings_from(file.to_string_lossy().into_owned())
+            .unwrap();
+        assert!(injected.get());
+        assert_eq!(win.engine().preferences().group_by, momentum_core::GroupBy::Project);
+        assert_eq!(
+            native.string("group-by"),
+            "morning-night",
+            "the original readback precedes the callback commit"
+        );
+        win.refresh_app_settings();
+        assert_eq!(
+            native.string("group-by"),
+            "project",
+            "the captured revision must leave the newer commit observable"
+        );
+        assert_eq!(
+            win.imp().portable_revision.get(),
+            Some(win.engine().settings_sync_status().revision)
+        );
+        native.disconnect(callback);
+        win.destroy();
+        reset_settings();
     });
 }
 

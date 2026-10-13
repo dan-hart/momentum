@@ -136,12 +136,13 @@ private struct SyncSettings: SwiftUI.View {
     @AppStorage(PrefKey.syncMethod) private var method = SyncMethod.off.rawValue
     @AppStorage(PrefKey.nextcloudServer) private var server = ""
     @AppStorage(PrefKey.nextcloudUser) private var user = ""
-    @AppStorage(PrefKey.nextcloudFolder) private var folder = "super-productivity"
+    @AppStorage(PrefKey.nextcloudFolder) private var folder = "momentum"
     @AppStorage(PrefKey.autoSync) private var autoSync = true
     @AppStorage(PrefKey.backgroundSync) private var backgroundSync = true
     @AppStorage(PrefKey.compress) private var compress = false
     @State private var password = ""
     @State private var encryption = ""
+    @State private var confirmingFolderCopy = false
 
     var body: some SwiftUI.View {
         Form {
@@ -154,6 +155,51 @@ private struct SyncSettings: SwiftUI.View {
                 .disabled(state.syncInProgress)
             } footer: {
                 Text(String(localized: "Choose one service to keep your tasks in sync. Switching services keeps your tasks and saved connections."))
+            }
+            Section(String(localized: "App settings")) {
+                Toggle(String(localized: "Sync app settings"), isOn: Binding(
+                    get: { state.appSettingsSync.enabled }, set: state.setAppSettingsSync))
+                    .disabled(state.isDemo)
+                Text(String(localized: "Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local."))
+                    .font(.caption).foregroundStyle(.secondary)
+                if state.appSettingsSync.enabled, !state.appSettingsSync.bootstrapRequired {
+                    if state.appSettingsSync.pendingKeys > 0 {
+                        Label(String(localized: "App settings waiting to sync"), systemImage: "clock")
+                    } else if state.appSettingsSync.lastSuccessMs > 0, state.appSettingsSync.error == nil {
+                        Label(String(localized: "App settings are up to date"), systemImage: "checkmark.circle")
+                    }
+                    if state.appSettingsSync.lastSuccessMs > 0 {
+                        LabeledContent(String(localized: "Last settings sync")) {
+                            Text(Date(timeIntervalSince1970: Double(state.appSettingsSync.lastSuccessMs) / 1_000), style: .relative)
+                        }
+                    }
+                }
+                if state.appSettingsSync.bootstrapRequired, let reviewID = state.appSettingsSync.reviewId,
+                   let remote = state.appSettingsSync.remoteSettingsJson {
+                    Text(String(localized: "This device and your other devices have saved settings. Choose which settings to start with."))
+                    DisclosureGroup(String(localized: "This device")) {
+                        ForEach(PortableAppSettings.summary((try? PortableAppSettings.encode(state.defaults)) ?? "")) { item in
+                            LabeledContent(item.label, value: item.value)
+                        }
+                    }
+                    DisclosureGroup(String(localized: "Synced settings")) {
+                        ForEach(PortableAppSettings.summary(remote)) { item in LabeledContent(item.label, value: item.value) }
+                    }
+                    Button(String(localized: "Use this device’s settings")) { state.chooseAppSettingsBootstrap(.useLocal, reviewID: reviewID) }
+                        .disabled(state.canRetryAppSettings)
+                    Button(String(localized: "Use synced settings")) { state.chooseAppSettingsBootstrap(.useRemote, reviewID: reviewID) }
+                        .disabled(state.canRetryAppSettings)
+                }
+                if let error = state.appSettingsError {
+                    Text(error).foregroundStyle(.red).textSelection(.enabled)
+                    if state.canRetryAppSettings {
+                        Button(String(localized: "Retry")) { state.retryAppSettings() }
+                    }
+                }
+                if let error = state.appSettingsSync.error {
+                    Text(error).foregroundStyle(.red).textSelection(.enabled)
+                    Button(String(localized: "Retry")) { state.sync() }
+                }
             }
             if state.isDemo {
                 Text(String(localized: "Sync is unavailable in preview mode. Open Momentum normally to sync your tasks."))
@@ -168,6 +214,22 @@ private struct SyncSettings: SwiftUI.View {
                     SecureField(String(localized: "App password"), text: $password)
                     TextField(String(localized: "Folder"), text: $folder)
                     SecureField(String(localized: "Encryption password"), text: $encryption)
+                }
+                .disabled(state.syncInProgress)
+
+                if folder != "momentum" || state.folderCopyMessage != nil {
+                    Section {
+                        if state.folderCopyInProgress {
+                            ProgressView(String(localized: "Copying and verifying files…"))
+                            Button(String(localized: "Cancel")) { state.cancelFolderCopy() }
+                        } else if folder != "momentum" {
+                            Button(String(localized: "Copy to Momentum folder…")) { confirmingFolderCopy = true }
+                                .disabled(!state.canCopyFolder)
+                        }
+                        if let message = state.folderCopyMessage { Text(message).textSelection(.enabled) }
+                        Text(String(localized: "The original folder stays intact. The saved folder changes only after every copied file is verified."))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
 
                 Section(String(localized: "When")) {
@@ -202,6 +264,13 @@ private struct SyncSettings: SwiftUI.View {
         .onChange(of: backgroundSync) { _, _ in state.preferencesChanged() }
         .onChange(of: password) { _, new in state.keychain.set(Keychain.nextcloud, new) }
         .onChange(of: encryption) { _, new in state.keychain.set(Keychain.encryption, new) }
+        .onDisappear { state.cancelFolderCopy() }
+        .alert(String(localized: "Copy to Momentum folder?"), isPresented: $confirmingFolderCopy) {
+            Button(String(localized: "Cancel"), role: .cancel) {}
+            Button(String(localized: "Copy and switch")) { Task { await state.copyToMomentumFolder() } }
+        } message: {
+            Text(String(localized: "Copy and verify your sync files in the momentum folder, then switch this device to it. The original folder stays intact. Choose the new folder on your other devices after the copy succeeds."))
+        }
     }
 }
 
@@ -217,23 +286,46 @@ private extension SyncSettings {
 
 private struct BackupSettings: SwiftUI.View {
     @Environment(AppState.self) private var state
+    @State private var includeSettings = false
+    @State private var restoreSettings = false
 
     var body: some SwiftUI.View {
         Form {
             Section {
+                Toggle(String(localized: "Restore included app settings"), isOn: $restoreSettings)
                 Button(String(localized: "Import Backup…")) {
                     let panel = NSOpenPanel()
                     panel.allowedContentTypes = [.json]
-                    if panel.runModal() == .OK, let url = panel.url { state.importBackup(url) }
+                    if panel.runModal() == .OK, let url = panel.url { state.importBackup(url, restoreSettings: restoreSettings) }
                 }
+                Toggle(String(localized: "Include app settings"), isOn: $includeSettings)
                 Button(String(localized: "Export Backup…")) {
                     let panel = NSSavePanel()
                     panel.allowedContentTypes = [.json]
                     panel.nameFieldStringValue = "\(today()).json"
-                    if panel.runModal() == .OK, let url = panel.url { state.exportBackup(url) }
+                    if panel.runModal() == .OK, let url = panel.url { state.exportBackup(url, includeSettings: includeSettings) }
                 }
             } footer: {
-                Text(String(localized: "Super Productivity's backup format. Importing replaces everything on this Mac and discards changes that have not synced."))
+                Text(String(localized: "Importing replaces all tasks on this Mac and discards unsynced task changes. App settings are optional; credentials and device controls stay local."))
+            }
+            Section(String(localized: "App settings only")) {
+                Button(String(localized: "Import app settings…")) {
+                    let panel = NSOpenPanel()
+                    panel.allowedContentTypes = [.json]
+                    if panel.runModal() == .OK, let url = panel.url { state.importAppSettings(url) }
+                }
+                Button(String(localized: "Export app settings…")) {
+                    let panel = NSSavePanel()
+                    panel.allowedContentTypes = [.json]
+                    panel.nameFieldStringValue = "momentum-settings.json"
+                    if panel.runModal() == .OK, let url = panel.url { state.exportAppSettings(url) }
+                }
+                if let error = state.appSettingsError {
+                    Text(error).foregroundStyle(.red)
+                    if state.canRetryAppSettings {
+                        Button(String(localized: "Retry")) { state.retryAppSettings() }
+                    }
+                }
             }
             Section(String(localized: "Data")) {
                 LabeledContent(String(localized: "Folder"), value: state.dataDir.path)

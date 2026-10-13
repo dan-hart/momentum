@@ -6,10 +6,10 @@
 //! handed to its local socket (or Linux D-Bus); otherwise `mo` applies
 //! them to the store directly. Queries always read the store.
 use clap::{Parser, Subcommand};
+use momentum_model::*;
+use momentum_oplog::Action;
+use momentum_store::Store;
 use serde::{Deserialize, Serialize};
-use sp_model::*;
-use sp_oplog::Action;
-use sp_store::Store;
 use std::ffi::OsString;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -291,6 +291,7 @@ fn load_config(dir: &PathBuf) -> CliConfig {
         .ok()
         .and_then(|b| serde_json::from_slice(&b).ok())
         .unwrap_or_default();
+    preserve_existing_implicit_folder(&mut cfg);
     #[cfg(target_os = "linux")]
     if dir == &default_data_dir() {
         let home = dirs::home_dir().unwrap_or_default();
@@ -305,6 +306,17 @@ fn load_config(dir: &PathBuf) -> CliConfig {
         }
     }
     cfg
+}
+
+/// Older saved connections inherited this folder without serializing it. Resolve
+/// that inheritance before using Momentum's default for newly configured connections.
+fn preserve_existing_implicit_folder(cfg: &mut CliConfig) {
+    if cfg.folder.is_none()
+        && cfg.server.as_deref().is_some_and(|value| !value.is_empty())
+        && cfg.user.as_deref().is_some_and(|value| !value.is_empty())
+    {
+        cfg.folder = Some("super-productivity".into());
+    }
 }
 
 /// Connection fields may come from `mo config`, but the native app owns which
@@ -333,6 +345,10 @@ fn merge_linux_settings(cfg: &mut CliConfig, text: &str) {
     cfg.server = cfg.server.take().or_else(|| get("nextcloud-server"));
     cfg.user = cfg.user.take().or_else(|| get("nextcloud-user"));
     cfg.folder = cfg.folder.take().or_else(|| get("nextcloud-folder"));
+    if cfg.folder.is_none() && get("nextcloud-folder-default-pinned").as_deref() == Some("true") {
+        cfg.folder = Some("momentum".into());
+    }
+    preserve_existing_implicit_folder(cfg);
 }
 
 fn secret(purpose: &str) -> Option<String> {
@@ -413,15 +429,15 @@ fn apply(store: &mut Store, dir: &Path, action: Action) -> Result<(), String> {
     if forward(dir, &payload)? {
         // D-Bus activation can be asynchronous; apply only to this process's snapshot.
         // Never queue or persist the action a second time.
-        sp_oplog::apply(&mut store.state, &action);
+        momentum_oplog::apply(&mut store.state, &action);
         return Ok(());
     }
     // A previous action may have been forwarded before the app exited. Refresh its
     // persisted metadata so an offline continuation retains that action and its op.
     *store = Store::try_load(dir.to_path_buf()).map_err(|e| e.to_string())?;
-    sp_oplog::apply(&mut store.state, &action);
+    momentum_oplog::apply(&mut store.state, &action);
     let op = action.to_op(&store.meta.client_id, &mut store.meta.vector_clock);
-    store.pending.push(sp_store::Pending { op, action });
+    store.pending.push(momentum_store::Pending { op, action });
     store.save().map_err(|e| e.to_string())
 }
 
@@ -834,7 +850,8 @@ where
             }
             Cmd::Projects => {
                 if json {
-                    let v: Vec<&sp_model::Project> = store.state.project.iter().filter(|p| !p.is_archived).collect();
+                    let v: Vec<&momentum_model::Project> =
+                        store.state.project.iter().filter(|p| !p.is_archived).collect();
                     writeln!(out, "{}", serde_json::to_string_pretty(&v).unwrap()).unwrap();
                     return Ok(());
                 }
@@ -850,7 +867,8 @@ where
             }
             Cmd::Tags => {
                 if json {
-                    let v: Vec<&sp_model::Tag> = store.state.tag.iter().filter(|g| g.id != TODAY_TAG_ID).collect();
+                    let v: Vec<&momentum_model::Tag> =
+                        store.state.tag.iter().filter(|g| g.id != TODAY_TAG_ID).collect();
                     writeln!(out, "{}", serde_json::to_string_pretty(&v).unwrap()).unwrap();
                     return Ok(());
                 }
@@ -881,23 +899,28 @@ where
                 if c.method.as_deref() == Some("libresync") {
                     return Err("Open Momentum to sync with LibreSync.".into());
                 }
-                let cfg = sp_sync::NextcloudCfg {
+                let cfg = momentum_sync::NextcloudCfg {
                     server_url: c.server.clone().ok_or(
                         "no server configured; run `mo config --server URL --user NAME --folder DIR --password`",
                     )?,
                     user_name: c.user.clone().unwrap_or_default(),
                     password: secret("nextcloud").ok_or("no app password stored; run `mo config --password`")?,
-                    folder: c.folder.clone().unwrap_or_else(|| "super-productivity".into()),
+                    folder: c.folder.clone().unwrap_or_else(|| "momentum".into()),
                     compress: c.compress,
                     encrypt_key: secret("encryption"),
                 };
                 let r = if replace_remote {
-                    let r = sp_sync::replace_remote(&cfg, &mut store, sp_sync::DEFAULT_EXCHANGE_TIMEOUT, || true)
-                        .map_err(|e| e.to_string())?;
+                    let r = momentum_sync::replace_remote(
+                        &cfg,
+                        &mut store,
+                        momentum_sync::DEFAULT_EXCHANGE_TIMEOUT,
+                        || true,
+                    )
+                    .map_err(|e| e.to_string())?;
                     store.save().map_err(|e| e.to_string())?;
                     r
                 } else {
-                    sp_sync::sync(&cfg, &mut store).map_err(|e| e.to_string())?
+                    momentum_sync::sync(&cfg, &mut store).map_err(|e| e.to_string())?
                 };
                 if json {
                     writeln!(
@@ -936,6 +959,7 @@ where
                     c.folder = Some(f);
                 }
                 if settings_changed {
+                    c.folder.get_or_insert_with(|| "momentum".into());
                     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
                     let temporary = dir.join("cli-config.json.tmp");
                     std::fs::write(&temporary, serde_json::to_vec_pretty(&c).unwrap()).map_err(|e| e.to_string())?;
@@ -965,7 +989,7 @@ where
                         "server:  {}\nuser:    {}\nfolder:  {}\ndata:    {}",
                         c.server.as_deref().unwrap_or("-"),
                         c.user.as_deref().unwrap_or("-"),
-                        c.folder.as_deref().unwrap_or("super-productivity"),
+                        c.folder.as_deref().unwrap_or("momentum"),
                         dir.display()
                     )
                     .unwrap();
@@ -1002,6 +1026,30 @@ mod sync_config_tests {
         assert_eq!(config.server.as_deref(), Some("https://saved.example"));
         merge_linux_settings(&mut config, "sync-method='libresync'\nsync-enabled=true\n");
         assert_eq!(config.method.as_deref(), Some("libresync"));
+    }
+    #[test]
+    fn linux_implicit_connection_preserves_its_previous_folder() {
+        let mut config = CliConfig::default();
+        merge_linux_settings(
+            &mut config,
+            "nextcloud-server='https://cloud.example'\nnextcloud-user='fixture'\nsync-method='nextcloud'\n",
+        );
+        assert_eq!(config.folder, Some(["super", "productivity"].join("-")));
+        let mut explicit = CliConfig::default();
+        merge_linux_settings(
+            &mut explicit,
+            "nextcloud-server='https://cloud.example'\nnextcloud-user='fixture'\nnextcloud-folder='my-tasks'\n",
+        );
+        assert_eq!(explicit.folder.as_deref(), Some("my-tasks"));
+        let mut empty = CliConfig::default();
+        merge_linux_settings(&mut empty, "sync-method='off'\n");
+        assert_eq!(empty.folder, None);
+    }
+    #[test]
+    fn linux_new_connection_marker_uses_momentum_when_folder_is_implicit() {
+        let mut config = CliConfig::default();
+        merge_linux_settings(&mut config, "nextcloud-server='https://cloud.example'\nnextcloud-user='fixture'\nnextcloud-folder-default-pinned=true\n");
+        assert_eq!(config.folder.as_deref(), Some("momentum"));
     }
     #[test]
     fn legacy_linux_dual_sync_prefers_libresync_and_unknown_method_fails_closed() {

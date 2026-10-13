@@ -9,7 +9,7 @@ import XCTest
 /// tasks on the next foreground, exactly once, with a toast that says so.
 @MainActor
 final class SharedTaskIntegrationTests: XCTestCase {
-    func testForegroundImportsInboxItemsOnceAndClearsThem() async throws {
+    func testForegroundImportsCapturedTodayItemsOnceAndClearsThem() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let inbox = directory.appendingPathComponent("inbox")
         let name = "momentum-hosted-share-\(UUID())"
@@ -17,8 +17,9 @@ final class SharedTaskIntegrationTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
 
         let draft = sharedTaskDraft(title: nil, text: "https://kenney.nl/assets/interface-sounds", url: nil)
-        let link = SharedTaskItem(title: draft.title, notes: draft.notes, url: draft.url)
-        let selection = SharedTaskItem(title: "Call the clinic", notes: "https://example.com/clinic\n\nCall the clinic, see https://example.com/clinic", url: "https://example.com/clinic")
+        let capturedAt = Date()
+        let link = SharedTaskItem.captured(title: draft.title, notes: draft.notes, url: draft.url, at: capturedAt)
+        let selection = SharedTaskItem.captured(title: "Call the clinic", notes: "https://example.com/clinic\n\nCall the clinic, see https://example.com/clinic", url: "https://example.com/clinic", at: capturedAt)
         try SharedTaskInbox.write(link, in: inbox)
         try SharedTaskInbox.write(selection, in: inbox)
 
@@ -26,7 +27,7 @@ final class SharedTaskIntegrationTests: XCTestCase {
         model.setForeground(true)
         await model.foreground()
 
-        XCTAssertEqual(model.feedback, String(localized: "Added \(2) shared tasks to Inbox"))
+        XCTAssertEqual(model.feedback, String(localized: "Added \(2) shared tasks"))
         XCTAssertTrue(SharedTaskInbox.pending(in: inbox).isEmpty, "imported items leave the inbox")
         let worker = try XCTUnwrap(model.worker)
         let found = await worker.snapshot(view: .search, query: "Interface sounds")
@@ -34,7 +35,9 @@ final class SharedTaskIntegrationTests: XCTestCase {
         let loaded = await worker.taskDetail(found.tasks[0].id)
         let detail = try XCTUnwrap(loaded)
         XCTAssertEqual(detail.notes, "https://kenney.nl/assets/interface-sounds")
-        XCTAssertNil(detail.dueDay)
+        XCTAssertEqual(detail.dueDay, link.plannedDay)
+        let today = await worker.snapshot(view: .today)
+        XCTAssertEqual(Set(today.tasks.map(\.title)), [link.title, selection.title])
 
         // A second foreground with the same files (a crash between import and removal) adds nothing.
         try SharedTaskInbox.write(link, in: inbox)

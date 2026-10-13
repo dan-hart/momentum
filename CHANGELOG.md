@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.10] - 2026-10-13
+
 ### Added
 - Ten short CC0 task-completion sounds to choose and preview on Linux, macOS, iOS
   and Android. Sound stays off by default; when enabled, the default choice is
@@ -17,6 +19,31 @@ All notable changes to Momentum are documented here. The format follows
 - Android APK/AAB, matching source, dependency notices, R8 mapping and provenance in
   the unified tagged release, with optional distribution signing and explicit unsigned
   filenames otherwise. Release checksums cover all distribution assets. No store upload.
+
+- Optional app-settings import/export, including an independent unchecked option on
+  task backups, and settings-only files. Credentials and device controls stay local.
+- Optional settings sync over the selected Nextcloud or LibreSync connection, with
+  explicit initial-device choices and durable retry after interrupted exchanges.
+- Read-only future recurring occurrences in Upcoming, with Edit repeat schedule.
+- An opt-in, verified Nextcloud folder copy to `momentum` that retains the original.
+
+### Changed
+- Overdue tasks show a labeled callout and date across the native apps.
+- Copy Notes confirms success inside the editor, with native Apple/Android feedback.
+- Momentum owns its crate names, URL entry points and customer-facing naming while
+  preserving existing task, backup and sync formats and required license notices.
+- Linux task entry has concise guidance with a native tooltip and accessibility text.
+
+### Fixed
+- Linux: project selection in the task editor now displays and saves the selected ID,
+  including duplicate project names. Preferences fits independently of a short parent.
+- iOS: the first project selection from Lists loads its tasks without a second tap.
+- iOS: share-sheet tasks capture Today when added, retaining that day across a delayed
+  import or timezone change.
+- Fresh Nextcloud stores can create the required initial configuration safely.
+- Damaged task stores fail visibly before a network exchange instead of opening empty.
+- Folder-copy cancellation retains the original connection, including a late cancel,
+  and resumes automatic sync after cancellation.
 
 ## [0.4.9] - 2026-10-10
 
@@ -215,7 +242,7 @@ All notable changes to Momentum are documented here. The format follows
   network using LibreSync as the transport. Link two devices once with a six-digit pairing
   code (Preferences › Nearby Devices › Manage Devices…); ops travel a few seconds after a
   change and every five minutes; a device with Nextcloud relays what it receives. New
-  `sp-p2p` crate with a two-device integration test; `docs/P2P.md`
+  `momentum-p2p` crate with a two-device integration test; `docs/P2P.md`
 - Scheduled times: the task dialog has a Time row (`14:30`, `2pm`, `0930`), stored as
   `dueWithTime`; rows show the time and Coming Up and sorting use it
 - Reminders: none, at the scheduled time, or 5/10/15/30 minutes, 1 hour or 1 day before;
@@ -246,7 +273,7 @@ All notable changes to Momentum are documented here. The format follows
 - Launcher actions (New Task, Today, Search), quick-add window, drop or paste text and
   links onto the list to create tasks
 - `momentum --add/--quick-add/--today/--search/--background`; `momentum://` and
-  `superproductivity://` URL schemes
+  `momentum://` URL entry points
 - Ctrl+Z global undo
 - German translation
 
@@ -283,7 +310,7 @@ First preview.
 - Guided New Task dialog with project, due day, estimate, tags and notes
 - `#tag` autocomplete and `1h 30m` estimates in the quick-add box
 - Repeating tasks with a repeat badge and plain-language schedule text
-- Nextcloud sync compatible with Super Productivity's `sync-data.json`, including
+- Nextcloud sync compatible with the existing `sync-data.json` format, including
   end-to-end encrypted files; backup import and export
 - Drag tasks onto projects, tags or Today; drag to reorder in Manual Order
 - Selection mode with bulk done, plan, move, tag and delete, and multi-task drag

@@ -79,8 +79,28 @@ import XCTest
             }
         }
 
+        func scrollToBottom() {
+            func scroll(in view: UIView) {
+                if let scrollView = view as? UIScrollView, scrollView.contentSize.height > scrollView.bounds.height {
+                    let bottom = max(-scrollView.adjustedContentInset.top,
+                        scrollView.contentSize.height - scrollView.bounds.height + scrollView.adjustedContentInset.bottom)
+                    scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: bottom), animated: false)
+                }
+                view.subviews.forEach(scroll)
+            }
+            scroll(in: controller.view)
+            controller.view.layoutIfNeeded()
+        }
+
         func hasVisibleView(identifier: String) -> Bool {
             visibleViewFrame(identifier: identifier) != nil
+        }
+
+        var hasActiveTransition: Bool {
+            func transitioning(_ controller: UIViewController) -> Bool {
+                controller.transitionCoordinator != nil || controller.children.contains(where: transitioning)
+            }
+            return transitioning(controller) || presentedControllers.contains(where: transitioning)
         }
 
         func containsView<ViewType: UIView>(ofType type: ViewType.Type) -> Bool {

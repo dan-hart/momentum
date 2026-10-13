@@ -33,6 +33,7 @@ data class UiState(
     val selecting: Boolean = false,
     val error: String? = null,
     val notice: Outcome? = null,
+    val settingsFeedback: Int? = null,
     val editor: EditorDraft? = null,
     val editorError: Boolean = false,
     val importReady: Boolean = false,
@@ -194,12 +195,12 @@ class MomentumViewModel(
     }
     fun selectAll() = mutable.update { state ->
         state.copy(selecting = true, selected = state.snapshot?.listing?.sections.orEmpty().flatMap {
-            it.rows.filterIsInstance<Row.Task>().filter { row -> !row.row.archived }.map { row -> row.row.id }
+            it.rows.filterIsInstance<Row.Task>().filter { row -> !row.row.archived && row.row.occurrence == null }.map { row -> row.row.id }
         }.toSet())
     }
     fun selectGroup(ids: List<String>) = mutable.update { state ->
         val shown = state.snapshot?.listing?.sections.orEmpty().flatMap { it.rows }.filterIsInstance<Row.Task>()
-            .filter { !it.row.archived }.map { it.row.id }.toSet()
+            .filter { !it.row.archived && it.row.occurrence == null }.map { it.row.id }.toSet()
         state.copy(selecting = true, selected = ids.toSet().intersect(shown))
     }
     fun cancelSelection() = mutable.update { it.copy(selecting = false, selected = emptySet()) }
@@ -563,22 +564,23 @@ class MomentumViewModel(
             notifyChanges(); refresh()
         } catch(e: Exception) { fail(e) }
     }
-    fun export(uri: Uri) = viewModelScope.launch {
+    fun export(uri: Uri, includeSettings: Boolean = false, settingsOnly: Boolean = false) = viewModelScope.launch {
         try {
             withContext(Dispatchers.IO) {
                 val file = File(getApplication<Application>().cacheDir, "export-${UUID.randomUUID()}.json")
                 try {
-                    repository.read { exportBackup(file.absolutePath) }
+                    if(settingsOnly) repository.exportAppSettings(file) else repository.exportBackup(file, includeSettings)
                     getApplication<Application>().contentResolver.openOutputStream(uri, "wt").use { output ->
                         requireNotNull(output)
                         file.inputStream().use { it.copyTo(output) }
                     }
                 } finally { file.delete() }
             }
-            mutable.update { it.copy(notice = Outcome(false, Message.BackupExported, null, false)) }
+            mutable.update { it.copy(notice = if(settingsOnly) null else Outcome(false, Message.BackupExported, null, false),
+                settingsFeedback = if(settingsOnly) R.string.app_settings_exported else null, error = null) }
         } catch(e: Exception) { fail(e) }
     }
-    fun prepareImport(uri: Uri): Job {
+    fun prepareImport(uri: Uri, settingsOnly: Boolean = false): Job {
         if(mutable.value.restoring) return viewModelScope.launch { }
         val generation = ++importGeneration
         importPreparation?.cancel()
@@ -599,8 +601,14 @@ class MomentumViewModel(
                     }
                 }
                 if(generation != importGeneration || mutable.value.restoring) return@launch
-                importFile = file; published = true
-                mutable.update { it.copy(importReady = true) }
+                if(settingsOnly) {
+                    repository.importAppSettings(file)
+                    mutable.update { it.copy(settingsFeedback = R.string.app_settings_imported, error = null) }
+                    notifyChanges(); refresh()
+                } else {
+                    importFile = file; published = true
+                    mutable.update { it.copy(importReady = true) }
+                }
             } catch(e: Exception) {
                 if(e is CancellationException) throw e
                 if(generation == importGeneration) fail(e)
@@ -616,14 +624,14 @@ class MomentumViewModel(
         importFile?.delete(); importFile = null
         mutable.update { it.copy(importReady = false, importPreparing = false) }
     }
-    fun restore() {
+    fun restore(restoreSettings: Boolean = false) {
         val file = importFile ?: return
         if(mutable.value.editor != null || mutable.value.editorLoading || mutable.value.busy) return
         mutable.update { it.copy(busy = true, restoring = true) }
         viewModelScope.launch {
             try {
                 pauseForRestore()
-                val outcome = repository.read { importBackup(file.absolutePath) }
+                val outcome = repository.restoreBackup(file, restoreSettings)
                 if(importFile === file) { file.delete(); importFile = null }
                 mutable.update { it.copy(notice = outcome, error = null, importReady = false) }
                 refresh()
@@ -641,6 +649,13 @@ class MomentumViewModel(
             }
         }
     }
+    fun settingsSync(enabled: Boolean) = viewModelScope.launch {
+        try { repository.setSettingsSync(enabled); notifyChanges(); refresh() } catch(error: Exception) { fail(error) }
+    }
+    fun chooseSettings(choice: SettingsBootstrapChoice, reviewId: String) = viewModelScope.launch {
+        try { repository.chooseSettings(choice, reviewId); platform.syncNow(); refresh() } catch(error: Exception) { fail(error); refresh() }
+    }
+    fun consumeSettingsFeedback(value: Int) { mutable.update { if(it.settingsFeedback == value) it.copy(settingsFeedback = null) else it } }
     fun reportError(e: Exception) = fail(e)
     private fun fail(e: Exception) {
         if (e is CancellationException) throw e

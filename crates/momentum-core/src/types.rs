@@ -152,6 +152,14 @@ pub struct Preferences {
     pub morning_summary_time: ClockTime,
 }
 
+impl Preferences {
+    /// Bound query work to the largest supported Upcoming window. Keep smaller
+    /// windows, including zero, unchanged for existing automation callers.
+    pub(crate) fn upcoming_days_bounded(&self) -> u32 {
+        self.upcoming_days.min(30)
+    }
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
@@ -276,6 +284,11 @@ pub struct TaskRow {
     pub is_subtask: bool,
     /// Read-only row from the archive: no checkbox, drag or menu.
     pub archived: bool,
+    /// Open task planned before today under the core's effective local-date rule.
+    pub overdue: bool,
+    /// A read-only future recurrence preview, never a stored task. Its only edit
+    /// action addresses the repeat configuration; no completion, drag or delete.
+    pub occurrence: Option<crate::ProjectedOccurrence>,
     /// The project, unless the row is inside that project's own view.
     pub project: Option<ProjectRef>,
     pub estimate_ms: f64,
@@ -743,7 +756,7 @@ pub struct SyncStatus {
 }
 
 /// Why a Nextcloud exchange failed, so every interface can say it in plain words
-/// and offer the matching remedy. Mirrors `sp_sync::SyncFailureKind`.
+/// and offer the matching remedy. Mirrors `momentum_sync::SyncFailureKind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
 pub enum SyncFailureKind {
@@ -762,9 +775,9 @@ pub enum SyncFailureKind {
     Other,
 }
 
-impl From<sp_sync::SyncFailureKind> for SyncFailureKind {
-    fn from(kind: sp_sync::SyncFailureKind) -> Self {
-        use sp_sync::SyncFailureKind as K;
+impl From<momentum_sync::SyncFailureKind> for SyncFailureKind {
+    fn from(kind: momentum_sync::SyncFailureKind) -> Self {
+        use momentum_sync::SyncFailureKind as K;
         match kind {
             K::Unreachable => Self::Unreachable,
             K::Unauthorized => Self::Unauthorized,

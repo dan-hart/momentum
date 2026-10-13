@@ -12,10 +12,10 @@ use crate::notifications::{NotificationAction, NotificationContent, Notification
 use crate::sync_cancellation::{SyncCancellation, SyncOperation};
 use crate::text::*;
 use crate::types::*;
+use momentum_model::*;
+use momentum_oplog::Action;
+use momentum_store::Store;
 use serde_json::{json, Map, Value};
-use sp_model::*;
-use sp_oplog::Action;
-use sp_store::Store;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,10 +31,11 @@ pub(crate) struct Inner {
     pub(crate) dirty: bool,
     pub(crate) store: Store,
     pub(crate) prefs: Preferences,
-    undo: Vec<(u64, Vec<Action>)>,
+    pub(crate) portable: crate::portable::PortableState,
+    pub(crate) undo: Vec<(u64, Vec<Action>)>,
     next_undo: u64,
     /// Invalidates exchanges superseded by cancellation or explicit replacement.
-    sync_generation: u64,
+    pub(crate) sync_generation: u64,
     index: Option<Arc<SearchIndex>>,
     /// Reminders already shown this session (a snooze or a new time re-arms them).
     notified: HashSet<String>,
@@ -694,12 +695,25 @@ fn cfg_to_draft(c: &RepeatCfg, existing: bool) -> RepeatDraft {
     }
 }
 
+fn repeat_cfg_changes(cfg: &RepeatCfg) -> Map<String, Value> {
+    let mut changes = serde_json::to_value(cfg)
+        .ok()
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default();
+    // Fields serde skips when None must still be cleared on the other side.
+    for key in ["monthlyWeekOfMonth", "monthlyWeekday", "startDate"] {
+        changes.entry(key).or_insert(Value::Null);
+    }
+    changes
+}
+
 /// The engine. One per data directory; both apps create exactly one.
 #[cfg_attr(feature = "ffi", derive(uniffi::Object))]
 pub struct Engine {
     pub(crate) inner: Mutex<Inner>,
     pub(crate) syncing: AtomicBool,
-    nextcloud_session: Mutex<sp_sync::SyncSession>,
+    nextcloud_session: Mutex<momentum_sync::SyncSession>,
+    pub(crate) settings_error: Mutex<Option<String>>,
     #[cfg(feature = "p2p")]
     pub(crate) p2p: Mutex<Option<Arc<crate::p2p::Runtime>>>,
     pub(crate) ipc: Mutex<Option<crate::ipc::Server>>,
@@ -753,14 +767,15 @@ impl Engine {
     fn edit(&self, change: impl FnOnce(&mut Inner) -> Outcome) -> Outcome {
         self.try_edit(change).unwrap_or_else(save_failure)
     }
-    fn from_store(dir: PathBuf, store: Store) -> Arc<Self> {
-        let _ = dir;
-        Arc::new(Self {
+    fn from_store(dir: PathBuf, store: Store) -> Result<Arc<Self>, CoreError> {
+        let portable = crate::portable::PortableState::load(&dir)?;
+        let engine = Arc::new(Self {
             inner: Mutex::new(Inner {
                 staged: false,
                 dirty: false,
                 store,
                 prefs: Preferences::default(),
+                portable,
                 undo: vec![],
                 next_undo: 0,
                 sync_generation: 0,
@@ -770,11 +785,14 @@ impl Engine {
                 change_signal: None,
             }),
             syncing: AtomicBool::new(false),
-            nextcloud_session: Mutex::new(sp_sync::SyncSession::default()),
+            nextcloud_session: Mutex::new(momentum_sync::SyncSession::default()),
+            settings_error: Mutex::new(None),
             #[cfg(feature = "p2p")]
             p2p: Mutex::new(None),
             ipc: Mutex::new(None),
-        })
+        });
+        crate::portable::apply_preferences(&mut engine.lock());
+        Ok(engine)
     }
 }
 
@@ -784,20 +802,20 @@ impl Engine {
     #[cfg_attr(feature = "ffi", uniffi::constructor)]
     pub fn open(dir: String) -> Arc<Self> {
         let dir = PathBuf::from(dir);
-        Self::from_store(dir.clone(), Store::load(dir))
+        Self::from_store(dir.clone(), Store::load(dir)).expect("portable settings recovery failed")
     }
     /// Checked startup for native clients: recovery errors must not become empty data.
     #[cfg_attr(feature = "ffi", uniffi::constructor)]
     pub fn open_checked(dir: String) -> Result<Arc<Self>, CoreError> {
         let dir = PathBuf::from(dir);
         let store = Store::try_load(dir.clone())?;
-        Ok(Self::from_store(dir, store))
+        Self::from_store(dir, store)
     }
     /// A fresh store in `dir` filled with the sample data used for screenshots and tests.
     #[cfg_attr(feature = "ffi", uniffi::constructor)]
     pub fn demo(dir: String) -> Arc<Self> {
         let dir = PathBuf::from(dir);
-        Self::from_store(dir.clone(), crate::demo::store(dir))
+        Self::from_store(dir.clone(), crate::demo::store(dir)).expect("demo settings recovery failed")
     }
     pub fn data_dir(&self) -> String {
         self.lock().store.dir().to_string_lossy().into_owned()
@@ -807,6 +825,18 @@ impl Engine {
     }
     pub fn set_preferences(&self, prefs: Preferences) {
         self.lock().prefs = prefs;
+    }
+    /// Update device-only summary choices without replacing portable preferences.
+    pub fn set_device_summary_preferences(&self, enabled: bool, time: ClockTime) -> Result<(), CoreError> {
+        if time.hour > 23 || time.minute > 59 {
+            return Err(CoreError::Invalid {
+                message: "Summary time must be a valid local hour and minute".into(),
+            });
+        }
+        let mut g = self.lock();
+        g.prefs.morning_summary_enabled = enabled;
+        g.prefs.morning_summary_time = time;
+        Ok(())
     }
     pub fn preferences(&self) -> Preferences {
         self.lock().prefs.clone()
@@ -833,7 +863,7 @@ impl Engine {
     pub fn upcoming_task_ids(&self, include_completed: bool) -> Vec<String> {
         let g = self.lock();
         let today = day_number(&today_str()).unwrap_or(0);
-        let end = today + g.prefs.upcoming_days as i64;
+        let end = today + i64::from(g.prefs.upcoming_days_bounded());
         let mut tasks: Vec<&Task> = g
             .store
             .state
@@ -1322,7 +1352,7 @@ impl Engine {
         let done = self.lock().task(&id).map(|t| t.is_done).unwrap_or(true);
         self.set_done(id, !done)
     }
-    /// A notification's Done button, or `superproductivity://complete-task`.
+    /// A notification's Done button, or `momentum://complete-task`.
     pub fn complete_by_title(&self, title: String) -> Outcome {
         let id = self
             .lock()
@@ -1968,6 +1998,48 @@ impl Engine {
 
     // ---- repeats ---------------------------------------------------------
 
+    /// The editor's starting point for a read-only occurrence preview.
+    pub fn repeat_config_draft(&self, config_id: String) -> Option<RepeatDraft> {
+        self.lock()
+            .store
+            .state
+            .task_repeat_cfg
+            .entities
+            .get(&config_id)
+            .map(|cfg| cfg_to_draft(cfg, true))
+    }
+    /// Edit an existing schedule without creating or modifying a task instance.
+    pub fn save_repeat_config(&self, config_id: String, draft: RepeatDraft) -> Outcome {
+        if draft.cycle == RepeatCycle::Weekly && !draft.weekdays.iter().any(|d| *d) {
+            return Outcome {
+                changed: false,
+                message: Some(Message::PickAWeekday),
+                undo: None,
+                sync_now: false,
+            };
+        }
+        self.edit(|g| {
+            let Some(existing) = g.store.state.task_repeat_cfg.entities.get(&config_id) else {
+                return Outcome::none();
+            };
+            let cfg = draft_to_cfg(existing, &draft);
+            let description = describe_repeat(&cfg);
+            let changes = repeat_cfg_changes(&cfg);
+            g.dispatch(Action::UpdateRepeatCfg { id: cfg.id, changes });
+            changed_with(Message::RepeatSaved { description }, None)
+        })
+    }
+    pub fn stop_repeat_config(&self, config_id: String) -> Outcome {
+        self.edit(|g| {
+            let Some(cfg) = g.store.state.task_repeat_cfg.entities.get(&config_id) else {
+                return Outcome::none();
+            };
+            let title = cfg.title.clone().unwrap_or_default();
+            g.dispatch(Action::DeleteRepeatCfg { id: config_id });
+            changed_with(Message::NoLongerRepeats { title }, None)
+        })
+    }
+
     /// The schedule editor's starting point: the task's schedule, or upstream's default
     /// (weekly Monday to Friday from the task's day) for a new one.
     pub fn repeat_draft(&self, task_id: String) -> Option<RepeatDraft> {
@@ -2009,14 +2081,7 @@ impl Engine {
             if existing.is_none() {
                 g.dispatch(Action::AddRepeatCfg { task_id, cfg });
             } else {
-                let mut changes = serde_json::to_value(&cfg)
-                    .ok()
-                    .and_then(|v| v.as_object().cloned())
-                    .unwrap_or_default();
-                // Fields serde skips when None must still be cleared on the other side.
-                for key in ["monthlyWeekOfMonth", "monthlyWeekday"] {
-                    changes.entry(key).or_insert(Value::Null);
-                }
+                let changes = repeat_cfg_changes(&cfg);
                 g.dispatch(Action::UpdateRepeatCfg { id: cfg.id, changes });
             }
             changed_with(Message::RepeatSaved { description }, None)
@@ -2128,10 +2193,24 @@ impl Engine {
         timeout_ms: u64,
     ) -> Result<SyncReport, CoreError> {
         self.nextcloud_exchange(settings, cancellation, "Sync", |cfg, snapshot, is_current| {
-            self.nextcloud_session
+            let start = std::time::Instant::now();
+            let budget = std::time::Duration::from_millis(timeout_ms);
+            // Native stores already hold complete task data. Supply the existing
+            // compatibility field only in this detached ordinary-sync candidate;
+            // failed/cancelled exchanges never publish it, and imported opaque
+            // configuration must round-trip exactly as it was supplied.
+            snapshot.state.rest.entry("globalConfig").or_insert_with(|| json!({}));
+            let report = self
+                .nextcloud_session
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
-                .exchange_guarded(cfg, snapshot, std::time::Duration::from_millis(timeout_ms), is_current)
+                .exchange_guarded(cfg, snapshot, budget, is_current);
+            if let Err(error) =
+                self.exchange_nextcloud_settings(cfg, budget.saturating_sub(start.elapsed()), is_current)
+            {
+                self.settings_failed(error.to_string());
+            }
+            report
         })
     }
 
@@ -2144,7 +2223,7 @@ impl Engine {
         cancellation: Arc<SyncCancellation>,
     ) -> Result<SyncReport, CoreError> {
         self.nextcloud_exchange(settings, cancellation, "Replacement", |cfg, snapshot, is_current| {
-            sp_sync::replace_remote(cfg, snapshot, sp_sync::DEFAULT_EXCHANGE_TIMEOUT, is_current)
+            momentum_sync::replace_remote(cfg, snapshot, momentum_sync::DEFAULT_EXCHANGE_TIMEOUT, is_current)
         })
     }
 
@@ -2163,7 +2242,7 @@ impl Engine {
             });
         }
         let _operation = SyncOperation(&cancellation);
-        let cfg = sp_sync::NextcloudCfg {
+        let cfg = momentum_sync::NextcloudCfg {
             server_url: settings.server_url,
             user_name: settings.user_name,
             password: settings.password,
@@ -2174,7 +2253,7 @@ impl Engine {
         if !cfg.is_complete() {
             return Err(CoreError::NotConfigured);
         }
-        sp_sync::probe_guarded(&cfg, std::time::Duration::from_millis(timeout_ms), || {
+        momentum_sync::probe_guarded(&cfg, std::time::Duration::from_millis(timeout_ms), || {
             !cancellation.is_cancelled()
         })
         .map_err(|error| CoreError::Transient {
@@ -2193,7 +2272,7 @@ impl Engine {
         self.sync_nextcloud_with_budget(
             settings,
             cancellation,
-            sp_sync::DEFAULT_EXCHANGE_TIMEOUT.as_millis() as u64,
+            momentum_sync::DEFAULT_EXCHANGE_TIMEOUT.as_millis() as u64,
         )
     }
 
@@ -2210,7 +2289,7 @@ impl Engine {
         true
     }
 
-    /// Import a Super Productivity backup: replaces local state, drops pending ops.
+    /// Import a task backup: replaces local state, drops pending ops.
     pub fn import_backup(&self, path: String) -> Result<Outcome, CoreError> {
         let data = std::fs::read(Path::new(&path))?;
         let v: Value = serde_json::from_slice(&data).map_err(|e| CoreError::Invalid { message: e.to_string() })?;
@@ -2383,10 +2462,10 @@ impl Engine {
         cancellation: Arc<SyncCancellation>,
         what: &str,
         run: impl FnOnce(
-            &sp_sync::NextcloudCfg,
+            &momentum_sync::NextcloudCfg,
             &mut Store,
             &dyn Fn() -> bool,
-        ) -> Result<sp_sync::Report, sp_sync::SyncError>,
+        ) -> Result<momentum_sync::Report, momentum_sync::SyncError>,
     ) -> Result<SyncReport, CoreError> {
         if !cancellation.begin() {
             return Err(CoreError::Transient {
@@ -2395,7 +2474,7 @@ impl Engine {
             });
         }
         let _operation = SyncOperation(&cancellation);
-        let cfg = sp_sync::NextcloudCfg {
+        let cfg = momentum_sync::NextcloudCfg {
             server_url: settings.server_url,
             user_name: settings.user_name,
             password: settings.password,
@@ -2456,11 +2535,11 @@ impl Engine {
                     .cloned()
                     .collect();
                 for p in &live {
-                    sp_oplog::apply(&mut snapshot.state, &p.action);
+                    momentum_oplog::apply(&mut snapshot.state, &p.action);
                 }
                 snapshot.pending.extend(live);
                 snapshot.meta.vector_clock =
-                    sp_oplog::merge_clocks(&snapshot.meta.vector_clock, &g.store.meta.vector_clock);
+                    momentum_oplog::merge_clocks(&snapshot.meta.vector_clock, &g.store.meta.vector_clock);
                 // These local claims can change while the HTTP exchange is in flight.
                 snapshot.meta.last_summary_day = g.store.meta.last_summary_day.clone();
                 snapshot.meta.last_nearby_ms = g.store.meta.last_nearby_ms;

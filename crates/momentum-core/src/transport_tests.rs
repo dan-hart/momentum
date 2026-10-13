@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Deterministic exchanges pause at a real HTTP boundary; only disposable stores are used.
 use crate::*;
-use sp_model::{AppData, Task, INBOX_PROJECT_ID};
+use momentum_model::{AppData, Task, INBOX_PROJECT_ID};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::{
@@ -43,10 +43,10 @@ impl PausedDav {
         let puts = Arc::new(AtomicUsize::new(0));
         let uploads = puts.clone();
         let thread = std::thread::spawn(move || {
-            let mut file = sp_sync::SyncFile {
+            let mut file = momentum_sync::SyncFile {
                 version: 2,
                 sync_version: 1,
-                schema_version: sp_model::SCHEMA_VERSION,
+                schema_version: momentum_model::SCHEMA_VERSION,
                 vector_clock: Default::default(),
                 last_modified: 1,
                 client_id: "remote".into(),
@@ -60,7 +60,7 @@ impl PausedDav {
                 let task = Task::new(&format!("Benchmark task {i}"), INBOX_PROJECT_ID);
                 file.state.task.insert(&task.id.clone(), task);
             }
-            let response = sp_sync::encode(&file, encrypted, encrypted.then_some("fixture-key")).unwrap();
+            let response = momentum_sync::encode(&file, encrypted, encrypted.then_some("fixture-key")).unwrap();
             let mut request_count = 0;
             // The size a HEAD reports: the last upload's, or the served file's before one.
             let mut stored_len = response.len();
@@ -352,22 +352,26 @@ fn invalid_backup_preserves_tasks_pending_undo_and_disk() {
 #[test]
 fn stalled_http_request_obeys_the_whole_exchange_deadline() {
     let dir = tempfile::tempdir().unwrap();
-    let mut store = sp_store::Store::load(dir.path().to_path_buf());
+    let mut store = momentum_store::Store::load(dir.path().to_path_buf());
     store.save().unwrap();
     let before = std::fs::read(dir.path().join("state.json")).unwrap();
     let mut server = PausedDav::new();
     let settings = &server.settings;
-    let cfg = sp_sync::NextcloudCfg {
+    let cfg = momentum_sync::NextcloudCfg {
         server_url: settings.server_url.clone(),
         user_name: settings.user_name.clone(),
         password: settings.password.clone(),
         folder: settings.folder.clone(),
         ..Default::default()
     };
-    let exchange =
-        std::thread::spawn(move || sp_sync::exchange_guarded(&cfg, &mut store, Duration::from_millis(100), || true));
+    let exchange = std::thread::spawn(move || {
+        momentum_sync::exchange_guarded(&cfg, &mut store, Duration::from_millis(100), || true)
+    });
     server.arrived.recv_timeout(Duration::from_secs(5)).unwrap();
-    assert!(matches!(exchange.join().unwrap(), Err(sp_sync::SyncError::Deadline)));
+    assert!(matches!(
+        exchange.join().unwrap(),
+        Err(momentum_sync::SyncError::Deadline)
+    ));
     server.release();
     assert_eq!(std::fs::read(dir.path().join("state.json")).unwrap(), before);
     assert_eq!(server.puts.load(Ordering::SeqCst), 0);
@@ -390,7 +394,7 @@ fn persistence_failure_does_not_acknowledge_or_drop_live_pending_changes() {
     assert_eq!(titles(&engine), ["Keep pending"]);
     assert_eq!(engine.sync_status().last_nextcloud_ms, 0);
     assert!(!engine.is_syncing());
-    assert_eq!(sp_store::Store::load(dir.path().to_path_buf()).pending.len(), 1);
+    assert_eq!(momentum_store::Store::load(dir.path().to_path_buf()).pending.len(), 1);
 }
 
 #[test]

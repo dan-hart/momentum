@@ -76,7 +76,7 @@ internal val LocalKeyboardCommandBridge = staticCompositionLocalOf<KeyboardComma
             val state = vm.state.value
             val snapshot = state.snapshot
             val rows = snapshot?.listing?.sections.orEmpty().flatMap { it.rows }.filterIsInstance<Row.Task>()
-                .map { it.row }.filter { !it.archived }
+                .map { it.row }.filter { !it.archived && it.occurrence == null }
             val available = KeyboardContext(
                 visibleTasks = rows.map { KeyboardTask(it.id, it.title, it.isDone, !it.isSubtask) },
                 selectedIds = state.selected, canUndo = snapshot?.canUndo == true,

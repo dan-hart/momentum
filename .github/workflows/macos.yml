@@ -5,7 +5,7 @@ name: macOS
 
 on:
   push:
-    branches: [main]
+    branches: [main, "task/**"]
   pull_request:
   # The release workflow runs this same suite against the tag before it packages the app.
   workflow_call:
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.sha }}
-      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      - name: Check out LibreSync (path dependency of crates/momentum-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync
@@ -61,7 +61,7 @@ jobs:
       # NearbySyncTests is deliberately not run here. It pairs two nodes over loopback and
       # then relies on P2p::sync_all, which discovers peers before falling back to a stored
       # address, and it has never passed on a hosted runner: the exchange after pairing
-      # never lands, while sp-p2p's own two-device test (Core tests, above) passes on this
+      # never lands, while momentum-p2p's own two-device test (Core tests, above) passes on this
       # same runner in under a second. docs/TESTING.md keeps the local invocation:
       #
       #   MOMENTUM_TEST_NEARBY=1 swift test --package-path macos/Packages/MomentumKit \
@@ -73,6 +73,7 @@ jobs:
       - name: Localization tooling and accessibility audit self-test
         run: |
           python3 -m unittest discover -s macos/scripts/tests -p test_localize.py
+          python3 macos/scripts/tests/test_native_feature_localization.py
           swift macos/scripts/a11y-audit.swift --self-test
 
       - name: Build the app

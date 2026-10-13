@@ -17,7 +17,7 @@ public struct NextcloudConnection: Codable, Equatable, Sendable {
     public var serverURL = ""
     public var userName = ""
     public var password = ""
-    public var folder = "super-productivity"
+    public var folder = "momentum"
     public var encryptionPassword = ""
     public var compress = false
     public var automatic = true

@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_settings">App settings</string>
+    <string name="include_app_settings">Include app settings</string>
+    <string name="restore_app_settings">Restore included app settings</string>
+    <string name="export_app_settings">Export app settings only</string>
+    <string name="import_app_settings">Import app settings only</string>
+    <string name="app_settings_exported">App settings exported</string>
+    <string name="app_settings_imported">App settings imported</string>
+    <string name="app_settings_scope">Transfer list grouping and sorting, Upcoming range, auto-archive, row density, label colors and completion sounds. Connections, credentials, permissions and device controls stay on this device.</string>
+    <string name="sync_app_settings">Sync app settings</string>
+    <string name="settings_sync_hint">Optional. Use the selected sync provider to share portable app settings. Turning this off keeps your current settings.</string>
+    <string name="settings_sync_provider_off">Choose a sync provider to exchange app settings.</string>
+    <string name="settings_sync_review">Choose the settings to use for this connection.</string>
+    <string name="settings_this_device">This device</string>
+    <string name="settings_synced_device">Synced settings</string>
+    <string name="settings_use_local">Use this device’s settings</string>
+    <string name="settings_use_remote">Use synced settings</string>
+    <string name="settings_sync_failed">App settings could not sync. Your local settings are preserved.</string>
+    <string name="settings_sync_pending">Pending app settings: %1$d</string>
+    <string name="settings_summary_item">%1$s: %2$s</string>
+    <string name="settings_summary_on">On</string>
+    <string name="settings_summary_off">Off</string>
+    <string name="folder_migration_action">Use the Momentum sync folder</string>
+    <string name="folder_migration_hint">Copy the saved folder “%1$s” to “momentum”, verify every copied file, then switch this connection. The original folder is retained. Switch your other devices separately after the copy finishes.</string>
+    <string name="folder_migration_confirm">Copy, verify and switch</string>
+    <string name="folder_migration_progress">Copying and verifying the saved sync folder…</string>
+    <string name="folder_migration_failed">The folder could not be switched. The original connection is preserved. Check the sync error and retry.</string>
+    <string name="folder_migration_complete">Copied folder verified. This connection now uses momentum.</string>
+    <string name="app_settings_apply_failed">App settings could not be applied. Your saved tasks remain available. Retry to apply the saved settings.</string>
+    <string name="settings_last_sync">App settings last synced: %1$s</string>
+</resources>

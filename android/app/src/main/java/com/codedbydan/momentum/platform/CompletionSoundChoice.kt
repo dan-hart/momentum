@@ -3,7 +3,7 @@ package com.codedbydan.momentum.platform
 
 import com.codedbydan.momentum.R
 
-/** Device-local stable slugs shared by the native clients. */
+/** Stable sound slugs shared by portable native app settings. */
 enum class CompletionSoundChoice(val key: String, val label: Int, val resource: Int) {
     WOOD_POP("wood-pop", R.string.sound_wood_pop, R.raw.wood_pop),
     DOUBLE_CHECK("double-check", R.string.sound_double_check, R.raw.double_check),

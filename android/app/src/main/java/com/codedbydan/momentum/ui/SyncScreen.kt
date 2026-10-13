@@ -53,6 +53,9 @@ import java.time.format.FormatStyle
     var unlink by remember { mutableStateOf<String?>(null) }
     var discovery by remember { mutableStateOf(false) }
     var replace by remember { mutableStateOf(false) }
+    var storedConnection by remember { mutableStateOf<NextcloudSettings?>(null) }
+    var migrationSource by remember { mutableStateOf<NextcloudSettings?>(null) }
+    var migrationError by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         val requested = pendingProvider; pendingProvider = null
         localError = !allowed
@@ -62,19 +65,20 @@ import java.time.format.FormatStyle
         }
     }
     LaunchedEffect(Unit) {
-        platform.connection()?.let { server = it.serverUrl; user = it.userName; password = it.password; folder = it.folder; compress = it.compress; encryption = it.encryptionPassword.orEmpty() }
+        platform.connection()?.let { storedConnection = it; server = it.serverUrl; user = it.userName; password = it.password; folder = it.folder; compress = it.compress; encryption = it.encryptionPassword.orEmpty() }
     }
-    DisposableEffect(Unit) { onDispose { platform.pairing(false) } }
+    DisposableEffect(Unit) { onDispose { platform.pairing(false); platform.cancelFolderMigration() } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SettingHeading(R.string.provider)
         SyncProvider.entries.forEach { provider ->
             ChoiceRow(stringResource(when(provider) { SyncProvider.Off -> R.string.off; SyncProvider.Nextcloud -> R.string.nextcloud; SyncProvider.LibreSync -> R.string.libresync }),
-                settings.provider == provider, !status.syncing) {
+                settings.provider == provider, !status.syncing && !status.migratingFolder) {
                 if(provider == SyncProvider.LibreSync && Build.VERSION.SDK_INT >= 37 && context.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") != PackageManager.PERMISSION_GRANTED) {
                     pendingProvider = provider; permission.launch("android.permission.ACCESS_LOCAL_NETWORK")
                 } else scope.launch { platform.selectProvider(provider); vm.refresh() }
             }
         }
+        AppSettingsSync(state, vm)
         if(localError) Text(stringResource(R.string.local_network_denied), color = MaterialTheme.colorScheme.error)
         if(status.statusPersistenceError != null) {
             Text(stringResource(R.string.sync_status_save_failed), color = MaterialTheme.colorScheme.error)
@@ -87,7 +91,7 @@ import java.time.format.FormatStyle
                 TextButton({ detail = !detail }) { Text(stringResource(R.string.details)) }
                 if(detail) Text(status.errorDetails ?: error, style = MaterialTheme.typography.bodySmall)
                 if(settings.provider == SyncProvider.Nextcloud && status.failureKind == SyncFailureKind.REMOTE_FILE_DAMAGED)
-                    OutlinedButton({ replace = true }, enabled = !status.syncing) { Text(stringResource(R.string.replace_server)) }
+                    OutlinedButton({ replace = true }, enabled = !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.replace_server)) }
             }
             status.information?.let { Text(stringResource(it)) }
             val sync = state.snapshot!!.sync
@@ -95,7 +99,7 @@ import java.time.format.FormatStyle
             Text(if(last == 0uL) stringResource(R.string.sync_never) else stringResource(R.string.last_sync,
                 Instant.ofEpochMilli(last.toLong()).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(locale))))
             Text(pluralStringResource(R.plurals.pending_changes, sync.pendingOps.toInt(), sync.pendingOps.toInt()))
-            Button({ platform.syncNow(); vm.refresh() }, enabled = !status.syncing, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sync_now)) }
+            Button({ platform.syncNow(); vm.refresh() }, enabled = !status.syncing && !status.migratingFolder, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sync_now)) }
         }
         if(settings.provider == SyncProvider.Nextcloud) {
             OutlinedTextField(server, { server = it }, label = { Text(stringResource(R.string.server)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -106,9 +110,17 @@ import java.time.format.FormatStyle
             OutlinedTextField(encryption, { encryption = it }, label = { Text(stringResource(R.string.encryption_password)) }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false))
             SettingSwitch(R.string.compress, compress) { compress = it }
-            OutlinedButton({ scope.launch { platform.saveConnection(NextcloudSettings(server.trim(), user.trim(), password, folder.trim(), compress, encryption.takeIf { it.isNotEmpty() })); vm.refresh() } },
-                Modifier.fillMaxWidth(), enabled = server.isNotBlank() && user.isNotBlank() && password.isNotEmpty() && folder.isNotBlank()) { Text(stringResource(R.string.save_connection)) }
-            OutlinedButton({ platform.syncNow(test = true) }, Modifier.fillMaxWidth(), enabled = !status.syncing) { Text(stringResource(R.string.test_connection)) }
+            OutlinedButton({ scope.launch { platform.saveConnection(NextcloudSettings(server.trim(), user.trim(), password, folder.trim(), compress, encryption.takeIf { it.isNotEmpty() })); storedConnection = platform.connection(); vm.refresh() } },
+                Modifier.fillMaxWidth(), enabled = !status.migratingFolder && server.isNotBlank() && user.isNotBlank() && password.isNotEmpty() && folder.isNotBlank()) { Text(stringResource(R.string.save_connection)) }
+            if(storedConnection?.folder != null && storedConnection?.folder != "momentum") OutlinedButton({ migrationSource = storedConnection },
+                Modifier.fillMaxWidth(), enabled = !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.folder_migration_action)) }
+            if(status.migratingFolder) {
+                Text(stringResource(R.string.folder_migration_progress))
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                TextButton(platform::cancelFolderMigration) { Text(stringResource(R.string.cancel)) }
+            }
+            if(migrationError) Text(stringResource(R.string.folder_migration_failed), color = MaterialTheme.colorScheme.error)
+            OutlinedButton({ platform.syncNow(test = true) }, Modifier.fillMaxWidth(), enabled = !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.test_connection)) }
             SettingSwitch(R.string.automatic_sync, settings.automaticSync) { enabled -> vm.settings { it.copy(automaticSync = enabled) } }
             SettingSwitch(R.string.background_sync, settings.backgroundSync) { enabled -> vm.settings { it.copy(backgroundSync = enabled) } }
             if(Build.VERSION.SDK_INT >= 37) OutlinedButton({ permission.launch("android.permission.ACCESS_LOCAL_NETWORK") }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.allow_local_network)) }
@@ -129,6 +141,16 @@ import java.time.format.FormatStyle
         }
         Spacer(Modifier.height(24.dp))
     }
+    migrationSource?.let { source -> AlertDialog(onDismissRequest = { migrationSource = null },
+        title = { Text(stringResource(R.string.folder_migration_action)) },
+        text = { Text(stringResource(R.string.folder_migration_hint, source.folder)) },
+        confirmButton = { TextButton({ migrationSource = null; migrationError = false
+            scope.launch {
+                try { val result = platform.migrateConnection(source); folder = result.targetFolder; storedConnection = platform.connection(); vm.refresh() }
+                catch(error: Exception) { migrationError = true; vm.refresh() }
+            }
+        }) { Text(stringResource(R.string.folder_migration_confirm)) } },
+        dismissButton = { TextButton({ migrationSource = null }) { Text(stringResource(R.string.cancel)) } }) }
     unlink?.let { id -> AlertDialog(onDismissRequest = { unlink = null }, title = { Text(stringResource(R.string.unlink)) },
         text = { Text(stringResource(R.string.unlink_hint)) }, confirmButton = { TextButton({ scope.launch { platform.unlink(id); vm.refresh() }; unlink = null }) { Text(stringResource(R.string.unlink)) } },
         dismissButton = { TextButton({ unlink = null }) { Text(stringResource(R.string.cancel)) } }) }

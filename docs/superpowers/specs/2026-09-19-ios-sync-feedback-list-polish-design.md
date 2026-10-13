@@ -81,7 +81,7 @@ At accessibility text sizes, the count remains trailing when it fits and moves b
 
 ## Components and data flow
 
-- `sp-sync`: a read-only guarded Nextcloud probe using the existing URL/auth/deadline/error mapping.
+- `momentum-sync`: a read-only guarded Nextcloud probe using the existing URL/auth/deadline/error mapping.
 - `momentum-core`: exposes the probe through UniFFI, gives outbound LibreSync cycles stable IDs with explicit join semantics, and adds canonical unfinished-family counts to `SidebarEntry`.
 - `MomentumMobile`: owns cancellable connection-test state, bridges the Nextcloud probe off actor, and awaits only the matching LibreSync completion event with a bounded timeout.
 - `SyncSettings`: provider-specific Test Connection action/result presentation.

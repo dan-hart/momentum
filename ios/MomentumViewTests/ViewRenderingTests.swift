@@ -443,6 +443,140 @@ import XCTest
         }
     }
 
+    func testCompactSidebarFirstProjectTapLoadsWithoutASecondTap() async throws {
+        try await checkFirstProjectTap(delayed: false)
+    }
+
+    func testFirstProjectGroupingDuringInitialLoadReplacesTheSpinnerAndRejectsTheOldSnapshot() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let name = "momentum-first-project-grouping-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.foreground()
+        let worker = try XCTUnwrap(model.worker)
+        let day = SharedTaskItem.captured(title: "Day fixture", notes: "", url: nil).plannedDay
+        for title in ["First grouped project", "Second grouped project"] {
+            let created = await worker.createProject(title)
+            let project = try XCTUnwrap(created)
+            _ = await worker.createTask(TaskDraft(title: title + " task", projectId: project, dueDay: day,
+                time: nil, reminderMinutesBefore: nil, estimateMs: 0, notes: "", tagIds: [], newTags: []), view: .today)
+        }
+        let gate = SnapshotDeliveryGate()
+        var requests = 0
+        let loader: TaskSnapshotLoader = { worker, view, query, limit in
+            requests += 1
+            let first = requests == 1
+            let result = await worker.snapshot(view: view, query: query, archiveLimit: limit)
+            if first { await gate.wait() }
+            return result
+        }
+        let mounted = try HostingFixture.mount(
+            NavigationStack { TaskScreen(view: .today, snapshotLoader: loader) }.environment(model).environment(model.sync),
+            defaults: defaults, defaultsName: name, size: CGSize(width: 390, height: 844))
+        defer { mounted.unmount(); try? FileManager.default.removeItem(at: directory) }
+        try await mounted.wait(until: "initial snapshot waits") { requests == 1 && mounted.hasAccessibilityElement(label: "Loading tasks") }
+        defaults.set("project", forKey: PrefKey.groupBy)
+        try await mounted.wait(until: "first grouping selection finishes loading") {
+            mounted.hasAccessibilityElement(label: "First grouped project")
+                && mounted.hasAccessibilityElement(label: "Second grouped project")
+                && !mounted.hasAccessibilityElement(label: "Loading tasks")
+        }
+        await gate.releaseAll()
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertTrue(mounted.hasAccessibilityElement(label: "First grouped project"))
+        XCTAssertTrue(mounted.hasAccessibilityElement(label: "Second grouped project"))
+        XCTAssertFalse(mounted.hasAccessibilityElement(label: "Loading tasks"))
+    }
+
+    func testCompactSidebarDelayedProjectLoadSurvivesFirstNavigation() async throws {
+        try await checkFirstProjectTap(delayed: true)
+    }
+
+    private func checkFirstProjectTap(delayed: Bool) async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let defaultsName = "momentum-project-first-tap-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsName))
+        let seed = await EngineWorker.open(directory: directory)
+        _ = await seed.perform(.add("Initial Today task", .today))
+        let createdProject = await seed.createProject("First project")
+        let projectID = try XCTUnwrap(createdProject)
+        _ = await seed.createTaskFromText("Project-only task", view: .project(id: projectID))
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.foreground()
+        let probe = TaskWorkspaceProbe()
+        let gate = SnapshotDeliveryGate()
+        let loader: TaskSnapshotLoader = { worker, view, query, archiveLimit in
+            if delayed, view == .project(id: projectID) {
+                await MainActor.run { probe.projectRequests += 1 }
+                await gate.wait()
+                await MainActor.run { if Task.isCancelled { probe.cancelledProjectRequests += 1 } }
+            }
+            return await worker.snapshot(view: view, query: query, archiveLimit: archiveLimit)
+        }
+        let mounted = try HostingFixture.mount(
+            TaskWorkspaceTestHost(probe: probe, snapshotLoader: loader).environment(model).environment(model.sync),
+            defaults: defaults, defaultsName: defaultsName,
+            size: CGSize(width: 390, height: 844), horizontalSizeClass: .compact
+        )
+        defer { mounted.unmount(); try? FileManager.default.removeItem(at: directory) }
+        try await mounted.wait(until: "initial Today task") {
+            mounted.hasAccessibilityElement(label: "Open Initial Today task")
+        }
+        let controls = mounted.visibleControls(in: CGRect(x: 0, y: 0, width: 100, height: 160))
+            .filter { $0.allControlEvents.contains(.primaryActionTriggered) }
+        try XCTUnwrap(controls.first).sendActions(for: .primaryActionTriggered)
+        let projectName = "First project"
+        let projectLabel = String(localized: "\(projectName), 1 task")
+        try await mounted.wait(until: "project sidebar destination") {
+            mounted.hasAccessibilityElement(label: projectLabel)
+        }
+        XCTAssertTrue(mounted.activateAccessibilityElement(label: projectLabel))
+        if delayed {
+            try await mounted.wait(until: "project navigation completed before snapshot delivery") {
+                probe.projectRequests > 0 && !mounted.hasActiveTransition
+                    && mounted.hasVisibleView(identifier: "task-workspace-detail")
+                    && !mounted.hasVisibleView(identifier: "task-workspace-sidebar")
+            }
+            await gate.releaseAll()
+        }
+        try await mounted.wait(until: "project tasks after first tap") {
+            probe.state.selection == .project(id: projectID)
+                && mounted.hasVisibleView(identifier: "task-workspace-detail")
+                && mounted.hasAccessibilityElement(label: "Open Project-only task")
+                && !mounted.hasAccessibilityElement(label: "Loading tasks")
+        }
+        XCTAssertEqual(probe.cancelledProjectRequests, 0, "the initial project navigation must not discard its loaded snapshot")
+    }
+
+    func testUpcomingRecurringPreviewHasOnlyTheRepeatScheduleAction() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let defaultsName = "momentum-preview-row-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsName))
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.foreground()
+        let worker = try XCTUnwrap(model.worker)
+        let created = await worker.createTaskFromText("Future repeat fixture", view: .today)
+        let id = try XCTUnwrap(created.createdTaskID)
+        let loadedDraft = await worker.repeatDraft(id)
+        var draft = try XCTUnwrap(loadedDraft)
+        draft.cycle = .daily
+        draft.startDate = dayOffset(day: today(), days: 1)
+        _ = await worker.saveRepeat(id, draft: draft)
+        let mounted = try HostingFixture.mount(
+            NavigationStack { TaskScreen(view: .upcoming) }.environment(model).environment(model.sync),
+            defaults: defaults, defaultsName: defaultsName
+        )
+        defer { mounted.unmount(); try? FileManager.default.removeItem(at: directory) }
+        let edit = String(localized: "Edit repeat schedule")
+        try await mounted.wait(until: "recurrence preview schedule action") { mounted.hasAccessibilityElement(label: edit) }
+        XCTAssertFalse(mounted.hasAccessibilityElement(label: "Complete Future repeat fixture"))
+        XCTAssertFalse(mounted.hasAccessibilityElement(label: "Open Future repeat fixture"))
+        XCTAssertTrue(mounted.activateAccessibilityElement(label: edit))
+        try await mounted.wait(until: "repeat schedule editor presented") { mounted.presentedControllers.count == 1 }
+        let detail = await worker.taskDetail(id)
+        XCTAssertNotNil(detail, "opening a preview must preserve its stored seed task")
+    }
+
     func testMissingMorningSnapshotDoesNotRemainLoading() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let defaultsName = "momentum-missing-morning-tests-\(UUID())"
@@ -746,9 +880,15 @@ import XCTest
             let normal = try HostingFixture.render(button, width: 280, scheme: scheme)
             let large = try HostingFixture.render(button, width: 280, size: .accessibility5,
                                                   scheme: scheme, locale: "de")
+            let circle = try XCTUnwrap(addTaskButtonBounds(in: normal.image, bottomTrailingOnly: false))
+            let largeCircle = try XCTUnwrap(addTaskButtonBounds(in: large.image, bottomTrailingOnly: false))
+            // The native style's outer fitting width includes padding on iOS26.
+            // Compare the painted control, while checking its hit target separately.
+            XCTAssertGreaterThanOrEqual(normal.size.width, 44, "HIG minimum hit target")
             XCTAssertGreaterThanOrEqual(normal.size.height, 44, "HIG minimum hit target")
             XCTAssertLessThanOrEqual(normal.size.height, 64, "a floating button, not a slab")
-            XCTAssertEqual(normal.size.width, normal.size.height, accuracy: 2, "a circle, not a capsule with text")
+            XCTAssertEqual(circle.width, circle.height, accuracy: 2, "a circle, not a capsule with text")
+            XCTAssertEqual(largeCircle.width, largeCircle.height, accuracy: 2, "accessible text keeps the painted circle")
             XCTAssertGreaterThanOrEqual(large.size.height, normal.size.height)
             XCTAssertLessThan(large.size.height, normal.size.height * 2)
             XCTAssertLessThanOrEqual(large.size.width, 280)
@@ -1281,7 +1421,7 @@ import XCTest
         return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 
-    private func addTaskButtonBounds(in image: UIImage) -> CGRect? {
+    private func addTaskButtonBounds(in image: UIImage, bottomTrailingOnly: Bool = true) -> CGRect? {
         guard let cgImage = image.cgImage else { return nil }
         let width = cgImage.width
         let height = cgImage.height
@@ -1301,8 +1441,8 @@ import XCTest
         }
         guard drew else { return nil }
         var minX = width, maxX = -1, minY = height, maxY = -1
-        for y in (height / 2)..<height {
-            for x in (width / 2)..<width {
+        for y in (bottomTrailingOnly ? height / 2 : 0)..<height {
+            for x in (bottomTrailingOnly ? width / 2 : 0)..<width {
                 let index = (y * width + x) * 4
                 if bytes[index] > 220, (75...135).contains(bytes[index + 1]), bytes[index + 2] < 45 {
                     minX = min(minX, x)
@@ -1393,6 +1533,11 @@ private actor SnapshotDeliveryGate {
     func releaseNext() {
         pending.removeFirst().resume()
     }
+    func releaseAll() {
+        let ready = pending
+        pending.removeAll()
+        ready.forEach { $0.resume() }
+    }
 }
 
 @MainActor private final class SnapshotAssignmentRecorder {
@@ -1425,13 +1570,18 @@ private actor SnapshotDeliveryGate {
 
 @MainActor @Observable private final class TaskWorkspaceProbe {
     var state = TaskWorkspaceState()
+    var projectRequests = 0
+    var cancelledProjectRequests = 0
 }
 
 private struct TaskWorkspaceTestHost: SwiftUI.View {
     @Bindable var probe: TaskWorkspaceProbe
+    var snapshotLoader: TaskSnapshotLoader = { worker, view, query, archiveLimit in
+        await worker.snapshot(view: view, query: query, archiveLimit: archiveLimit)
+    }
 
     var body: some SwiftUI.View {
-        TaskWorkspace(state: $probe.state)
+        TaskWorkspace(state: $probe.state, snapshotLoader: snapshotLoader)
     }
 }
 

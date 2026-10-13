@@ -130,6 +130,7 @@ struct TaskListView: SwiftUI.View {
         case .task(let task):
             TaskRowView(row: task)
                 .tag(task.id)
+                .selectionDisabled(task.occurrence != nil)
         case .project(let item):
             Label {
                 Text(item.title)

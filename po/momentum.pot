@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: momentum\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-17 22:24-0500\n"
+"POT-Creation-Date: 2026-10-12 15:06-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,8 +20,8 @@ msgstr ""
 
 #: data/io.github.dan_hart.Momentum.desktop.in.in:2
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:7
-#: data/resources/ui/window.blp:163 data/resources/ui/window.blp:183
-#: crates/app/src/application.rs:414 crates/app/src/main.rs:38
+#: data/resources/ui/window.blp:179 data/resources/ui/window.blp:199
+#: crates/app/src/application.rs:417 crates/app/src/main.rs:40
 #: crates/app/src/search_provider.rs:51
 msgid "Momentum"
 msgstr ""
@@ -33,25 +33,26 @@ msgstr ""
 
 #. Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
 #: data/io.github.dan_hart.Momentum.desktop.in.in:9
-msgid "Tasks;Todo;Time;Tracking;Pomodoro;Super Productivity;"
+msgid "Tasks;Todo;Planning;"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.desktop.in.in:18
-#: crates/app/src/window.rs:3130
+#: crates/app/src/window.rs:3479
 msgid "New Task"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.desktop.in.in:22
-#: data/resources/ui/window.blp:249 crates/app/src/task_form.rs:144
-#: crates/app/src/window.rs:282 crates/app/src/window.rs:2135
-#: crates/app/src/window.rs:2250 crates/app/src/window.rs:2263
-#: crates/app/src/window.rs:2582
+#: data/resources/ui/window.blp:265 crates/app/src/task_form.rs:149
+#: crates/app/src/window.rs:295 crates/app/src/window.rs:1767
+#: crates/app/src/window.rs:1775 crates/app/src/window.rs:2445
+#: crates/app/src/window.rs:2560 crates/app/src/window.rs:2573
+#: crates/app/src/window.rs:2929
 msgid "Today"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.desktop.in.in:26
-#: data/resources/ui/window.blp:311 crates/app/src/window.rs:2140
-#: crates/app/src/window.rs:2587
+#: data/resources/ui/window.blp:327 crates/app/src/window.rs:2450
+#: crates/app/src/window.rs:2680 crates/app/src/window.rs:2934
 msgid "Search"
 msgstr ""
 
@@ -80,105 +81,125 @@ msgid "Sync folder on Nextcloud"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.gschema.xml.in:19
-#: data/resources/ui/prefs.blp:46
-msgid "Sync automatically"
+msgid "Existing connection folder has been preserved"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.gschema.xml.in:20
-msgid "Gzip the sync file"
+#: data/resources/ui/prefs.blp:53
+msgid "Sync automatically"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.gschema.xml.in:21
-msgid "Projects section collapsed in the sidebar"
+msgid "Keep automatic sync running while the window is hidden"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.gschema.xml.in:22
+msgid "Gzip the sync file"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:23
+msgid "Projects section collapsed in the sidebar"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:24
 msgid "Tags section collapsed in the sidebar"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:26
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:28
 msgid "Group tasks by time of day, project, first tag, or time estimate"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:31
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:33
 msgid "Task list sort order"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:33
-#: data/resources/ui/prefs.blp:132
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:35
+#: data/resources/ui/prefs.blp:189
 msgid "Color-code projects and tags"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:34
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:36
 msgid "Optional application font description without a size"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:35
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:37
 msgid "Task content text scale in percent"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:36
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:38
 msgid "Application interface text scale in percent"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:37
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:39
 msgid "Time of the last successful sync (ms since epoch)"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:41
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:43
 msgid "Selected sync provider (empty retains the legacy preference)"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:43
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:45
 msgid "Nextcloud sync switched on"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:47
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:49
 msgid "Task sort direction"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:52
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:54
 msgid "Days shown in Coming Up"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:54
-msgid "Keep running after the window closes"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:58
-msgid "Task count shown in the Background Apps status"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:60
-msgid "Show a daily morning summary"
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:59
+msgid "Task row layout: regular or compact"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.gschema.xml.in:61
-msgid "Morning summary hour in local time"
+msgid "Keep running after the window closes"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:62
-msgid "Morning summary minute"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:63
-msgid "Day the morning summary was last shown"
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:65
+msgid "Task count shown in the Background Apps status"
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.gschema.xml.in:67
+msgid "Show a daily morning summary"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:68
+msgid "Morning summary hour in local time"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:69
+msgid "Morning summary minute"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:70
+msgid "Day the morning summary was last shown"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:74
 msgid ""
 "Primary modifier for app shortcuts (Ctrl+E becomes Super+E with \"super\")"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:69
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:76
 msgid "Move a task to the archive as soon as it is completed"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:70
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:77
+msgid "Play a short sound when a task is completed"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:78
+msgid "Selected completion sound"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:79
 msgid "Sync directly with nearby devices over the local network"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:71
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:80
 msgid "Time of the last exchange with a nearby device (ms since epoch)"
 msgstr ""
 
@@ -190,9 +211,8 @@ msgstr ""
 
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:11
 msgid ""
-"It reads, writes and syncs the same data as Super Productivity, so it works "
-"alongside the desktop, Android and iOS apps through a shared Nextcloud "
-"folder."
+"Keep tasks available offline and optionally sync your devices through "
+"Nextcloud or LibreSync."
 msgstr ""
 
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:13
@@ -232,386 +252,295 @@ msgid ""
 "Sync with nearby devices: link once with a pairing code, no server needed"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
-msgid "Mornings."
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
-msgid ""
-"A Morning section and view for tasks tagged \"Morning\", the mirror of "
-"Tonight: Ctrl+Shift+M, context menu, drop target"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
-msgid "Morning and Tonight appear in the sidebar only on days that use them"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
-msgid "mo morning and mo add --morning"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:56
-msgid "Your modifier key, and a test suite behind every feature."
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:58
-msgid ""
-"Choose Ctrl, Alt or Super for every shortcut; the shortcuts overlay and "
-"hints follow"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:59
-msgid "Deleting and reordering tasks can now be undone with Ctrl+Z"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:60
-msgid ""
-"Editing a task scheduled at a time keeps its day; restored tasks no longer "
-"duplicate subtask links"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:61
-msgid ""
-"mo: undone and rm find completed tasks, projects and tags support --json, "
-"works without a session bus"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:67
-msgid "Sync without a server, and tasks with a time."
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:69
-msgid ""
-"Sync with nearby devices: direct, end-to-end encrypted sync over the local "
-"network, linked once with a pairing code; works alongside Nextcloud"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:70
-msgid ""
-"Scheduled times and reminders in the task dialog; rows show the time and a "
-"bell"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:71
-msgid ""
-"Overdue section at the top of Today; repeating tasks catch up on missed days"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:72
-msgid ""
-"Accessibility pass: every control named for screen readers, high contrast "
-"turns color coding off"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:73
-msgid "Translation template and Weblate workflow"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:79
-msgid "Momentum becomes part of the desktop."
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:81
-msgid ""
-"Find and create tasks from GNOME's Activities overview and KDE's KRunner"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:82
-msgid "Reminders with Done and Snooze buttons, and a morning summary"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:83
-msgid "Run in the background with autostart and a Background Apps status line"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:84
-msgid ""
-"Launcher actions, a quick-add window, drop or paste text to create tasks"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:85
-msgid "Command line, momentum:// and superproductivity:// links, Ctrl+Z undo"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:86
-msgid "The mo command-line companion for Linux and macOS"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:87
-msgid "German translation"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:93
-msgid "Repeat schedules, smarter empty states, and quicker sync."
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:95
-msgid ""
-"Create, edit, pause and remove repeat schedules, including monthly on the "
-"nth weekday"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:96
-msgid ""
-"Empty states that say what to do next, and an all-done panel with Archive "
-"Completed"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:97
-msgid "Move to Next Week, notes copy button and badge, larger notes editor"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:98
-msgid ""
-"Sync runs 20 seconds after your last change; sidebar toggle; context menu "
-"grouping"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:104
-msgid "First preview."
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:106
-msgid "Today, project and tag views with a guided New Task dialog"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:107
-msgid "Nextcloud sync compatible with Super Productivity"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:108
-msgid "Backup import and export"
-msgstr ""
-
-#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:109
-msgid "System-wide shortcuts through the GlobalShortcuts portal"
-msgstr ""
-
-#: data/resources/ui/prefs.blp:8 crates/app/src/window.rs:1135
+#: data/resources/ui/prefs.blp:8 crates/app/src/window.rs:1273
 msgid "Preferences"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:12 crates/app/src/window.rs:1059
+#: data/resources/ui/prefs.blp:14 crates/app/src/window.rs:1171
 msgid "Sync"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:13
+#: data/resources/ui/prefs.blp:15
 msgid "Choose one service. Switching keeps your tasks and saved connections."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:16
+#: data/resources/ui/prefs.blp:18
 msgid "Sync method"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:17
+#: data/resources/ui/prefs.blp:19
 msgid "Off by default. Nothing leaves this device until you turn it on."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:22 crates/app/src/prefs.rs:82
-#: crates/app/src/window.rs:1057 crates/app/src/window.rs:1068
+#: data/resources/ui/prefs.blp:24 crates/app/src/prefs.rs:106
+#: crates/app/src/window.rs:1169 crates/app/src/window.rs:1180
 msgid "Nextcloud"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:23
-msgid ""
-"Shares the same sync-data.json as Super Productivity. Use the same folder "
-"and encryption password as your other devices."
+#: data/resources/ui/prefs.blp:25
+msgid "Use the same sync folder and encryption password on your devices."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:26
+#: data/resources/ui/prefs.blp:28
 msgid "Server URL"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:30
+#: data/resources/ui/prefs.blp:32
 msgid "Username"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:34
+#: data/resources/ui/prefs.blp:36
 msgid "App password"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:38
+#: data/resources/ui/prefs.blp:40
 msgid "Sync folder"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:42
+#: data/resources/ui/prefs.blp:44
+msgid "Copy to Momentum folder…"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:49
 msgid "Encryption password"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:47
+#: data/resources/ui/prefs.blp:54
 msgid "At startup, every few minutes, and shortly after you make changes"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:51
+#: data/resources/ui/prefs.blp:58
 msgid "Compress sync file"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:55 data/resources/ui/window.blp:285
-#: data/resources/ui/window.blp:287 data/resources/ui/window.blp:422
-#: crates/app/src/window.rs:1112
+#: data/resources/ui/prefs.blp:62 data/resources/ui/window.blp:301
+#: data/resources/ui/window.blp:303 data/resources/ui/window.blp:439
+#: crates/app/src/window.rs:1224
 msgid "Sync Now"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:62 crates/app/src/prefs.rs:82
-#: crates/app/src/window.rs:1058
+#: data/resources/ui/prefs.blp:69 crates/app/src/prefs.rs:106
+#: crates/app/src/window.rs:1170
 msgid "LibreSync"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:63
+#: data/resources/ui/prefs.blp:70
 msgid ""
 "Sync directly with linked devices on your network. Changes sync "
 "automatically while this service is selected."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:66
+#: data/resources/ui/prefs.blp:73
 msgid "Manage Devices…"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:72
+#: data/resources/ui/prefs.blp:79
 msgid "Sync Devices Now"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:79 crates/app/src/window.rs:1388
-#: crates/app/src/window.rs:2254
+#: data/resources/ui/prefs.blp:86
+msgid "App settings"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:87
+msgid ""
+"Transfer grouping, sorting, Upcoming range, archive, density, label colors, "
+"and completion sounds. Credentials, connections, permissions, fonts, and "
+"device controls stay local."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:90
+msgid "Sync app settings"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:91
+msgid "Off by default. Uses your selected sync provider."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:94
+msgid "App settings sync"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:98
+msgid "Review settings…"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:102
+msgid "Retry app settings sync"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:106
+msgid "Export app settings…"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:110
+msgid "Import app settings…"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:116 crates/app/src/window.rs:1617
+#: crates/app/src/window.rs:2564
 msgid "Tasks"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:82
+#: data/resources/ui/prefs.blp:119 crates/app/src/portable_settings.rs:117
 msgid "Archive completed tasks immediately"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:83
+#: data/resources/ui/prefs.blp:120
 msgid ""
 "A completed task goes straight to the archive and syncs. Undo brings it back."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:87
+#: data/resources/ui/prefs.blp:124
 msgid "Play a sound when a task is completed"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:88
+#: data/resources/ui/prefs.blp:125
 msgid "A short sound when you mark a task done. Off by default."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:88
+#: data/resources/ui/prefs.blp:129 crates/app/src/portable_settings.rs:121
+#: crates/app/src/prefs.rs:208
+msgid "Completion sound"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:130 crates/app/src/prefs.rs:209
+msgid "Choose a short sound for completed tasks"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:134 crates/app/src/prefs.rs:214
+msgid "Preview sound"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:140
 msgid "Notifications"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:89
+#: data/resources/ui/prefs.blp:141
 msgid ""
 "Summarize today's tasks once a day at this local time, or when Momentum next "
 "opens. Task reminders are separate."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:92
+#: data/resources/ui/prefs.blp:144
 msgid "Morning summary"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:93
+#: data/resources/ui/prefs.blp:145
 msgid "Off by default. Momentum must be running to send notifications."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:96
+#: data/resources/ui/prefs.blp:148
 msgid "Hour (0–23)"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:102
+#: data/resources/ui/prefs.blp:154
 msgid "Minute"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:110
+#: data/resources/ui/prefs.blp:162
 msgid "Desktop"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:113
+#: data/resources/ui/prefs.blp:165
 msgid "Run in the background"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:114
+#: data/resources/ui/prefs.blp:166
 msgid ""
 "Keep reminders and sync running after the window closes, and start at login"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:118 crates/app/src/prefs.rs:142
+#: data/resources/ui/prefs.blp:170
+msgid "Sync in the background"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:171
+msgid ""
+"Keep syncing automatically while the window is closed. Turn this off to sync "
+"only while the window is open; Sync Now always works."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:175 crates/app/src/prefs.rs:167
 msgid "Background task count"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:119 crates/app/src/prefs.rs:144
+#: data/resources/ui/prefs.blp:176 crates/app/src/prefs.rs:169
 msgid "Choose which tasks appear in the Background Apps status"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:123
+#: data/resources/ui/prefs.blp:180
 msgid "Modifier key"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:124
+#: data/resources/ui/prefs.blp:181
 msgid ""
 "The key in every shortcut, so Ctrl+E becomes Super+E. Combinations the "
 "desktop uses itself, such as Super+A on GNOME, do not reach Momentum."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:129
+#: data/resources/ui/prefs.blp:186
 msgid "Appearance"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:133
-msgid "Use the colors from your Super Productivity data"
+#: data/resources/ui/prefs.blp:190
+msgid "Use the saved colors of projects and labels"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:138
+#: data/resources/ui/prefs.blp:195
 msgid "Typography"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:139
+#: data/resources/ui/prefs.blp:196
 msgid ""
 "Use the system font by default, or choose an app font and independent "
 "relative sizes."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:142 crates/app/src/prefs.rs:184
+#: data/resources/ui/prefs.blp:199 crates/app/src/prefs.rs:276
 msgid "Font"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:143
+#: data/resources/ui/prefs.blp:200
 msgid "Applies to Momentum only; Reset Typography restores the system font"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:151
+#: data/resources/ui/prefs.blp:208
 msgid "Choose Font"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:157 crates/app/src/prefs.rs:190
+#: data/resources/ui/prefs.blp:214 crates/app/src/prefs.rs:282
 msgid "Content size"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:158
+#: data/resources/ui/prefs.blp:215
 msgid ""
 "Task titles, notes, and task entry, as a percentage of the system text size"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:166 crates/app/src/prefs.rs:194
+#: data/resources/ui/prefs.blp:223 crates/app/src/prefs.rs:286
 msgid "Interface size"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:167
+#: data/resources/ui/prefs.blp:224
 msgid ""
 "Navigation, settings, headings, and controls, as a percentage of the system "
 "text size"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:175 crates/app/src/prefs.rs:200
+#: data/resources/ui/prefs.blp:232 crates/app/src/prefs.rs:292
 msgid "Reset Typography"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:181
+#: data/resources/ui/prefs.blp:238
 msgid "Backup"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:184
+#: data/resources/ui/prefs.blp:241
 msgid "Import Backup JSON…"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:189
+#: data/resources/ui/prefs.blp:246
 msgid "Export Backup JSON…"
 msgstr ""
 
@@ -809,24 +738,25 @@ msgstr ""
 msgid "Select Tasks"
 msgstr ""
 
-#: data/resources/ui/window.blp:48
+#: data/resources/ui/window.blp:48 crates/app/src/portable_settings.rs:113
 msgid "Group By"
 msgstr ""
 
-#: data/resources/ui/window.blp:50
+#: data/resources/ui/window.blp:50 crates/app/src/portable_settings.rs:141
 msgid "Morning & Night"
 msgstr ""
 
-#: data/resources/ui/window.blp:55 crates/app/src/task_form.rs:146
-#: crates/app/src/task_form.rs:192
+#: data/resources/ui/window.blp:55 crates/app/src/portable_settings.rs:142
+#: crates/app/src/task_form.rs:151 crates/app/src/task_form.rs:197
 msgid "None"
 msgstr ""
 
-#: data/resources/ui/window.blp:60 crates/app/src/task_form.rs:59
+#: data/resources/ui/window.blp:60 crates/app/src/portable_settings.rs:143
+#: crates/app/src/task_form.rs:59
 msgid "Project"
 msgstr ""
 
-#: data/resources/ui/window.blp:65
+#: data/resources/ui/window.blp:65 crates/app/src/portable_settings.rs:144
 msgid "Tag"
 msgstr ""
 
@@ -834,7 +764,7 @@ msgstr ""
 msgid "Time Estimate"
 msgstr ""
 
-#: data/resources/ui/window.blp:77
+#: data/resources/ui/window.blp:77 crates/app/src/portable_settings.rs:114
 msgid "Sort By"
 msgstr ""
 
@@ -842,7 +772,8 @@ msgstr ""
 msgid "Manual Order"
 msgstr ""
 
-#: data/resources/ui/window.blp:86 crates/app/src/task_form.rs:49
+#: data/resources/ui/window.blp:86 crates/app/src/portable_settings.rs:147
+#: crates/app/src/task_form.rs:49
 msgid "Title"
 msgstr ""
 
@@ -850,11 +781,11 @@ msgstr ""
 msgid "Due Day"
 msgstr ""
 
-#: data/resources/ui/window.blp:98
+#: data/resources/ui/window.blp:98 crates/app/src/portable_settings.rs:145
 msgid "Estimate"
 msgstr ""
 
-#: data/resources/ui/window.blp:104
+#: data/resources/ui/window.blp:104 crates/app/src/portable_settings.rs:149
 msgid "Created"
 msgstr ""
 
@@ -862,16 +793,16 @@ msgstr ""
 msgid "Order"
 msgstr ""
 
-#: data/resources/ui/window.blp:114
+#: data/resources/ui/window.blp:114 crates/app/src/portable_settings.rs:150
 msgid "Ascending"
 msgstr ""
 
-#: data/resources/ui/window.blp:120
+#: data/resources/ui/window.blp:120 crates/app/src/portable_settings.rs:151
 msgid "Descending"
 msgstr ""
 
-#: data/resources/ui/window.blp:127 crates/app/src/window.rs:2138
-#: crates/app/src/window.rs:2585
+#: data/resources/ui/window.blp:127 crates/app/src/window.rs:2448
+#: crates/app/src/window.rs:2932
 msgid "Coming Up"
 msgstr ""
 
@@ -883,153 +814,174 @@ msgstr ""
 msgid "Next 30 Days"
 msgstr ""
 
-#: data/resources/ui/window.blp:144
+#: data/resources/ui/window.blp:143
+msgid "Layout"
+msgstr ""
+
+#: data/resources/ui/window.blp:146 crates/app/src/portable_settings.rs:152
+msgid "Regular"
+msgstr ""
+
+#: data/resources/ui/window.blp:152 crates/app/src/portable_settings.rs:153
+msgid "Compact"
+msgstr ""
+
+#: data/resources/ui/window.blp:160
 msgid "Edit Project or Tag…"
 msgstr ""
 
-#: data/resources/ui/window.blp:149
+#: data/resources/ui/window.blp:165
 msgid "Delete Project or Tag…"
 msgstr ""
 
-#: data/resources/ui/window.blp:156
+#: data/resources/ui/window.blp:172
 msgid "Archive Completed Tasks"
 msgstr ""
 
-#: data/resources/ui/window.blp:191 data/resources/ui/window.blp:193
+#: data/resources/ui/window.blp:207 data/resources/ui/window.blp:209
 msgid "Hide Sidebar"
 msgstr ""
 
-#: data/resources/ui/window.blp:203 data/resources/ui/window.blp:205
+#: data/resources/ui/window.blp:219 data/resources/ui/window.blp:221
 msgid "Main Menu"
 msgstr ""
 
-#: data/resources/ui/window.blp:241
+#: data/resources/ui/window.blp:257
 msgid "Create Task"
 msgstr ""
 
-#: data/resources/ui/window.blp:257 data/resources/ui/window.blp:259
+#: data/resources/ui/window.blp:273 data/resources/ui/window.blp:275
 msgid "Show Sidebar"
 msgstr ""
 
-#: data/resources/ui/window.blp:268 crates/app/src/application.rs:316
-#: crates/app/src/p2p.rs:314 crates/app/src/repeat_dialog.rs:300
-#: crates/app/src/window.rs:1393 crates/app/src/window.rs:2867
-#: crates/app/src/window.rs:2935 crates/app/src/window.rs:3008
-#: crates/app/src/window.rs:3122
+#: data/resources/ui/window.blp:284 crates/app/src/application.rs:319
+#: crates/app/src/p2p.rs:325 crates/app/src/repeat_dialog.rs:339
+#: crates/app/src/window.rs:1315 crates/app/src/window.rs:1622
+#: crates/app/src/window.rs:3214 crates/app/src/window.rs:3282
+#: crates/app/src/window.rs:3355 crates/app/src/window.rs:3471
+#: crates/app/src/window.rs:3914 crates/app/src/window.rs:3951
+#: crates/app/src/window.rs:4008 crates/app/src/window.rs:3771
+#: crates/app/src/window.rs:3796
 msgid "Cancel"
 msgstr ""
 
-#: data/resources/ui/window.blp:276 data/resources/ui/window.blp:278
+#: data/resources/ui/window.blp:292 data/resources/ui/window.blp:294
 msgid "View Options"
 msgstr ""
 
-#: data/resources/ui/window.blp:295
+#: data/resources/ui/window.blp:311 crates/app/src/window.rs:1265
 msgid "Details"
 msgstr ""
 
-#: data/resources/ui/window.blp:308
+#: data/resources/ui/window.blp:324
 msgid "Search tasks, notes, projects and tags"
 msgstr ""
 
-#: data/resources/ui/window.blp:325
-msgid "Add a task…  #tag  1h 30m"
+#: data/resources/ui/window.blp:341 crates/app/src/quick_add.rs:13
+msgid "Add a task…"
 msgstr ""
 
-#: data/resources/ui/window.blp:329 crates/app/src/quick_add.rs:18
+#: data/resources/ui/window.blp:342
+msgid ""
+"Type a title; #tag adds a tag and 1h 30m sets an estimate. Press Enter to "
+"add."
+msgstr ""
+
+#: data/resources/ui/window.blp:346 crates/app/src/quick_add.rs:22
 msgid "Add a task"
 msgstr ""
 
-#: data/resources/ui/window.blp:330
+#: data/resources/ui/window.blp:347
 msgid "Type a title; #tag adds a tag and 1h 30m sets an estimate"
 msgstr ""
 
-#: data/resources/ui/window.blp:341
+#: data/resources/ui/window.blp:358
 msgid "Select All"
 msgstr ""
 
-#: data/resources/ui/window.blp:355 crates/app/src/window.rs:1568
-#: crates/app/src/window.rs:2983 crates/app/src/window.rs:2996
-#: crates/app/src/window.rs:3008
+#: data/resources/ui/window.blp:372 crates/app/src/window.rs:1815
+#: crates/app/src/window.rs:3330 crates/app/src/window.rs:3343
+#: crates/app/src/window.rs:3355
 msgid "Delete"
 msgstr ""
 
-#: data/resources/ui/window.blp:357
+#: data/resources/ui/window.blp:374
 msgid "Delete Selected Tasks"
 msgstr ""
 
-#: data/resources/ui/window.blp:369
+#: data/resources/ui/window.blp:386
 msgid "Add Tag…"
 msgstr ""
 
-#: data/resources/ui/window.blp:371
+#: data/resources/ui/window.blp:388
 msgid "Add Tag to Selected Tasks"
 msgstr ""
 
-#: data/resources/ui/window.blp:379 crates/app/src/window.rs:1552
+#: data/resources/ui/window.blp:396
 msgid "Move to Project…"
 msgstr ""
 
-#: data/resources/ui/window.blp:381
+#: data/resources/ui/window.blp:398
 msgid "Move Selected Tasks to Project"
 msgstr ""
 
-#: data/resources/ui/window.blp:389 crates/app/src/window.rs:1529
+#: data/resources/ui/window.blp:406 crates/app/src/window.rs:1759
 msgid "Plan for Today"
 msgstr ""
 
-#: data/resources/ui/window.blp:391
+#: data/resources/ui/window.blp:408
 msgid "Plan Selected Tasks for Today"
 msgstr ""
 
-#: data/resources/ui/window.blp:399 crates/app/src/window.rs:1518
+#: data/resources/ui/window.blp:416 crates/app/src/window.rs:1748
 msgid "Mark as Done"
 msgstr ""
 
-#: data/resources/ui/window.blp:401
+#: data/resources/ui/window.blp:418
 msgid "Mark Selected Tasks as Done"
 msgstr ""
 
-#: data/resources/ui/window.blp:448
+#: data/resources/ui/window.blp:465
 msgid "Nothing here yet"
 msgstr ""
 
-#: data/resources/ui/window.blp:449
+#: data/resources/ui/window.blp:466
 msgid "Add a task above, or sync with Nextcloud from Preferences."
 msgstr ""
 
-#: crates/app/src/application.rs:307
+#: crates/app/src/application.rs:310
 msgid "Project name"
 msgstr ""
 
-#: crates/app/src/application.rs:311
+#: crates/app/src/application.rs:314
 msgid "New Project"
 msgstr ""
 
-#: crates/app/src/application.rs:316 crates/app/src/window.rs:1393
+#: crates/app/src/application.rs:319 crates/app/src/window.rs:1622
 msgid "Add"
 msgstr ""
 
-#: crates/app/src/application.rs:421
+#: crates/app/src/application.rs:424
 msgid "translator-credits"
 msgstr ""
 
-#: crates/app/src/application.rs:454
+#: crates/app/src/application.rs:457
 msgid "Add a task and exit"
 msgstr ""
 
-#: crates/app/src/application.rs:462
+#: crates/app/src/application.rs:465
 msgid "Open the quick-add window"
 msgstr ""
 
-#: crates/app/src/application.rs:470
+#: crates/app/src/application.rs:473
 msgid "Open the Today view"
 msgstr ""
 
-#: crates/app/src/application.rs:478
+#: crates/app/src/application.rs:481
 msgid "Open Search with a query"
 msgstr ""
 
-#: crates/app/src/application.rs:486
+#: crates/app/src/application.rs:489
 msgid "Start without showing a window"
 msgstr ""
 
@@ -1037,7 +989,7 @@ msgstr ""
 msgid "Momentum is running"
 msgstr ""
 
-#: crates/app/src/background_status.rs:110 crates/app/src/window.rs:2608
+#: crates/app/src/background_status.rs:110 crates/app/src/window.rs:2955
 msgid "All done for today"
 msgstr ""
 
@@ -1054,176 +1006,307 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: crates/app/src/messages.rs:12
-msgid "Task completed"
+msgid "Could not save changes:"
 msgstr ""
 
 #: crates/app/src/messages.rs:13
-msgid "Task completed and archived"
+msgid "Task completed"
 msgstr ""
 
 #: crates/app/src/messages.rs:14
-msgid "tasks completed"
+msgid "Task completed and archived"
 msgstr ""
 
 #: crates/app/src/messages.rs:15
-msgid "tasks completed and archived"
+msgid "tasks completed"
 msgstr ""
 
 #: crates/app/src/messages.rs:16
-msgid "Task deleted"
+msgid "tasks completed and archived"
 msgstr ""
 
 #: crates/app/src/messages.rs:17
-msgid "tasks deleted"
+msgid "Task deleted"
 msgstr ""
 
 #: crates/app/src/messages.rs:18
-msgid "Task added"
+msgid "tasks deleted"
 msgstr ""
 
 #: crates/app/src/messages.rs:19
-msgid "tasks added"
+msgid "Task added"
 msgstr ""
 
 #: crates/app/src/messages.rs:20
-msgid "Task duplicated"
+msgid "tasks added"
 msgstr ""
 
 #: crates/app/src/messages.rs:21
-msgid "Moved to tonight"
+msgid "Task duplicated"
 msgstr ""
 
 #: crates/app/src/messages.rs:22
-msgid "Moved to the morning"
+msgid "Moved to tonight"
 msgstr ""
 
 #: crates/app/src/messages.rs:23
-msgid "Moved to today"
+msgid "Moved to the morning"
 msgstr ""
 
 #: crates/app/src/messages.rs:24
-msgid "tasks moved to tonight"
+msgid "Moved to today"
 msgstr ""
 
 #: crates/app/src/messages.rs:25
-msgid "tasks moved to the morning"
+msgid "tasks moved to tonight"
 msgstr ""
 
 #: crates/app/src/messages.rs:26
+msgid "tasks moved to the morning"
+msgstr ""
+
+#: crates/app/src/messages.rs:27
 msgid "tasks moved to today"
 msgstr ""
 
-#: crates/app/src/messages.rs:27 crates/app/src/messages.rs:28
-#: crates/app/src/messages.rs:36
+#: crates/app/src/messages.rs:28 crates/app/src/messages.rs:29
+#: crates/app/src/messages.rs:34 crates/app/src/messages.rs:49
 msgid "Moved to"
 msgstr ""
 
-#: crates/app/src/messages.rs:27 crates/app/src/messages.rs:29
+#: crates/app/src/messages.rs:28 crates/app/src/messages.rs:30
 msgid "tomorrow"
 msgstr ""
 
-#: crates/app/src/messages.rs:28 crates/app/src/messages.rs:30
+#: crates/app/src/messages.rs:29 crates/app/src/messages.rs:31
 msgid "next week"
 msgstr ""
 
-#: crates/app/src/messages.rs:29 crates/app/src/messages.rs:30
+#: crates/app/src/messages.rs:30 crates/app/src/messages.rs:31
+#: crates/app/src/messages.rs:40
 msgid "tasks moved to"
 msgstr ""
 
-#: crates/app/src/messages.rs:31
+#: crates/app/src/messages.rs:44
 msgid "Planned for today"
 msgstr ""
 
-#: crates/app/src/messages.rs:32
+#: crates/app/src/messages.rs:45
 msgid "Planned for the morning"
 msgstr ""
 
-#: crates/app/src/messages.rs:33
+#: crates/app/src/messages.rs:46
 msgid "Planned for tonight"
 msgstr ""
 
-#: crates/app/src/messages.rs:34
+#: crates/app/src/messages.rs:47
 msgid "Removed from today"
 msgstr ""
 
-#: crates/app/src/messages.rs:35
+#: crates/app/src/messages.rs:48
 msgid "tasks planned for today"
 msgstr ""
 
-#: crates/app/src/messages.rs:37
+#: crates/app/src/messages.rs:50
 msgid "Tagged"
 msgstr ""
 
-#: crates/app/src/messages.rs:38
+#: crates/app/src/messages.rs:51
 msgid "tasks tagged"
 msgstr ""
 
-#: crates/app/src/messages.rs:39
+#: crates/app/src/messages.rs:52
 msgid "completed tasks archived"
 msgstr ""
 
-#: crates/app/src/messages.rs:40
+#: crates/app/src/messages.rs:53
 msgid "Snoozed for"
 msgstr ""
 
-#: crates/app/src/messages.rs:40
+#: crates/app/src/messages.rs:53
 msgid "minutes"
 msgstr ""
 
-#: crates/app/src/messages.rs:41
+#: crates/app/src/messages.rs:54
 msgid "Undone"
 msgstr ""
 
-#: crates/app/src/messages.rs:42
+#: crates/app/src/messages.rs:55
 msgid "Nothing to undo"
 msgstr ""
 
-#: crates/app/src/messages.rs:43
+#: crates/app/src/messages.rs:56
 msgid "Switch to Manual Order to rearrange tasks"
 msgstr ""
 
-#: crates/app/src/messages.rs:44
+#: crates/app/src/messages.rs:57
 msgid "Pick at least one weekday"
 msgstr ""
 
-#: crates/app/src/messages.rs:45
+#: crates/app/src/messages.rs:58
 msgid "no longer repeats"
 msgstr ""
 
-#: crates/app/src/messages.rs:47
+#: crates/app/src/messages.rs:60
 msgid "Backup imported"
 msgstr ""
 
-#: crates/app/src/messages.rs:48
+#: crates/app/src/messages.rs:61
 msgid "Backup exported"
 msgstr ""
 
-#: crates/app/src/messages.rs:49
+#: crates/app/src/messages.rs:62
 msgid "Synced"
 msgstr ""
 
-#: crates/app/src/messages.rs:50
+#: crates/app/src/messages.rs:63
 msgid "Linked with"
 msgstr ""
 
-#: crates/app/src/messages.rs:51
+#: crates/app/src/messages.rs:64
 msgid "Linking…"
 msgstr ""
 
-#: crates/app/src/messages.rs:52
+#: crates/app/src/messages.rs:65
 msgid "Could not link. Check the code and try again."
 msgstr ""
 
-#: crates/app/src/messages.rs:53
+#: crates/app/src/messages.rs:66
 msgid "The other device declined. Check the code and try again."
 msgstr ""
 
-#: crates/app/src/messages.rs:55
+#: crates/app/src/messages.rs:68
 msgid "changed its identity. Unlink it and link again."
 msgstr ""
 
-#: crates/app/src/messages.rs:57
+#: crates/app/src/messages.rs:70
 msgid "Nearby sync could not start:"
+msgstr ""
+
+#: crates/app/src/messages.rs:78
+msgid "Momentum can’t reach your server"
+msgstr ""
+
+#: crates/app/src/messages.rs:79
+msgid "The server didn’t accept your login"
+msgstr ""
+
+#: crates/app/src/messages.rs:80
+msgid "The server ran into a problem"
+msgstr ""
+
+#: crates/app/src/messages.rs:81
+msgid "Sync took too long to finish"
+msgstr ""
+
+#: crates/app/src/messages.rs:82
+msgid "The sync file is encrypted"
+msgstr ""
+
+#: crates/app/src/messages.rs:83
+msgid "The encryption password doesn’t match"
+msgstr ""
+
+#: crates/app/src/messages.rs:84
+msgid "The copy on the server is damaged"
+msgstr ""
+
+#: crates/app/src/messages.rs:85
+msgid "The copy on the server needs a newer Momentum"
+msgstr ""
+
+#: crates/app/src/messages.rs:86
+msgid "Nothing to sync yet"
+msgstr ""
+
+#: crates/app/src/messages.rs:87
+msgid "Another device is syncing at the same time"
+msgstr ""
+
+#: crates/app/src/messages.rs:88
+msgid "Sync was interrupted"
+msgstr ""
+
+#: crates/app/src/messages.rs:89
+msgid "The upload could not be verified"
+msgstr ""
+
+#: crates/app/src/messages.rs:90
+msgid "Sync couldn’t finish"
+msgstr ""
+
+#: crates/app/src/messages.rs:98
+msgid ""
+"Check that this computer is online and that the server address is right, "
+"then retry. Your tasks are safe on this computer."
+msgstr ""
+
+#: crates/app/src/messages.rs:99
+msgid ""
+"Check the user name and app password in Preferences. An app password comes "
+"from your Nextcloud security settings."
+msgstr ""
+
+#: crates/app/src/messages.rs:100
+msgid ""
+"The server answered with an error. Retry in a few minutes; if it keeps "
+"happening, check the server itself."
+msgstr ""
+
+#: crates/app/src/messages.rs:101
+msgid ""
+"The connection is slow or unstable. Retry on a faster connection, or turn on "
+"“Compress the sync file” in Preferences to make the transfer smaller."
+msgstr ""
+
+#: crates/app/src/messages.rs:102
+msgid ""
+"Enter the encryption password you use on your other devices in Preferences."
+msgstr ""
+
+#: crates/app/src/messages.rs:103
+msgid ""
+"Enter the same encryption password you use on your other devices. A "
+"different password on one device makes the file unreadable there."
+msgstr ""
+
+#: crates/app/src/messages.rs:104
+msgid ""
+"No device can read the copy on the server. On the device with your most "
+"recent tasks, choose Replace Server Copy; the damaged copy is kept on the "
+"server as sync-data.json.damaged."
+msgstr ""
+
+#: crates/app/src/messages.rs:105
+msgid ""
+"Update Momentum on this computer. If another app wrote the file, turn off "
+"its newer sync format."
+msgstr ""
+
+#: crates/app/src/messages.rs:106
+msgid ""
+"This computer has no tasks yet and the server has no copy. Sync from a "
+"device that has your tasks first, or import a backup here."
+msgstr ""
+
+#: crates/app/src/messages.rs:107
+msgid "Two devices uploaded at the same moment. Wait a moment and retry."
+msgstr ""
+
+#: crates/app/src/messages.rs:108
+msgid "Retry."
+msgstr ""
+
+#: crates/app/src/messages.rs:109
+msgid ""
+"Your edits are still waiting here. Check the server copy, then retry on a "
+"steadier connection."
+msgstr ""
+
+#: crates/app/src/messages.rs:110
+msgid ""
+"Retry. If it keeps failing, the details below say what the server or this "
+"computer reported."
 msgstr ""
 
 #: crates/app/src/modifier.rs:15
@@ -1254,292 +1337,361 @@ msgstr ""
 msgid "Nearby Devices"
 msgstr ""
 
-#: crates/app/src/p2p.rs:141
+#: crates/app/src/p2p.rs:152
 msgid "Select LibreSync in Preferences first."
 msgstr ""
 
-#: crates/app/src/p2p.rs:155
+#: crates/app/src/p2p.rs:166
 msgid "This Device"
 msgstr ""
 
-#: crates/app/src/p2p.rs:158
+#: crates/app/src/p2p.rs:169
 msgid "Listening on port"
 msgstr ""
 
-#: crates/app/src/p2p.rs:163 crates/app/src/p2p.rs:173
-#: crates/app/src/p2p.rs:306
+#: crates/app/src/p2p.rs:174 crates/app/src/p2p.rs:184
+#: crates/app/src/p2p.rs:317
 msgid "Pairing code"
 msgstr ""
 
-#: crates/app/src/p2p.rs:164
+#: crates/app/src/p2p.rs:175
 msgid "Enter it on the other device within five minutes"
 msgstr ""
 
-#: crates/app/src/p2p.rs:181
+#: crates/app/src/p2p.rs:192
 msgid "Nearby"
 msgstr ""
 
-#: crates/app/src/p2p.rs:183
+#: crates/app/src/p2p.rs:194
 msgid ""
 "Devices running Momentum on this network. Link with the code shown on the "
 "other device."
 msgstr ""
 
-#: crates/app/src/p2p.rs:194
+#: crates/app/src/p2p.rs:205
 msgid "Linked Devices"
 msgstr ""
 
-#: crates/app/src/p2p.rs:220
+#: crates/app/src/p2p.rs:231
 msgid "Searching…"
 msgstr ""
 
-#: crates/app/src/p2p.rs:221
+#: crates/app/src/p2p.rs:232
 msgid "Open this dialog on the other device too"
 msgstr ""
 
-#: crates/app/src/p2p.rs:232
+#: crates/app/src/p2p.rs:243
 msgid "Link…"
 msgstr ""
 
-#: crates/app/src/p2p.rs:247
+#: crates/app/src/p2p.rs:258
 msgid "None yet"
 msgstr ""
 
-#: crates/app/src/p2p.rs:255 crates/app/src/window.rs:1093
+#: crates/app/src/p2p.rs:266 crates/app/src/prefs.rs:482
+#: crates/app/src/window.rs:1205
 msgid "Last synced"
 msgstr ""
 
-#: crates/app/src/p2p.rs:256 crates/app/src/window.rs:1091
+#: crates/app/src/p2p.rs:267 crates/app/src/window.rs:1203
 msgid "Not synced yet"
 msgstr ""
 
-#: crates/app/src/p2p.rs:263
+#: crates/app/src/p2p.rs:274
 msgid "Unlink"
 msgstr ""
 
-#: crates/app/src/p2p.rs:308
+#: crates/app/src/p2p.rs:319
 msgid "Link with"
 msgstr ""
 
-#: crates/app/src/p2p.rs:309
+#: crates/app/src/p2p.rs:320
 msgid "Type the pairing code shown in Nearby Devices on that device."
 msgstr ""
 
-#: crates/app/src/p2p.rs:314
+#: crates/app/src/p2p.rs:325
 msgid "Link"
 msgstr ""
 
-#: crates/app/src/prefs.rs:82 crates/app/src/prefs.rs:128
-msgid "Off"
+#: crates/app/src/portable_settings.rs:115
+msgid "Sort direction"
 msgstr ""
 
-#: crates/app/src/prefs.rs:126
-msgid "Due or scheduled today"
+#: crates/app/src/portable_settings.rs:116
+msgid "Upcoming range"
 msgstr ""
 
-#: crates/app/src/prefs.rs:127
-msgid "Today including overdue"
+#: crates/app/src/portable_settings.rs:118
+msgid "Row density"
 msgstr ""
 
-#: crates/app/src/prefs.rs:186
-msgid "Choose a font for Momentum; its size is controlled separately"
+#: crates/app/src/portable_settings.rs:119
+msgid "Colorful labels"
 msgstr ""
 
-#: crates/app/src/prefs.rs:191
-msgid "Task titles, notes, and task entry, in percent"
-msgstr ""
-
-#: crates/app/src/prefs.rs:196
-msgid "Navigation, settings, headings, and controls, in percent"
-msgstr ""
-
-#: crates/app/src/prefs.rs:202
-msgid "Restore the system font and both sizes to 100 percent"
-msgstr ""
-
-#: crates/app/src/quick_add.rs:13
-msgid "Add a task…  #tag  1h 30m  (Enter to add, Esc to close)"
-msgstr ""
-
-#: crates/app/src/quick_add.rs:20
-msgid "Added to Today"
-msgstr ""
-
-#: crates/app/src/quick_add.rs:39
-msgid "Add Task"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:35 crates/app/src/window.rs:385
-msgid "Repeats"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:37
-msgid "Daily"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:38
-msgid "Weekly"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:39
-msgid "Monthly"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:40
-msgid "Yearly"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:45
-msgid "Every"
+#: crates/app/src/portable_settings.rs:120
+msgid "Completion sounds"
 msgstr ""
 
 #. Weekday chips (weekly only)
-#: crates/app/src/repeat_dialog.rs:51
+#: crates/app/src/portable_settings.rs:125 crates/app/src/repeat_dialog.rs:63
 msgid "On"
 msgstr ""
 
-#: crates/app/src/repeat_dialog.rs:54
-msgid "Mon"
+#: crates/app/src/portable_settings.rs:127 crates/app/src/prefs.rs:106
+#: crates/app/src/prefs.rs:153
+msgid "Off"
 msgstr ""
 
-#: crates/app/src/repeat_dialog.rs:55
-msgid "Tue"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:56
-msgid "Wed"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:57
-msgid "Thu"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:58
-msgid "Fri"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:59
-msgid "Sat"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:60
-msgid "Sun"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:79
-msgid "Monthly on"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:81
-msgid "The same date"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:82
-msgid "The last day"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:83
-msgid "A weekday of the month"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:92
-msgid "Which"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:94
-msgid "First"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:95
-msgid "Second"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:96
-msgid "Third"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:97
-msgid "Fourth"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:98
-msgid "Last"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:102 crates/app/src/window.rs:320
-msgid "Sunday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:103 crates/app/src/window.rs:321
-msgid "Monday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:104 crates/app/src/window.rs:322
-msgid "Tuesday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:105 crates/app/src/window.rs:323
-msgid "Wednesday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:106 crates/app/src/window.rs:324
-msgid "Thursday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:107 crates/app/src/window.rs:325
-msgid "Friday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:108 crates/app/src/window.rs:326
-msgid "Saturday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:111
-msgid "Weekday"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:130
-msgid "Starts"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:145 crates/app/src/repeat_dialog.rs:147
-msgid "Pick a start day"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:159
-msgid "Paused"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:160
-msgid "Keep the schedule but stop creating tasks"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:169
-msgid "Stop Repeating"
-msgstr ""
-
-#: crates/app/src/repeat_dialog.rs:251 crates/app/src/window.rs:336
+#: crates/app/src/portable_settings.rs:130 crates/app/src/repeat_dialog.rs:275
+#: crates/app/src/window.rs:349
 msgid "days"
 msgstr ""
 
-#: crates/app/src/repeat_dialog.rs:252
+#: crates/app/src/portable_settings.rs:138
+msgid "Unknown sound"
+msgstr ""
+
+#: crates/app/src/portable_settings.rs:146
+msgid "Manual"
+msgstr ""
+
+#: crates/app/src/portable_settings.rs:148
+msgid "Due date"
+msgstr ""
+
+#: crates/app/src/portable_settings.rs:154
+msgid "Unknown"
+msgstr ""
+
+#: crates/app/src/prefs.rs:151
+msgid "Due or scheduled today"
+msgstr ""
+
+#: crates/app/src/prefs.rs:152
+msgid "Today including overdue"
+msgstr ""
+
+#: crates/app/src/prefs.rs:215
+msgid "Play the selected completion sound"
+msgstr ""
+
+#: crates/app/src/prefs.rs:278
+msgid "Choose a font for Momentum; its size is controlled separately"
+msgstr ""
+
+#: crates/app/src/prefs.rs:283
+msgid "Task titles, notes, and task entry, in percent"
+msgstr ""
+
+#: crates/app/src/prefs.rs:288
+msgid "Navigation, settings, headings, and controls, in percent"
+msgstr ""
+
+#: crates/app/src/prefs.rs:294
+msgid "Restore the system font and both sizes to 100 percent"
+msgstr ""
+
+#: crates/app/src/prefs.rs:471
+msgid "Review the saved settings before syncing them."
+msgstr ""
+
+#: crates/app/src/prefs.rs:473
+msgid "Choose a sync provider to share app settings."
+msgstr ""
+
+#: crates/app/src/prefs.rs:475
+msgid "App settings are waiting to sync."
+msgstr ""
+
+#: crates/app/src/prefs.rs:477
+msgid "App settings are up to date."
+msgstr ""
+
+#: crates/app/src/prefs.rs:479
+msgid "App settings have not synced yet."
+msgstr ""
+
+#: crates/app/src/quick_add.rs:15 crates/app/src/quick_add.rs:24
+msgid ""
+"Type a title; #tag adds a tag and 1h 30m sets an estimate. Press Enter to "
+"add or Esc to close."
+msgstr ""
+
+#: crates/app/src/quick_add.rs:28
+msgid "Added to Today"
+msgstr ""
+
+#: crates/app/src/quick_add.rs:47
+msgid "Add Task"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:47 crates/app/src/window.rs:398
+msgid "Repeats"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:49
+msgid "Daily"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:50
+msgid "Weekly"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:51
+msgid "Monthly"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:52
+msgid "Yearly"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:57
+msgid "Every"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:66
+msgid "Mon"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:67
+msgid "Tue"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:68
+msgid "Wed"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:69
+msgid "Thu"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:70
+msgid "Fri"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:71
+msgid "Sat"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:72
+msgid "Sun"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:91
+msgid "Monthly on"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:93
+msgid "The same date"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:94
+msgid "The last day"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:95
+msgid "A weekday of the month"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:104
+msgid "Which"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:106
+msgid "First"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:107
+msgid "Second"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:108
+msgid "Third"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:109
+msgid "Fourth"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:110
+msgid "Last"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:114 crates/app/src/window.rs:333
+msgid "Sunday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:115 crates/app/src/window.rs:334
+msgid "Monday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:116 crates/app/src/window.rs:335
+msgid "Tuesday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:117 crates/app/src/window.rs:336
+msgid "Wednesday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:118 crates/app/src/window.rs:337
+msgid "Thursday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:119 crates/app/src/window.rs:338
+msgid "Friday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:120 crates/app/src/window.rs:339
+msgid "Saturday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:123
+msgid "Weekday"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:142
+msgid "Starts"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:157 crates/app/src/repeat_dialog.rs:159
+msgid "Pick a start day"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:171 crates/app/src/repeat_dialog.rs:173
+msgid "Clear start day"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:179
+msgid "Paused"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:180
+msgid "Keep the schedule but stop creating tasks"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:189
+msgid "Stop Repeating"
+msgstr ""
+
+#: crates/app/src/repeat_dialog.rs:276
 msgid "weeks"
 msgstr ""
 
-#: crates/app/src/repeat_dialog.rs:253
+#: crates/app/src/repeat_dialog.rs:277
 msgid "months"
 msgstr ""
 
-#: crates/app/src/repeat_dialog.rs:254
+#: crates/app/src/repeat_dialog.rs:278
 msgid "years"
 msgstr ""
 
-#: crates/app/src/repeat_dialog.rs:302 crates/app/src/window.rs:2935
+#: crates/app/src/repeat_dialog.rs:341 crates/app/src/window.rs:3282
 msgid "Save"
 msgstr ""
 
-#: crates/app/src/repeat_dialog.rs:302 crates/app/src/repeat_dialog.rs:311
-#: crates/app/src/window.rs:3175
+#: crates/app/src/repeat_dialog.rs:341 crates/app/src/repeat_dialog.rs:350
+#: crates/app/src/window.rs:3524
 msgid "Repeat"
 msgstr ""
 
@@ -1547,826 +1699,817 @@ msgstr ""
 msgid "Create task"
 msgstr ""
 
-#: crates/app/src/task_form.rs:110
+#: crates/app/src/sound.rs:78
+msgid "1 Wood Pop"
+msgstr ""
+
+#: crates/app/src/sound.rs:79
+msgid "2 Double Check"
+msgstr ""
+
+#: crates/app/src/sound.rs:80
+msgid "3 Rounded Lift"
+msgstr ""
+
+#: crates/app/src/sound.rs:81
+msgid "4 Pocket Piano"
+msgstr ""
+
+#: crates/app/src/sound.rs:82
+msgid "5 String Flick"
+msgstr ""
+
+#: crates/app/src/sound.rs:83
+msgid "6 Bright Finish"
+msgstr ""
+
+#: crates/app/src/sound.rs:84
+msgid "7 Harp Snap"
+msgstr ""
+
+#: crates/app/src/sound.rs:85
+msgid "8 Click and Glow"
+msgstr ""
+
+#: crates/app/src/sound.rs:86
+msgid "9 Tiny Ta-Da"
+msgstr ""
+
+#: crates/app/src/sound.rs:87
+msgid "10 Warm Spark"
+msgstr ""
+
+#: crates/app/src/task_form.rs:115
 msgid "Due"
 msgstr ""
 
-#: crates/app/src/task_form.rs:115 crates/app/src/task_form.rs:117
+#: crates/app/src/task_form.rs:120 crates/app/src/task_form.rs:122
 msgid "Pick a day"
 msgstr ""
 
-#: crates/app/src/task_form.rs:138
+#: crates/app/src/task_form.rs:143
 msgid "Not scheduled"
 msgstr ""
 
-#: crates/app/src/task_form.rs:145 crates/app/src/window.rs:283
+#: crates/app/src/task_form.rs:150 crates/app/src/window.rs:296
+#: crates/app/src/window.rs:1783
 msgid "Tomorrow"
 msgstr ""
 
-#: crates/app/src/task_form.rs:173
+#: crates/app/src/task_form.rs:178
 msgid "Time, e.g. 14:30"
 msgstr ""
 
-#: crates/app/src/task_form.rs:193
+#: crates/app/src/task_form.rs:198
 msgid "At the scheduled time"
 msgstr ""
 
-#: crates/app/src/task_form.rs:194
+#: crates/app/src/task_form.rs:199
 msgid "5 minutes before"
 msgstr ""
 
-#: crates/app/src/task_form.rs:195
+#: crates/app/src/task_form.rs:200
 msgid "10 minutes before"
 msgstr ""
 
-#: crates/app/src/task_form.rs:196
+#: crates/app/src/task_form.rs:201
 msgid "15 minutes before"
 msgstr ""
 
-#: crates/app/src/task_form.rs:197
+#: crates/app/src/task_form.rs:202
 msgid "30 minutes before"
 msgstr ""
 
-#: crates/app/src/task_form.rs:198
+#: crates/app/src/task_form.rs:203
 msgid "1 hour before"
 msgstr ""
 
-#: crates/app/src/task_form.rs:199
+#: crates/app/src/task_form.rs:204
 msgid "1 day before"
 msgstr ""
 
-#: crates/app/src/task_form.rs:202 crates/app/src/window.rs:3043
+#: crates/app/src/task_form.rs:207 crates/app/src/window.rs:3390
 msgid "Reminder"
 msgstr ""
 
-#: crates/app/src/task_form.rs:203
+#: crates/app/src/task_form.rs:208
 msgid "Needs a time"
 msgstr ""
 
-#: crates/app/src/task_form.rs:241
+#: crates/app/src/task_form.rs:246
 msgid "Estimate, e.g. 1h 30m"
 msgstr ""
 
 #. Tags: toggle chips for existing tags, entry for new ones
-#: crates/app/src/task_form.rs:251 crates/app/src/window.rs:2158
-#: crates/app/src/window.rs:2256
+#: crates/app/src/task_form.rs:256 crates/app/src/window.rs:2468
+#: crates/app/src/window.rs:2566
 msgid "Tags"
 msgstr ""
 
-#: crates/app/src/task_form.rs:281
+#: crates/app/src/task_form.rs:286
 msgid "New tags, comma separated"
 msgstr ""
 
-#: crates/app/src/task_form.rs:285 crates/app/src/task_form.rs:317
+#: crates/app/src/task_form.rs:290 crates/app/src/task_form.rs:333
 msgid "Notes"
 msgstr ""
 
-#: crates/app/src/task_form.rs:289 crates/app/src/task_form.rs:293
+#: crates/app/src/task_form.rs:294 crates/app/src/task_form.rs:298
 msgid "Copy Notes"
 msgstr ""
 
-#: crates/app/src/window.rs:284
+#: crates/app/src/window.rs:297
 msgid "Yesterday"
 msgstr ""
 
-#: crates/app/src/window.rs:299
+#: crates/app/src/window.rs:312
 msgid "just now"
 msgstr ""
 
-#: crates/app/src/window.rs:300
+#: crates/app/src/window.rs:313
 msgid "seconds ago"
 msgstr ""
 
-#: crates/app/src/window.rs:301
+#: crates/app/src/window.rs:314
 msgid "minutes ago"
 msgstr ""
 
-#: crates/app/src/window.rs:302
+#: crates/app/src/window.rs:315
 msgid "hours ago"
 msgstr ""
 
-#: crates/app/src/window.rs:303
+#: crates/app/src/window.rs:316
 msgid "days ago"
 msgstr ""
 
-#: crates/app/src/window.rs:335
+#: crates/app/src/window.rs:348
 msgid "Repeats daily"
 msgstr ""
 
-#: crates/app/src/window.rs:336 crates/app/src/window.rs:337
-#: crates/app/src/window.rs:347 crates/app/src/window.rs:369
-#: crates/app/src/window.rs:382
+#: crates/app/src/window.rs:349 crates/app/src/window.rs:350
+#: crates/app/src/window.rs:360 crates/app/src/window.rs:382
+#: crates/app/src/window.rs:395
 msgid "Repeats every"
 msgstr ""
 
-#: crates/app/src/window.rs:345
+#: crates/app/src/window.rs:358
 msgid "Repeats weekly on"
 msgstr ""
 
-#: crates/app/src/window.rs:347
+#: crates/app/src/window.rs:360
 msgid "weeks on"
 msgstr ""
 
-#: crates/app/src/window.rs:354
+#: crates/app/src/window.rs:367
 msgid "the first"
 msgstr ""
 
-#: crates/app/src/window.rs:355
+#: crates/app/src/window.rs:368
 msgid "the second"
 msgstr ""
 
-#: crates/app/src/window.rs:356
+#: crates/app/src/window.rs:369
 msgid "the third"
 msgstr ""
 
-#: crates/app/src/window.rs:357
+#: crates/app/src/window.rs:370
 msgid "the fourth"
 msgstr ""
 
-#: crates/app/src/window.rs:358
+#: crates/app/src/window.rs:371
 msgid "the last"
 msgstr ""
 
-#: crates/app/src/window.rs:362
+#: crates/app/src/window.rs:375
 msgid "the last day"
 msgstr ""
 
-#: crates/app/src/window.rs:363
+#: crates/app/src/window.rs:376
 msgid "the"
 msgstr ""
 
-#: crates/app/src/window.rs:364
+#: crates/app/src/window.rs:377
 msgid "the same day"
 msgstr ""
 
-#: crates/app/src/window.rs:367
+#: crates/app/src/window.rs:380
 msgid "Repeats monthly on"
 msgstr ""
 
-#: crates/app/src/window.rs:369
+#: crates/app/src/window.rs:382
 msgid "months on"
 msgstr ""
 
-#: crates/app/src/window.rs:380
+#: crates/app/src/window.rs:393
 msgid "Repeats yearly on"
 msgstr ""
 
-#: crates/app/src/window.rs:382
+#: crates/app/src/window.rs:395
 msgid "years on"
 msgstr ""
 
-#: crates/app/src/window.rs:814
+#: crates/app/src/window.rs:500 crates/app/src/window.rs:521
+msgid "Could not save app settings"
+msgstr ""
+
+#: crates/app/src/window.rs:925
 msgid "Title copied"
 msgstr ""
 
-#: crates/app/src/window.rs:1063
+#: crates/app/src/window.rs:1175
 msgid "Preview mode · Sync is off"
 msgstr ""
 
-#: crates/app/src/window.rs:1072
+#: crates/app/src/window.rs:1184
 msgid "Syncing…"
 msgstr ""
 
-#: crates/app/src/window.rs:1075
+#: crates/app/src/window.rs:1187
 msgid "Sync is off"
 msgstr ""
 
-#: crates/app/src/window.rs:1077 crates/app/src/window.rs:1116
-#: crates/app/src/window.rs:1129
+#: crates/app/src/window.rs:1189 crates/app/src/window.rs:1228
+#: crates/app/src/window.rs:1260
 msgid "Sync needs attention"
 msgstr ""
 
-#: crates/app/src/window.rs:1079
+#: crates/app/src/window.rs:1191
 msgid "Finish setup in Preferences"
 msgstr ""
 
-#: crates/app/src/window.rs:1081
+#: crates/app/src/window.rs:1193
 msgid "No linked devices"
 msgstr ""
 
-#: crates/app/src/window.rs:1110 crates/app/src/window.rs:1136
+#: crates/app/src/window.rs:1222 crates/app/src/window.rs:1274
 msgid "Retry"
 msgstr ""
 
-#: crates/app/src/window.rs:1134
+#: crates/app/src/window.rs:1272
 msgid "Close"
 msgstr ""
 
-#: crates/app/src/window.rs:1199
+#: crates/app/src/window.rs:1277
+msgid "Replace Server Copy…"
+msgstr ""
+
+#: crates/app/src/window.rs:1308
+msgid "Replace the copy on the server with this computer’s tasks?"
+msgstr ""
+
+#: crates/app/src/window.rs:1310
+msgid ""
+"Other devices will download this computer’s tasks on their next sync and add "
+"any edits they still have waiting. The damaged copy stays on the server as "
+"sync-data.json.damaged."
+msgstr ""
+
+#: crates/app/src/window.rs:1316
+msgid "Replace Server Copy"
+msgstr ""
+
+#: crates/app/src/window.rs:1419
 msgid "Could not save sync preferences for the command line."
 msgstr ""
 
-#: crates/app/src/window.rs:1252 crates/app/src/window.rs:1254
-#: crates/app/src/window.rs:1263
+#: crates/app/src/window.rs:1472 crates/app/src/window.rs:1474
+#: crates/app/src/window.rs:1483
 msgid "selected"
 msgstr ""
 
-#: crates/app/src/window.rs:1383
+#: crates/app/src/window.rs:1612
 msgid "Or a new tag name"
 msgstr ""
 
-#: crates/app/src/window.rs:1388
+#: crates/app/src/window.rs:1617
 msgid "Add Tag to"
 msgstr ""
 
-#: crates/app/src/window.rs:1513 crates/app/src/window.rs:1573
-#: crates/app/src/window.rs:1585
+#: crates/app/src/window.rs:1743 crates/app/src/window.rs:1820
+#: crates/app/src/window.rs:1832
 msgid "Open"
 msgstr ""
 
-#: crates/app/src/window.rs:1516
+#: crates/app/src/window.rs:1746
 msgid "Mark as Not Done"
 msgstr ""
 
-#: crates/app/src/window.rs:1527
+#: crates/app/src/window.rs:1757
 msgid "Remove from Today"
 msgstr ""
 
-#: crates/app/src/window.rs:1535 crates/app/src/window.rs:1543
-msgid "Move to Today"
+#: crates/app/src/window.rs:1769 crates/app/src/window.rs:2446
+#: crates/app/src/window.rs:2559 crates/app/src/window.rs:2574
+#: crates/app/src/window.rs:2930
+msgid "Morning"
 msgstr ""
 
-#: crates/app/src/window.rs:1537
-msgid "Move to Morning"
+#: crates/app/src/window.rs:1777 crates/app/src/window.rs:2447
+#: crates/app/src/window.rs:2561 crates/app/src/window.rs:2931
+msgid "Tonight"
 msgstr ""
 
-#: crates/app/src/window.rs:1545
-msgid "Move to Tonight"
+#: crates/app/src/window.rs:1792
+msgid "Next Week"
 msgstr ""
 
-#: crates/app/src/window.rs:1549
-msgid "Move to Tomorrow"
+#: crates/app/src/window.rs:1796
+msgid "Project…"
 msgstr ""
 
-#: crates/app/src/window.rs:1550
-msgid "Move to Next Week"
+#: crates/app/src/window.rs:1799
+msgid "Move To"
 msgstr ""
 
-#: crates/app/src/window.rs:1559
+#: crates/app/src/window.rs:1806
 msgid "Edit Repeat…"
 msgstr ""
 
-#: crates/app/src/window.rs:1561
+#: crates/app/src/window.rs:1808
 msgid "Repeat…"
 msgstr ""
 
-#: crates/app/src/window.rs:1574
+#: crates/app/src/window.rs:1821
 msgid "New Task Here…"
 msgstr ""
 
-#: crates/app/src/window.rs:1575 crates/app/src/window.rs:1586
+#: crates/app/src/window.rs:1822 crates/app/src/window.rs:1833
 msgid "Edit…"
 msgstr ""
 
-#: crates/app/src/window.rs:1579
+#: crates/app/src/window.rs:1826
 msgid "Delete Project…"
 msgstr ""
 
-#: crates/app/src/window.rs:1589
+#: crates/app/src/window.rs:1836
 msgid "Delete Tag…"
 msgstr ""
 
 #. / Toast with an Undo button that reverts the engine's batch.
-
-#: crates/app/src/window.rs:1806
+#: crates/app/src/window.rs:2053
 msgid "Undo"
 msgstr ""
 
-#: crates/app/src/window.rs:2104
+#: crates/app/src/window.rs:2288
+msgid "Could not apply app settings"
+msgstr ""
+
+#: crates/app/src/window.rs:2414
 msgid "collapsed"
 msgstr ""
 
-#: crates/app/src/window.rs:2106
+#: crates/app/src/window.rs:2416
 msgid "expanded"
 msgstr ""
 
-#: crates/app/src/window.rs:2136 crates/app/src/window.rs:2249
-#: crates/app/src/window.rs:2264 crates/app/src/window.rs:2583
-msgid "Morning"
-msgstr ""
-
-#: crates/app/src/window.rs:2137 crates/app/src/window.rs:2251
-#: crates/app/src/window.rs:2584
-msgid "Tonight"
-msgstr ""
-
-#: crates/app/src/window.rs:2139 crates/app/src/window.rs:2586
+#: crates/app/src/window.rs:2449 crates/app/src/window.rs:2933
 msgid "Archive"
 msgstr ""
 
-#: crates/app/src/window.rs:2145 crates/app/src/window.rs:2255
+#: crates/app/src/window.rs:2455 crates/app/src/window.rs:2565
 msgid "Projects"
 msgstr ""
 
-#: crates/app/src/window.rs:2209 crates/app/src/window.rs:2218
+#: crates/app/src/window.rs:2519 crates/app/src/window.rs:2528
 msgid "Showing"
 msgstr ""
 
-#: crates/app/src/window.rs:2211 crates/app/src/window.rs:2220
+#: crates/app/src/window.rs:2521 crates/app/src/window.rs:2530
 msgid "of"
 msgstr ""
 
-#: crates/app/src/window.rs:2213
+#: crates/app/src/window.rs:2523
 msgid "Add another word to narrow it down."
 msgstr ""
 
-#: crates/app/src/window.rs:2248
+#: crates/app/src/window.rs:2558 crates/app/src/window.rs:2735
+#: crates/app/src/window.rs:2765 crates/app/src/window.rs:2768
 msgid "Overdue"
 msgstr ""
 
-#: crates/app/src/window.rs:2253
+#: crates/app/src/window.rs:2563
 msgid "Completed"
 msgstr ""
 
-#: crates/app/src/window.rs:2257
+#: crates/app/src/window.rs:2567
 msgid "Archived"
 msgstr ""
 
-#: crates/app/src/window.rs:2265
+#: crates/app/src/window.rs:2575
 msgid "Evening"
 msgstr ""
 
-#: crates/app/src/window.rs:2268
+#: crates/app/src/window.rs:2578
 msgid "No Project"
 msgstr ""
 
-#: crates/app/src/window.rs:2269
+#: crates/app/src/window.rs:2579
 msgid "Untagged"
 msgstr ""
 
-#: crates/app/src/window.rs:2271
+#: crates/app/src/window.rs:2581
 msgid "Up to 15 min"
 msgstr ""
 
-#: crates/app/src/window.rs:2272
+#: crates/app/src/window.rs:2582
 msgid "16–30 min"
 msgstr ""
 
-#: crates/app/src/window.rs:2273
+#: crates/app/src/window.rs:2583
 msgid "31–60 min"
 msgstr ""
 
-#: crates/app/src/window.rs:2274
+#: crates/app/src/window.rs:2584
 msgid "1–2 hours"
 msgstr ""
 
-#: crates/app/src/window.rs:2275
+#: crates/app/src/window.rs:2585
 msgid "Over 2 hours"
 msgstr ""
 
-#: crates/app/src/window.rs:2276
+#: crates/app/src/window.rs:2586
 msgid "No estimate"
 msgstr ""
 
-#: crates/app/src/window.rs:2326
+#: crates/app/src/window.rs:2636
 #, rust-format
 msgid "Add a task above, or press {}."
 msgstr ""
 
-#: crates/app/src/window.rs:2328
+#: crates/app/src/window.rs:2638
 #, rust-format
 msgid ""
 "Add a task above, press {}, or turn on sync in Preferences to bring in your "
 "tasks."
 msgstr ""
 
-#: crates/app/src/window.rs:2334
+#: crates/app/src/window.rs:2644
 msgid "Nothing planned for today"
 msgstr ""
 
-#: crates/app/src/window.rs:2337
+#: crates/app/src/window.rs:2647
 #, rust-format
 msgid "Drag tasks here from Coming Up, or press {} on any task."
 msgstr ""
 
-#: crates/app/src/window.rs:2343
+#: crates/app/src/window.rs:2653
 msgid "Nothing planned for the morning"
 msgstr ""
 
-#: crates/app/src/window.rs:2344
+#: crates/app/src/window.rs:2654
 #, rust-format
 msgid "Tag a task “Morning”, or press {} on a task to move it here."
 msgstr ""
 
-#: crates/app/src/window.rs:2349
+#: crates/app/src/window.rs:2659
 msgid "Nothing planned for tonight"
 msgstr ""
 
-#: crates/app/src/window.rs:2350
+#: crates/app/src/window.rs:2660
 #, rust-format
 msgid "Tag a task “Evening”, or press {} on a task to move it here."
 msgstr ""
 
-#: crates/app/src/window.rs:2355
+#: crates/app/src/window.rs:2665
 msgid "Nothing coming up"
 msgstr ""
 
-#: crates/app/src/window.rs:2358
+#: crates/app/src/window.rs:2668
 msgid "Tasks due in the next"
 msgstr ""
 
-#: crates/app/src/window.rs:2359
+#: crates/app/src/window.rs:2669
 msgid "days appear here. Set a due day in a task's details."
 msgstr ""
 
-#: crates/app/src/window.rs:2364
+#: crates/app/src/window.rs:2674
 msgid "No archived tasks"
 msgstr ""
 
-#: crates/app/src/window.rs:2365
+#: crates/app/src/window.rs:2675
 #, rust-format
 msgid "Completed tasks land here when you archive them with {}."
 msgstr ""
 
-#: crates/app/src/window.rs:2371
+#: crates/app/src/window.rs:2681
 msgid "Tasks, notes, subtasks, projects, tags and the archive"
 msgstr ""
 
-#: crates/app/src/window.rs:2375
+#: crates/app/src/window.rs:2685
 msgid "No Results Found"
 msgstr ""
 
-#: crates/app/src/window.rs:2376
+#: crates/app/src/window.rs:2686
 msgid "Try a different search"
 msgstr ""
 
-#: crates/app/src/window.rs:2380
+#: crates/app/src/window.rs:2690
 msgid "No tasks in"
 msgstr ""
 
-#: crates/app/src/window.rs:2381
+#: crates/app/src/window.rs:2691
 msgid "Drag tasks here from any other view."
 msgstr ""
 
-#: crates/app/src/window.rs:2385
+#: crates/app/src/window.rs:2695
 msgid "No tasks tagged"
 msgstr ""
 
-#: crates/app/src/window.rs:2386
+#: crates/app/src/window.rs:2696
 msgid "Drag tasks here to tag them."
 msgstr ""
 
-#: crates/app/src/window.rs:2413 crates/app/src/window.rs:2456
-#: crates/app/src/window.rs:3046
+#: crates/app/src/window.rs:2723 crates/app/src/window.rs:2803
+#: crates/app/src/window.rs:3393
 msgid "Done"
 msgstr ""
 
-#: crates/app/src/window.rs:2456
+#: crates/app/src/window.rs:2738
+msgid "Recurring preview"
+msgstr ""
+
+#: crates/app/src/window.rs:2774
+msgid "Edit repeat schedule"
+msgstr ""
+
+#: crates/app/src/window.rs:2803
 msgid "Select"
 msgstr ""
 
-#: crates/app/src/window.rs:2503
+#: crates/app/src/window.rs:2850
 msgid "Has notes"
 msgstr ""
 
-#: crates/app/src/window.rs:2507
+#: crates/app/src/window.rs:2854
 msgid "Reminder at"
 msgstr ""
 
-#: crates/app/src/window.rs:2602
+#: crates/app/src/window.rs:2949
 msgid "Morning done"
 msgstr ""
 
-#: crates/app/src/window.rs:2602
+#: crates/app/src/window.rs:2949
 msgid "The rest of the day is yours."
 msgstr ""
 
-#: crates/app/src/window.rs:2604
+#: crates/app/src/window.rs:2951
 msgid "All done for tonight"
 msgstr ""
 
-#: crates/app/src/window.rs:2605
+#: crates/app/src/window.rs:2952
 msgid "Enjoy the rest of your evening."
 msgstr ""
 
-#: crates/app/src/window.rs:2611
+#: crates/app/src/window.rs:2958
 msgid "You completed"
 msgstr ""
 
-#: crates/app/src/window.rs:2613
+#: crates/app/src/window.rs:2960
 msgid "tasks. Time to switch off."
 msgstr ""
 
-#: crates/app/src/window.rs:2616
+#: crates/app/src/window.rs:2963
 msgid "All caught up"
 msgstr ""
 
-#: crates/app/src/window.rs:2616
+#: crates/app/src/window.rs:2963
 msgid "Every task here is complete."
 msgstr ""
 
-#: crates/app/src/window.rs:2643
+#: crates/app/src/window.rs:2990
 msgid "Archive Completed"
 msgstr ""
 
-#: crates/app/src/window.rs:2689
+#: crates/app/src/window.rs:3036
 msgid "Show More"
 msgstr ""
 
-#: crates/app/src/window.rs:2691
+#: crates/app/src/window.rs:3038
 msgid "remaining"
 msgstr ""
 
-#: crates/app/src/window.rs:2848
+#: crates/app/src/window.rs:3195
 msgid "Subtasks move with their parent task"
 msgstr ""
 
-#: crates/app/src/window.rs:2857
+#: crates/app/src/window.rs:3204
 msgid "Move to Project"
 msgstr ""
 
-#: crates/app/src/window.rs:2861
+#: crates/app/src/window.rs:3208
 msgid "tasks"
 msgstr ""
 
-#: crates/app/src/window.rs:2867
+#: crates/app/src/window.rs:3214
 msgid "Move"
 msgstr ""
 
-#: crates/app/src/window.rs:2903
+#: crates/app/src/window.rs:3250
 msgid "Edit Project"
 msgstr ""
 
-#: crates/app/src/window.rs:2909
+#: crates/app/src/window.rs:3256
 msgid "Edit Tag"
 msgstr ""
 
-#: crates/app/src/window.rs:2917
+#: crates/app/src/window.rs:3264
 msgid "Name"
 msgstr ""
 
-#: crates/app/src/window.rs:2918
+#: crates/app/src/window.rs:3265
 msgid "Color"
 msgstr ""
 
-#: crates/app/src/window.rs:2987
+#: crates/app/src/window.rs:3334
 msgid "tasks in this project will be deleted. This cannot be undone."
 msgstr ""
 
-#: crates/app/src/window.rs:2997
+#: crates/app/src/window.rs:3344
 msgid "Tasks keep their other tags."
 msgstr ""
 
-#: crates/app/src/window.rs:3042
+#: crates/app/src/window.rs:3389
 msgid "Due at"
 msgstr ""
 
-#: crates/app/src/window.rs:3048
+#: crates/app/src/window.rs:3395
 msgid "Snooze 1 hour"
 msgstr ""
 
-#: crates/app/src/window.rs:3064
+#: crates/app/src/window.rs:3411
 msgid "tasks today"
 msgstr ""
 
-#: crates/app/src/window.rs:3066
+#: crates/app/src/window.rs:3413
 msgid "this morning"
 msgstr ""
 
-#: crates/app/src/window.rs:3069
+#: crates/app/src/window.rs:3416
 msgid "tonight"
 msgstr ""
 
-#: crates/app/src/window.rs:3071
+#: crates/app/src/window.rs:3418
 msgid "Good morning"
 msgstr ""
 
-#: crates/app/src/window.rs:3124
+#: crates/app/src/window.rs:3473
 msgid "Create"
 msgstr ""
 
-#: crates/app/src/window.rs:3180
+#: crates/app/src/window.rs:3529
 msgid "Does not repeat"
 msgstr ""
 
-#: crates/app/src/window.rs:3194
+#: crates/app/src/window.rs:3543
 msgid "Add subtask"
 msgstr ""
 
-#: crates/app/src/window.rs:3197
+#: crates/app/src/window.rs:3546
 msgid "Delete Task"
 msgstr ""
 
-#: crates/app/src/window.rs:3206
+#: crates/app/src/window.rs:3555
 msgid "Task"
 msgstr ""
 
-#: crates/app/src/window.rs:3341
+#: crates/app/src/window.rs:3690
 msgid "Sync is turned off. Enable it in Preferences."
 msgstr ""
 
-#: crates/app/src/window.rs:1573
-msgid "Next Week"
+#: crates/app/src/window.rs:3899
+msgid "This device"
 msgstr ""
 
-#: crates/app/src/window.rs:1577
-msgid "Project…"
+#: crates/app/src/window.rs:3899
+msgid "Synced settings"
 msgstr ""
 
-#: crates/app/src/window.rs:1580
-msgid "Move To"
+#: crates/app/src/window.rs:3907
+msgid "Choose app settings"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:117
-msgid "Sync in the background"
+#: crates/app/src/window.rs:3909
+msgid ""
+"Choose which saved settings to start with. Later changes merge across "
+"devices."
 msgstr ""
 
-#: data/resources/ui/prefs.blp:118
-msgid "Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works."
+#: crates/app/src/window.rs:3915
+msgid "Use this device’s settings"
 msgstr ""
 
-#: data/resources/ui/window.blp:141
-msgid "Layout"
+#: crates/app/src/window.rs:3916
+msgid "Use synced settings"
 msgstr ""
 
-#: data/resources/ui/window.blp:144
-msgid "Regular"
+#: crates/app/src/window.rs:3948
+msgid "Copy to Momentum folder?"
 msgstr ""
 
-#: data/resources/ui/window.blp:150
-msgid "Compact"
+#: crates/app/src/window.rs:3949
+msgid ""
+"Copy and verify your sync files in the momentum folder, then switch this "
+"device to it. The original folder stays intact. Choose the new folder on "
+"your other devices after the copy succeeds."
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "Momentum can’t reach your server"
+#: crates/app/src/window.rs:3951
+msgid "Copy and switch"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "The server didn’t accept your login"
+#: crates/app/src/window.rs:4005
+msgid "Copying and verifying files…"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "The server ran into a problem"
+#: crates/app/src/window.rs:4006
+msgid "The original folder stays intact. You can cancel the copy."
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "Sync took too long to finish"
+#: crates/app/src/window.rs:4019
+msgid "Folder copy was cancelled. The original folder stays intact."
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "The sync file is encrypted"
+#: crates/app/src/window.rs:4027
+msgid "Sync folder copied and verified. This device now uses momentum."
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "The encryption password doesn’t match"
+#: crates/app/src/window.rs:4030
+msgid "The saved connection changed. The folder was not switched."
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "The copy on the server is damaged"
+#: crates/app/src/prefs.rs:603 crates/app/src/window.rs:3834
+msgid "Export app settings"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "The copy on the server needs a newer Momentum"
+#: crates/app/src/prefs.rs:605 crates/app/src/window.rs:3836
+msgid "Import app settings"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "Nothing to sync yet"
+#: crates/app/src/prefs.rs:618 crates/app/src/window.rs:3764
+#: crates/app/src/window.rs:3810 crates/app/src/window.rs:3849
+msgid "Choose a local file"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "Another device is syncing at the same time"
+#: crates/app/src/prefs.rs:638 crates/app/src/window.rs:3866
+msgid "App settings saved"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "Sync was interrupted"
+#: crates/app/src/prefs.rs:640 crates/app/src/window.rs:3868
+msgid "App settings imported"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "The upload could not be verified"
+#: crates/app/src/task_form.rs:326
+msgid "Notes copied"
 msgstr ""
 
-#: crates/app/src/messages.rs
-msgid "Sync couldn’t finish"
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Check that this computer is online and that the server address is right, then retry. Your tasks are safe on this computer."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Check the user name and app password in Preferences. An app password comes from your Nextcloud security settings."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "The server answered with an error. Retry in a few minutes; if it keeps happening, check the server itself."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "The connection is slow or unstable. Retry on a faster connection, or turn on “Compress the sync file” in Preferences to make the transfer smaller."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Enter the encryption password you use on your other devices in Preferences."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Enter the same encryption password you use on your other devices. A different password on one device makes the file unreadable there."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "No device can read the copy on the server. On the device with your most recent tasks, choose Replace Server Copy; the damaged copy is kept on the server as sync-data.json.damaged."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Update Momentum on this computer. If another app wrote the file, turn off its newer sync format."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "This computer has no tasks yet and the server has no copy. Sync from a device that has your tasks first, or import a backup here."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Two devices uploaded at the same moment. Wait a moment and retry."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Retry."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Your edits are still waiting here. Check the server copy, then retry on a steadier connection."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Retry. If it keeps failing, the details below say what the server or this computer reported."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Replace Server Copy…"
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Replace the copy on the server with this computer’s tasks?"
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Other devices will download this computer’s tasks on their next sync and add any edits they still have waiting. The damaged copy stays on the server as sync-data.json.damaged."
-msgstr ""
-
-#: crates/app/src/messages.rs
-msgid "Replace Server Copy"
-msgstr ""
-
-#: crates/app/src/messages.rs
+#: crates/app/src/window.rs:1363
 msgid "Server copy replaced"
 msgstr ""
 
-#: data/io.github.dan_hart.Momentum.gschema.xml.in:77
-msgid "Selected completion sound"
+#: crates/app/src/window.rs:3756
+msgid "Import Momentum backup"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:92 crates/app/src/prefs.rs
-msgid "Completion sound"
+#: crates/app/src/window.rs:3767
+msgid "Restore included app settings"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:93 crates/app/src/prefs.rs
-msgid "Choose a short sound for completed tasks"
+#: crates/app/src/window.rs:3768
+msgid "Replace all tasks?"
 msgstr ""
 
-#: data/resources/ui/prefs.blp:97 crates/app/src/prefs.rs
-msgid "Preview sound"
+#: crates/app/src/window.rs:3769
+msgid ""
+"This replaces tasks on this device and discards unsynced task changes. App "
+"settings are optional; credentials and device controls stay local."
 msgstr ""
 
-#: crates/app/src/prefs.rs
-msgid "Play the selected completion sound"
+#: crates/app/src/window.rs:3771
+msgid "Restore Backup"
 msgstr ""
 
-#: crates/app/src/sound.rs
-msgid "1 Wood Pop"
+#: crates/app/src/window.rs:3792
+msgid "Include app settings"
 msgstr ""
 
-#: crates/app/src/sound.rs
-msgid "2 Double Check"
+#: crates/app/src/window.rs:3793 crates/app/src/window.rs:3803
+msgid "Export backup"
 msgstr ""
 
-#: crates/app/src/sound.rs
-msgid "3 Rounded Lift"
+#: crates/app/src/window.rs:3794
+msgid ""
+"Save tasks, projects, tags, and repeat schedules. App settings are optional; "
+"credentials and device controls stay local."
 msgstr ""
 
-#: crates/app/src/sound.rs
-msgid "4 Pocket Piano"
+#: crates/app/src/window.rs:3796
+msgid "Continue"
 msgstr ""
 
-#: crates/app/src/sound.rs
-msgid "5 String Flick"
+#: crates/app/src/window.rs:3960
+msgid "A sync operation is already running"
 msgstr ""
 
-#: crates/app/src/sound.rs
-msgid "6 Bright Finish"
-msgstr ""
-
-#: crates/app/src/sound.rs
-msgid "7 Harp Snap"
-msgstr ""
-
-#: crates/app/src/sound.rs
-msgid "8 Click and Glow"
-msgstr ""
-
-#: crates/app/src/sound.rs
-msgid "9 Tiny Ta-Da"
-msgstr ""
-
-#: crates/app/src/sound.rs
-msgid "10 Warm Spark"
+#: crates/app/src/window.rs:3990
+msgid "Folder copy could not finish."
 msgstr ""

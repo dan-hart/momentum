@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
-use momentum_core::sp_model::{local_ms, Task};
+use momentum_core::momentum_model::{local_ms, Task};
 use momentum_core::{Engine, NotificationObservation, NotificationRequest, Preferences};
 use std::sync::Arc;
 
@@ -115,7 +115,7 @@ fn source_completion_deletion_and_import_cancel_future_acceptances() {
                 let path = dir.path().join("backup.json");
                 std::fs::write(
                     &path,
-                    serde_json::to_vec(&serde_json::json!({"data": momentum_core::sp_model::AppData::fresh()}))
+                    serde_json::to_vec(&serde_json::json!({"data": momentum_core::momentum_model::AppData::fresh()}))
                         .unwrap(),
                 )
                 .unwrap();
@@ -259,7 +259,7 @@ fn recurrence_stop_cancels_projected_summary() {
         s.state.task.remove("task");
         s.state.task_repeat_cfg.insert(
             "daily",
-            momentum_core::sp_model::RepeatCfg {
+            momentum_core::momentum_model::RepeatCfg {
                 id: "daily".into(),
                 title: Some("Private repeat".into()),
                 repeat_cycle: "DAILY".into(),

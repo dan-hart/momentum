@@ -47,4 +47,9 @@ extension EngineWorker {
         engine.saveRepeat(taskId: id, draft: draft)
     }
     public func stopRepeat(_ id: String) -> Outcome { engine.stopRepeat(taskId: id) }
+    public func repeatConfigurationDraft(_ id: String) -> RepeatDraft? { engine.repeatConfigDraft(configId: id) }
+    public func saveRepeatConfiguration(_ id: String, draft: RepeatDraft) -> Outcome {
+        engine.saveRepeatConfig(configId: id, draft: draft)
+    }
+    public func stopRepeatConfiguration(_ id: String) -> Outcome { engine.stopRepeatConfig(configId: id) }
 }

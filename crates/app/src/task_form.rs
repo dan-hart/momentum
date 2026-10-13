@@ -64,7 +64,6 @@ impl TaskForm {
                 .map(|p| p.color.as_deref().filter(|_| colorful).and_then(|c| win.color_class(c)))
                 .collect(),
         );
-        let titles: Rc<Vec<String>> = Rc::new(projects.iter().map(|p| p.title.clone()).collect());
         let make_factory = || {
             let f = gtk::SignalListItemFactory::new();
             f.connect_setup(|_, item| {
@@ -78,7 +77,7 @@ impl TaskForm {
                 #[strong]
                 classes,
                 #[strong]
-                titles,
+                names,
                 move |_, item| {
                     let item = item.downcast_ref::<gtk::ListItem>().unwrap();
                     let b = item.child().and_downcast::<gtk::Box>().unwrap();
@@ -86,10 +85,16 @@ impl TaskForm {
                         b.first_child().and_downcast::<gtk::Image>().unwrap(),
                         b.last_child().and_downcast::<gtk::Label>().unwrap(),
                     );
-                    let i = item.position() as usize;
-                    label.set_label(titles.get(i).map(String::as_str).unwrap_or(""));
+                    // ComboRow displays the selection through a one-item filtered
+                    // model. Its presentation position is not the project index.
+                    let object = item.item();
+                    let index = object.as_ref().and_then(|selected| {
+                        (0..names.n_items()).find(|&index| names.item(index).as_ref() == Some(selected))
+                    });
+                    let title = object.and_downcast::<gtk::StringObject>().map(|item| item.string());
+                    label.set_label(title.as_deref().unwrap_or(""));
                     icon.set_css_classes(&[]);
-                    if let Some(Some(c)) = classes.get(i) {
+                    if let Some(Some(c)) = index.and_then(|index| classes.get(index as usize)) {
                         icon.add_css_class(c);
                     }
                 }
@@ -301,15 +306,26 @@ impl TaskForm {
             .height_request(420)
             .build();
         crate::typography::register_content_root(&notes);
+        let copy_feedback: Rc<RefCell<Option<adw::Toast>>> = Rc::new(RefCell::new(None));
         copy.connect_clicked(glib::clone!(
             #[weak]
             notes,
+            #[strong]
+            copy_feedback,
             move |b| {
                 let buf = notes.buffer();
                 let text = buf.text(&buf.start_iter(), &buf.end_iter(), false);
                 b.clipboard().set_text(&text);
-                if let Some(root) = b.root().and_downcast::<crate::window::MomentumWindow>() {
-                    root.toast(&gettext("Notes copied"));
+                if let Some(overlay) = b
+                    .ancestor(adw::ToastOverlay::static_type())
+                    .and_downcast::<adw::ToastOverlay>()
+                {
+                    if let Some(previous) = copy_feedback.borrow_mut().take() {
+                        previous.dismiss();
+                    }
+                    let toast = adw::Toast::builder().title(gettext("Notes copied")).timeout(2).build();
+                    overlay.add_toast(toast.clone());
+                    *copy_feedback.borrow_mut() = Some(toast);
                 }
             }
         ));

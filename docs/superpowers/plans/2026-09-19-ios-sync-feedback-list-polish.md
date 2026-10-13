@@ -6,7 +6,7 @@
 
 **Architecture:** Rust owns read-only WebDAV probing, attributable LibreSync cycle identity, and canonical task-family counts. MomentumMobile owns cancellable presentation state and off-main transport bridges. SwiftUI owns native layout, Liquid Glass, timing, Dynamic Type, accessibility, and provider-specific copy. Generated UniFFI code is refreshed only through the existing tooling.
 
-**Tech Stack:** Rust (`sp-sync`, `momentum-core`, UniFFI), Swift 6, SwiftUI/UIKit public hosting tests, Swift Testing/XCTest, iOS 26/27 Liquid Glass APIs, existing Python iOS runner.
+**Tech Stack:** Rust (`momentum-sync`, `momentum-core`, UniFFI), Swift 6, SwiftUI/UIKit public hosting tests, Swift Testing/XCTest, iOS 26/27 Liquid Glass APIs, existing Python iOS runner.
 
 **Working constraints:** Preserve the inherited dirty worktree. Do not add XCUITest/ViewInspector. Do not use personal data or credentials. Do not commit, push, clean, reset, or release; repository instructions require local changes unless explicitly authorized.
 
@@ -16,8 +16,8 @@
 
 ## File map
 
-- `crates/sp-sync/src/lib.rs`: read-only guarded WebDAV connection probe.
-- `crates/sp-sync/src/mock_dav.rs`, `crates/sp-sync/src/feature_tests.rs`: probe transport fixtures and behavior.
+- `crates/momentum-sync/src/lib.rs`: read-only guarded WebDAV connection probe.
+- `crates/momentum-sync/src/mock_dav.rs`, `crates/momentum-sync/src/feature_tests.rs`: probe transport fixtures and behavior.
 - `crates/momentum-core/src/engine.rs`, `types.rs`, `listing.rs`, `p2p.rs`: UniFFI probe, sidebar family counts, attributable LibreSync cycle IDs.
 - `crates/momentum-core/src/tests.rs`, `transport_tests.rs`: shared rules and transport regressions.
 - `crates/app/src/p2p.rs`, `crates/app/src/application.rs`: exhaustive Linux event/admission consumption.
@@ -43,9 +43,9 @@
 ### Task 1: Read-only Nextcloud probe
 
 **Files:**
-- Modify: `crates/sp-sync/src/lib.rs`
-- Modify: `crates/sp-sync/src/mock_dav.rs`
-- Modify: `crates/sp-sync/src/feature_tests.rs`
+- Modify: `crates/momentum-sync/src/lib.rs`
+- Modify: `crates/momentum-sync/src/mock_dav.rs`
+- Modify: `crates/momentum-sync/src/feature_tests.rs`
 - Modify: `crates/momentum-core/src/engine.rs`
 - Modify: `crates/momentum-core/src/transport_tests.rs`
 
@@ -61,11 +61,11 @@ Expected: compile failure because the probe API does not exist.
 
 - [ ] **Step 3: Implement the minimal transport probe**
 
-Add `sp_sync::probe_guarded` using the existing `NextcloudCfg`, authorization header, agent deadline, cancellation guard, and an injected timeout so tests never wait on a production deadline. Export `Engine.test_nextcloud_connection_cancellable(settings, cancellation, timeout_ms)` through UniFFI; production Swift passes `30_000`, while the real native transport deadline test passes a small value through the same Swift → UniFFI → Rust → HTTP path. Probe the configured collection with read-only WebDAV `PROPFIND`; on collection 404, probe the authenticated account root and accept success because normal sync may create the collection. Map other statuses through existing `SyncError`/`CoreError` conversion. The method does not acquire or mutate the task-store sync lease.
+Add `momentum_sync::probe_guarded` using the existing `NextcloudCfg`, authorization header, agent deadline, cancellation guard, and an injected timeout so tests never wait on a production deadline. Export `Engine.test_nextcloud_connection_cancellable(settings, cancellation, timeout_ms)` through UniFFI; production Swift passes `30_000`, while the real native transport deadline test passes a small value through the same Swift → UniFFI → Rust → HTTP path. Probe the configured collection with read-only WebDAV `PROPFIND`; on collection 404, probe the authenticated account root and accept success because normal sync may create the collection. Map other statuses through existing `SyncError`/`CoreError` conversion. The method does not acquire or mutate the task-store sync lease.
 
 - [ ] **Step 4: Run focused tests and verify GREEN**
 
-Run the focused command from Step 2 and `cargo test -p sp-sync`.
+Run the focused command from Step 2 and `cargo test -p momentum-sync`.
 
 Expected: all probe tests pass and the no-mutation assertions hold.
 
@@ -107,7 +107,7 @@ Confirm counts are derived once from the store and no Swift-side rule is introdu
 **Files:**
 - Modify: `crates/momentum-core/src/p2p.rs`
 - Modify: `crates/momentum-core/src/transport_tests.rs`
-- Modify: `crates/sp-p2p/src/feature_tests.rs` if the ticket seam needs lower-level coverage
+- Modify: `crates/momentum-p2p/src/feature_tests.rs` if the ticket seam needs lower-level coverage
 - Modify: `crates/app/src/p2p.rs`
 - Modify: `crates/app/src/application.rs`
 - Modify: `macos/Packages/MomentumKit/Sources/MomentumKit/AppState.swift`

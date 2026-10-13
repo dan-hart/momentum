@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Dan Hart
 //! The channel `mo` uses to hand actions to a running app where there is no session bus
 //! (macOS): a Unix socket in the data directory. One JSON line per connection: an
-//! `sp_oplog::Action`, or the strings `"sync"` / `"config"`. The app answers `ok` or `error: …`.
+//! `momentum_oplog::Action`, or the strings `"sync"` / `"config"`. The app answers `ok` or `error: …`.
 //!
 //! On Linux the GTK app keeps `org.gtk.Actions.Activate("cli")` over D-Bus; the socket is
 //! offered there too, so `mo` works the same on both when it finds the socket first.

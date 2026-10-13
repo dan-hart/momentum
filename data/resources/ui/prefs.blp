@@ -6,6 +6,8 @@ using Adw 1;
 
 template $MomentumPrefs: Adw.PreferencesDialog {
   title: _("Preferences");
+  content-width: 720;
+  content-height: 700;
 
   Adw.PreferencesPage {
     Adw.PreferencesGroup {
@@ -20,7 +22,7 @@ template $MomentumPrefs: Adw.PreferencesDialog {
 
     Adw.PreferencesGroup nextcloud_group {
       title: _("Nextcloud");
-      description: _("Shares the same sync-data.json as Super Productivity. Use the same folder and encryption password as your other devices.");
+      description: _("Use the same sync folder and encryption password on your devices.");
 
       Adw.EntryRow server_row {
         title: _("Server URL");
@@ -36,6 +38,11 @@ template $MomentumPrefs: Adw.PreferencesDialog {
 
       Adw.EntryRow folder_row {
         title: _("Sync folder");
+      }
+
+      Adw.ButtonRow migrate_folder_row {
+        title: _("Copy to Momentum folder…");
+        start-icon-name: "folder-copy-symbolic";
       }
 
       Adw.PasswordEntryRow encrypt_row {
@@ -72,6 +79,36 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         title: _("Sync Devices Now");
         start-icon-name: "view-refresh-symbolic";
         action-name: "app.sync-devices";
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("App settings");
+      description: _("Transfer grouping, sorting, Upcoming range, archive, density, label colors, and completion sounds. Credentials, connections, permissions, fonts, and device controls stay local.");
+
+      Adw.SwitchRow settings_sync_row {
+        title: _("Sync app settings");
+        subtitle: _("Off by default. Uses your selected sync provider.");
+      }
+      Adw.ActionRow settings_status_row {
+        title: _("App settings sync");
+        subtitle-lines: 0;
+      }
+      Adw.ButtonRow settings_review_row {
+        title: _("Review settings…");
+        start-icon-name: "preferences-system-symbolic";
+      }
+      Adw.ButtonRow settings_retry_row {
+        title: _("Retry app settings sync");
+        start-icon-name: "view-refresh-symbolic";
+      }
+      Adw.ButtonRow settings_export_row {
+        title: _("Export app settings…");
+        start-icon-name: "document-save-symbolic";
+      }
+      Adw.ButtonRow settings_import_row {
+        title: _("Import app settings…");
+        start-icon-name: "document-open-symbolic";
       }
     }
 
@@ -150,7 +187,7 @@ template $MomentumPrefs: Adw.PreferencesDialog {
 
       Adw.SwitchRow colorful_row {
         title: _("Color-code projects and tags");
-        subtitle: _("Use the colors from your Super Productivity data");
+        subtitle: _("Use the saved colors of projects and labels");
       }
     }
 

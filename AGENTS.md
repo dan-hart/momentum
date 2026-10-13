@@ -36,12 +36,13 @@ Ask when the intended product behavior remains ambiguous.
 | Component | Responsibility and current baseline |
 |---|---|
 | `crates/momentum-core` | Toolkit-independent Rust `Engine`: task rules, queries, mutations, undo, recurrence, reminders, storage access, and sync orchestration |
-| `crates/sp-model`, `sp-oplog`, `sp-store`, `sp-sync`, `sp-p2p` | Existing data, persistence, and sync foundation; preserve compatibility pending the v2 decision |
+| `crates/momentum-model`, `momentum-oplog`, `momentum-store`, `momentum-sync`, `momentum-p2p` | Task data, persistence and sync foundation; preserve established formats and opaque data |
 | `crates/app` | Linux: Rust, GTK4/libadwaita, native GNOME behavior; calls the shared engine directly |
 | `crates/momentum-ffi` | UniFFI boundary for native clients; bindings are generated from the core |
 | `macos/Momentum` | macOS: SwiftUI with AppKit and system services where appropriate |
 | `macos/Packages/MomentumKit` | Mac presentation state, localized wording, preferences, and platform adapters |
-| iOS and Android | Upcoming native clients of the same Rust core; platform foundations are not implemented yet |
+| `ios/Momentum`, `ios/Packages/MomentumMobile` | Native SwiftUI/UIKit iOS app and mobile adapters over generated UniFFI bindings |
+| `android/app` | Native Kotlin/Compose Android app over generated UniFFI bindings and the same Rust engine |
 | `crates/mo` | Linux/macOS CLI; preserve task semantics and safe coordination with the running app |
 
 - Implement reusable task behavior once in Rust. Do not duplicate business rules in
@@ -52,9 +53,9 @@ Ask when the intended product behavior remains ambiguous.
 - Use each platform's best practices and native controls. Follow GNOME guidance on
   Linux, Apple's HIG on Apple platforms, and Android's native design/accessibility
   guidance. Consult current official documentation when making platform decisions.
-- Mobile architecture must reuse the Rust core without inheriting desktop-only
-  dependencies. The current MomentumKit package imports AppKit; it is not already
-  an iOS-compatible package. Agree on mobile scaffolding/dependencies before adding them.
+- Mobile architecture reuses the Rust core without desktop-only dependencies.
+  MomentumKit keeps desktop adapters behind platform conditions; MomentumMobile
+  owns iOS workers and services. Preserve these boundaries when extending mobile.
 - Do not replace native interfaces with a WebView, Electron, Flutter, React Native,
   or a shared cross-platform UI toolkit to obtain parity. Share behavior, not widgets.
 - Regenerate FFI bindings through the build tooling; do not hand-edit generated code.
@@ -62,14 +63,13 @@ Ask when the intended product behavior remains ambiguous.
 
 ## Platform scope and parity
 
-Linux and macOS are the established MVP baselines. iOS and Android are next; their
-order and delivery schedule are not yet decided. An established baseline does not
-mean every feature or device integration has been verified.
+Linux, macOS, iOS and Android have native apps over the shared core. Their feature
+ledgers record independent implementation and verification scope; an established
+app does not mean every feature or device integration has been verified.
 
 By default, implement a requested feature or applicable bug fix on **every existing
-platform**, unless the user explicitly narrows the task. Until mobile apps exist,
-record explicit iOS/Android requirements instead of creating their foundations as an
-incidental part of desktop work. Once a platform is established, include it by default.
+platform**, unless the user explicitly narrows the task. Include existing mobile
+apps by default and preserve their native platform boundaries.
 
 Equivalent capability does not require identical screens, gestures, or services.
 Choose native equivalents and document intentional differences. A desktop-only OS
@@ -187,10 +187,11 @@ Evidence must identify its date, scope, revision or dirty-worktree state, and so
 
 ## Future direction, not authorization to implement
 
-- **v2:** become independent of Super Productivity. The replacement format, migration
-  strategy, and ongoing SP interoperability are undecided. Preserve current compatibility
-  until an explicit design is approved; do not rename/rewrite the `sp-*` foundation
-  merely to make the project appear independent.
+- **Native format evolution:** replacement formats and migration strategy remain
+  undecided. The approved ownership cleanup uses Momentum crate names while
+  preserving established task, backup and sync formats. A format rewrite requires
+  a separate design and approval. Existing sync folders move only through the
+  explicitly selected, verified copy flow.
 - **Revenue:** monthly subscriptions are a possibility, with RevenueCat desired on Apple
   platforms eventually. Tipping through Apple and/or Buy Me a Coffee is also a future
   goal. Pricing, entitlements, distribution, and rollout remain undecided. Investigate

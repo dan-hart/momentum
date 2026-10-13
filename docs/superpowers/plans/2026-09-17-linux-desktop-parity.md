@@ -460,7 +460,7 @@ Run:
 
 ```sh
 cargo fmt -p momentum -p mo -p momentum-core -p momentum-ffi -p uniffi-bindgen \
-  -p sp-model -p sp-oplog -p sp-store -p sp-sync -p sp-p2p -- --check
+  -p momentum-model -p momentum-oplog -p momentum-store -p momentum-sync -p momentum-p2p -- --check
 SCHEMA_CHECK=$(mktemp -d -p /var/tmp momentum-schema.XXXXXX)
 sed 's/@app-id@/io.github.dan_hart.Momentum.Devel/g; s/@gettext-package@/momentum/g' \
   data/io.github.dan_hart.Momentum.gschema.xml.in > \

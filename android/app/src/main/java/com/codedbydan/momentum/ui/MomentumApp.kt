@@ -66,16 +66,25 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
         var deletionCount by remember { mutableStateOf<UInt?>(null) }
         var subtask by remember { mutableStateOf<String?>(null) }
         var repeat by remember { mutableStateOf<String?>(null) }
+        var repeatConfiguration by remember { mutableStateOf<String?>(null) }
         var keyboardHelp by remember { mutableStateOf(false) }
         var searchFocusRevision by remember { mutableIntStateOf(0) }
         val searchFocus = remember { FocusRequester() }
         val keyboard = rememberAppKeyboardCommands(vm,
             modal = options || rowMenu != null || move != null || tag != null || organization != null ||
-                deletion != null || subtask != null || repeat != null || drawer.isOpen || keyboardHelp,
+                deletion != null || subtask != null || repeat != null || repeatConfiguration != null || drawer.isOpen || keyboardHelp,
             newProject = { organization = OrganizationEdit(true, null, "", null) },
             search = { vm.tab(Tab.Search); searchFocusRevision++ }, move = { move = it },
             repeat = { repeat = it }, help = { keyboardHelp = true })
         LaunchedEffect(state.tab, state.view, searchFocusRevision) { if(state.tab == Tab.Search) searchFocus.requestFocus() }
+        val settingsFeedback = state.settingsFeedback
+        val settingsFeedbackText = settingsFeedback?.let { stringResource(it) }
+        LaunchedEffect(settingsFeedback, settingsFeedbackText) {
+            if(settingsFeedback != null && settingsFeedbackText != null) {
+                snackbar.showSnackbar(settingsFeedbackText)
+                vm.consumeSettingsFeedback(settingsFeedback)
+            }
+        }
         LaunchedEffect(notice, noticeText, undoLabel) {
             val outcome = notice ?: return@LaunchedEffect
             val text = noticeText ?: run { vm.consumeNotice(outcome); return@LaunchedEffect }
@@ -189,7 +198,7 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
                                 trailingIcon = { if(state.query.isNotEmpty()) IconButton({ vm.search("") }) { Icon(Icons.Default.Close, stringResource(R.string.close)) } })
                             PullToRefreshBox(isRefreshing = state.loading && state.snapshot != null,
                                 onRefresh = { if(state.snapshot?.settings?.provider?.let { it != com.codedbydan.momentum.data.SyncProvider.Off } == true) vm.platform.syncNow(); vm.refresh() }, modifier = Modifier.weight(1f)) {
-                                TaskList(state, vm) { rowMenu = it }
+                                TaskList(state, vm, editRepeatSchedule = { repeatConfiguration = it }) { rowMenu = it }
                             }
                             SyncFooter(state, vm)
                         }
@@ -256,6 +265,7 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
         tag?.let { ids -> TextEntryDialog(R.string.add_tag, onDismiss = { tag = null }) { name -> vm.action { addTagByName(ids, name) }; tag = null } }
         subtask?.let { id -> TextEntryDialog(R.string.subtask, onDismiss = { subtask = null }) { title -> vm.action { addSubtask(id, title) }; subtask = null } }
         repeat?.let { id -> RepeatEditor(id, vm) { repeat = null } }
+        repeatConfiguration?.let { id -> RepeatEditor(id, vm, configuration = true) { repeatConfiguration = null } }
         organization?.let { edit ->
             var title by remember(edit) { mutableStateOf(edit.title) }
             var color by remember(edit) { mutableStateOf(edit.color.orEmpty()) }

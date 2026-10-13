@@ -15,6 +15,14 @@ import Observation
     public enum ConnectionTestState: Equatable, Sendable {
         case idle, testing, success, failure(String)
     }
+    public enum FolderCopyState: Equatable, Sendable {
+        case idle, copying, saving, copied, failure(String)
+    }
+    public private(set) var folderCopy: FolderCopyState = .idle
+    public var folderCopyInProgress: Bool { folderCopy == .copying || folderCopy == .saving }
+    public var canCopyFolder: Bool {
+        canSync && provider == .nextcloud && saved?.folder != "momentum" && makeFolderCopy != nil && !folderCopyInProgress
+    }
     public var draft = NextcloudConnection() {
         didSet { if oldValue != draft { cancelConnectionTest() } }
     }
@@ -38,6 +46,8 @@ import Observation
     public private(set) var connectionTest: ConnectionTestState = .idle
     public private(set) var nearby: NearbyLifecycle?
     @ObservationIgnored public var didCommit: (@MainActor () -> Void)?
+    /// Independent settings exchanges can commit even when the task exchange fails.
+    @ObservationIgnored public var didFinish: (@MainActor () -> Void)?
     @ObservationIgnored public var beginExecution: (@MainActor () -> (@MainActor () -> Void))?
     public let allowed: Bool
     public var hasUnsavedChanges: Bool { saved != draft }
@@ -75,6 +85,9 @@ import Observation
     @ObservationIgnored private var makeReplaceOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)?
     @ObservationIgnored private var readStatus: (@Sendable () async -> SyncStatus)?
     @ObservationIgnored private var makeConnectionTest: (@Sendable (NextcloudSettings) async -> any NextcloudConnectionTestOperation)?
+    @ObservationIgnored private var makeFolderCopy: (@Sendable (NextcloudSettings) async -> any NextcloudFolderCopying)?
+    @ObservationIgnored private var folderCopyOperation: (any NextcloudFolderCopying)?
+    @ObservationIgnored private var folderCopyCancellationRequested = false
     @ObservationIgnored private var connectionTestOperation: (any NextcloudConnectionTestOperation)?
     @ObservationIgnored private var connectionTestTask: Task<Void, Never>?
     @ObservationIgnored private var connectionTestGeneration = 0
@@ -100,11 +113,13 @@ import Observation
                         makeBackgroundOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)? = nil,
                         makeReplaceOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)? = nil,
                         makeConnectionTest: (@Sendable (NextcloudSettings) async -> any NextcloudConnectionTestOperation)? = nil,
+                        makeFolderCopy: (@Sendable (NextcloudSettings) async -> any NextcloudFolderCopying)? = nil,
                         status: @escaping @Sendable () async -> SyncStatus) {
         self.makeOperation = makeOperation
         self.makeBackgroundOperation = makeBackgroundOperation
         self.makeReplaceOperation = makeReplaceOperation
         self.makeConnectionTest = makeConnectionTest
+        self.makeFolderCopy = makeFolderCopy
         readStatus = status
     }
 
@@ -114,6 +129,7 @@ import Observation
             guard let self else { return }
             status = state?.status
             if case .storeChanged = event { didCommit?() }
+            didFinish?()
         }
         state.didStop = { [weak self] in
             guard let self else { return }
@@ -143,7 +159,7 @@ import Observation
     }
 
     @discardableResult public func save() async -> Bool {
-        guard allowed, loaded, !saving else { return false }
+        guard allowed, loaded, !saving, !folderCopyInProgress else { return false }
         guard let candidate = try? draft.validated() else {
             record(.configuration)
             return false
@@ -168,6 +184,7 @@ import Observation
     /// Changing the selection disables admission immediately and drains the old
     /// exchange before the selected provider can start. Connections remain saved.
     public func select(_ next: SyncMethod) async {
+        guard !folderCopyInProgress else { return }
         guard allowed else { return }
         transitions += 1
         if next != .libresync {
@@ -193,7 +210,7 @@ import Observation
             if isSyncing { foregroundRetry = true }
             schedule(after: .zero)
         }
-        else { cancel(); cancelConnectionTest() }
+        else { cancel(); cancelConnectionTest(); cancelFolderCopy() }
     }
 
     /// Low Power Mode pauses discretionary automatic work. A person can still
@@ -229,6 +246,50 @@ import Observation
         }
         guard let makeOperation else { return }
         await run(makeOperation)
+    }
+
+    @discardableResult public func copyToMomentumFolder() async -> Bool {
+        guard canCopyFolder, let source = saved, let makeFolderCopy else { return false }
+        folderCopyCancellationRequested = false
+        folderCopy = .copying
+        await suspendForRestore()
+        defer { folderCopyOperation = nil; resumeAfterRestore() }
+        do {
+            let operation = await makeFolderCopy(source.settings)
+            folderCopyOperation = operation
+            try Task.checkCancellation()
+            if folderCopyCancellationRequested { throw CancellationError() }
+            let report = try await withTaskCancellationHandler {
+                try await operation.run()
+            } onCancel: { _ = operation.cancel() }
+            try Task.checkCancellation()
+            if folderCopyCancellationRequested { throw CancellationError() }
+            guard report.verified, report.sourceFolder == source.folder, report.targetFolder == "momentum",
+                  saved == source, draft == source, provider == .nextcloud else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            // Verification is the commit boundary. Once credential persistence starts,
+            // cancellation cannot turn a saved connection into an unreported success.
+            folderCopyOperation = nil
+            folderCopy = .saving
+            var destination = source
+            destination.folder = report.targetFolder
+            try await persistence.save(destination)
+            saved = destination
+            draft = destination
+            folderCopy = .copied
+            return true
+        } catch is CancellationError {
+            folderCopy = .failure(String(localized: "Folder copy was cancelled. The original folder stays intact."))
+        } catch {
+            folderCopy = .failure(Strings.error(error))
+        }
+        return false
+    }
+    public func cancelFolderCopy() {
+        guard folderCopy == .copying else { return }
+        folderCopyCancellationRequested = true
+        _ = folderCopyOperation?.cancel()
     }
 
     /// Whether Replace Server Copy is offered: the core said the server copy is
@@ -273,6 +334,7 @@ import Observation
                 lastAttemptAt = Date()
             }
             await refreshStatus()
+            didFinish?()
             operation = nil
             isSyncing = false
             isStopping = false
@@ -388,6 +450,7 @@ import Observation
                 lastAttemptAt = Date()
             }
             await refreshStatus()
+            didFinish?()
             operation = nil
             isSyncing = false
             isStopping = false

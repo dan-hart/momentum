@@ -6,8 +6,8 @@
 //! supplies a secret store (keyring, Keychain) and a delegate that hears about changes.
 use crate::engine::Engine;
 use crate::types::*;
-use sp_model::{now_ms, AppData};
-use sp_p2p::{DeviceInfo, Event, P2p, SyncResult};
+use momentum_model::{now_ms, AppData};
+use momentum_p2p::{DeviceInfo, Event, P2p, SyncResult};
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, Weak};
@@ -72,19 +72,19 @@ pub struct P2pInfo {
 }
 
 struct Base64Keys(Arc<dyn SecretStore>);
-impl sp_p2p::KeyStore for Base64Keys {
-    fn get(&self, name: &str) -> sp_p2p::Result<Option<Vec<u8>>> {
+impl momentum_p2p::KeyStore for Base64Keys {
+    fn get(&self, name: &str) -> momentum_p2p::Result<Option<Vec<u8>>> {
         use base64_impl::decode;
         Ok(self.0.get(name.to_string()).and_then(|s| decode(&s)))
     }
-    fn set(&self, name: &str, value: &[u8]) -> sp_p2p::Result<()> {
+    fn set(&self, name: &str, value: &[u8]) -> momentum_p2p::Result<()> {
         if self.0.set(name.to_string(), base64_impl::encode(value)) {
             Ok(())
         } else {
-            Err(sp_p2p::Error::Protocol("secret store refused the key".into()))
+            Err(momentum_p2p::Error::Protocol("secret store refused the key".into()))
         }
     }
-    fn delete(&self, name: &str) -> sp_p2p::Result<()> {
+    fn delete(&self, name: &str) -> momentum_p2p::Result<()> {
         self.0.delete(name.to_string());
         Ok(())
     }
@@ -185,7 +185,9 @@ pub struct Runtime {
     discovered: Mutex<Vec<DeviceInfo>>,
     sched: Scheduler,
     snapshot_hash: Mutex<u64>,
-    stopped: AtomicBool,
+    settings_revision: std::sync::atomic::AtomicU64,
+    settings_publication_hash: Mutex<Option<u64>>,
+    stopped: Arc<AtomicBool>,
     /// Stop/restore wait for the complete store-commit/journal-acknowledgement pair.
     receive: Mutex<()>,
     cycle: Mutex<Option<(u64, bool, Option<String>)>>,
@@ -229,9 +231,44 @@ impl Runtime {
             }
         });
     }
+    pub(crate) fn refresh_settings_channel(&self) -> Result<(), CoreError> {
+        let Some(engine) = self.engine() else { return Ok(()) };
+        let capability_changed = self
+            .p2p
+            .configure_settings(Arc::new(crate::portable::NearbySettings {
+                engine: Arc::downgrade(&engine),
+                stopped: self.stopped.clone(),
+            }))
+            .map_err(|e| CoreError::Nearby { message: e.to_string() })?;
+        let (enabled, hash) = {
+            let g = engine.lock();
+            let bytes = serde_json::to_vec(&serde_json::json!([
+                g.portable.enabled,
+                g.portable.payload,
+                g.portable.review,
+                g.portable.initialized,
+                g.portable.nearby_adopted
+            ]))
+            .map_err(|e| CoreError::Invalid { message: e.to_string() })?;
+            (g.portable.enabled, hash_bytes(&bytes))
+        };
+        let changed = {
+            let mut previous = self.settings_publication_hash.lock().unwrap_or_else(|e| e.into_inner());
+            let changed = *previous != Some(hash);
+            *previous = Some(hash);
+            changed
+        };
+        if capability_changed || (enabled && changed) {
+            self.schedule_sync(5);
+        }
+        Ok(())
+    }
     /// Hands every own pending op to the transport.
     fn publish_pending(&self) -> Result<(), CoreError> {
         let Some(engine) = self.engine() else { return Ok(()) };
+        if let Err(error) = self.refresh_settings_channel() {
+            engine.settings_failed(error.to_string());
+        }
         let added = {
             let g = engine.lock();
             if self.stopped.load(Ordering::SeqCst) {
@@ -251,6 +288,15 @@ impl Runtime {
             self.schedule_sync(5);
         }
         self.schedule_snapshot();
+        // Settings callbacks run under LibreSync locks. Native delegates run here,
+        // after those callbacks return, so a delegate may safely stop the provider.
+        let revision = engine.settings_sync_status().revision;
+        let changed = self.settings_revision.swap(revision, Ordering::SeqCst) != revision;
+        self.emit(if changed {
+            P2pEvent::StoreChanged
+        } else {
+            P2pEvent::StatusChanged
+        });
         Ok(())
     }
     /// Republishes the bootstrap snapshot when the state changed.
@@ -565,8 +611,8 @@ impl Runtime {
 /// can be checked without opening network sockets.
 fn apply_received(
     engine: &Engine,
-    ops: Vec<sp_p2p::OpRecord>,
-    snap: Option<sp_p2p::Snapshot>,
+    ops: Vec<momentum_p2p::OpRecord>,
+    snap: Option<momentum_p2p::Snapshot>,
     stopped: &AtomicBool,
 ) -> Result<bool, CoreError> {
     engine.try_edit_checked(|g| {
@@ -663,15 +709,22 @@ impl Engine {
                 serde_json::to_vec(&g.store.state).map_err(|e| CoreError::Invalid { message: e.to_string() })?,
             )
         };
-        let keys: Box<dyn sp_p2p::KeyStore> = match demo_key_dir {
+        let keys: Box<dyn momentum_p2p::KeyStore> = match demo_key_dir {
             Some(d) => Box::new(
-                sp_p2p::FileKeyStore::new(std::path::PathBuf::from(d))
+                momentum_p2p::FileKeyStore::new(std::path::PathBuf::from(d))
                     .map_err(|e| CoreError::Nearby { message: e.to_string() })?,
             ),
             None => Box::new(Base64Keys(secrets)),
         };
-        let p2p = P2p::start_with_store(dir, &id, &device_name, keys, sp_p2p::DEFAULT_PORT, epoch, &state)
+        let p2p = P2p::start_with_store(dir, &id, &device_name, keys, momentum_p2p::DEFAULT_PORT, epoch, &state)
             .map_err(|e| CoreError::Nearby { message: e.to_string() })?;
+        let stopped = Arc::new(AtomicBool::new(false));
+        if let Err(error) = p2p.configure_settings(Arc::new(crate::portable::NearbySettings {
+            engine: Arc::downgrade(&self),
+            stopped: stopped.clone(),
+        })) {
+            self.settings_failed(error.to_string());
+        }
         let info = P2pInfo {
             device_name: p2p.identity().user_id.clone(),
             device_id: p2p.identity().device_id.clone(),
@@ -697,7 +750,9 @@ impl Engine {
                 wake: Condvar::new(),
             },
             snapshot_hash: Mutex::new(0),
-            stopped: AtomicBool::new(false),
+            settings_revision: std::sync::atomic::AtomicU64::new(self.settings_sync_status().revision),
+            settings_publication_hash: Mutex::new(None),
+            stopped,
             receive: Mutex::new(()),
             cycle: Mutex::new(None),
             state_saves: Mutex::new(Default::default()),
@@ -913,8 +968,8 @@ mod tests {
         let source = super::Engine::demo(dir.path().join("source").to_string_lossy().into_owned());
         source.spawn_repeats();
         let json = serde_json::to_vec(&source.lock().store.state).unwrap();
-        let snapshot = sp_p2p::Snapshot::new("peer", &json);
-        let invalid = sp_p2p::Snapshot {
+        let snapshot = momentum_p2p::Snapshot::new("peer", &json);
+        let invalid = momentum_p2p::Snapshot {
             gz_b64: "invalid".into(),
             ..snapshot.clone()
         };
@@ -988,6 +1043,33 @@ mod tests {
         engine.p2p_stop();
         assert_eq!(started.unwrap(), info.port);
     }
+    #[test]
+    fn settings_only_reopens_keep_the_same_nearby_device_identity() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("store").to_string_lossy().into_owned();
+        let first = super::Engine::open_checked(path.clone()).unwrap();
+        let identity = first.client_id();
+        first
+            .stage_portable_settings(serde_json::json!({"version":1,"values":{"sort":"title"}}).to_string())
+            .unwrap();
+        first.set_settings_sync_enabled(true).unwrap();
+        drop(first);
+        for _ in 0..2 {
+            let engine = super::Engine::open_checked(path.clone()).unwrap();
+            let info = engine
+                .clone()
+                .p2p_start(
+                    std::sync::Arc::new(Events(Default::default())),
+                    std::sync::Arc::new(NoSecrets),
+                    "Identity fixture".into(),
+                    Some(dir.path().join("keys").to_string_lossy().into_owned()),
+                )
+                .unwrap();
+            assert_eq!(info.device_id, identity);
+            assert_eq!(engine.client_id(), identity);
+            engine.p2p_stop();
+        }
+    }
 
     #[test]
     fn manual_nearby_sync_reports_typed_admission_failures() {
@@ -1049,10 +1131,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let engine = super::Engine::open(dir.path().join("target").to_string_lossy().into_owned());
         let before = engine.with_store(|s| serde_json::json!([s.state, s.pending, s.meta]));
-        let mut state = sp_model::AppData::fresh();
-        let task = sp_model::Task::new("Peer task", sp_model::INBOX_PROJECT_ID);
+        let mut state = momentum_model::AppData::fresh();
+        let task = momentum_model::Task::new("Peer task", momentum_model::INBOX_PROJECT_ID);
         state.task.insert(&task.id.clone(), task);
-        let snapshot = sp_p2p::Snapshot::new("peer", &serde_json::to_vec(&state).unwrap());
+        let snapshot = momentum_p2p::Snapshot::new("peer", &serde_json::to_vec(&state).unwrap());
         std::fs::create_dir(dir.path().join("target/pending.json.tmp")).unwrap();
         assert!(
             super::apply_received(&engine, vec![], Some(snapshot.clone()), &super::AtomicBool::new(false)).is_err()
@@ -1076,7 +1158,7 @@ mod tests {
         let backup = dir.path().join("backup.json");
         std::fs::write(
             &backup,
-            serde_json::to_vec(&serde_json::json!({"data": sp_model::AppData::fresh()})).unwrap(),
+            serde_json::to_vec(&serde_json::json!({"data": momentum_model::AppData::fresh()})).unwrap(),
         )
         .unwrap();
         let result = engine.import_backup(backup.to_string_lossy().into_owned());
@@ -1095,12 +1177,12 @@ mod tests {
         engine.p2p_stop();
         let journal_path = dir.path().join("store/p2p/journal.json");
         let mut journal: serde_json::Value = serde_json::from_slice(&std::fs::read(&journal_path).unwrap()).unwrap();
-        let action = sp_oplog::Action::AddTask {
-            task: sp_model::Task::new("Stale peer task", sp_model::INBOX_PROJECT_ID),
+        let action = momentum_oplog::Action::AddTask {
+            task: momentum_model::Task::new("Stale peer task", momentum_model::INBOX_PROJECT_ID),
             bottom: true,
         };
         let op = action.to_op("peer", &mut Default::default());
-        let record = sp_p2p::OpRecord {
+        let record = momentum_p2p::OpRecord {
             id: op.id.clone(),
             t: op.t,
             origin: "peer".into(),
@@ -1113,7 +1195,7 @@ mod tests {
         let backup = dir.path().join("backup.json");
         std::fs::write(
             &backup,
-            serde_json::to_vec(&serde_json::json!({"data": sp_model::AppData::fresh()})).unwrap(),
+            serde_json::to_vec(&serde_json::json!({"data": momentum_model::AppData::fresh()})).unwrap(),
         )
         .unwrap();
         engine.import_backup(backup.to_string_lossy().into_owned()).unwrap();
@@ -1214,12 +1296,12 @@ mod tests {
         engine.p2p_stop();
         let path = dir.path().join("store/p2p/journal.json");
         let mut journal: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-        let action = sp_oplog::Action::AddTask {
-            task: sp_model::Task::new("Received once", sp_model::INBOX_PROJECT_ID),
+        let action = momentum_oplog::Action::AddTask {
+            task: momentum_model::Task::new("Received once", momentum_model::INBOX_PROJECT_ID),
             bottom: true,
         };
         let op = action.to_op("peer", &mut Default::default());
-        journal["inbox"] = serde_json::json!([sp_p2p::OpRecord {
+        journal["inbox"] = serde_json::json!([momentum_p2p::OpRecord {
             id: op.id.clone(),
             t: op.t,
             origin: "peer".into(),
@@ -1278,7 +1360,7 @@ mod tests {
         let backup = dir.path().join("backup.json");
         std::fs::write(
             &backup,
-            serde_json::to_vec(&serde_json::json!({"data": sp_model::AppData::fresh()})).unwrap(),
+            serde_json::to_vec(&serde_json::json!({"data": momentum_model::AppData::fresh()})).unwrap(),
         )
         .unwrap();
         let (done_tx, done) = std::sync::mpsc::channel();
@@ -1303,10 +1385,10 @@ mod tests {
     fn receive_delegate_can_synchronously_stop_without_holding_the_ack_barrier() {
         // The startup sync cycle also reports StatusChanged from the node thread; only
         // the event this test drives may stop the runtime, or the handle below is gone.
-        struct StopOnStatus(std::sync::Weak<super::Engine>, std::sync::Arc<super::AtomicBool>);
+        struct StopOnStatus(std::sync::Weak<super::Engine>, std::thread::ThreadId);
         impl super::P2pDelegate for StopOnStatus {
             fn on_event(&self, event: super::P2pEvent) {
-                if matches!(event, super::P2pEvent::StatusChanged) && self.1.load(super::Ordering::SeqCst) {
+                if matches!(event, super::P2pEvent::StatusChanged) && std::thread::current().id() == self.1 {
                     if let Some(engine) = self.0.upgrade() {
                         engine.p2p_stop();
                     }
@@ -1315,18 +1397,19 @@ mod tests {
         }
         let dir = tempfile::tempdir().unwrap();
         let engine = super::Engine::open(dir.path().join("store").to_string_lossy().into_owned());
-        let armed = std::sync::Arc::new(super::AtomicBool::new(false));
         engine
             .clone()
             .p2p_start(
-                std::sync::Arc::new(StopOnStatus(std::sync::Arc::downgrade(&engine), armed.clone())),
+                std::sync::Arc::new(StopOnStatus(
+                    std::sync::Arc::downgrade(&engine),
+                    std::thread::current().id(),
+                )),
                 std::sync::Arc::new(NoSecrets),
                 "Fixture".into(),
                 Some(dir.path().join("keys").to_string_lossy().into_owned()),
             )
             .unwrap();
         let runtime = engine.runtime().unwrap();
-        armed.store(true, super::Ordering::SeqCst);
         assert!(runtime.apply_inbox().is_ok());
         assert!(!engine.p2p_running());
     }
@@ -1337,11 +1420,11 @@ mod tests {
         engine.p2p_stop();
         let path = dir.path().join("store/p2p/journal.json");
         let mut journal: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-        let task = sp_model::Task::new("Keep completed", sp_model::INBOX_PROJECT_ID);
+        let task = momentum_model::Task::new("Keep completed", momentum_model::INBOX_PROJECT_ID);
         let id = task.id.clone();
-        let action = sp_oplog::Action::AddTask { task, bottom: true };
+        let action = momentum_oplog::Action::AddTask { task, bottom: true };
         let op = action.to_op("peer", &mut Default::default());
-        journal["inbox"] = serde_json::json!([sp_p2p::OpRecord {
+        journal["inbox"] = serde_json::json!([momentum_p2p::OpRecord {
             id: op.id.clone(),
             t: op.t,
             origin: "peer".into(),
@@ -1402,23 +1485,23 @@ mod tests {
     fn bootstrap_covered_ops_cannot_replay_when_acknowledgement_is_retried() {
         let dir = tempfile::tempdir().unwrap();
         let engine = super::Engine::open(dir.path().to_string_lossy().into_owned());
-        let task = sp_model::Task::new("Snapshot task", sp_model::INBOX_PROJECT_ID);
+        let task = momentum_model::Task::new("Snapshot task", momentum_model::INBOX_PROJECT_ID);
         let id = task.id.clone();
-        let action = sp_oplog::Action::AddTask {
+        let action = momentum_oplog::Action::AddTask {
             task: task.clone(),
             bottom: true,
         };
         let op = action.to_op("peer", &mut Default::default());
-        let record = sp_p2p::OpRecord {
+        let record = momentum_p2p::OpRecord {
             id: op.id.clone(),
             t: 1,
             origin: "peer".into(),
             op: serde_json::to_value(op).unwrap(),
             action: serde_json::to_value(action).unwrap(),
         };
-        let mut data = sp_model::AppData::fresh();
+        let mut data = momentum_model::AppData::fresh();
         data.task.insert(&id, task);
-        let snapshot = sp_p2p::Snapshot::new("peer", &serde_json::to_vec(&data).unwrap());
+        let snapshot = momentum_p2p::Snapshot::new("peer", &serde_json::to_vec(&data).unwrap());
         let active = super::AtomicBool::new(false);
         super::apply_received(&engine, vec![record.clone()], Some(snapshot), &active).unwrap();
         assert!(engine.set_done(id.clone(), true).changed);
@@ -1441,5 +1524,291 @@ mod tests {
         assert_eq!(encode(b"hello"), "aGVsbG8=");
         assert_eq!(decode("aGVsbG8=").unwrap(), b"hello");
         assert!(decode("###").is_none());
+    }
+    fn wait_until(check: impl Fn() -> bool) {
+        wait_until_timeout(std::time::Duration::from_secs(5), check);
+    }
+    fn wait_until_timeout(timeout: std::time::Duration, check: impl Fn() -> bool) {
+        let until = std::time::Instant::now() + timeout;
+        while !check() {
+            assert!(
+                std::time::Instant::now() < until,
+                "real-loopback operation did not finish"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    }
+    fn pair(a: &std::sync::Arc<super::Engine>, b: &std::sync::Arc<super::Engine>) {
+        a.p2p_begin_pairing_with("246810".into());
+        b.p2p_link(format!("127.0.0.1:{}", a.p2p_info().unwrap().port), "246810".into())
+            .unwrap();
+        wait_until(|| a.p2p_devices().len() == 1 && b.p2p_devices().len() == 1);
+        a.p2p_end_pairing();
+    }
+    fn portable(e: &super::Engine) -> serde_json::Value {
+        serde_json::from_str::<serde_json::Value>(&e.portable_settings_json().unwrap()).unwrap()["values"].clone()
+    }
+    fn exchange_task(a: &std::sync::Arc<super::Engine>, b: &std::sync::Arc<super::Engine>) {
+        let previous = a.sync_status().last_nearby_ms;
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        let rt = a.runtime().unwrap();
+        let peer = momentum_p2p::LinkedDevice {
+            address: Some(([127, 0, 0, 1], b.p2p_info().unwrap().port as u16).into()),
+            ..rt.p2p.devices()[0].clone()
+        };
+        rt.p2p.sync_with(&peer).unwrap();
+        wait_until(|| a.sync_status().last_nearby_ms > previous);
+    }
+    fn exchange_settings(
+        a: &std::sync::Arc<super::Engine>,
+        b: &std::sync::Arc<super::Engine>,
+    ) -> momentum_p2p::Result<()> {
+        let rt = a.runtime().unwrap();
+        let peer = momentum_p2p::LinkedDevice {
+            address: Some(([127, 0, 0, 1], b.p2p_info().unwrap().port as u16).into()),
+            ..rt.p2p.devices()[0].clone()
+        };
+        rt.p2p.sync_settings_with(&peer)
+    }
+    #[test]
+    fn real_two_engines_nearby_settings_bootstrap_concurrent_edits_off_and_reenable() {
+        use serde_json::json;
+        let (a, _ad) = running();
+        let (b, _bd) = running();
+        pair(&a, &b);
+        a.stage_portable_settings(json!({"version":1,"values":{"sort":"title"}}).to_string())
+            .unwrap();
+        b.stage_portable_settings(json!({"version":1,"values":{"sort":"due","rowDensity":"compact"}}).to_string())
+            .unwrap();
+        a.set_settings_sync_enabled(true).unwrap();
+        b.set_settings_sync_enabled(true).unwrap();
+        exchange_task(&b, &a);
+        exchange_settings(&b, &a).unwrap();
+        assert!(b.settings_sync_status().bootstrap_required);
+        assert_eq!(portable(&b)["sort"], "due");
+        a.set_settings_bootstrap_choice(
+            crate::SettingsBootstrapChoice::UseLocal,
+            a.settings_sync_status().review_id.unwrap(),
+        )
+        .unwrap();
+        b.set_settings_bootstrap_choice(
+            crate::SettingsBootstrapChoice::UseRemote,
+            b.settings_sync_status().review_id.unwrap(),
+        )
+        .unwrap();
+        for _ in 0..3 {
+            exchange_settings(&b, &a).unwrap();
+            exchange_settings(&a, &b).unwrap();
+        }
+        assert_eq!(portable(&a), portable(&b));
+        assert_eq!(portable(&a)["sort"], "title");
+        a.stage_portable_settings(json!({"version":1,"values":{"colorfulLabels":false,"sort":"manual"}}).to_string())
+            .unwrap();
+        b.stage_portable_settings(
+            json!({"version":1,"values":{"completionSoundEnabled":true,"sort":"created"}}).to_string(),
+        )
+        .unwrap();
+        for _ in 0..2 {
+            exchange_settings(&b, &a).unwrap();
+            exchange_settings(&a, &b).unwrap();
+        }
+        assert_eq!(portable(&a), portable(&b));
+        assert_eq!(a.settings_sync_status().pending_keys, 0);
+        assert_eq!(b.settings_sync_status().pending_keys, 0);
+        b.set_settings_sync_enabled(false).unwrap();
+        a.stage_portable_settings(json!({"version":1,"values":{"rowDensity":"regular"}}).to_string())
+            .unwrap();
+        exchange_task(&b, &a);
+        assert!(exchange_settings(&a, &b).is_err());
+        assert_eq!(portable(&b)["rowDensity"], "compact");
+        assert!(a.settings_sync_status().pending_keys > 0);
+        b.set_settings_sync_enabled(true).unwrap();
+        exchange_task(&b, &a);
+        for _ in 0..2 {
+            exchange_settings(&b, &a).unwrap();
+            exchange_settings(&a, &b).unwrap();
+        }
+        assert_eq!(portable(&b)["rowDensity"], "regular");
+        a.p2p_stop();
+        b.p2p_stop();
+    }
+    #[test]
+    fn settings_delegate_can_stop_nearby_after_a_real_remote_commit() {
+        struct Stop {
+            engine: std::sync::Weak<super::Engine>,
+            stopped: std::sync::Arc<super::AtomicBool>,
+        }
+        impl super::P2pDelegate for Stop {
+            fn on_event(&self, _event: super::P2pEvent) {
+                if let Some(e) = self.engine.upgrade() {
+                    if e.settings_sync_status().revision > 0 && !self.stopped.swap(true, super::Ordering::SeqCst) {
+                        e.p2p_stop();
+                    }
+                }
+            }
+        }
+        let (a, _ad) = running();
+        a.stage_portable_settings(serde_json::json!({"version":1,"values":{"rowDensity":"compact"}}).to_string())
+            .unwrap();
+        a.set_settings_sync_enabled(true).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let b = super::Engine::open_checked(dir.path().join("store").to_string_lossy().into_owned()).unwrap();
+        let stopped = std::sync::Arc::new(super::AtomicBool::new(false));
+        b.clone()
+            .p2p_start(
+                std::sync::Arc::new(Stop {
+                    engine: std::sync::Arc::downgrade(&b),
+                    stopped: stopped.clone(),
+                }),
+                std::sync::Arc::new(NoSecrets),
+                "Stop fixture".into(),
+                Some(dir.path().join("keys").to_string_lossy().into_owned()),
+            )
+            .unwrap();
+        b.set_settings_sync_enabled(true).unwrap();
+        pair(&a, &b);
+        exchange_task(&b, &a);
+        let (tx, rx) = std::sync::mpsc::channel();
+        let first = a.clone();
+        let second = b.clone();
+        std::thread::spawn(move || {
+            let result = exchange_settings(&second, &first);
+            let _ = tx.send(result);
+        });
+        assert!(
+            rx.recv_timeout(std::time::Duration::from_secs(5)).is_ok(),
+            "delegate deadlocked the transport during settings receive"
+        );
+        wait_until(|| stopped.load(super::Ordering::SeqCst));
+        wait_until(|| !b.p2p_running());
+        a.p2p_stop();
+    }
+    #[test]
+    fn nearby_pending_requires_the_current_peer_to_acknowledge_the_adopted_image() {
+        use serde_json::json;
+        let (a, _ad) = running();
+        let (b, _bd) = running();
+        a.stage_portable_settings(json!({"version":1,"values":{"sort":"title"}}).to_string())
+            .unwrap();
+        a.set_settings_sync_enabled(true).unwrap();
+        b.set_settings_sync_enabled(true).unwrap();
+        pair(&a, &b);
+        exchange_task(&b, &a);
+        for _ in 0..3 {
+            exchange_settings(&a, &b).unwrap();
+            exchange_settings(&b, &a).unwrap();
+        }
+        assert_eq!(a.settings_sync_status().pending_keys, 0);
+        a.p2p_unlink(b.p2p_info().unwrap().device_id);
+        b.p2p_stop();
+
+        let (c, _cd) = running();
+        c.stage_portable_settings(json!({"version":1,"values":{"sort":"created"}}).to_string())
+            .unwrap();
+        c.set_settings_sync_enabled(true).unwrap();
+        pair(&a, &c);
+        a.stage_portable_settings(json!({"version":1,"values":{"sort":"due"}}).to_string())
+            .unwrap();
+        let before = a.settings_sync_status();
+        exchange_task(&c, &a);
+        for _ in 0..3 {
+            exchange_settings(&a, &c).unwrap();
+            exchange_settings(&c, &a).unwrap();
+        }
+        let after = a.settings_sync_status();
+        assert!(after.bootstrap_required && c.settings_sync_status().bootstrap_required);
+        assert_eq!(portable(&c)["sort"], "created");
+        assert!(
+            after.pending_keys > 0,
+            "a different peer's unaccepted image was acknowledged"
+        );
+        assert_eq!(after.last_success_ms, before.last_success_ms);
+
+        a.set_settings_bootstrap_choice(crate::SettingsBootstrapChoice::UseLocal, after.review_id.unwrap())
+            .unwrap();
+        c.set_settings_bootstrap_choice(
+            crate::SettingsBootstrapChoice::UseRemote,
+            c.settings_sync_status().review_id.unwrap(),
+        )
+        .unwrap();
+        for _ in 0..4 {
+            exchange_settings(&a, &c).unwrap();
+            exchange_settings(&c, &a).unwrap();
+        }
+        assert_eq!(portable(&a), portable(&c));
+        assert_eq!(portable(&a)["sort"], "due");
+        assert_eq!(a.settings_sync_status().pending_keys, 0);
+        assert!(a.settings_sync_status().last_success_ms > before.last_success_ms);
+        a.p2p_stop();
+        c.p2p_stop();
+    }
+    #[test]
+    fn idle_settings_publication_does_not_rearm_five_second_sync_but_new_edits_do() {
+        let (e, _d) = running();
+        e.set_settings_sync_enabled(true).unwrap();
+        let rt = e.runtime().unwrap();
+        rt.publish_pending().unwrap();
+        rt.sched.update(|d| d.sync = None);
+        rt.publish_pending().unwrap();
+        assert!(
+            rt.sched.state.lock().unwrap().sync.is_none(),
+            "unchanged settings publication rearmed a five-second sync"
+        );
+        e.stage_portable_settings(serde_json::json!({"version":1,"values":{"sort":"title"}}).to_string())
+            .unwrap();
+        rt.publish_pending().unwrap();
+        assert!(
+            rt.sched
+                .state
+                .lock()
+                .unwrap()
+                .sync
+                .is_some_and(|at| at <= std::time::Instant::now() + std::time::Duration::from_secs(5)),
+            "new settings did not wake sync promptly"
+        );
+        rt.sched.update(|d| d.sync = None);
+        rt.publish_pending().unwrap();
+        assert!(rt.sched.state.lock().unwrap().sync.is_none());
+        e.p2p_stop();
+    }
+
+    #[test]
+    fn a_real_idle_settings_exchange_preserves_periodic_cadence() {
+        let (a, _ad) = running();
+        let (b, _bd) = running();
+        pair(&a, &b);
+        // Inspect the deadlines without the scheduler consuming them or starting
+        // another cycle. Network workers and event pumps keep running normally.
+        for engine in [&a, &b] {
+            engine.runtime().unwrap().sched.update(|d| d.stop = true);
+        }
+        a.set_settings_sync_enabled(true).unwrap();
+        b.set_settings_sync_enabled(true).unwrap();
+        let rt = b.runtime().unwrap();
+        for _ in 0..2 {
+            rt.sync_now().unwrap();
+            // sync_all includes two seconds of discovery and may queue behind
+            // startup work when the entire workspace suite runs in parallel.
+            wait_until_timeout(std::time::Duration::from_secs(20), || {
+                rt.cycle.lock().unwrap().is_none()
+            });
+        }
+        rt.publish_pending().unwrap();
+        rt.sched.update(|d| d.sync = None);
+        rt.sync_now().unwrap();
+        wait_until_timeout(std::time::Duration::from_secs(20), || {
+            rt.cycle.lock().unwrap().is_none()
+        });
+        assert!(
+            rt.sched.state.lock().unwrap().sync.is_none(),
+            "idle exchange scheduled another five-second exchange"
+        );
+        assert!(rt.sched.state.lock().unwrap().periodic.is_some());
+        b.stage_portable_settings(serde_json::json!({"version":1,"values":{"sort":"title"}}).to_string())
+            .unwrap();
+        rt.publish_pending().unwrap();
+        assert!(rt.sched.state.lock().unwrap().sync.is_some());
+        a.p2p_stop();
+        b.p2p_stop();
     }
 }

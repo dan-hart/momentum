@@ -43,7 +43,7 @@ import Testing
         connection.password = " "
         #expect(connection.settings.password == " ")
         #expect(connection.settings.encryptionPassword == nil)
-        #expect(connection.folder == "super-productivity")
+        #expect(connection.folder == "momentum")
     }
 
     @Test func validationNormalizesAddressAndNamesWithoutChangingSecrets() throws {

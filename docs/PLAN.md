@@ -1,17 +1,17 @@
-# Native GNOME client for Super Productivity — implementation plan
+# Momentum native GNOME implementation plan
 
 > Historical: the research and plan that started the project (September 2026). The
 > apps have since shipped on Linux, macOS and iOS; current direction lives in
 > [AGENTS.md](../AGENTS.md), status in [FEATURES.md](FEATURES.md) and
 > [PROGRESS.md](PROGRESS.md).
 
-Researched 2026-09-07 against Super Productivity v18.21.2 and GNOME 50 (GNOME 51 ships 2026-09-16).
+Researched 2026-09-07 against the upstream v18.21.2 format and GNOME 50 (GNOME 51 ships 2026-09-16).
 
 ## 1. What we are dealing with upstream
 
 | Fact | Detail |
 |---|---|
-| Repo | github.com/super-productivity/super-productivity (moved from johannesjo/ in 2025) |
+| Source provenance | The upstream project and mandatory attribution are recorded in [NOTICE.md](../NOTICE.md). |
 | Stack | Angular 21 + NgRx 21 + Electron 43 + Capacitor 8, TypeScript |
 | License | MIT everywhere (main repo, plugin-api, plainspace, oplog-sync, Flathub manifest). No CLA, no license changes in history. |
 | Persistence | Event-sourced op log in IndexedDB (`SUP_OPS`), snapshot + op tail, compaction every 7 days. A SQLite backend exists but is not wired in. |
@@ -20,8 +20,8 @@ Researched 2026-09-07 against Super Productivity v18.21.2 and GNOME 50 (GNOME 51
 | File sync format | v2: `sync-data.json` = `{version:2, syncVersion, schemaVersion, vectorClock, lastModified, clientId, state, archiveYoung?, archiveOld?, recentOps[≤2000]}`. v3 "surgical" split: `sync-ops.json` + `sync-state__<gen>` snapshots. Content prefixed `pf_<flags>__`, optional gzip and E2EE. |
 | SuperSync | Fastify + Postgres, JWT via magic link / passkey. `POST/GET /api/sync/ops`, `/snapshot`, `/status`, `/devices`, WebSocket `/api/sync/ws`. Optional E2EE: Argon2id (64 MiB, t=3, p=1) + AES-256-GCM, only `op.payload` encrypted. |
 | Conflicts | Per-entity vector-clock detection; archive-wins, delete-wins for projects, disjoint-field merge, then last-writer-wins on op timestamp with clientId tie-break. |
-| Other APIs | Local REST API on 127.0.0.1:3876 (Electron only, off by default, bearer token file). URL scheme `superproductivity://create-task`. Plugin API (iframe). |
-| Linux today | Flathub `com.super_productivity.SuperProductivity` (repackaged .deb, x86_64 only), Snap, AppImage, Arch `extra`, nixpkgs. Only GNOME-specific code is a dead 2018 Shell extension and an ext-idle-notify helper. |
+| Other APIs | Local REST API on 127.0.0.1:3876 (Electron only, off by default, bearer token file). An upstream task-entry URL scheme. Plugin API (iframe). |
+| Linux today | An upstream Flathub package (repackaged .deb, x86_64 only), Snap, AppImage, Arch `extra`, nixpkgs. Only GNOME-specific code is a dead 2018 Shell extension and an ext-idle-notify helper. |
 | Maintainer signal | Issue #5341 (CLI/TUI): maintainer says a standalone client "that could sync independently would be really really cool". `oplog-sync` repo was created 2026-05 to extract the sync core. A sync-simplification roadmap is in flight (`docs/long-term-plans/`, `docs/plans/2026-07-13-*`). |
 | Velocity | Weekly releases, ~280 commits/month, mostly one author. Expect the sync contract to keep moving. |
 
@@ -65,29 +65,29 @@ Recommendation: **C1**, with a conformance harness that runs upstream's own Type
 | Secrets | `oo7` | Secret Service or portal-backed file store, works sandboxed |
 | Portals | `ashpd` | Background/autostart for reminders and running timers, Notifications |
 | Idle detection | `ext-idle-notify-v1` via `wayland-client`, fallback D-Bus `org.gnome.Mutter.IdleMonitor` | Same two mechanisms upstream already uses |
-| Notes editor | GtkSourceView 5 with Markdown language | SP notes are Markdown |
+| Notes editor | GtkSourceView 5 with Markdown language | Task notes are Markdown |
 | Runtime | `org.gnome.Platform//50` now, move to `//51` when it lands (Sept 2026). 50 is EOL April 2027. |
 
 ## 4. Crate layout
 
 ```
-superproductivity-gnome/
+momentum/
   Cargo.toml (workspace)
   meson.build, build-aux/, data/ (metainfo, desktop, gschema, icons), po/
   crates/
-    sp-model/     # AppDataComplete + every entity struct, schema v4, serde, migrations shim
-    sp-oplog/     # Operation, VectorClock, compact codec, pf_ prefix, gzip, E2EE, apply() for all action types
-    sp-store/     # SQLite op-log persistence, snapshot/compaction, client id
-    sp-sync/      # providers: LocalFile, WebDAV/Nextcloud, SuperSync (HTTP+WS); conflict resolution
-    sp-conformance/ # test harness: runs upstream TS fixtures, compares JSON
+    momentum-model/     # AppDataComplete + every entity struct, schema v4, serde, migrations shim
+    momentum-oplog/     # Operation, VectorClock, compact codec, pf_ prefix, gzip, E2EE, apply() for all action types
+    momentum-store/     # SQLite op-log persistence, snapshot/compaction, client id
+    momentum-sync/      # providers: LocalFile, WebDAV/Nextcloud, SuperSync (HTTP+WS); conflict resolution
+    momentum-conformance/ # test harness: runs upstream TS fixtures, compares JSON
     app/          # GTK/libadwaita application
 ```
 
-`sp-model`, `sp-oplog`, `sp-store`, `sp-sync` have no GTK dependency so they can be reused by a CLI or other GPL tools.
+`momentum-model`, `momentum-oplog`, `momentum-store`, `momentum-sync` have no GTK dependency so they can be reused by a CLI or other GPL tools.
 
 ## 5. UI mapping to GNOME HIG
 
-| Super Productivity feature | GNOME implementation |
+| Task-planning feature | GNOME implementation |
 |---|---|
 | Left nav (Today, Planner, Projects, Tags, Boards, Worklog) | `AdwNavigationSplitView` with `AdwSidebar` (1.9): sections, search filter, becomes boxed list on narrow widths |
 | Task list with drag reorder, subtasks, sections | `GtkListView` (not boxed list) over a `GListModel` of task objects; `GtkTreeListModel` for subtasks; DnD via `GtkDragSource`/`GtkDropTarget`; sections as headers |
@@ -101,9 +101,9 @@ superproductivity-gnome/
 | Worklog, metrics, simple counters | `AdwPreferencesPage`-style summaries; CSV export via file chooser portal |
 | Settings | `AdwPreferencesDialog` |
 | Sync setup | Preferences page: provider combo, `AdwPasswordEntryRow`, stored in oo7 |
-| Keyboard | HIG defaults (Ctrl+N, Ctrl+F, Ctrl+, , Ctrl+?, Ctrl+Q) plus SP's own (e.g. Ctrl+Enter done). `AdwShortcutsDialog` (1.8). Keyboard-first is a hard requirement given SP's audience. |
+| Keyboard | HIG defaults (Ctrl+N, Ctrl+F, Ctrl+, , Ctrl+?, Ctrl+Q) plus task-entry shortcuts (e.g. Ctrl+Enter done). `AdwShortcutsDialog` (1.8). Keyboard-first is a hard requirement for task planning. |
 | Undo after delete/done | `AdwToast` with Undo |
-| Theming | Single `style.css` with `prefers-color-scheme` media queries (1.9 deprecated split stylesheets); use SP project theme colour only as an accent |
+| Theming | Single `style.css` with `prefers-color-scheme` media queries (1.9 deprecated split stylesheets); use saved project colour only as an accent |
 
 Out of scope for v1: issue providers (Jira, GitLab, GitHub…), boards/kanban, plugins, iCal import, PlainSpace. Keep their entities in the model so sync does not lose them.
 
@@ -112,7 +112,7 @@ Out of scope for v1: issue providers (Jira, GitLab, GitHub…), boards/kanban, p
 | Phase | Deliverable | Rough size |
 |---|---|---|
 | 0. Spike | gtk-rust-template scaffold, app ID, Flatpak builds, load a backup JSON and render Today list | 2–3 weeks |
-| 1. Data core | `sp-model` (all entities, schema v4), `sp-oplog` envelope + vector clocks + compact codec + prefix/gzip/E2EE, `sp-store` SQLite, conformance harness green against upstream fixtures | 4–6 weeks |
+| 1. Data core | `momentum-model` (all entities, schema v4), `momentum-oplog` envelope + vector clocks + compact codec + prefix/gzip/E2EE, `momentum-store` SQLite, conformance harness green against upstream fixtures | 4–6 weeks |
 | 2. Local MVP | Today, Projects, Tags, add/edit/done/reorder, subtasks, time tracking, notes, reminders, notifications, focus mode, backup import/export, preferences, shortcuts dialog | 6–8 weeks |
 | 3. Sync | LocalFile first (single writer, simplest), then WebDAV/Nextcloud (v2 then v3), then SuperSync HTTP + WS + E2EE; `apply()` for the full action table; conflict handling; multi-device tests against the Electron app | 6–10 weeks |
 | 4. Ship | a11y pass (Orca, keyboard, high contrast), i18n hooked to GNOME l10n, screenshots, metainfo/OARS/branding, aarch64 build, Flathub submission | 3–4 weeks, then ongoing |
@@ -124,7 +124,8 @@ Phase 2 is shippable on Flathub as an offline app with backup import. Do not wai
 - **Upstream churn.** Weekly releases and an active sync-simplification plan. Mitigate with the conformance harness pinned to an upstream tag, a `schemaVersion` gate, and by joining the `oplog-sync` extraction effort so the contract is documented once.
 - **Reducer fidelity.** ~155 action types. Prioritise by frequency in real op logs (task CRUD, time tracking, done/undone, move, tag/project assignment), and treat the rest as "apply from snapshot state" until covered.
 - **Flathub and GNOME Circle AI policies (since 2026-05-29).** Flathub rejects new submissions containing AI-generated or AI-assisted code, manifests or PR text; Circle adopted the same policy and has paused new submissions until its backlog clears. Decide early whether you will use AI assistance, and document provenance accordingly. Circle also forbids "GNOME" in the app name.
-- **Name and app ID.** MIT grants no trademark rights. Pick a distinct name and ID (`io.github.<you>.<Name>` unless you own a domain), and ask the maintainer whether they mind a name that references Super Productivity. Do not reuse `com.super_productivity.*`.
+- **Name and app ID.** MIT grants no trademark rights. Use Momentum’s distinct name
+  and application ID rather than adopting upstream trademarks.
 - **Runtime EOL.** GNOME 50 runtime is EOL April 2027; plan to be on 51 before Flathub submission.
 
 ## 8. License
@@ -143,12 +144,12 @@ Practical steps:
 
 1. Put `SPDX-License-Identifier: GPL-3.0-or-later` headers in every source file; `LICENSE` at the root is the GPL-3.0 text.
 2. `project_license` in the metainfo is `GPL-3.0-or-later`; `license` in each `Cargo.toml` is `GPL-3.0-or-later`.
-3. Add a `NOTICE` or README section crediting Super Productivity and stating which files derive from it.
+3. Add a `NOTICE` or README section retaining upstream attribution and stating which files derive from it.
 
 ## 9. First week checklist
 
 1. Clone upstream at tag `v18.21.2`; read the docs listed in section 1.
 2. Open a GitHub Discussion upstream describing the plan, referencing #5341 and the `oplog-sync` repo, and asking about naming.
 3. `git clone https://gitlab.gnome.org/World/Rust/gtk-rust-template`, run its init script with your app ID, confirm `flatpak-builder` succeeds on `org.gnome.Sdk//50`.
-4. Write `sp-model` from `packages/shared-schema` and the `*.model.ts` files; round-trip a real backup JSON with zero diff.
+4. Write `momentum-model` from `packages/shared-schema` and the `*.model.ts` files; round-trip a real backup JSON with zero diff.
 5. Extract `action-type-codes.ts` into a generated Rust table with a test that fails if upstream's file changes.

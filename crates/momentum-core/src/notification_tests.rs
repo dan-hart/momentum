@@ -2,9 +2,9 @@
 // Copyright (C) 2026 Dan Hart
 use crate::notifications::*;
 use crate::{ClockTime, Engine, MorningSummary, Preferences};
+use momentum_model::*;
+use momentum_store::Store;
 use serde_json::json;
-use sp_model::*;
-use sp_store::Store;
 
 fn options(day: &str) -> NotificationPlanningOptions {
     NotificationPlanningOptions {
@@ -273,7 +273,7 @@ fn notification_planning_is_repeatable_and_does_not_mutate_store_disk_or_deliver
     e.with_store_mut(|s| {
         task(s, "due", "2026-09-16", Some(o.now_ms));
         repeat(s, "daily", "DAILY", "2026-09-16");
-        s.dispatch(sp_oplog::Action::UpdateTask {
+        s.dispatch(momentum_oplog::Action::UpdateTask {
             id: "due".into(),
             changes: [("title".into(), json!("Pending title"))].into_iter().collect(),
         });

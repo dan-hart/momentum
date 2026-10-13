@@ -53,7 +53,7 @@ final class ShareViewController: UIViewController {
     private func add(title: String, draft: SharedTaskDraft) {
         guard let directory = SharedTaskInbox.defaultDirectory() else { return cancel() }
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let item = SharedTaskItem(title: trimmed.isEmpty ? draft.title : trimmed, notes: draft.notes, url: draft.url)
+        let item = SharedTaskItem.captured(title: trimmed.isEmpty ? draft.title : trimmed, notes: draft.notes, url: draft.url)
         do {
             try SharedTaskInbox.write(item, in: directory)
             extensionContext?.completeRequest(returningItems: nil)

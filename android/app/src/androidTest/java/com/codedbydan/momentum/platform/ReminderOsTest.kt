@@ -49,6 +49,11 @@ class ReminderOsTest {
         Assert.assertTrue(scheduler.receive(Intent().putExtra("momentum.notification.key", key)))
         withTimeout(5_000) { while(notifications.activeNotifications.none { it.tag == key }) delay(20) }
     }
+    private suspend fun awaitDismissed() {
+        // Android cancellation is queued on its notification worker, like posting.
+        withTimeout(5_000) { while(notifications.activeNotifications.any { it.tag == key }) delay(20) }
+        Assert.assertTrue(notifications.activeNotifications.none { it.tag == key })
+    }
     private fun action(name: String) = Intent().putExtra("momentum.notification.key", key)
         .putExtra("momentum.notification.action", name)
 
@@ -67,7 +72,7 @@ class ReminderOsTest {
         Assert.assertTrue(scheduler.receive(action("done")))
         Assert.assertTrue(repo.detail(taskId)!!.isDone)
         Assert.assertFalse(scheduler.receive(action("done")))
-        Assert.assertTrue(notifications.activeNotifications.none { it.tag == key })
+        awaitDismissed()
         Assert.assertTrue(repo.mutate { undo() }.changed)
         Assert.assertFalse(repo.detail(taskId)!!.isDone)
     }
@@ -98,7 +103,7 @@ class ReminderOsTest {
         Assert.assertFalse(scheduler.receive(action("snooze")))
         val replacement = repo.read { notificationPlan(System.currentTimeMillis().toULong()).requests.single() }
         Assert.assertTrue(replacement.fireAtMs.toLong() - start in 3_600_000..3_605_000)
-        Assert.assertTrue(notifications.activeNotifications.none { it.tag == key })
+        awaitDismissed()
     }
 
     @Test fun failedDurableActionKeepsDisplayedSourceAndCanBeRetried() = runBlocking {
@@ -121,7 +126,7 @@ class ReminderOsTest {
         try {
             repo.updateSettings { it.copy(notifications = false) }
             Assert.assertNotNull(runCatching { scheduler.reconcile() }.exceptionOrNull())
-            Assert.assertTrue(notifications.activeNotifications.none { it.tag == key })
+            awaitDismissed()
             Assert.assertArrayEquals(malformed, file.readBytes())
             Assert.assertFalse(repo.detail(taskId)!!.isDone)
         } finally { file.writeBytes(valid) }

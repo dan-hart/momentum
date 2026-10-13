@@ -564,12 +564,22 @@ import Testing
         #expect(detail.dueDay == nil, "a URL add does not plan the task")
     }
 
-    @Test func superProductivityUrlsWork() {
+    @Test func momentumCreateAndCompleteUrlsWork() {
         let h = Harness(demo: false)
-        h.state.handle(url: URL(string: "superproductivity://create-task?title=Imported")!)
+        h.state.handle(url: URL(string: "momentum://create-task?title=Imported")!)
         #expect(h.engine.allTasks().contains { $0.title == "Imported" })
-        h.state.handle(url: URL(string: "superproductivity://complete-task?title=Imported")!)
+        h.state.handle(url: URL(string: "momentum://complete-task?title=Imported")!)
         #expect(h.engine.allTasks().first { $0.title == "Imported" }?.isDone == true)
+    }
+
+    @Test func retiredUrlAliasDoesNotCreateOrCompleteTasks() {
+        let h = Harness(demo: false)
+        let scheme = ["super", "productivity"].joined()
+        h.state.handle(url: URL(string: "\(scheme)://create-task?title=Retired")!)
+        #expect(h.engine.allTasks().isEmpty)
+        h.state.handle(url: URL(string: "momentum://add?title=Current")!)
+        h.state.handle(url: URL(string: "\(scheme)://complete-task?title=Current")!)
+        #expect(h.engine.allTasks().first { $0.title == "Current" }?.isDone == false)
     }
 
     @Test func aUrlWithNoTitleDoesNothing() {

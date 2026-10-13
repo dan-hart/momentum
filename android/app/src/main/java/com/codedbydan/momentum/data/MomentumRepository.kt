@@ -51,16 +51,19 @@ data class Snapshot(
     val sync: SyncStatus,
     val canUndo: Boolean,
     val parentTitles: Map<String, String> = emptyMap(),
+    val settingsSync: SettingsSyncStatus? = null,
+    val appSettingsError: String? = null,
 )
 
 /** One engine per application. Disk/FFI work never runs on the Android main thread. */
 class MomentumRepository internal constructor(
     private val context: Context,
     val directory: File,
+    private val beforePortableStage: Engine.() -> Unit = {},
     private val observeDayChange: Engine.() -> Boolean,
 ) {
     constructor(context: Context, directory: File = File(context.noBackupFilesDir, "tasks")) :
-        this(context, directory, { dayChanged() })
+        this(context, directory, observeDayChange = { dayChanged() })
     private val lock = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val store = PreferenceDataStoreFactory.create(scope = scope) {
@@ -68,11 +71,27 @@ class MomentumRepository internal constructor(
     }
     private var instance: Engine? = null
     private var closed = false
+    private var portableRevision: ULong? = null
+    private var portableError: String? = null
+    private var needsNativeBootstrap = true
+    private var lastNativePreferences = emptyPreferences()
     private suspend fun engine(): Engine {
         check(!closed)
         return instance ?: Engine.openChecked(directory.absolutePath).also {
-            val prefs = store.data.first()
-            it.setPreferences(corePreferences(prefs))
+            try {
+                // Restore durable core choices before staging this device's full allowlist.
+                store.edit { native -> PortableAppSettings.apply(it.portableSettingsJson(), native) }
+                val prefs = store.data.first().also { lastNativePreferences = it }
+                val local = corePreferences(prefs)
+                it.setDeviceSummaryPreferences(local.morningSummaryEnabled, local.morningSummaryTime)
+                it.stagePortableSettings(PortableAppSettings.encode(appSettings(prefs), corePreferences(prefs)))
+                portableRevision = it.settingsSyncStatus().revision
+                needsNativeBootstrap = false
+            } catch(error: Exception) {
+                if(error is CancellationException) { it.destroy(); throw error }
+                // Preference recovery must not prevent reading offline tasks.
+                portableError = error.message ?: error.javaClass.simpleName
+            }
             it.spawnRepeats()
             instance = it
         }
@@ -98,52 +117,117 @@ class MomentumRepository internal constructor(
     suspend fun create(draft: TaskDraft, view: View): TaskCreation = read { createTaskWithId(draft, view) }
     suspend fun detail(id: String): TaskDetail? = read { taskDetail(id) }
     suspend fun snapshot(view: View, query: String = "", archiveLimit: UInt = 100u): Snapshot = readProjection {
+        refreshPortableLocked(this)
         val resolved = if (viewExists(view)) view else View.Today
         val list = if (resolved == View.Search) search(query) else listing(resolved, archiveLimit)
         val parents = list.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().mapNotNull { it.row.parentId }.distinct()
             .mapNotNull { id -> taskRow(id)?.title?.let { id to it } }.toMap()
-        Snapshot(list, sidebar(), projects(), tags(), preferences(), appSettings(store.data.first()), syncStatus(), canUndo(), parents)
+        Snapshot(list, sidebar(), projects(), tags(), preferences(), appSettings(nativePreferencesForDisplay()), syncStatus(), canUndo(), parents, settingsSyncStatus(), portableError)
     }!! // Snapshots have unconditional admission and always produce a value.
-    suspend fun settings(): AppSettings = withContext(Dispatchers.IO) { appSettings(store.data.first()) }
-    suspend fun updateSettings(settings: AppSettings) = updateSettings { settings }
-    suspend fun updateSettings(change: (AppSettings) -> AppSettings) = withContext(Dispatchers.IO) {
-        store.edit {
-            val settings = change(appSettings(it))
-            it[stringPreferencesKey("appearance")] = settings.appearance.name
-            it[booleanPreferencesKey("dynamic-color")] = settings.dynamicColor
-            it[booleanPreferencesKey("compact")] = settings.compact
-            it[booleanPreferencesKey("colorful-labels")] = settings.colorfulLabels
-            it[booleanPreferencesKey("notifications")] = settings.notifications
-            it[booleanPreferencesKey("completion-sound")] = settings.completionSound
-            it[stringPreferencesKey("completion-sound-choice")] = settings.completionSoundChoice.key
-            it[stringPreferencesKey("provider")] = settings.provider.name
-            it[booleanPreferencesKey("automatic-sync")] = settings.automaticSync
-            it[booleanPreferencesKey("background-sync")] = settings.backgroundSync
-            it[booleanPreferencesKey("system-search")] = settings.systemSearch
-            it[stringPreferencesKey("font")] = settings.font.name
-            it[floatPreferencesKey("content-text-scale")] = normalizedNativeTextScale(settings.contentTextScale)
-            it[floatPreferencesKey("interface-text-scale")] = normalizedNativeTextScale(settings.interfaceTextScale)
-            it[stringPreferencesKey("accent")] = settings.accent.name
-            it[stringPreferencesKey("keyboard-modifier")] = settings.keyboardModifier.name
-            it[stringPreferencesKey("task-count-mode")] = settings.taskCountMode.name
+    suspend fun settings(): AppSettings = read { refreshPortableLocked(this); appSettings(nativePreferencesForDisplay()) }
+    private suspend fun nativePreferencesForDisplay(): androidx.datastore.preferences.core.Preferences = try {
+        store.data.first().also { lastNativePreferences = it }
+    } catch(error: Exception) {
+        if(error is CancellationException) throw error
+        portableError = error.message ?: error.javaClass.simpleName
+        lastNativePreferences
+    }
+    private suspend fun refreshPortableLocked(engine: Engine) {
+        val revision = engine.settingsSyncStatus().revision
+        if(portableRevision != revision || needsNativeBootstrap) {
+            try {
+                store.edit { PortableAppSettings.apply(engine.portableSettingsJson(), it) }
+                if(needsNativeBootstrap) {
+                    val native = store.data.first()
+                    engine.stagePortableSettings(PortableAppSettings.encode(appSettings(native), corePreferences(native)))
+                    portableRevision = engine.settingsSyncStatus().revision
+                    needsNativeBootstrap = false
+                } else portableRevision = revision
+                portableError = null
+            } catch(error: Exception) {
+                if(error is CancellationException) throw error
+                portableError = error.message ?: error.javaClass.simpleName
+            }
         }
     }
-    suspend fun updatePreferences(prefs: Preferences) = updatePreferences { prefs }
-    suspend fun updatePreferences(change: (Preferences) -> Preferences) = withContext(Dispatchers.IO) {
-        lock.withLock {
-            val prefs = change(engine().preferences())
-            store.edit {
-                it[stringPreferencesKey("group")] = prefs.groupBy.name
-                it[stringPreferencesKey("sort")] = prefs.sort.name
-                it[stringPreferencesKey("direction")] = prefs.direction.name
-                it[intPreferencesKey("upcoming-days")] = prefs.upcomingDays.toInt()
-                it[booleanPreferencesKey("auto-archive")] = prefs.autoArchive
-                it[booleanPreferencesKey("morning-summary")] = prefs.morningSummaryEnabled
-                it[intPreferencesKey("summary-hour")] = prefs.morningSummaryTime.hour.toInt()
-                it[intPreferencesKey("summary-minute")] = prefs.morningSummaryTime.minute.toInt()
-            }
-            engine().setPreferences(prefs)
+    suspend fun refreshAppSettings() = read { refreshPortableLocked(this) }
+    suspend fun setSettingsSync(enabled: Boolean) = read {
+        if(enabled) { refreshPortableLocked(this); check(portableError == null) { "Apply the saved app settings before enabling sync." } }
+        setSettingsSyncEnabled(enabled)
+    }
+    suspend fun chooseSettings(choice: SettingsBootstrapChoice, reviewId: String) = read {
+        setSettingsBootstrapChoice(choice, reviewId)
+    }
+    suspend fun importAppSettings(file: File): Outcome = read {
+        val outcome = importSettings(file.absolutePath)
+        refreshPortableLocked(this)
+        check(portableError == null) { "Imported app settings were saved but could not be applied. Retry from app settings." }
+        outcome
+    }
+    suspend fun exportAppSettings(file: File) = read {
+        refreshPortableLocked(this); check(portableError == null) { "Apply the saved app settings before exporting them." }
+        exportSettings(file.absolutePath)
+    }
+    suspend fun exportBackup(file: File, includeSettings: Boolean = false) = read {
+        if(includeSettings) { refreshPortableLocked(this); check(portableError == null) { "Apply the saved app settings before exporting them." } }
+        exportBackupWithSettings(file.absolutePath, includeSettings)
+    }
+    suspend fun restoreBackup(file: File, restoreSettings: Boolean = false): Outcome = read {
+        val outcome = importBackupWithSettings(file.absolutePath, restoreSettings)
+        refreshPortableLocked(this)
+        outcome
+    }
+    suspend fun updateSettings(settings: AppSettings) = updateSettings { settings }
+    suspend fun updateSettings(change: (AppSettings) -> AppSettings) = read {
+        refreshPortableLocked(this)
+        val current = store.data.first()
+        val previous = PortableAppSettings.encode(appSettings(current), corePreferences(current))
+        val changed = change(appSettings(current))
+        val next = PortableAppSettings.encode(changed, corePreferences(current))
+        val delta = PortableAppSettings.changedDocument(previous, next)
+        val portableChanged = PortableAppSettings.values(delta).length() > 0
+        if(portableChanged) {
+            check(portableError == null) { "App settings could not be applied. Retry before changing them." }
+            beforePortableStage()
+            stagePortableSettings(delta)
         }
+        try { store.edit { writeSettings(it, changed) } }
+        catch(error: Exception) {
+            if(portableChanged) stagePortableSettings(PortableAppSettings.changedDocument(next, previous))
+            throw error
+        }
+        // Device-local opt-outs remain usable while optional portable recovery fails.
+        // An exchange may have committed another key while native I/O was pending.
+        if(portableChanged) portableRevision = null
+        refreshPortableLocked(this)
+    }
+    suspend fun updatePreferences(prefs: Preferences) = updatePreferences { prefs }
+    suspend fun updatePreferences(change: (Preferences) -> Preferences) = read {
+        refreshPortableLocked(this)
+        val current = store.data.first()
+        val originalPreferences = corePreferences(current)
+        val prefs = change(originalPreferences)
+        val previous = PortableAppSettings.encode(appSettings(current), originalPreferences)
+        val next = PortableAppSettings.encode(appSettings(current), prefs)
+        val delta = PortableAppSettings.changedDocument(previous, next)
+        val portableChanged = PortableAppSettings.values(delta).length() > 0
+        if(portableChanged) {
+            check(portableError == null) { "App settings could not be applied. Retry before changing them." }
+            beforePortableStage()
+            stagePortableSettings(delta)
+        }
+        try { store.edit { writeCorePreferences(it, prefs) } }
+        catch(error: Exception) {
+            if(portableChanged) stagePortableSettings(PortableAppSettings.changedDocument(next, previous))
+            throw error
+        }
+        // Rust already applied the portable rules. Update only device-local
+        // summary fields atomically without replacing a concurrent portable commit.
+        if(prefs.morningSummaryEnabled != originalPreferences.morningSummaryEnabled || prefs.morningSummaryTime != originalPreferences.morningSummaryTime) {
+            setDeviceSummaryPreferences(prefs.morningSummaryEnabled, prefs.morningSummaryTime)
+        }
+        if(portableChanged) portableRevision = null
+        refreshPortableLocked(this)
     }
     suspend fun draft(input: EditorDraft): TaskDraft? = read {
         if (input.problem() != null) return@read null
@@ -209,3 +293,34 @@ private fun corePreferences(prefs: androidx.datastore.preferences.core.Preferenc
         ClockTime((prefs[intPreferencesKey("summary-hour")] ?: 8).coerceIn(0, 23).toUInt(),
             (prefs[intPreferencesKey("summary-minute")] ?: 0).coerceIn(0, 59).toUInt()),
     )
+
+private fun writeSettings(it: MutablePreferences, settings: AppSettings) {
+    it[stringPreferencesKey("appearance")] = settings.appearance.name
+    it[booleanPreferencesKey("dynamic-color")] = settings.dynamicColor
+    it[booleanPreferencesKey("compact")] = settings.compact
+    it[booleanPreferencesKey("colorful-labels")] = settings.colorfulLabels
+    it[booleanPreferencesKey("notifications")] = settings.notifications
+    it[booleanPreferencesKey("completion-sound")] = settings.completionSound
+    val soundKey = stringPreferencesKey("completion-sound-choice")
+    if(CompletionSoundChoice.resolve(it[soundKey]) != settings.completionSoundChoice) it[soundKey] = settings.completionSoundChoice.key
+    it[stringPreferencesKey("provider")] = settings.provider.name
+    it[booleanPreferencesKey("automatic-sync")] = settings.automaticSync
+    it[booleanPreferencesKey("background-sync")] = settings.backgroundSync
+    it[booleanPreferencesKey("system-search")] = settings.systemSearch
+    it[stringPreferencesKey("font")] = settings.font.name
+    it[floatPreferencesKey("content-text-scale")] = normalizedNativeTextScale(settings.contentTextScale)
+    it[floatPreferencesKey("interface-text-scale")] = normalizedNativeTextScale(settings.interfaceTextScale)
+    it[stringPreferencesKey("accent")] = settings.accent.name
+    it[stringPreferencesKey("keyboard-modifier")] = settings.keyboardModifier.name
+    it[stringPreferencesKey("task-count-mode")] = settings.taskCountMode.name
+}
+private fun writeCorePreferences(it: MutablePreferences, prefs: Preferences) {
+    it[stringPreferencesKey("group")] = prefs.groupBy.name
+    it[stringPreferencesKey("sort")] = prefs.sort.name
+    it[stringPreferencesKey("direction")] = prefs.direction.name
+    it[intPreferencesKey("upcoming-days")] = prefs.upcomingDays.toInt()
+    it[booleanPreferencesKey("auto-archive")] = prefs.autoArchive
+    it[booleanPreferencesKey("morning-summary")] = prefs.morningSummaryEnabled
+    it[intPreferencesKey("summary-hour")] = prefs.morningSummaryTime.hour.toInt()
+    it[intPreferencesKey("summary-minute")] = prefs.morningSummaryTime.minute.toInt()
+}

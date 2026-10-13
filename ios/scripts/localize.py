@@ -21,8 +21,11 @@ def main():
     if args.sync:
         folder = args.sync / "Build/Intermediates.noindex/Momentum.build"
         data = sorted(folder.rglob("arm64/*.stringsdata"))
-        if not data:
-            raise SystemExit("Build the iOS app with SWIFT_EMIT_LOC_STRINGS=YES before syncing.")
+        for target in ("Momentum", "MomentumShare"):
+            if not any(f"{target}.build" in file.relative_to(folder).parts for file in data):
+                raise SystemExit(f"Build {target} with SWIFT_EMIT_LOC_STRINGS=YES before syncing.")
+        # The app and share extension compile the same catalog. Sync both source
+        # inventories together so extension-only feedback never becomes stale.
         subprocess.run(["xcrun", "xcstringstool", "sync", str(CATALOG), "--stringsdata", *map(str, data)], check=True)
     catalog = json.loads(CATALOG.read_text())
     result = shared.validate(catalog)

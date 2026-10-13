@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
-use momentum_core::sp_model::{local_ms, AppData, Task};
-use momentum_core::sp_oplog::Action;
+use momentum_core::momentum_model::{local_ms, AppData, Task};
+use momentum_core::momentum_oplog::Action;
 use momentum_core::{CoreError, Engine, MorningSummary, NotificationAction, NotificationContent, NotificationRequest};
 use serde_json::json;
 use std::sync::Arc;

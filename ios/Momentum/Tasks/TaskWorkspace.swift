@@ -73,8 +73,10 @@ struct TaskWorkspace: SwiftUI.View {
                 onInitialSnapshotReady: onInitialTodayReady,
                 showsSidebarButton: layout == .detailOnly
             )
-            .id(state.selection)
         }
+        // The navigation container owns the route. Keeping an old container while
+        // replacing only its child can revive Today and cancel the first project load.
+        .id(state.selection)
         .background(TaskWorkspaceColumnMarker(identifier: "task-workspace-detail"))
         .accessibilityIdentifier("task-workspace-detail")
     }

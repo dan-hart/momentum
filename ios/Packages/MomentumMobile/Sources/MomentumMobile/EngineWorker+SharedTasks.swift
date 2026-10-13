@@ -19,7 +19,7 @@ extension EngineWorker {
     /// Creates the task for a shared item exactly once, in Inbox, with the shared notes.
     public func importSharedTask(_ item: SharedTaskItem) throws -> SharedTaskImport {
         let result = engine.importTaskOnce(sourceId: item.sourceID, draft: TaskDraft(
-            title: item.title, projectId: "", dueDay: nil, time: nil, reminderMinutesBefore: nil,
+            title: item.title, projectId: "", dueDay: item.plannedDay, time: nil, reminderMinutesBefore: nil,
             estimateMs: 0, notes: item.notes, tagIds: [], newTags: []), sourceAliases: [])
         if case .saveFailed = result.outcome.message { throw SharedTaskImportIssue.save }
         return result.id == nil ? .skipped : .created

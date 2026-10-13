@@ -1,0 +1,28 @@
+[package]
+name = "momentum-sync"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+momentum-model = { path = "../momentum-model" }
+momentum-oplog = { path = "../momentum-oplog" }
+momentum-store = { path = "../momentum-store" }
+ureq = "3.4.1"
+flate2 = "1.1.10"
+base64 = "0.23.1"
+argon2 = "0.6.0"
+aes-gcm = "0.11.1"
+pbkdf2 = "0.13.0"
+sha2 = "0.11.0"
+sha1 = "0.10.7"
+hmac = "0.13.0"
+getrandom = "0.4.3"
+
+[dev-dependencies]
+tempfile = "3"

@@ -4,7 +4,7 @@ import Foundation
 import MomentumCore
 
 public enum TaskSubtitle {
-    public enum Kind { case project, estimate, schedule, repeatSchedule, completed, tag }
+    public enum Kind { case project, estimate, schedule, repeatSchedule, overdue, occurrence, completed, tag }
     public struct Part {
         public let kind: Kind
         public let text: String
@@ -21,6 +21,8 @@ public enum TaskSubtitle {
         if row.estimateMs > 0 { parts.append(Part(.estimate, "~" + Strings.estimate(row.estimateMs))) }
         let when = [row.day.map(Strings.day), row.time.map(Strings.time)].compactMap { $0 }.joined(separator: " ")
         if !when.isEmpty { parts.append(Part(.schedule, when)) }
+        if row.overdue { parts.append(Part(.overdue, String(localized: "Overdue", bundle: .module))) }
+        if row.occurrence != nil { parts.append(Part(.occurrence, String(localized: "Recurring preview", bundle: .module))) }
         if let r = row.repeat { parts.append(Part(.repeatSchedule, Strings.repeatText(r))) }
         if row.archived, let done = row.doneDay {
             parts.append(Part(.completed, String(localized: "Done \(Strings.day(done))", bundle: .module)))

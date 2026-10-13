@@ -17,7 +17,7 @@
     <string name="automation_hint">Halte das App-Symbol gedrückt für Aufgabe hinzufügen, Suche und Heute. Automatisierungs-Apps können auch Momentum-Aufgabenlinks öffnen.</string>
     <string name="automation_help">Aufgabenlinks und Parameter</string>
     <string name="automation_security_hint">Aufgabenlinks öffnen Momentum. Zum Lesen oder Ändern von Aufgaben muss das Gerät entsperrt sein. Neue Aufgaben öffnen einen privaten Entwurf zur Prüfung; ein vorhandener Entwurf bleibt erhalten. Links liefern keine strukturierten Aufgabenergebnisse zurück.</string>
-    <string name="automation_create" formatted="false">Entwurf erstellen:\nmomentum://add?title=Bericht%20prüfen\nOptionale Parameter: notes, due (JJJJ-MM-TT), tags (durch Kommas getrennt). Der Host create-task und das Schema superproductivity werden ebenfalls unterstützt.</string>
+    <string name="automation_create" formatted="false">Entwurf erstellen:\nmomentum://add?title=Bericht%20prüfen\nOptionale Parameter: notes, due (JJJJ-MM-TT), tags (durch Kommas getrennt). Der Host create-task wird ebenfalls unterstützt.</string>
     <string name="automation_find">Aufgaben suchen:\nmomentum://find-tasks?query=Bericht\nÖffnet die Suchergebnisse in der App.</string>
     <string name="automation_open">Aufgabe öffnen:\nmomentum://open-task?id=TASK_ID\nVerwendet die aktuelle Aufgaben-ID. Ein aktiver Editor bleibt erhalten.</string>
     <string name="automation_complete" formatted="false">Aufgabe abschließen:\nmomentum://complete-task?title=Bericht%20prüfen\nSchließt die erste offene Aufgabe mit genau diesem Titel ab, ohne Unterscheidung zwischen A–Z und a–z. Verwende eindeutige Titel. Der Abschluss kann in Momentum rückgängig gemacht werden.</string>

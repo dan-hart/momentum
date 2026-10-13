@@ -155,7 +155,7 @@ fn config_show_reads_the_local_file_and_set_writes_it() {
         "--user",
         "me",
         "--folder",
-        "sp",
+        "legacy",
     ]);
     let cfg: serde_json::Value =
         serde_json::from_slice(&std::fs::read(mo.dir.path().join("cli-config.json")).unwrap()).unwrap();
@@ -169,6 +169,55 @@ fn config_show_reads_the_local_file_and_set_writes_it() {
         "sync without configuration must fail before accessing credentials: {text}"
     );
 }
+#[test]
+fn new_connection_uses_momentum_folder_and_persists_it() {
+    let mo = Mo::new();
+    assert!(mo.ok(&["config"]).contains("folder:  momentum"));
+    let shown = mo.json(&["config", "--server", "https://cloud.example", "--user", "fixture"]);
+    assert_eq!(shown["folder"], "momentum");
+    let saved: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(mo.dir.path().join("cli-config.json")).unwrap()).unwrap();
+    assert_eq!(saved["folder"], "momentum");
+    assert_eq!(mo.json(&["config"])["folder"], "momentum");
+}
+
+#[test]
+fn existing_implicit_connection_keeps_its_original_folder_until_explicit_change() {
+    let mo = Mo::new();
+    let path = mo.dir.path().join("cli-config.json");
+    let original = br#"{"server":"https://cloud.example","user":"fixture","compress":true}"#;
+    std::fs::write(&path, original).unwrap();
+    let legacy_folder = ["super", "productivity"].join("-");
+    assert_eq!(mo.json(&["config"])["folder"], legacy_folder);
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        original,
+        "read-only configuration must not rewrite a saved connection"
+    );
+    let edited = mo.json(&["config", "--user", "updated-fixture"]);
+    assert_eq!(edited["folder"], legacy_folder);
+    assert_eq!(mo.json(&["config"])["folder"], legacy_folder);
+    assert_eq!(mo.json(&["config", "--folder", "momentum"])["folder"], "momentum");
+}
+
+#[test]
+fn existing_custom_folder_is_preserved_when_other_connection_fields_change() {
+    let mo = Mo::new();
+    mo.json(&[
+        "config",
+        "--server",
+        "https://cloud.example",
+        "--user",
+        "fixture",
+        "--folder",
+        "my-tasks",
+    ]);
+    assert_eq!(
+        mo.json(&["config", "--server", "https://other.example"])["folder"],
+        "my-tasks"
+    );
+}
+
 #[test]
 fn help_lists_every_command() {
     let mo = Mo::new();
@@ -327,24 +376,24 @@ fn open_lookup_errors_use_the_existing_json_error_envelope_without_mutating() {
 #[test]
 fn open_rejects_archived_deleted_and_stale_ids_without_mutating() {
     let mo = Mo::new();
-    let mut store = sp_store::Store::load(mo.dir.path().into());
-    let mut archived = sp_model::Task::new("Archived target", sp_model::INBOX_PROJECT_ID);
+    let mut store = momentum_store::Store::load(mo.dir.path().into());
+    let mut archived = momentum_model::Task::new("Archived target", momentum_model::INBOX_PROJECT_ID);
     archived.id = "archived-target-id".into();
-    let mut deleted = sp_model::Task::new("Deleted target", sp_model::INBOX_PROJECT_ID);
+    let mut deleted = momentum_model::Task::new("Deleted target", momentum_model::INBOX_PROJECT_ID);
     deleted.id = "deleted-target-id".into();
-    store.dispatch(sp_oplog::Action::AddTask {
+    store.dispatch(momentum_oplog::Action::AddTask {
         task: archived.clone(),
         bottom: true,
     });
-    store.dispatch(sp_oplog::Action::AddTask {
+    store.dispatch(momentum_oplog::Action::AddTask {
         task: deleted.clone(),
         bottom: true,
     });
-    store.dispatch(sp_oplog::Action::MoveToArchive {
+    store.dispatch(momentum_oplog::Action::MoveToArchive {
         tasks: vec![archived],
         sub_tasks: vec![],
     });
-    store.dispatch(sp_oplog::Action::DeleteTask {
+    store.dispatch(momentum_oplog::Action::DeleteTask {
         task: deleted,
         sub_tasks: vec![],
     });
@@ -408,7 +457,7 @@ fn mutations_and_config_emit_json() {
         assert_eq!(result["task"]["isDone"], done);
         assert_eq!(result["task"]["id"], id);
     }
-    assert_eq!(mo.json(&["plan", id])["task"]["dueDay"], sp_model::today_str());
+    assert_eq!(mo.json(&["plan", id])["task"]["dueDay"], momentum_model::today_str());
     assert_eq!(mo.json(&["rm", id])["task"]["id"], id);
     let config = mo.json(&["config", "--server", "https://example.invalid", "--user", "test"]);
     assert_eq!(config["server"], "https://example.invalid");
@@ -417,12 +466,12 @@ fn mutations_and_config_emit_json() {
 
 #[test]
 fn upcoming_includes_scheduled_tasks_using_their_local_day() {
-    use sp_model::*;
+    use momentum_model::*;
     let mo = Mo::new();
-    let mut store = sp_store::Store::load(mo.dir.path().into());
+    let mut store = momentum_store::Store::load(mo.dir.path().into());
     let mut timed = Task::new("Timed tomorrow", INBOX_PROJECT_ID);
     timed.due_with_time = local_ms(&day_str(day_number(&today_str()).unwrap() + 1), 12, 0);
-    store.dispatch(sp_oplog::Action::AddTask {
+    store.dispatch(momentum_oplog::Action::AddTask {
         task: timed,
         bottom: true,
     });
@@ -432,11 +481,11 @@ fn upcoming_includes_scheduled_tasks_using_their_local_day() {
 #[test]
 fn imported_short_and_unicode_ids_print_and_resolve_safely() {
     let mo = Mo::new();
-    let mut store = sp_store::Store::load(mo.dir.path().into());
+    let mut store = momentum_store::Store::load(mo.dir.path().into());
     for (id, title) in [("a", "Same one"), ("ééééé", "Same two"), ("AbC", "Mixed case")] {
-        let mut task = sp_model::Task::new(title, sp_model::INBOX_PROJECT_ID);
+        let mut task = momentum_model::Task::new(title, momentum_model::INBOX_PROJECT_ID);
         task.id = id.into();
-        store.dispatch(sp_oplog::Action::AddTask { task, bottom: true });
+        store.dispatch(momentum_oplog::Action::AddTask { task, bottom: true });
     }
     assert!(mo.ok(&["list"]).contains("Same one"));
     let (ok, error) = mo.run(&["done", "Same"]);
@@ -448,11 +497,11 @@ fn imported_short_and_unicode_ids_print_and_resolve_safely() {
 #[test]
 fn ambiguous_id_prefix_does_not_fall_back_to_a_matching_title() {
     let mo = Mo::new();
-    let mut store = sp_store::Store::load(mo.dir.path().into());
+    let mut store = momentum_store::Store::load(mo.dir.path().into());
     for (id, title) in [("ab1", "ab"), ("ab2", "Other")] {
-        let mut task = sp_model::Task::new(title, sp_model::INBOX_PROJECT_ID);
+        let mut task = momentum_model::Task::new(title, momentum_model::INBOX_PROJECT_ID);
         task.id = id.into();
-        store.dispatch(sp_oplog::Action::AddTask { task, bottom: true });
+        store.dispatch(momentum_oplog::Action::AddTask { task, bottom: true });
     }
     assert!(!mo.run(&["done", "ab"]).0);
 }
@@ -612,11 +661,11 @@ fn config_changes_notify_running_app_after_atomic_write() {
 #[test]
 fn printed_ids_are_unique_prefixes_and_exact_ids_win() {
     let mo = Mo::new();
-    let mut store = sp_store::Store::load(mo.dir.path().into());
+    let mut store = momentum_store::Store::load(mo.dir.path().into());
     for (id, title) in [("sameprefix-1", "First"), ("sameprefix-2", "Second"), ("same", "Exact")] {
-        let mut task = sp_model::Task::new(title, sp_model::INBOX_PROJECT_ID);
+        let mut task = momentum_model::Task::new(title, momentum_model::INBOX_PROJECT_ID);
         task.id = id.into();
-        store.dispatch(sp_oplog::Action::AddTask { task, bottom: true });
+        store.dispatch(momentum_oplog::Action::AddTask { task, bottom: true });
     }
     let printed = mo.ok(&["list"]);
     let ids: Vec<&str> = printed
@@ -663,7 +712,7 @@ fn live_engine_persistence_failure_is_not_acknowledged_or_retried() {
         1,
         "no success callback for failed persistence"
     );
-    let store = sp_store::Store::load(mo.dir.path().into());
+    let store = momentum_store::Store::load(mo.dir.path().into());
     assert_eq!(store.state.task.ids.len(), 1, "failed task must not appear on disk");
     assert_eq!(store.pending.len(), 1);
     engine.with_store(|store| {
@@ -685,8 +734,8 @@ fn live_engine_persistence_failure_is_not_acknowledged_or_retried() {
 #[test]
 fn live_done_honors_auto_archive_and_undo_for_parent_and_children() {
     use momentum_core::{ipc::CliDelegate, Engine, Preferences};
-    use sp_model::{Task, INBOX_PROJECT_ID};
-    use sp_oplog::Action;
+    use momentum_model::{Task, INBOX_PROJECT_ID};
+    use momentum_oplog::Action;
     use std::sync::Arc;
     struct Delegate;
     impl CliDelegate for Delegate {

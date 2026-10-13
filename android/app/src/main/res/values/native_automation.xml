@@ -17,7 +17,7 @@
     <string name="automation_hint">Touch and hold the app icon for Add Task, Search and Today. Automation apps can also open Momentum task links.</string>
     <string name="automation_help">Task links and parameters</string>
     <string name="automation_security_hint">Task links open Momentum and require an unlocked device for reading or changing tasks. Creation opens a private draft for review; an existing draft is preserved. Links do not return structured task results.</string>
-    <string name="automation_create" formatted="false">Create draft:\nmomentum://add?title=Review%20report\nOptional parameters: notes, due (YYYY-MM-DD), tags (comma-separated). The create-task host and superproductivity scheme are also supported.</string>
+    <string name="automation_create" formatted="false">Create draft:\nmomentum://add?title=Review%20report\nOptional parameters: notes, due (YYYY-MM-DD), tags (comma-separated). The create-task host is also supported.</string>
     <string name="automation_find">Find tasks:\nmomentum://find-tasks?query=report\nOpens the in-app search results.</string>
     <string name="automation_open">Open task:\nmomentum://open-task?id=TASK_ID\nUses the current task ID. An active editor is preserved.</string>
     <string name="automation_complete" formatted="false">Complete task:\nmomentum://complete-task?title=Review%20report\nCompletes the first unfinished exact title match, ignoring A–Z letter case. Use unique titles. Completion can be undone in Momentum.</string>

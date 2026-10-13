@@ -3,9 +3,9 @@
 //! Device-local OS scheduling acknowledgements, separate from desktop delivery claims.
 use crate::notifications::*;
 use crate::{CoreError, Engine, Preferences};
+use momentum_model::{day_of_ms, time_of_ms};
+use momentum_store::Store;
 use serde::{Deserialize, Serialize};
-use sp_model::{day_of_ms, time_of_ms};
-use sp_store::Store;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::Path;

@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -26,7 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.codedbydan.momentum.*
 import com.codedbydan.momentum.core.*
 
-@Composable fun TaskList(state: UiState, vm: MomentumViewModel, modifier: Modifier = Modifier, menu: (TaskRow) -> Unit) {
+@Composable fun TaskList(state: UiState, vm: MomentumViewModel, modifier: Modifier = Modifier,
+    editRepeatSchedule: (String) -> Unit = {}, menu: (TaskRow) -> Unit) {
     val snapshot = state.snapshot
     if(snapshot == null) {
         if(state.loading) { InitialTaskLoading(modifier); return }
@@ -51,7 +54,7 @@ import com.codedbydan.momentum.core.*
         listing.sections.forEachIndexed { index, section ->
             item("heading-$index") {
                 sectionText(section)?.let {
-                    val groupIds = section.rows.filterIsInstance<Row.Task>().filter { row -> !row.row.archived }.map { row -> row.row.id }
+                    val groupIds = section.rows.filterIsInstance<Row.Task>().filter { row -> !row.row.archived && row.row.occurrence == null }.map { row -> row.row.id }
                     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.section_count, it, section.count.toInt()), Modifier.weight(1f).padding(vertical = 12.dp).semantics { heading() },
                             style = MaterialTheme.typography.titleSmall, color = nativeLabelInk(when(val group = section.group) {
@@ -65,7 +68,8 @@ import com.codedbydan.momentum.core.*
             }
             items(section.rows, key = { row -> when(row) { is Row.Task -> "t-${row.row.id}"; is Row.Project -> "p-${row.item.id}"; is Row.Tag -> "g-${row.item.id}" } }) { row ->
                 when(row) {
-                    is Row.Task -> TaskItem(row.row, state, vm, menu)
+                    is Row.Task -> if(row.row.occurrence != null) RecurringPreviewItem(row.row, state, editRepeatSchedule)
+                        else TaskItem(row.row, state, vm, menu)
                     is Row.Project -> ListItem(headlineContent = { TaskContentText {
                         Text(row.item.title, color = nativeLabelInk(row.item.color), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     } }, modifier = Modifier.clickable { vm.navigate(View.Project(row.item.id)) })
@@ -83,6 +87,21 @@ import com.codedbydan.momentum.core.*
             TextButton(vm::moreArchive, Modifier.fillMaxWidth()) { Text(stringResource(R.string.show_more)) }
         }
     }
+}
+
+@Composable private fun RecurringPreviewItem(row: TaskRow, state: UiState, editSchedule: (String) -> Unit) {
+    ListItem(
+        headlineContent = { TaskContentText { Text(row.title, maxLines = 3, overflow = TextOverflow.Ellipsis) } },
+        leadingContent = { Icon(Icons.Default.DateRange, null) },
+        supportingContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(taskMetadata(row, state, false), style = taskTypography().bodyMedium)
+                Text(stringResource(R.string.recurring_preview), style = MaterialTheme.typography.labelMedium)
+                TextButton({ editSchedule(row.occurrence!!.repeatCfgId) }) { Text(stringResource(R.string.edit_repeat_schedule)) }
+            }
+        },
+    )
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -115,6 +134,12 @@ import com.codedbydan.momentum.core.*
     val supporting: (@Composable () -> Unit)? = if(metadata.isNotEmpty() || notes != null) {{
             TaskContentText(taskTypography().bodyMedium) {
                 Column(verticalArrangement = Arrangement.spacedBy(if(compact) 1.dp else 3.dp)) {
+                    if(row.overdue) Row(horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.semantics(mergeDescendants = true) {}) {
+                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                        Text(stringResource(R.string.overdue), color = MaterialTheme.colorScheme.error)
+                    }
                     if(metadata.isNotEmpty()) Text(metadata, maxLines = if(compact) 1 else 2, overflow = TextOverflow.Ellipsis)
                     notes?.let { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis, color = supportingInk) }
                 }

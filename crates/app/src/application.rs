@@ -80,8 +80,8 @@ mod imp {
             glib::ExitCode::SUCCESS
         }
 
-        /// `momentum://add?title=…`, `momentum://open-task?id=…`, and Super
-        /// Productivity's `superproductivity://create-task?title=…`.
+        /// `momentum://add?title=…`, `momentum://create-task?title=…` and
+        /// `momentum://open-task?id=…`.
         fn open(&self, files: &[gio::File], _hint: &str) {
             let app = self.obj();
             let win = app.ensure_window();
@@ -93,6 +93,9 @@ mod imp {
                 let Ok(parsed) = glib::Uri::parse(&uri, glib::UriFlags::ENCODED_QUERY) else {
                     continue;
                 };
+                if !parsed.scheme().eq_ignore_ascii_case("momentum") {
+                    continue;
+                }
                 let host = parsed.host().map(|h| h.to_string()).unwrap_or_default();
                 let query = parsed.query().map(|q| q.to_string()).unwrap_or_default();
                 let param = |k: &str| -> Option<String> {
@@ -223,7 +226,7 @@ impl MomentumApplication {
                 let w = app.main_window();
                 if payload == "\"sync\"" {
                     w.dispatch_json(&payload);
-                } else if let Ok(action) = serde_json::from_str::<sp_oplog::Action>(&payload) {
+                } else if let Ok(action) = serde_json::from_str::<momentum_oplog::Action>(&payload) {
                     w.dispatch(action);
                 } else {
                     tracing::warn!("cli: unrecognised payload");
@@ -430,7 +433,7 @@ impl MomentumApplication {
         info!("Momentum ({})", *APP_ID);
         info!("Version: {} ({})", *VERSION, *PROFILE);
         info!("Datadir: {}", *PKGDATADIR);
-        info!("Super Productivity schema version: {}", sp_model::SCHEMA_VERSION);
+        info!("Task schema version: {}", momentum_model::SCHEMA_VERSION);
 
         ApplicationExtManual::run(self)
     }

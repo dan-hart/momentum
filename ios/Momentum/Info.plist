@@ -33,7 +33,6 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>momentum</string>
-				<string>superproductivity</string>
 			</array>
 		</dict>
 	</array>

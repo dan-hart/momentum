@@ -175,7 +175,7 @@ struct MomentumCommands: Commands {
     private func importBackup() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
-        panel.title = String(localized: "Import Super Productivity backup")
+        panel.title = String(localized: "Import Momentum backup")
         if panel.runModal() == .OK, let url = panel.url {
             state.importBackup(url)
         }

@@ -6,6 +6,115 @@ import Testing
 @testable import MomentumMobile
 
 @Suite @MainActor struct NextcloudSyncStateTests {
+    @Test func cancellingWhileFolderCopyFactoryIsWaitingKeepsTheSavedConnection() async throws {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        await fixture.ready()
+        fixture.state.draft.folder = "previous-tasks"
+        #expect(await fixture.state.save())
+        let gate = ControlledSyncOperation()
+        let copy = fixture.folderCopy
+        fixture.state.connect(makeOperation: { _ in gate }, makeFolderCopy: { settings in
+            copy.source = settings.folder
+            _ = try? await gate.run()
+            return copy
+        }, status: { SyncStatus(syncing: false, pendingOps: 0, lastNextcloudMs: 0,
+                               lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0) })
+        let copying = Task { await fixture.state.copyToMomentumFolder() }
+        await gate.waitUntilRunning()
+        fixture.state.cancelFolderCopy()
+        gate.finish(.success(SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)))
+        #expect(!(await copying.value))
+        #expect(try await fixture.store.load()?.folder == "previous-tasks")
+        #expect(fixture.state.draft.folder == "previous-tasks")
+        #expect(!fixture.state.isSuspended)
+    }
+
+    @Test func folderCopyCredentialSaveFailureKeepsTheOriginalConnection() async throws {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        await fixture.ready()
+        fixture.state.draft.folder = "previous-tasks"
+        #expect(await fixture.state.save())
+        await fixture.store.failSave(true)
+        #expect(!(await fixture.state.copyToMomentumFolder()))
+        #expect(try await fixture.store.load()?.folder == "previous-tasks")
+        #expect(fixture.state.draft.folder == "previous-tasks")
+        #expect(!fixture.state.isSuspended)
+    }
+
+    @Test func savingAConnectionDuringFolderCopyIsRejected() async throws {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        await fixture.ready()
+        fixture.state.draft.folder = "previous-tasks"
+        #expect(await fixture.state.save())
+        let gate = ControlledSyncOperation()
+        let copy = fixture.folderCopy
+        fixture.state.connect(makeOperation: { _ in gate }, makeFolderCopy: { settings in
+            copy.source = settings.folder
+            _ = try? await gate.run()
+            return copy
+        }, status: { SyncStatus(syncing: false, pendingOps: 0, lastNextcloudMs: 0,
+                               lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0) })
+        let copying = Task { await fixture.state.copyToMomentumFolder() }
+        await gate.waitUntilRunning()
+        fixture.state.draft.folder = "different-source"
+        #expect(!(await fixture.state.save()))
+        gate.finish(.success(SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)))
+        #expect(!(await copying.value))
+        #expect(try await fixture.store.load()?.folder == "previous-tasks")
+    }
+
+    @Test func verifiedFolderCopySwitchesOnlyTheSavedFolderAndPreservesProvider() async throws {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        await fixture.ready()
+        fixture.state.draft.folder = "previous-tasks"
+        #expect(await fixture.state.save())
+        #expect(fixture.state.canCopyFolder)
+        #expect(await fixture.state.copyToMomentumFolder())
+        let connection = try await fixture.store.load()
+        #expect(connection?.folder == "momentum")
+        #expect(connection?.password == fixture.connection.password)
+        #expect(connection?.serverURL == fixture.connection.serverURL)
+        #expect(fixture.state.draft == connection)
+        #expect(fixture.state.provider == .nextcloud)
+        #expect(!fixture.state.isSuspended)
+        #expect(fixture.state.folderCopy == .copied)
+    }
+
+    @Test func failedOrUnverifiedFolderCopyKeepsTheOriginalConnection() async throws {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        await fixture.ready()
+        fixture.state.draft.folder = "previous-tasks"
+        #expect(await fixture.state.save())
+        fixture.folderCopy.reportVerified = false
+        #expect(!(await fixture.state.copyToMomentumFolder()))
+        #expect(try await fixture.store.load()?.folder == "previous-tasks")
+        #expect(fixture.state.draft.folder == "previous-tasks")
+        #expect(!fixture.state.isSuspended)
+        fixture.folderCopy.error = CocoaError(.fileWriteNoPermission)
+        #expect(!(await fixture.state.copyToMomentumFolder()))
+        #expect(try await fixture.store.load()?.folder == "previous-tasks")
+    }
+    @Test func failedTaskExchangeStillPublishesCompletionForIndependentSettings() async {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        var finished = 0
+        var committed = 0
+        fixture.state.didFinish = { finished += 1 }
+        fixture.state.didCommit = { committed += 1 }
+        await fixture.ready()
+        let syncing = Task { await fixture.state.syncNow() }
+        await fixture.operation.waitUntilRunning()
+        fixture.operation.finish(.failure(CoreError.Transient(kind: .other, message: "task exchange fixture failure")))
+        await syncing.value
+        #expect(finished == 1)
+        #expect(committed == 0)
+        #expect(fixture.state.failure != nil)
+    }
     @Test func connectionTestUsesSavedConfigurationAndPublishesSuccess() async {
         let fixture = SyncFixture()
         defer { fixture.clean() }
@@ -557,6 +666,7 @@ private final class ResumeOnce: @unchecked Sendable {
     let backgroundOperation = ControlledSyncOperation()
     let replaceOperation = ControlledSyncOperation()
     let connectionTest = ControlledConnectionTestOperation()
+    let folderCopy = FixtureFolderCopy()
     let clock = ControlledDelay()
     let factory: SyncFactory
     let backgroundFactory: SyncFactory
@@ -584,6 +694,7 @@ private final class ResumeOnce: @unchecked Sendable {
                       makeBackgroundOperation: { [backgroundFactory] _ in await backgroundFactory.make() },
                       makeReplaceOperation: { [replaceFactory] _ in await replaceFactory.make() },
                       makeConnectionTest: { [connectionTestFactory] _ in await connectionTestFactory.make() },
+                      makeFolderCopy: { [folderCopy] settings in folderCopy.source = settings.folder; return folderCopy },
                       status: {
             SyncStatus(syncing: false, pendingOps: 1, lastNextcloudMs: 0,
                        lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0)
@@ -596,6 +707,22 @@ private final class ResumeOnce: @unchecked Sendable {
         await state.select(.nextcloud)
     }
     func clean() { state.setForeground(false); defaults.removePersistentDomain(forName: name) }
+}
+
+private final class FixtureFolderCopy: NextcloudFolderCopying, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedSource = ""
+    private var storedVerified = true
+    private var storedError: Error?
+    var source: String { get { lock.withLock { storedSource } } set { lock.withLock { storedSource = newValue } } }
+    var reportVerified: Bool { get { lock.withLock { storedVerified } } set { lock.withLock { storedVerified = newValue } } }
+    var error: Error? { get { lock.withLock { storedError } } set { lock.withLock { storedError = newValue } } }
+    func cancel() -> Bool { true }
+    func run() async throws -> NextcloudFolderMigrationReport {
+        if let error { throw error }
+        return NextcloudFolderMigrationReport(sourceFolder: source, targetFolder: "momentum", copiedFiles: 1,
+                                             targetFiles: ["sync-data.json"], verified: reportVerified)
+    }
 }
 
 private final class ControlledConnectionTestOperation: NextcloudConnectionTestOperation, @unchecked Sendable {

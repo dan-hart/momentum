@@ -8,7 +8,7 @@ public enum TaskURLAction: Sendable, Equatable {
 
     public init?(url: URL) {
         guard let scheme = url.scheme?.lowercased(),
-              ["momentum", "superproductivity"].contains(scheme),
+              scheme == "momentum",
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
         func parameter(_ name: String) -> String? {
             components.queryItems?.first { $0.name == name }?.value

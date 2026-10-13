@@ -3,7 +3,7 @@
 //! Momentum's application core: everything the app does that is not a widget.
 //!
 //! The GTK app on Linux and the Swift app on macOS both drive one [`Engine`]. It owns the
-//! store (`sp-store`), answers what each view shows ([`Listing`], [`Sidebar`]), performs
+//! store (`momentum-store`), answers what each view shows ([`Listing`], [`Sidebar`]), performs
 //! every change with its undo batch, spawns repeating tasks, finds due reminders, runs the
 //! Nextcloud cycle off the main thread and hosts the nearby-device transport. Text the
 //! user reads is structured ([`Message`], [`DayLabel`], [`RepeatDescription`]) so each
@@ -14,10 +14,15 @@
 
 pub mod demo;
 mod engine;
+mod folder_migration;
+pub use folder_migration::NextcloudFolderMigrationReport;
 pub mod ipc;
 mod listing;
 mod notification_schedule;
 pub mod notifications;
+mod occurrences;
+mod portable;
+pub use portable::*;
 #[cfg(feature = "p2p")]
 pub mod p2p;
 mod sync_cancellation;
@@ -34,10 +39,10 @@ pub use text::QuickAdd;
 pub use types::*;
 
 // Re-exported so the apps need only this crate for the model types they still touch.
-pub use sp_model;
-pub use sp_oplog;
-pub use sp_store;
-pub use sp_sync;
+pub use momentum_model;
+pub use momentum_oplog;
+pub use momentum_store;
+pub use momentum_sync;
 
 /// Parsing helpers exposed one by one for the bindings (free functions, not methods).
 #[cfg_attr(feature = "ffi", uniffi::export)]
@@ -81,11 +86,11 @@ pub fn slot_of_tag_names(names: Vec<String>) -> Option<Slot> {
 }
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn today() -> String {
-    sp_model::today_str()
+    momentum_model::today_str()
 }
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn now_ms() -> u64 {
-    sp_model::now_ms()
+    momentum_model::now_ms()
 }
 /// The idle automatic-sync cycle every desktop and mobile app runs, in milliseconds.
 pub const PERIODIC_SYNC_MS: u64 = 150_000;
@@ -102,8 +107,8 @@ pub fn window_return_sync_due(background_sync: bool, last_sync_ms: u64, now_ms: 
 /// `YYYY-MM-DD` shifted by `days`.
 #[cfg_attr(feature = "ffi", uniffi::export)]
 pub fn day_offset(day: String, days: i64) -> String {
-    match sp_model::day_number(&day) {
-        Some(n) => sp_model::day_str(n + days),
+    match momentum_model::day_number(&day) {
+        Some(n) => momentum_model::day_str(n + days),
         None => day,
     }
 }
@@ -149,3 +154,6 @@ mod transport_tests;
 
 #[cfg(test)]
 mod mutation_tests;
+
+#[cfg(test)]
+mod portable_tests;

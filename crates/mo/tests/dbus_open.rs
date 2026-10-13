@@ -176,11 +176,11 @@ fn private_bus_serializes_warm_then_cold_gapplication_open() {
     let bus = start_bus(dir.path(), &record);
     let home = dir.path().join("home");
     let data = profile_data(&home, APP_ID);
-    let mut store = sp_store::Store::load(data.clone());
+    let mut store = momentum_store::Store::load(data.clone());
     for (id, title) in [("warm-task", "Warm target"), ("cold-task", "Cold target")] {
-        let mut task = sp_model::Task::new(title, sp_model::INBOX_PROJECT_ID);
+        let mut task = momentum_model::Task::new(title, momentum_model::INBOX_PROJECT_ID);
         task.id = id.into();
-        store.dispatch(sp_oplog::Action::AddTask { task, bottom: true });
+        store.dispatch(momentum_oplog::Action::AddTask { task, bottom: true });
     }
     let state_before = std::fs::read(data.join("state.json")).unwrap();
     let pending_before = std::fs::read(data.join("pending.json")).unwrap();
@@ -219,10 +219,10 @@ fn coexisting_profiles_receive_only_their_own_store_request() {
     let stable_data = profile_data(&home, APP_ID);
     let devel_data = profile_data(&home, DEV_ID);
     for (data, id) in [(&stable_data, "stable-task"), (&devel_data, "devel-task")] {
-        let mut store = sp_store::Store::load(data.clone());
-        let mut task = sp_model::Task::new(id, sp_model::INBOX_PROJECT_ID);
+        let mut store = momentum_store::Store::load(data.clone());
+        let mut task = momentum_model::Task::new(id, momentum_model::INBOX_PROJECT_ID);
         task.id = id.into();
-        store.dispatch(sp_oplog::Action::AddTask { task, bottom: true });
+        store.dispatch(momentum_oplog::Action::AddTask { task, bottom: true });
     }
     let stable_received = Arc::new(Mutex::new(vec![]));
     let devel_received = Arc::new(Mutex::new(vec![]));
@@ -276,10 +276,10 @@ fn private_bus_nonreply_times_out_without_writing() {
     let bus = start_bus(dir.path(), &record);
     let home = dir.path().join("home");
     let data = profile_data(&home, APP_ID);
-    let mut store = sp_store::Store::load(data.clone());
-    let mut task = sp_model::Task::new("Hanging target", sp_model::INBOX_PROJECT_ID);
+    let mut store = momentum_store::Store::load(data.clone());
+    let mut task = momentum_model::Task::new("Hanging target", momentum_model::INBOX_PROJECT_ID);
     task.id = "hanging-task".into();
-    store.dispatch(sp_oplog::Action::AddTask { task, bottom: true });
+    store.dispatch(momentum_oplog::Action::AddTask { task, bottom: true });
     let state_before = std::fs::read(data.join("state.json")).unwrap();
     let pending_before = std::fs::read(data.join("pending.json")).unwrap();
     let _service = connection::Builder::address(bus.address.as_str())

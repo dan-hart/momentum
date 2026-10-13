@@ -14,7 +14,7 @@ body:
     attributes:
       label: How might it work?
   - type: input
-    id: upstream
+    id: related
     attributes:
-      label: Does Super Productivity have this?
-      description: Link the upstream feature or issue if so; sync compatibility matters.
+      label: Related examples or issues
+      description: Link any existing Momentum issue or example that explains the requested behavior.

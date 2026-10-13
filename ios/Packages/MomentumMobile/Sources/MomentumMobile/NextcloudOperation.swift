@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import Foundation
 import MomentumCore
+import MomentumKit
 
 public protocol NextcloudRunningOperation: Sendable {
     func run() async throws -> SyncReport
@@ -96,6 +97,9 @@ public struct NextcloudReplaceOperation: NextcloudRunningOperation {
 }
 
 extension EngineWorker {
+    public func nextcloudFolderCopy(settings: NextcloudSettings) -> NextcloudFolderCopy {
+        NextcloudFolderCopy(engine: engine, settings: settings)
+    }
     public func syncStatus() -> SyncStatus { engine.syncStatus() }
 
     /// What a background wake may spend on one exchange before iOS ends it.

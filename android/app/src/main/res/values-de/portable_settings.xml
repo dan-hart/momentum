@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_settings">App-Einstellungen</string>
+    <string name="include_app_settings">App-Einstellungen einschließen</string>
+    <string name="restore_app_settings">Enthaltene App-Einstellungen wiederherstellen</string>
+    <string name="export_app_settings">Nur App-Einstellungen exportieren</string>
+    <string name="import_app_settings">Nur App-Einstellungen importieren</string>
+    <string name="app_settings_exported">App-Einstellungen exportiert</string>
+    <string name="app_settings_imported">App-Einstellungen importiert</string>
+    <string name="app_settings_scope">Gruppierung und Sortierung, Vorschauzeitraum, automatisches Archivieren, Zeilenabstand, Beschriftungsfarben und Abschlusstöne übertragen. Verbindungen, Zugangsdaten, Berechtigungen und Gerätesteuerung bleiben auf diesem Gerät.</string>
+    <string name="sync_app_settings">App-Einstellungen synchronisieren</string>
+    <string name="settings_sync_hint">Optional. App-Einstellungen über den ausgewählten Dienst teilen. Beim Ausschalten bleiben die aktuellen Einstellungen erhalten.</string>
+    <string name="settings_sync_provider_off">Einen Dienst auswählen, um App-Einstellungen auszutauschen.</string>
+    <string name="settings_sync_review">Die Einstellungen für diese Verbindung auswählen.</string>
+    <string name="settings_this_device">Dieses Gerät</string>
+    <string name="settings_synced_device">Synchronisierte Einstellungen</string>
+    <string name="settings_use_local">Einstellungen dieses Geräts verwenden</string>
+    <string name="settings_use_remote">Synchronisierte Einstellungen verwenden</string>
+    <string name="settings_sync_failed">App-Einstellungen konnten nicht synchronisiert werden. Die lokalen Einstellungen bleiben erhalten.</string>
+    <string name="settings_sync_pending">Ausstehende App-Einstellungen: %1$d</string>
+    <string name="settings_summary_item">%1$s: %2$s</string>
+    <string name="settings_summary_on">An</string>
+    <string name="settings_summary_off">Aus</string>
+    <string name="folder_migration_action">Momentum-Synchronisationsordner verwenden</string>
+    <string name="folder_migration_hint">Den gespeicherten Ordner „%1$s“ nach „momentum“ kopieren, jede Datei prüfen und diese Verbindung umstellen. Der ursprüngliche Ordner bleibt erhalten. Weitere Geräte nach dem Kopieren einzeln umstellen.</string>
+    <string name="folder_migration_confirm">Kopieren, prüfen und umstellen</string>
+    <string name="folder_migration_progress">Gespeicherten Synchronisationsordner kopieren und prüfen…</string>
+    <string name="folder_migration_failed">Der Ordner konnte nicht umgestellt werden. Die ursprüngliche Verbindung bleibt erhalten. Synchronisationsfehler prüfen und erneut versuchen.</string>
+    <string name="folder_migration_complete">Kopierter Ordner geprüft. Diese Verbindung verwendet jetzt momentum.</string>
+    <string name="app_settings_apply_failed">App-Einstellungen konnten nicht angewendet werden. Gespeicherte Aufgaben bleiben verfügbar. Erneut versuchen, um die gespeicherten Einstellungen anzuwenden.</string>
+    <string name="settings_last_sync">App-Einstellungen zuletzt synchronisiert: %1$s</string>
+</resources>

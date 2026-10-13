@@ -16,13 +16,27 @@ public struct SharedTaskItem: Codable, Equatable, Sendable {
     public var notes: String
     public var url: String?
     public var sharedAt: Date
+    /// Local Gregorian day captured when Add was pressed. Absent in older queued items.
+    public var plannedDay: String?
 
-    public init(id: String = UUID().uuidString, title: String, notes: String, url: String?, sharedAt: Date = .now) {
+    public init(id: String = UUID().uuidString, title: String, notes: String, url: String?, sharedAt: Date = .now,
+                plannedDay: String? = nil) {
         self.id = id
         self.title = title
         self.notes = notes
         self.url = url
         self.sharedAt = sharedAt
+        self.plannedDay = plannedDay
+    }
+
+    /// One timestamp determines both ordering and the planned day, even across midnight.
+    public static func captured(title: String, notes: String, url: String?, at date: Date = .now,
+                                timeZone: TimeZone = .current) -> SharedTaskItem {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let day = calendar.dateComponents([.year, .month, .day], from: date)
+        let plannedDay = String(format: "%04d-%02d-%02d", day.year!, day.month!, day.day!)
+        return SharedTaskItem(title: title, notes: notes, url: url, sharedAt: date, plannedDay: plannedDay)
     }
 
     /// The import identity the core stores on the task, so a repeated drain cannot duplicate it.

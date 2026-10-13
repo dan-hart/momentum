@@ -203,7 +203,7 @@ the 2026-09-18 testing decision. Current units cover action mapping, shared-engi
 ownership and mutations. Shortcuts discovery/presentation, cold/background invocation
 and locked-device behavior are manual system-acceptance boundaries.
 
-Both `momentum://` and `superproductivity://` support `add`/`create-task` with
+`momentum://` supports `add`/`create-task` with
 `title`, optional `notes`, `due` (`yyyy-MM-dd`) and comma-separated `tags`, plus
 `complete-task?title=…`. Percent-encode parameter values. URL creation follows the
 desktop convention: without `due`, the task is unscheduled. Receiving a URL while

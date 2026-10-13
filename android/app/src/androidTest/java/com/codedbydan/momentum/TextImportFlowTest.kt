@@ -49,12 +49,24 @@ class TextImportFlowTest {
 
     @Test fun multilineImportUsesTheSourceContextDespiteLaterNavigation() {
         val elsewhere = runBlocking { repo.read { addProject("Elsewhere")!! } }
-        compose.runOnUiThread { vm.navigate(View.Morning); vm.openTextImport() }
+        // Morning is offered only while an open task uses that slot. Seed a real
+        // source route so its snapshot cannot correctly fall back to Today.
+        val existing = runBlocking {
+            repo.read { addTask("Existing Morning fixture", View.Morning) }
+            repo.detail(repo.read { allTasks() }.single().id)!!
+        }
+        compose.runOnUiThread { vm.navigate(View.Morning) }
+        compose.waitUntil(15_000) { !vm.state.value.loading }
+        Assert.assertEquals("The native source route must be an available Morning view", View.Morning, vm.state.value.view)
+        compose.runOnUiThread { vm.openTextImport() }
+        Assert.assertEquals("morning", saved.get<String>("editor-view"))
         compose.onNodeWithText("Source text").performTextInput("First task\n\nSecond task\n")
         compose.runOnUiThread { vm.navigate(View.Project(elsewhere)) }
         compose.onNodeWithContentDescription(app.getString(R.string.create_from_text)).performClick()
         compose.waitUntil(15_000) { vm.state.value.editor == null && !vm.state.value.loading }
-        val tasks = runBlocking { repo.read { allTasks() } }
+        val tasks = runBlocking { repo.read { allTasks() } }.filter { it.id != existing.id }
+        Assert.assertEquals(existing, runBlocking { repo.detail(existing.id) })
+        Assert.assertEquals(2, tasks.size)
         Assert.assertEquals(setOf("First task", "Second task"), tasks.map { it.title }.toSet())
         Assert.assertTrue(tasks.all { runBlocking { repo.detail(it.id) }!!.projectId == "INBOX_PROJECT" })
         Assert.assertTrue(tasks.all { runBlocking { repo.read { taskMenu(it.id) } }!!.slot == Slot.MORNING })
@@ -116,6 +128,7 @@ class TextImportFlowTest {
         Assert.assertEquals("", vm.state.value.editor!!.notes)
         compose.onNodeWithText("Source text").performTextInput("Typed first")
         compose.onNodeWithText("Paste text").performClick()
+        compose.waitUntil(5_000) { vm.state.value.editor?.notes == "Typed first\nClipboard second" }
         Assert.assertEquals("Typed first\nClipboard second", vm.state.value.editor!!.notes)
     }
 

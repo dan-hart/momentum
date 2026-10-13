@@ -10,6 +10,22 @@ mod imp {
     #[derive(Default, gtk::CompositeTemplate)]
     #[template(resource = "/io/github/dan_hart/Momentum/ui/prefs.ui")]
     pub struct MomentumPrefs {
+        pub configured: std::cell::Cell<bool>,
+        pub updating_settings_sync: std::cell::Cell<bool>,
+        #[template_child]
+        pub settings_sync_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub settings_status_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub settings_review_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub settings_retry_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub settings_export_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub settings_import_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub migrate_folder_row: TemplateChild<adw::ButtonRow>,
         #[template_child]
         pub method_row: TemplateChild<adw::ComboRow>,
         #[template_child]
@@ -87,6 +103,7 @@ mod imp {
             ] {
                 s.bind(key, row, "text").build();
             }
+            self.folder_row.set_text(&effective_nextcloud_folder(&s));
             let labels = [gettext("Off"), gettext("Nextcloud"), gettext("LibreSync")];
             self.method_row.set_model(Some(&gtk::StringList::new(
                 &labels.iter().map(String::as_str).collect::<Vec<_>>(),
@@ -411,6 +428,28 @@ impl Default for MomentumPrefs {
 
 impl MomentumPrefs {
     pub fn present(&self, parent: Option<&impl IsA<gtk::Widget>>) {
+        if let Some(owner) = parent
+            .and_then(|parent| parent.root())
+            .and_downcast::<crate::window::MomentumWindow>()
+        {
+            self.connect_app_settings(&owner);
+        }
+        // A short desktop window must not squeeze a full preferences page.
+        // Compact windows still use libadwaita's adaptive embedded presentation.
+        if let Some(parent) =
+            parent.filter(|parent| parent.width() >= 600 && (parent.width() < 720 || parent.height() < 700))
+        {
+            adw::prelude::AdwDialogExt::present(self, None::<&gtk::Widget>);
+            if let (Some(window), Some(owner)) = (
+                self.root().and_downcast::<gtk::Window>(),
+                parent.root().and_downcast::<gtk::Window>(),
+            ) {
+                window.set_transient_for(Some(&owner));
+                window.set_modal(true);
+                window.set_resizable(true);
+            }
+            return;
+        }
         if let Some(parent) = parent {
             crate::typography::fit_dialog_to_parent(self, parent);
         }
@@ -419,6 +458,247 @@ impl MomentumPrefs {
             crate::typography::fit_dialog_to_parent(self, parent);
         }
     }
+
+    fn refresh_app_settings(&self, owner: &crate::window::MomentumWindow) {
+        let imp = self.imp();
+        let status = owner.engine().settings_sync_status();
+        imp.updating_settings_sync.set(true);
+        imp.settings_sync_row.set_active(status.enabled);
+        imp.updating_settings_sync.set(false);
+        let local_error = owner.app_settings_error();
+        imp.settings_status_row
+            .set_visible(status.enabled || local_error.is_some());
+        let mut message = if let Some(error) = local_error.as_ref().or(status.error.as_ref()) {
+            error.clone()
+        } else if status.bootstrap_required {
+            gettext("Review the saved settings before syncing them.")
+        } else if sync_method(&gio::Settings::new(*crate::config::APP_ID)) == "off" {
+            gettext("Choose a sync provider to share app settings.")
+        } else if status.pending_keys > 0 {
+            gettext("App settings are waiting to sync.")
+        } else if status.last_success_ms > 0 {
+            gettext("App settings are up to date.")
+        } else {
+            gettext("App settings have not synced yet.")
+        };
+        if status.last_success_ms > 0 {
+            message.push_str(&format!(
+                "\n{} {}",
+                gettext("Last synced"),
+                crate::window::ago_text(status.last_success_ms)
+            ));
+        }
+        imp.settings_status_row
+            .set_subtitle(&glib::markup_escape_text(&message));
+        imp.settings_review_row.set_visible(status.bootstrap_required);
+        imp.settings_review_row.set_sensitive(owner.can_review_app_settings());
+        imp.settings_retry_row
+            .set_visible(owner.can_retry_app_settings() || (status.enabled && status.error.is_some()));
+        let settings = gio::Settings::new(*crate::config::APP_ID);
+        imp.migrate_folder_row
+            .set_visible(effective_nextcloud_folder(&settings) != "momentum");
+        let busy = owner.imp().syncing.get();
+        imp.method_row.set_sensitive(!busy);
+        for row in [
+            imp.server_row.upcast_ref::<gtk::Widget>(),
+            imp.user_row.upcast_ref(),
+            imp.password_row.upcast_ref(),
+            imp.folder_row.upcast_ref(),
+            imp.encrypt_row.upcast_ref(),
+            imp.auto_row.upcast_ref(),
+            imp.compress_row.upcast_ref(),
+            imp.migrate_folder_row.upcast_ref(),
+        ] {
+            row.set_sensitive(!busy && sync_method(&settings) == "nextcloud");
+        }
+    }
+
+    fn connect_app_settings(&self, owner: &crate::window::MomentumWindow) {
+        if self.imp().configured.replace(true) {
+            return;
+        }
+        self.refresh_app_settings(owner);
+        self.imp()
+            .settings_sync_row
+            .set_sensitive(std::env::var_os("MOMENTUM_DEMO").is_none());
+        self.imp().settings_sync_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            move |row| {
+                if prefs.imp().updating_settings_sync.get() {
+                    return;
+                }
+                let result = owner.stage_app_settings(None).and_then(|()| {
+                    owner.refresh_app_settings();
+                    owner
+                        .engine()
+                        .set_settings_sync_enabled(row.is_active())
+                        .map_err(|error| error.to_string())
+                });
+                if let Err(error) = result {
+                    prefs.add_toast(adw::Toast::new(&error));
+                }
+                prefs.refresh_app_settings(&owner);
+                if row.is_active() && sync_method(&owner.imp().settings) != "off" {
+                    owner.sync();
+                }
+            }
+        ));
+        for (row, export) in [
+            (&*self.imp().settings_export_row, true),
+            (&*self.imp().settings_import_row, false),
+        ] {
+            row.connect_activated(glib::clone!(
+                #[weak(rename_to = prefs)]
+                self,
+                #[weak]
+                owner,
+                move |_| prefs.transfer_settings(&owner, export)
+            ));
+        }
+        self.imp().settings_retry_row.connect_activated(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            move |_| {
+                if owner.can_retry_app_settings() {
+                    if let Err(error) = owner.retry_app_settings() {
+                        prefs.add_toast(adw::Toast::new(&error));
+                    }
+                    prefs.refresh_app_settings(&owner);
+                } else {
+                    owner.sync();
+                }
+            }
+        ));
+        self.imp().settings_review_row.connect_activated(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            move |_| {
+                prefs.close();
+                owner.review_app_settings();
+            }
+        ));
+        self.imp().migrate_folder_row.connect_activated(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            move |_| {
+                prefs.close();
+                owner.migrate_nextcloud_folder();
+            }
+        ));
+        glib::timeout_add_local(
+            std::time::Duration::from_secs(1),
+            glib::clone!(
+                #[weak(rename_to = prefs)]
+                self,
+                #[weak]
+                owner,
+                #[upgrade_or]
+                glib::ControlFlow::Break,
+                move || {
+                    prefs.refresh_app_settings(&owner);
+                    glib::ControlFlow::Continue
+                }
+            ),
+        );
+    }
+
+    fn transfer_settings(&self, owner: &crate::window::MomentumWindow, export: bool) {
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            async move {
+                let parent = prefs.root().and_downcast::<gtk::Window>();
+                let dialog = gtk::FileDialog::builder()
+                    .title(if export {
+                        gettext("Export app settings")
+                    } else {
+                        gettext("Import app settings")
+                    })
+                    .initial_name("momentum-settings.json")
+                    .build();
+                let result = if export {
+                    dialog.save_future(parent.as_ref()).await
+                } else {
+                    dialog.open_future(parent.as_ref()).await
+                };
+                let Ok(file) = result else {
+                    return;
+                };
+                let Some(path) = file.path() else {
+                    prefs.add_toast(adw::Toast::new(&gettext("Choose a local file")));
+                    return;
+                };
+                let result = if export {
+                    owner.export_app_settings_to(path.to_string_lossy().into_owned())
+                } else {
+                    owner.import_app_settings_from(path.to_string_lossy().into_owned())
+                };
+                match result {
+                    Ok(_) => {
+                        owner.refresh();
+                        prefs.refresh_app_settings(&owner);
+                        prefs.add_toast(adw::Toast::new(&if export {
+                            gettext("App settings saved")
+                        } else {
+                            gettext("App settings imported")
+                        }));
+                    }
+                    Err(error) => {
+                        prefs.refresh_app_settings(&owner);
+                        prefs.add_toast(adw::Toast::new(&error));
+                    }
+                }
+            }
+        ));
+    }
+}
+
+const LEGACY_NEXTCLOUD_FOLDER: &str = "super-productivity";
+
+/// A failed preference write must never redirect an existing connection. This is also
+/// used when displaying or exporting the effective connection while pinning retries.
+pub fn effective_nextcloud_folder(settings: &gio::Settings) -> String {
+    if !settings.boolean("nextcloud-folder-default-pinned")
+        && settings.user_value("nextcloud-folder").is_none()
+        && !settings.string("nextcloud-server").is_empty()
+        && !settings.string("nextcloud-user").is_empty()
+    {
+        LEGACY_NEXTCLOUD_FOLDER.into()
+    } else {
+        settings.string("nextcloud-folder").into()
+    }
+}
+
+/// Preserve configured connections whose old effective folder was never stored.
+pub fn pin_existing_nextcloud_folder(settings: &gio::Settings) -> Result<(), glib::BoolError> {
+    pin_existing_nextcloud_folder_with(settings, |key, value| settings.set_value(key, value))
+}
+
+fn pin_existing_nextcloud_folder_with(
+    settings: &gio::Settings,
+    write: impl Fn(&str, &glib::Variant) -> Result<(), glib::BoolError>,
+) -> Result<(), glib::BoolError> {
+    if settings.boolean("nextcloud-folder-default-pinned") {
+        return Ok(());
+    }
+    if settings.user_value("nextcloud-folder").is_none()
+        && !settings.string("nextcloud-server").is_empty()
+        && !settings.string("nextcloud-user").is_empty()
+    {
+        write("nextcloud-folder", &LEGACY_NEXTCLOUD_FOLDER.to_variant())?;
+    }
+    write("nextcloud-folder-default-pinned", &true.to_variant())
 }
 
 /// Match the Mac's legacy preference resolution without destroying connections or
@@ -437,6 +717,36 @@ pub fn sync_method(s: &gio::Settings) -> String {
 #[cfg(test)]
 mod sync_tests {
     use super::*;
+
+    #[test]
+    fn legacy_folder_pin_failure_leaves_the_migration_retryable() {
+        let schema = gio::SettingsSchemaSource::default()
+            .unwrap()
+            .lookup(*crate::config::APP_ID, true)
+            .unwrap();
+        let settings = gio::Settings::new_full(&schema, Some(&gio::memory_settings_backend_new()), None);
+        settings
+            .set_string("nextcloud-server", "https://example.test/dav")
+            .unwrap();
+        settings.set_string("nextcloud-user", "fixture").unwrap();
+        let result = pin_existing_nextcloud_folder_with(&settings, |key, value| {
+            if key == "nextcloud-folder" {
+                Err(glib::bool_error!("fixture denies folder write"))
+            } else {
+                settings.set_value(key, value)
+            }
+        });
+        assert!(result.is_err());
+        assert_eq!(effective_nextcloud_folder(&settings), LEGACY_NEXTCLOUD_FOLDER);
+        assert!(
+            !settings.boolean("nextcloud-folder-default-pinned"),
+            "failed writes must not mark folder migration complete"
+        );
+        assert!(settings.user_value("nextcloud-folder").is_none());
+        pin_existing_nextcloud_folder(&settings).unwrap();
+        assert!(settings.boolean("nextcloud-folder-default-pinned"));
+        assert_eq!(settings.string("nextcloud-folder"), LEGACY_NEXTCLOUD_FOLDER);
+    }
 
     #[test]
     fn typography_settings_default_to_system_font_and_full_scale() {

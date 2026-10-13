@@ -83,6 +83,13 @@ struct FeedbackToast: Identifiable, Equatable {
     }
     var creationView: MomentumCore.View = .today
     let defaults: UserDefaults
+    private(set) var appSettingsSync: SettingsSyncStatus?
+    private(set) var appSettingsError: String?
+    private var appSettingsRevision: UInt64?
+    private var lastNativeSettings: String?
+    private var pendingNativeSettingsIntent: String?
+    private var nativeSettingsStageError: String?
+    private var appSettingsRefreshGeneration = 0
     let testing: Bool
     let platformCapabilities: MobilePlatformCapabilities
     let allowsBackgroundNotificationRefresh: Bool
@@ -238,7 +245,18 @@ struct FeedbackToast: Identifiable, Equatable {
         }
         do {
             let opened = try await engineSession.open(directory: directory, demo: demo)
-            await opened.setPreferences(Preferences(defaults).core)
+            do {
+                try PortableAppSettings.apply(await opened.portableSettingsJSON(), to: defaults)
+                try await opened.stagePortableSettings(PortableAppSettings.encode(defaults))
+                lastNativeSettings = try PortableAppSettings.encode(defaults)
+                appSettingsRevision = await opened.appSettingsSyncStatus().revision
+            } catch {
+                nativeSettingsStageError = Strings.error(error)
+                appSettingsError = nativeSettingsStageError
+                pendingNativeSettingsIntent = try? PortableAppSettings.encode(defaults)
+            }
+            appSettingsSync = await opened.appSettingsSyncStatus()
+            try await opened.setDeviceSummaryPreferences(Preferences(defaults).core)
             worker = opened
             startupFailure = nil
             notifications.connect(worker: opened)
@@ -249,6 +267,7 @@ struct FeedbackToast: Identifiable, Equatable {
                          makeBackgroundOperation: { await opened.nextcloudBackgroundOperation(settings: $0) },
                          makeReplaceOperation: { await opened.nextcloudReplaceOperation(settings: $0) },
                          makeConnectionTest: { await opened.nextcloudConnectionTestOperation(settings: $0) },
+                         makeFolderCopy: { await opened.nextcloudFolderCopy(settings: $0) },
                          status: { await opened.syncStatus() })
             let nearbyRuntime = await opened.nearbyRuntime(
                 keychain: Keychain(),
@@ -257,9 +276,17 @@ struct FeedbackToast: Identifiable, Equatable {
             sync.connectNearby(NearbyLifecycle(runtime: nearbyRuntime, allowed: sync.allowed))
             sync.didCommit = { [weak self] in
                 guard let self else { return }
-                revision += 1
+                Task { await refreshAppSettings(); revision += 1 }
                 Task { await notifications.refresh() }
                 scheduleSpotlight()
+            }
+            sync.didFinish = { [weak self] in
+                guard let self else { return }
+                Task {
+                    let previous = appSettingsRevision
+                    await refreshAppSettings()
+                    if previous != appSettingsRevision { revision += 1 }
+                }
             }
             sync.beginExecution = { [weak sync] in
                 let allowance = SyncExecutionAllowance(expiration: { sync?.setForeground(false) })
@@ -297,8 +324,8 @@ struct FeedbackToast: Identifiable, Equatable {
         }
         if created > 0 {
             showFeedback(created == 1
-                ? String(localized: "Added a shared task to Inbox")
-                : String(localized: "Added \(created) shared tasks to Inbox"))
+                ? String(localized: "Added a shared task")
+                : String(localized: "Added \(created) shared tasks"))
             refreshAfterEdit()
         }
         return created
@@ -404,21 +431,24 @@ struct FeedbackToast: Identifiable, Equatable {
         if outcome.changed { refreshAfterEdit(immediateSync: outcome.syncNow) }
     }
 
-    func exportBackup() async throws -> Data {
+    func exportBackup(includeSettings: Bool = false) async throws -> Data {
         guard let worker else { throw AutomationError.unavailable }
-        return try await worker.exportBackup()
+        if includeSettings { try await stageAppSettings() }
+        return try await worker.exportBackup(includeSettings: includeSettings)
     }
 
-    func restoreBackup(_ file: BackupFile) async throws {
+    func restoreBackup(_ file: BackupFile, restoreSettings: Bool = false) async throws {
         guard let worker else { throw AutomationError.unavailable }
-        guard !isRestoringBackup, !showingAdd, !showingNewProject, activeTaskEditors == 0 else {
+        guard !isRestoringBackup, !sync.folderCopyInProgress, !showingAdd, !showingNewProject, activeTaskEditors == 0 else {
             throw CancellationError()
         }
         isRestoringBackup = true
         await sync.suspendForRestore()
         defer { isRestoringBackup = false; sync.resumeAfterRestore() }
-        let outcome = try await worker.restoreBackup(file)
+        let outcome = try await worker.restoreBackup(file, restoreSettings: restoreSettings)
         accept(outcome) // Refresh visible tasks and request normal notification reconciliation.
+        if restoreSettings { try await adoptImportedAppSettings() }
+        else { await refreshAppSettings() }
     }
 
     func showFeedback(_ message: String, undoBatchID: UInt64? = nil,
@@ -506,9 +536,119 @@ struct FeedbackToast: Identifiable, Equatable {
     }
 
     func preferencesChanged() async {
-        await worker?.setPreferences(Preferences(defaults).core)
+        do { try await stageAppSettings(explicit: false) }
+        catch { appSettingsError = Strings.error(error) }
+        do { try await worker?.setDeviceSummaryPreferences(Preferences(defaults).core) }
+        catch { appSettingsError = Strings.error(error) }
         revision += 1
         await notifications.refresh()
+    }
+
+    func stageAppSettings(explicit: Bool = true) async throws {
+        guard let worker else { throw AutomationError.unavailable }
+        let current = try PortableAppSettings.encode(defaults)
+        guard explicit || lastNativeSettings != current else { return }
+        let changes = try PortableAppSettings.changes(from: lastNativeSettings, to: current)
+        var intent = try JSONSerialization.jsonObject(with: Data(changes.utf8)) as! [String: Any]
+        if let pendingNativeSettingsIntent {
+            let pending = try JSONSerialization.jsonObject(with: Data(pendingNativeSettingsIntent.utf8)) as! [String: Any]
+            var values = pending["values"] as! [String: Any]
+            values.merge(intent["values"] as! [String: Any]) { _, latest in latest }
+            intent["values"] = values
+        }
+        let document = String(decoding: try JSONSerialization.data(withJSONObject: intent, options: [.sortedKeys]), as: UTF8.self)
+        appSettingsRefreshGeneration += 1
+        let previous = try await worker.portableSettingsJSON()
+        do {
+            try await worker.stagePortableSettings(document)
+            lastNativeSettings = current
+            pendingNativeSettingsIntent = nil
+            nativeSettingsStageError = nil
+            appSettingsError = nil
+        } catch {
+            pendingNativeSettingsIntent = document
+            nativeSettingsStageError = Strings.error(error)
+            appSettingsError = nativeSettingsStageError
+            try PortableAppSettings.apply(previous, to: defaults)
+            throw error
+        }
+        await refreshAppSettings(force: true)
+    }
+
+    var canRetryAppSettings: Bool { pendingNativeSettingsIntent != nil }
+    func retryAppSettings() async {
+        guard canRetryAppSettings else { return }
+        do {
+            try await stageAppSettings()
+            revision += 1
+            if appSettingsSync?.enabled == true { await sync.syncNow(); await refreshAppSettings() }
+        } catch { appSettingsError = Strings.error(error) }
+    }
+
+    func refreshAppSettings(force: Bool = false) async {
+        guard let worker else { return }
+        appSettingsRefreshGeneration += 1
+        let generation = appSettingsRefreshGeneration
+        let status = await worker.appSettingsSyncStatus()
+        guard generation == appSettingsRefreshGeneration else { return }
+        appSettingsSync = status
+        guard lastNativeSettings != nil else { return }
+        guard force || status.revision != appSettingsRevision else { return }
+        do {
+            let json = try await worker.portableSettingsJSON()
+            guard generation == appSettingsRefreshGeneration else { return }
+            try PortableAppSettings.apply(json, to: defaults)
+            appSettingsRevision = status.revision
+            lastNativeSettings = try PortableAppSettings.encode(defaults)
+            appSettingsError = nativeSettingsStageError
+            let preferences = Preferences(defaults).core
+            try await worker.setDeviceSummaryPreferences(preferences)
+        } catch { if generation == appSettingsRefreshGeneration { appSettingsError = Strings.error(error) } }
+    }
+
+    func setAppSettingsSync(_ enabled: Bool) async {
+        guard let worker, sync.allowed else { return }
+        do {
+            try await stageAppSettings()
+            appSettingsSync = try await worker.setAppSettingsSync(enabled)
+            appSettingsError = nil
+            if enabled { await sync.syncNow(); await refreshAppSettings() }
+        } catch { appSettingsError = Strings.error(error) }
+    }
+
+    func chooseAppSettingsBootstrap(_ choice: SettingsBootstrapChoice, reviewID: String) async {
+        guard let worker, lastNativeSettings != nil, !canRetryAppSettings else { return }
+        do {
+            appSettingsSync = try await worker.chooseAppSettingsBootstrap(choice, reviewID: reviewID)
+            await sync.syncNow()
+            await refreshAppSettings()
+        } catch { appSettingsError = Strings.error(error) }
+    }
+
+    func exportAppSettings() async throws -> Data {
+        guard let worker else { throw AutomationError.unavailable }
+        try await stageAppSettings()
+        return try await worker.exportAppSettings()
+    }
+
+    private func adoptImportedAppSettings() async throws {
+        guard let worker else { throw AutomationError.unavailable }
+        pendingNativeSettingsIntent = nil
+        nativeSettingsStageError = nil
+        appSettingsError = nil
+        let committed = try await worker.portableSettingsJSON()
+        lastNativeSettings = committed
+        try PortableAppSettings.apply(committed, to: defaults)
+        // Stage missing native values from the updated import, never the old seed.
+        try await stageAppSettings()
+        revision += 1
+    }
+
+    func importAppSettings(_ file: BackupFile) async throws {
+        guard let worker else { throw AutomationError.unavailable }
+        let outcome = try await worker.importAppSettings(file)
+        try await adoptImportedAppSettings()
+        accept(outcome)
     }
 
     func add(in view: MomentumCore.View) {

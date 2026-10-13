@@ -299,4 +299,7 @@
     <string name="sound_click_and_glow">8 Click and Glow</string>
     <string name="sound_tiny_ta_da">9 Tiny Ta-Da</string>
     <string name="sound_warm_spark">10 Warm Spark</string>
+    <string name="notes_copied">Notes copied</string>
+    <string name="recurring_preview">Recurring preview</string>
+    <string name="edit_repeat_schedule">Edit repeat schedule</string>
 </resources>

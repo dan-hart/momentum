@@ -26,7 +26,7 @@ alternates otherwise equivalent output-compression preferences to invalidate its
 both sides use the optimized metadata commit, making this a conservative comparison to
 the old full-store save. The engine test includes admission, snapshot cloning, encrypted
 HTTP exchange and durable timestamp persistence. It excludes Swift/GTK presentation,
-whole-app startup and real network latency. The separate transport sample covers `sp-sync`
+whole-app startup and real network latency. The separate transport sample covers `momentum-sync`
 without the engine clone or commit. LibreSync timing covers backlog publication, not discovery,
 pairing, snapshot transfer or whole-engine incoming reconciliation. The reference
 publication loop retains its original cheaper unsynced write; the new path also fsyncs
@@ -65,8 +65,8 @@ changed. The validation cache contains no new logged or persisted credentials.
 
 ```sh
 cargo test --workspace --exclude momentum --all-features --all-targets
-cargo test -p sp-sync benchmark_ -- --ignored --nocapture --test-threads=1
-cargo test -p sp-p2p benchmark_offline_publish -- --ignored --nocapture
+cargo test -p momentum-sync benchmark_ -- --ignored --nocapture --test-threads=1
+cargo test -p momentum-p2p benchmark_offline_publish -- --ignored --nocapture
 cargo test -p momentum-core --all-features benchmark_idle_engine_exchange -- --ignored --nocapture
 cargo check -p momentum --tests
 python3 ios/scripts/test.py prepare

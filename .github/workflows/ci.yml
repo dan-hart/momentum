@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [main]
+    branches: [main, "task/**"]
   pull_request:
   # The release workflow runs this same suite against the tag before it builds anything.
   workflow_call:
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.sha }}
-      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      - name: Check out LibreSync (path dependency of crates/momentum-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync
@@ -46,7 +46,7 @@ jobs:
           components: rustfmt
       - name: Run cargo fmt
         # Not --all: that would also format the LibreSync checkout in libresync-src.
-        run: cargo fmt -p momentum -p mo -p momentum-core -p momentum-ffi -p uniffi-bindgen -p sp-model -p sp-oplog -p sp-store -p sp-sync -p sp-p2p -- --check
+        run: cargo fmt -p momentum -p mo -p momentum-core -p momentum-ffi -p uniffi-bindgen -p momentum-model -p momentum-oplog -p momentum-store -p momentum-sync -p momentum-p2p -- --check
 
   core-tests:
     name: Core tests (no GTK)
@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.sha }}
-      - name: Check out LibreSync (path dependency of crates/sp-p2p)
+      - name: Check out LibreSync (path dependency of crates/momentum-p2p)
         uses: actions/checkout@v4
         with:
           repository: dan-hart/LibreSync
@@ -82,6 +82,10 @@ jobs:
         run: sudo apt-get update -q && sudo apt-get install -y -q gettext
       - name: POTFILES.in lists every file with strings
         run: build-aux/check-potfiles.sh
+      - name: Native callback strings survive extraction
+        run: |
+          python3 build-aux/tests/test_update_translations.py
+          python3 build-aux/update-translations.py --check
       - name: Every .po compiles
         run: |
           for f in po/*.po; do msgfmt --check --statistics -o /dev/null "$f"; done
@@ -102,7 +106,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         ref: ${{ inputs.ref || github.sha }}
-    - name: Check out LibreSync (path dependency of crates/sp-p2p)
+    - name: Check out LibreSync (path dependency of crates/momentum-p2p)
       uses: actions/checkout@v4
       with:
         repository: dan-hart/LibreSync

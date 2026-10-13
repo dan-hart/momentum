@@ -15,6 +15,7 @@ struct TaskEditor: SwiftUI.View {
     @Environment(\.dismiss) private var dismiss
     @Environment(MobileAppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(MobileAppearance.hapticsKey) private var haptics = true
     @State private var form = TaskFormModel()
     @State private var detail: TaskDetail?
     @State private var menu: TaskMenuInfo?
@@ -26,6 +27,7 @@ struct TaskEditor: SwiftUI.View {
     @State private var subtaskTitle = ""
     @State private var showRepeat = false
     @State private var confirmDelete = false
+    @State private var copyFeedback = NoteCopyFeedback()
     private enum Field: Hashable { case title, estimate, tags, notes, subtask }
     @FocusState private var focusedField: Field?
     @AccessibilityFocusState private var errorFocused: Bool
@@ -74,9 +76,18 @@ struct TaskEditor: SwiftUI.View {
                 }
             }
             .task { await load() }
+            .overlay(alignment: .bottom) {
+                if let message = copyFeedback.message {
+                    FeedbackToastView(toast: FeedbackToast(message: message, undoBatchID: nil, kind: .information))
+                        .padding(.horizontal, 16).padding(.bottom, 12)
+                }
+            }
+            .sensoryFeedback(.success, trigger: copyFeedback.generation) { oldValue, newValue in
+                InteractionFeedbackPolicy.shouldPresent(enabled: haptics, oldValue: oldValue, newValue: newValue)
+            }
             .onChange(of: error) { _, value in if value != nil { errorFocused = true } }
             .onAppear { model.activeTaskEditors += 1 }
-            .onDisappear { model.activeTaskEditors = max(0, model.activeTaskEditors - 1) }
+            .onDisappear { copyFeedback.dismiss(); model.activeTaskEditors = max(0, model.activeTaskEditors - 1) }
             .interactiveDismissDisabled(busy)
             .sheet(isPresented: $showRepeat) {
                 if let taskID {
@@ -145,7 +156,9 @@ struct TaskEditor: SwiftUI.View {
                         .focused($focusedField, equals: .notes)
                         .accessibilityLabel(String(localized: "Notes"))
                     Button(String(localized: "Copy the note"), systemImage: "doc.on.doc") {
-                        UIPasteboard.general.string = form.notes
+                        if copyFeedback.copy(form.notes), let message = copyFeedback.message {
+                            UIAccessibility.post(notification: .announcement, argument: message)
+                        }
                     }
                     .disabled(form.notes.isEmpty)
                 } header: {

@@ -41,13 +41,18 @@ blueprint-compiler):
 flatpak run --devel --share=network --filesystem=home --command=bash org.gnome.Sdk//50 -c '
   export PATH=/usr/lib/sdk/rust-stable/bin:$PATH &&
   meson setup target-sdk/pot-build &&
-  ninja -C target-sdk/pot-build momentum-pot momentum-update-po'
+  ninja -C target-sdk/pot-build momentum-update-translations'
 ```
 
 Commit `po/momentum.pot` and the updated `.po` files with the change that added the
 strings, so Weblate sees new strings as soon as they land on `main`. xgettext warns that
 `.blp` is an unknown extension and falls back to C parsing; that works for Blueprint's
 `_("…")` calls and can be ignored.
+
+The maintainer target also supplements Rust extraction with the earlier C parser,
+because modern gettext skips calls inside GTK's `glib::clone!` callback macros.
+With gettext installed, `python3 build-aux/update-translations.py` runs the same
+refresh directly. CI checks regenerated-key coverage and nested callback extraction.
 
 Wording rules for source strings, so translators get something translatable:
 

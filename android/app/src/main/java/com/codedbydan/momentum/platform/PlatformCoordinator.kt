@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 data class PlatformState(
     val syncing: Boolean = false,
+    val migratingFolder: Boolean = false,
     val error: String? = null,
     val errorDetails: String? = null,
     val failureKind: SyncFailureKind? = null,
@@ -65,6 +66,13 @@ internal fun AppSettings.backgroundSyncEligible(): Boolean =
 class PlatformCoordinator internal constructor(context: Context, private val repository: MomentumRepository,
     allowDisposableNotifications: Boolean,
     private val stateFile: AtomicFile = AtomicFile(File(repository.directory, "android-platform-state.json")),
+    private val migrateFolder: suspend (Engine, NextcloudSettings, SyncCancellation) -> NextcloudFolderMigrationReport = { engine, settings, token ->
+        engine.migrateNextcloudFolder(settings, "momentum", token, 120_000uL)
+    },
+    private val saveMigratedConnection: ((NextcloudSettings) -> Unit)? = null,
+    private val exchangeNextcloud: (Engine, NextcloudSettings, SyncCancellation, ULong) -> Unit = { engine, connection, token, budget ->
+        engine.syncNextcloudWithBudget(connection, token, budget)
+    },
 ) {
     constructor(context: Context, repository: MomentumRepository) : this(context, repository, false)
     private val context = context.applicationContext
@@ -86,6 +94,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
     private val taskCount = TaskCountNotifier(this.context, repository, isolated && !allowDisposableNotifications)
     private val taskSearch = if(!isolated && Build.VERSION.SDK_INT >= 31) TaskSearchIndex(this.context, repository) else null
     private var exchange: Exchange? = null
+    @Volatile private var migrationCancellation: SyncCancellation? = null
     @Volatile private var foregroundRequested = false
     @Volatile private var restorePaused = false
     @Volatile private var pairingRequested = false
@@ -253,6 +262,46 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
         }
         }
     }
+
+    /** Explicit checked copy. Other provider controls queue until the switch is committed. */
+    suspend fun migrateConnection(expected: NextcloudSettings): NextcloudFolderMigrationReport = withContext(Dispatchers.IO) {
+        control.withLock {
+            check(!restorePaused && repository.settings().provider == SyncProvider.Nextcloud)
+            check(vault.connection() == expected) { "The saved connection changed. Review it before copying the folder." }
+            check(expected.folder != "momentum") { "This connection already uses the Momentum folder." }
+            val token = SyncCancellation()
+            migrationCancellation = token
+            restorePaused = true
+            mutable.update { it.copy(migratingFolder = true, information = null) }
+            try {
+                debounceJob?.cancel(); automaticJob?.cancel(); automaticJob = null
+                drainExchange(); stopNearby()
+                val engine = repository.read { this }
+                val report = migrateFolder(engine, expected, token)
+                currentCoroutineContext().ensureActive()
+                check(!token.isCancelled()) { "Folder copying was cancelled. The original connection is unchanged." }
+                check(report.verified && report.sourceFolder == expected.folder && report.targetFolder == "momentum") {
+                    "The copied folder was not verified. The original connection is unchanged."
+                }
+                check(vault.connection() == expected) { "The saved connection changed during copying. Review it before switching." }
+                val saved = expected.copy(folder = report.targetFolder)
+                if(saveMigratedConnection != null) saveMigratedConnection.invoke(saved) else vault.saveConnection(saved)
+                clearError(R.string.folder_migration_complete)
+                report
+            } catch(error: Exception) {
+                if(error !is CancellationException && !token.isCancelled()) recordError(error)
+                throw error
+            } finally {
+                migrationCancellation = null; token.destroy()
+                restorePaused = false
+                mutable.update { it.copy(migratingFolder = false, revision = it.revision + 1) }
+                withContext(NonCancellable + Dispatchers.IO) {
+                    guarded { configureForeground() }; guarded { configureBackground() }
+                }
+            }
+        }
+    }
+    fun cancelFolderMigration() { migrationCancellation?.cancel() }
 
     fun syncNow(test: Boolean = false) {
         scope.launch { guarded {
@@ -426,7 +475,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
                     test -> engine.testNextcloudConnectionCancellable(connection, token, budgetMs)
                     // This core entry point has the shared bounded foreground budget (300s).
                     replace -> engine.replaceRemoteSyncFile(connection, token)
-                    else -> engine.syncNextcloudWithBudget(connection, token, budgetMs)
+                    else -> exchangeNextcloud(engine, connection, token, budgetMs)
                 }
                 // A read-only reachability probe cannot repair a damaged sync file
                 // or prove the last exchange succeeded. Keep its recovery/error state.
@@ -440,7 +489,11 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
                 // A requested cancellation is not a failed exchange or a success.
                 if (!token.isCancelled()) recordError(e)
                 false
-            } finally { mutable.update { it.copy(syncing = false) } }
+            } finally {
+                // Settings can commit even when the task exchange returns an error.
+                runCatching { repository.refreshAppSettings() }.onFailure { recordError(it) }
+                mutable.update { it.copy(syncing = false, revision = it.revision + 1) }
+            }
         }
         return Exchange(token, job).also { exchange = it }
     }
@@ -467,6 +520,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
                 when (event) {
                     is P2pEvent.SyncStarted -> mutable.update { it.copy(syncing = true, information = null) }
                     is P2pEvent.SyncCompleted -> {
+                        repository.refreshAppSettings()
                         mutable.update { it.copy(syncing = false, revision = it.revision + 1) }
                         if (event.error != null) recordError(IllegalStateException(event.error)) else clearError(null)
                         reconcileReminders()
@@ -477,8 +531,8 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
                         Message.LinkFailed, Message.LinkDeclined -> recordError(IllegalStateException(context.getString(R.string.link_failed)))
                         else -> Unit
                     }
-                    P2pEvent.StoreChanged -> { mutable.update { it.copy(revision = it.revision + 1) }; taskSearch?.requestReconcile(); reconcileReminders() }
-                    P2pEvent.StatusChanged -> mutable.update { it.copy(revision = it.revision + 1) }
+                    P2pEvent.StoreChanged -> { repository.refreshAppSettings(); mutable.update { it.copy(revision = it.revision + 1) }; taskSearch?.requestReconcile(); reconcileReminders() }
+                    P2pEvent.StatusChanged -> { repository.refreshAppSettings(); mutable.update { it.copy(revision = it.revision + 1) } }
                     P2pEvent.DevicesChanged, P2pEvent.DiscoveryUpdated -> refreshNearby()
                     is P2pEvent.Started -> Unit
                 }

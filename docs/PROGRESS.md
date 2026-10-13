@@ -1,9 +1,15 @@
 # Momentum progress and handoff
 
-Updated: 2026-10-11. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+Updated: 2026-10-13. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
+
+Current 2026-10-12 work is isolated on `task/native-features-release`, based on
+remote main `69682872`. The primary `task/sync-performance-recovery` checkout and
+its inherited edits are preserved. This request explicitly authorizes verified
+main integration, a patch bump, tagged release and an internal TestFlight build.
+The workspace and authorization paragraphs below describe earlier handoffs.
 
 Android integration was merged into local `main` through handoff commit `0839ecd`
 in `/Users/danhart/.codex/worktrees/sync-release-0-4-9/momentum`. The isolated
@@ -49,6 +55,183 @@ performed for this handoff.
 | Android | In progress on `task/android-native`; native Kotlin/Compose/Material 3 app using generated UniFFI and the shared Rust engine | Offline task/editor/list flows, optional Nextcloud/LibreSync, private backups, native reminders and opt-in task counts exist. Frozen gate11h source has 91 passing JVM tests, release APK/AAB, zero lint errors and strict 16 KiB native packaging. Controlled API26↔API37 LibreSync pairing/offline convergence/reopen and native minified SAF replacement pass. B-128 removes the large-emoji layout stall, B-129 protects native text Undo/source ownership, B-133 prevents nondurable edits, and B-134 streams private records within their unchanged bounds. Post-integration full native/minified and clean-source packaging checks pass for the dated handoff scope below; oversized imported-task editing still requires an approved private-draft format design. Physical accessibility, external-server/scheduler checks, optional automation and independent store-builder gates remain explicit in [Android checklist](ANDROID-PARITY-CHECKLIST.md). |
 
 ## Current priorities
+
+### 2026-10-13 — candidate ready for hosted verification
+
+All current local candidate checks pass for 0.4.10/410/4010, including the final
+B-157/B-158 native large-text repairs. The dirty source is frozen for its candidate
+commit. Both complete iOS 113-test view suites retain three existing skips;
+actual 410 first-project touches pass on 26.5/27. Native German maximum-text iOS
+preview shows the full wrapping callout/action, and sync/backup include/restore
+controls are independently off. Mac universal Release app passes the exact
+German 32pt/680px preview/real-editor gate plus English first-project/settings
+regressions. Android final explicitly opted-in suites pass 156/162 on API 26 and
+169/172 on API 37 with only documented assumptions; separate production
+LibreSync/Keystore two-emulator convergence/reopen passes. Earlier counts/details
+below identify source, artifacts and limits.
+
+Existing nonpublishing CI/macOS/Android jobs now run on task/** branches; pinned
+actionlint 1.7.12 and independent trigger review pass. This allows both Linux
+architecture builds before main integration. Next: candidate commit/branch push,
+clean committed-source Android packaging, exact-head hosted gates, authorized
+main push and exact-head checks, then tagged assets and signed internal TestFlight.
+No main/tag/release/upload mutation has occurred at this handoff. Prior physical,
+spoken, external-server/scheduler and store-admission limits remain explicit.
+
+### 2026-10-13 — versioned release candidate checks
+
+The dirty isolated candidate is 0.4.10 / Apple build 410 / Android code 4010. Both Rust
+workspace lanes pass 396 tests, with five existing benchmark/unsupported-host
+ignores. The supported Ubuntu 26.04 / GTK 4.22.4 / libadwaita 1.9.1 Broadway suite passes
+510 tests, with six existing ignores; its 110 mapped GTK tests cover the project
+picker, independent 720×700 Preferences, 250% typography, quick-entry tooltip,
+editor clipboard/toast, read-only recurring rows and optional settings controls.
+MomentumKit passes 204 tests and the separately enabled real Mac nearby bridge
+passes 1. MomentumMobile passes 169. Hosted iOS views pass 113 tests (three existing
+skips) on both 26.5/27 after B-142; transport lanes run 9 (one existing skip) each.
+The actual-touch B-142 regression fails before and passes after the route-container
+fix on both runtimes. The actual 0.4.10/410 shipping app and share extension build; first Home/Momentum
+selection, reentry, project switches and Today return pass using real touches on
+both 26.5/27, with exactly 9/11/5 demo task controls. Compiled iOS German catalog
+passes 441/441 entries; all 40 app/shared native feature string checks pass.
+
+Android's 99 JVM tests, default release APK/AAB and release lint pass. APK and AAB
+metadata agree on 0.4.10 / code 4010 / min 26 / target 37/nondebuggable; their complete notices
+match and the original pinned native/Rust inputs are retained. All eight native
+libraries pass 16 KiB LOAD/RELRO/ZIP alignment, including the bundle-generated APK.
+That minified APK is installed and read back byte-for-byte on the owned API 26/37
+runtimes: Today is visible, the same process remains alive, with 4 KiB / 16 KiB pages.
+The final fully opted-in native suites pass: API 26 runs 162 with 156 passes/six
+expected assumptions; API 37 runs 172 with 169 passes/three assumptions. Clipboard,
+copy feedback, notifications and source-context import all execute. The long-tag
+fixture now waits for actual Title focus/IME before scrolling; the import fixture
+establishes a genuinely available Morning source and preserves its existing task.
+Both have independent review. Their frozen source/APK hashes match the receipts.
+The separately enabled two-emulator production LibreSync/Keystore fixture also
+passes pairing, five-task encrypted offline convergence/reopen and scoped cleanup.
+Optional benchmark and platform-inapplicable clipboard assumptions remain explicit.
+No skipped fixture is counted as passing.
+
+Independent final candidate review approves the source scope without a remaining
+change-required blocker. Version alignment, explicit-package Rustfmt, 45 Android
+release-tool regressions, sound provenance, gettext callback extraction, catalog
+tooling, accessibility-audit self-test and updated Markdown targets pass. Earlier
+physical vibration, spoken accessibility, external-server/scheduler and store
+admission gaps remain separate from these scoped automated/native gates. The
+primary checkout's branch, HEAD, status and 23 inherited file hashes still match the
+resumed baseline. Mac universal 0.4.10/410 build and all compiled German resources pass. Live demo
+inspection verifies first-project navigation, overdue/preview labels, schedule
+editing and independent default-off settings controls. B-157 records a newly
+reproduced minimum-width German 32pt preview layout issue. The final stacked plain
+schedule action and wrapping callout pass the same native 680px/32pt case; its
+346pt row contains the 338pt combined child with 4pt bottom padding. English
+first-project/preview/settings regressions and real repeat-editor open/cancel also
+pass, with no unnamed custom controls in the scoped native window audit.
+B-158 gives the iOS preview callout its own wrapping line after the maximum-text
+German screenshot exposed metadata ellipsis. Rebuilt iOS app/extension, both 113-test
+view suites (three existing skips each), and actual first-touch routes pass again;
+compiled German catalog is now 442/442 and all 40 native feature string checks pass.
+Committed-source packaging, hosted
+exact-head CI, tagged assets and signed TestFlight processing remain outstanding.
+
+### 2026-10-13 — resumed verification after interruption
+
+The implementation is still local/uncommitted on task/native-features-release;
+remote main remains 69682872. The authorized patch version is now prepared locally
+as 0.4.10, with Apple build410 and Android code4010; final shipping checks follow. Live App Store
+Connect readback has one VALID 0.4.9 (409) build and no 0.4.10 build. No release
+mutation has occurred. The user confirmed B-142 uses Lists → project on iOS 0.4.9.
+Actual simulator touch now reproduces the spinner and second-tap recovery on a
+current-source disposable app. The trace shows route identity on the child leaves
+an old navigation container reappearing and cancelling the first project load.
+The container-identity repair is now applied in the branch with an opt-in actual-
+touch regression. The same regression fails before and passes after on 26.5/27;
+first selection, reentry, project switching and Today return keep correct counts.
+Hosted delayed/stale loads and foreground/sync replacement probes pass.
+Independent quality review approves the fix; final exact-source checks follow.
+Rapid actual-touch and physical iPad acceptance remain unverified.
+
+Persistent latest iOS reports pass 169 mobile package tests, 113 hosted view tests
+(three existing skips) and nine transport tests (one existing skip). The visible
+floating-add circle is identical on 26.5 and 27; its test now measures painted
+bounds instead of native fitting padding. Android scoped clock/copy/import tests
+pass 12/12 on API26/API37 after establishing and restoring fixture touch mode.
+Full API26 passes 162. Full API37 exposed an immediate OS cancellation-observation
+race in an existing reminder test; independent scoped five-test reproduction
+passes unchanged, and bounded fresh-observation waits preserve all data/error/
+absence assertions. No Android product cancellation fix is claimed.
+
+### 2026-10-12 — native features and authorized patch release (F-061–F-067, B-139–B-158)
+
+Work is isolated on task/native-features-release, based on 69682872. The primary
+checkout and its inherited changes are preserved. Dan explicitly requested
+implementation, regression tests, verification, a main push, patch increment and
+release including an internal TestFlight build. No commit, push, tag or upload has
+occurred yet. Current work is a dirty candidate; a final exact-head handoff will
+replace these interim acceptance details.
+
+Approved decisions: preserve existing task/backup/sync formats; retain existing
+connections and offer an opt-in verified copy to momentum; transfer/sync only the
+nine portable display/task/sound choices with separate default-off consent;
+recurring future occurrences are read-only previews with Edit repeat schedule.
+Credentials, connections, permissions, fonts, windows and device controls remain
+local. [Design](superpowers/specs/2026-10-12-native-features-release-design.md) and
+[plan](superpowers/plans/2026-10-12-native-features-release.md) define exact scope.
+
+Interim verification before naming cleanup: both Rust workspace lanes passed
+390 tests with five existing ignored tests. Core projection/settings/convergence,
+verified folder copy, atomic local-summary updates, fresh native Nextcloud bootstrap
+and damaged-store startup integrity have independent specification/quality review.
+Linux's supported Ubuntu GTK/libadwaita suite passed all 102 UI tests, including
+mapped project selection, useful preferences allocations, exact clipboard/editor
+toast, preview/overdue rows, settings controls and unseen synced-key preservation.
+Apple native adapter tests verify the independent settings backup matrix,
+settings-only task/privacy preservation, local-delta/export freshness and existing
+folder defaults. Hosted iOS 26.5 tests passed captured-Today share import/dedup,
+editor-local full copy and native settings transfer boundaries. First valid-project
+navigation from Lists and shipping-demo Search loaded on a single tap; the reported
+spinner route remains unconfirmed (B-142), so no fix is claimed yet.
+
+Android specification and quality reviews approved the native changes, including
+coroutine-owned folder-copy cancellation recovery and unknown sound-slug retention
+(B-146/B-149). Both repairs have native regressions on API26/API37. The release
+APK/AAB build, 99 JVM tests, lint, metadata, dependency notices and native 16 KiB
+alignment checks pass at 0.4.9 before the version bump. Full native suites exposed
+clipboard test timing gaps: use Compose clock time for Snackbar expiry, await async
+Paste completion, and use the accessible Copy action while retaining physical-tap
+coverage. A deliberate queued-toast mutant fails the tightened expiry check; all ten
+clipboard/import regressions pass on both runtimes. The full API26 suite passes 162 tests. API37 exposed two native-action test
+synchronization gaps; scoped tests pass unchanged, and tightened action-commit
+checks are being verified before its complete rerun. API37's owned emulator boots with corrected local AVD target metadata;
+unrelated emulators are untouched.
+
+Compiler-extracted German catalogs validate all current changed keys (Mac app357,
+shared Kit224, iOS/app-share436); all68 new gettext keys have reviewed non-fuzzy
+German translations. The new maintainer translation workflow tests nested GTK
+callback extraction. Legacy gettext gaps remain explicitly outside this patch.
+Separate shipping extraction builds pass; final renamed consumers, localized
+native interactions, broad Apple/Android runtime and release packaging remain.
+
+Additional review repairs B-151–153 restore Mac listing refresh, visible local
+persistence errors and real retained-intent Retry, plus full native seed recovery.
+The Mac package passed 202 tests before the final atomicity repair, and the required
+nearby bridge passed. Settings imports now commit in the core before replacing
+native retry intent; invalid settings-only/combined files preserve all values and
+durable bytes, while successful partial imports retain missing native choices.
+Mac15/iOS18 settings tests and independent atomicity/callback checks pass with
+specification and quality approval. Final shipping checks follow. Naming cleanup and safe legacy-folder preservation (B-154) have
+both specification and quality approval. Fresh controller Rust workspace lanes each
+pass 396 tests with five existing ignores after B-156 bounds recurring preview
+notes without changing stored templates or actual task materialization. B-155
+keeps Android device-only controls usable when optional settings persistence fails;
+its ten repository regressions pass on API26/API37 with independent approval.
+
+Next: finish bounded-preview review and remaining native action checks; resolve B-142's reported path;
+complete native runtime, shipping build and localization checks; then exact-head CI,
+patch bump, authorized main/tagged release and signed
+internal TestFlight processing/readback. Physical vibration and spoken screen-reader
+output are not inferred from automated fixtures. No release-success claim is made
+from signing profiles or an archive alone.
 
 ### 2026-10-11 — selectable completion sounds (F-056)
 
@@ -643,14 +826,14 @@ handoff below. This request authorizes a main push, with no tag or release reque
   `Engine::sync_nextcloud_with_budget` and `replace_remote_sync_file`. The first
   read-back used HEAD and reported "kept 0 bytes" against the real server (nginx answers
   HEAD without Content-Length); PROPFIND replaced it. `sha1` is now a direct dependency
-  of sp-sync (already in the graph through other crates).
+  of momentum-sync (already in the graph through other crates).
 - **Apps:** MomentumKit `Strings.syncFailureHeadline/Remedy` shared by macOS and iOS;
   macOS popover with headline, remedy, Details disclosure, Try Again and Replace Server
   Copy… (confirmation); Linux dialog with the same and a `replace` response plus a confirm
   dialog, 31 German strings; iOS failure section with headline, remedy, Trying again…/Last
   tried, Try Again, Replace Server Copy… (confirmation) and Details; background wakes use
   the 25 s budget through `nextcloudBackgroundOperation`.
-- **Checks:** sp-sync 18 passed; core 141 passed (transport fixture answers PROPFIND);
+- **Checks:** momentum-sync 18 passed; core 141 passed (transport fixture answers PROPFIND);
   workspace tests excluding the GTK app pass; GTK app and tests compile
   (`cargo check -p momentum --tests`; the new dialog test runs in CI's Flatpak jobs);
   Mac package 141 passed (strings coverage test added); iOS fast lane 157 passed; iOS
@@ -1103,7 +1286,7 @@ handoff below. This request authorizes a main push, with no tag or release reque
   sandbox so its local Unix sockets were permitted. Both
   `cargo test --workspace --exclude momentum` and the `--all-features --all-targets`
   variant passed; the manual latency sample remained ignored by design and the only
-  diagnostic was the existing unused-`mut` warning in `sp-store` tests.
+  diagnostic was the existing unused-`mut` warning in `momentum-store` tests.
   `macos/scripts/build-core.sh --debug` completed all macOS/device/simulator slices.
   `build-aux/test.sh` could not start because this Mac has no `flatpak` executable, so
   Linux runtime behavior remains unverified rather than passed.

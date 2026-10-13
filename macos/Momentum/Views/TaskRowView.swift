@@ -15,8 +15,41 @@ struct TaskRowView: SwiftUI.View {
     private var compact: Bool { density == "compact" }
 
     var body: some SwiftUI.View {
+        Group {
+            if let configuration = row.occurrence?.repeatCfgId {
+                VStack(alignment: .leading, spacing: compact ? 2 : 6) {
+                    rowContent
+                    Button {
+                        state.sheet = .repeatConfiguration(configuration)
+                    } label: {
+                        Text(String(localized: "Edit repeat schedule"))
+                            .appFont(.body, area: .interface)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            } else {
+                rowContent
+            }
+        }
+        .appFont(.body, area: .content)
+        .padding(.leading, row.isSubtask ? 28 : 0)
+        .padding(.vertical, compact ? 0 : 6)
+        .contentShape(Rectangle())
+        .listRowBackground(targeted ? Color.accentColor.opacity(0.15) : nil)
+        .modifier(TaskDragSource(id: row.id))
+        .modifier(ReorderTarget(row: row, targeted: $targeted))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var rowContent: some SwiftUI.View {
         HStack(alignment: .center, spacing: 10) {
-            if row.archived {
+            if row.occurrence != nil {
+                Image(systemName: "repeat").foregroundStyle(.secondary)
+            } else if row.archived {
                 Image(systemName: "checkmark")
                     .foregroundStyle(.secondary)
                     .frame(width: 16)
@@ -37,10 +70,17 @@ struct TaskRowView: SwiftUI.View {
             }
             VStack(alignment: .leading, spacing: compact ? 1 : 4) {
                 Text(row.title)
+                    .appFont(.body, area: .content)
                     .foregroundStyle(row.isDone ? .secondary : .primary)
                     .strikethrough(row.isDone, color: .secondary)
                     .lineLimit(compact ? 1 : 2)
                     .fixedSize(horizontal: false, vertical: true)
+                if row.occurrence != nil {
+                    Text(String(localized: "Recurring preview"))
+                        .appFont(.caption, area: .content)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let subtitle = subtitle {
                     subtitle
                         .appFont(.caption, area: .content)
@@ -52,14 +92,6 @@ struct TaskRowView: SwiftUI.View {
             Spacer(minLength: 0)
             badges
         }
-        .appFont(.body, area: .content)
-        .padding(.leading, row.isSubtask ? 28 : 0)
-        .padding(.vertical, compact ? 0 : 6)
-        .contentShape(Rectangle())
-        .listRowBackground(targeted ? Color.accentColor.opacity(0.15) : nil)
-        .modifier(TaskDragSource(id: row.id))
-        .modifier(ReorderTarget(row: row, targeted: $targeted))
-        .accessibilityElement(children: .combine)
     }
 
     /// Project · ~estimate · day time · repeat · #tags, the order every list uses.
@@ -70,10 +102,14 @@ struct TaskRowView: SwiftUI.View {
             run.foregroundColor = color(hex)
             return run
         }
-        let parts = TaskSubtitle.parts(for: row).map { part -> AttributedString in
+        let parts = TaskSubtitle.parts(for: row).filter { $0.kind != .occurrence }.map { part -> AttributedString in
             switch part.kind {
             case .project: return tinted("●", part.color) + AttributedString(" " + part.text)
             case .tag: return tinted(part.text, part.color)
+            case .overdue:
+                var text = AttributedString(part.text)
+                text.foregroundColor = .red
+                return text
             default: return AttributedString(part.text)
             }
         }
@@ -85,6 +121,10 @@ struct TaskRowView: SwiftUI.View {
     @ViewBuilder
     private var badges: some SwiftUI.View {
         HStack(spacing: 8) {
+            if row.overdue {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    .accessibilityHidden(true)
+            }
             if let notes = row.notesPreview {
                 Image(systemName: "note.text")
                     .help(notes)
@@ -118,7 +158,7 @@ private struct TaskDragSource: ViewModifier {
     @Environment(AppState.self) private var state
     let id: String
     func body(content: Content) -> some SwiftUI.View {
-        if state.row(id)?.archived == false {
+        if let row = state.row(id), !row.archived, row.occurrence == nil {
             content.draggable(containerItemID: id)
         } else {
             content
@@ -133,7 +173,7 @@ private struct ReorderTarget: ViewModifier {
     @Binding var targeted: Bool
 
     func body(content: Content) -> some SwiftUI.View {
-        if row.archived || row.isSubtask {
+        if row.archived || row.isSubtask || row.occurrence != nil {
             content
         } else {
             content.dropDestination(for: TaskTransfer.self) { items, _ in

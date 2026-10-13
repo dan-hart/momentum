@@ -14,6 +14,7 @@ import com.codedbydan.momentum.data.MomentumRepository
 import com.codedbydan.momentum.platform.CompletionSoundChoice
 import com.codedbydan.momentum.platform.CompletionSoundPlayer
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -79,6 +80,23 @@ class CompletionSoundNativeTest {
         repo = MomentumRepository(app, directory)
         assertEquals(CompletionSoundChoice.BRIGHT_FINISH, repo.settings().completionSoundChoice)
         assertFalse(repo.settings().completionSound)
+        suspend fun assertRawChoiceIsRetained() {
+            repo.close()
+            val readScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            try {
+                val native = PreferenceDataStoreFactory.create(scope = readScope) { File(directory, "android.preferences_pb") }
+                assertEquals("future-sound", native.data.first()[stringPreferencesKey("completion-sound-choice")])
+            } finally { readScope.coroutineContext[Job]!!.cancelAndJoin() }
+            repo = MomentumRepository(app, directory)
+        }
+        assertRawChoiceIsRetained()
+        repo.updateSettings { it.copy(colorfulLabels = false) }
+        val partial = File(directory, "unrelated-settings.json").apply {
+            writeText("""{"version":1,"values":{"grouping":"project"}}""")
+        }
+        repo.importAppSettings(partial)
+        assertEquals(CompletionSoundChoice.BRIGHT_FINISH, repo.settings().completionSoundChoice)
+        assertRawChoiceIsRetained()
     }
 
     @Test fun eachRealCompletionVariantUsesCurrentSavedChoiceOnce() = runBlocking {

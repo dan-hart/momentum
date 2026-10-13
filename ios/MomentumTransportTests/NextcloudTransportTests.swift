@@ -347,7 +347,7 @@ import XCTest
     func worker(_ name: String, fullBackup: Bool = false) async throws -> EngineWorker {
         let worker = try await EngineWorker.openChecked(directory: directory.appendingPathComponent(name))
         if fullBackup {
-            // Existing desktop/SP contract refuses to bootstrap a server from a partial
+            // Existing task sync contract refuses to bootstrap a server from a partial
             // dataset. Supply a disposable complete backup through the real import API.
             let bytes = try await worker.exportBackup()
             var backup = try XCTUnwrap(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
