@@ -56,6 +56,37 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-13 — Homebrew 0.4.11 published; Flathub human submission required
+
+The user explicitly requested updating both channels. Release gate logs confirm
+update_homebrew=false and open_flathub_pr=false because HOMEBREW_TAP_TOKEN and
+FLATHUB_TOKEN are absent. Direct publishing updates the public [Homebrew tap](https://github.com/dan-hart/homebrew-tap/commit/ae3cb0f1a07b6e5edbeacb649f940c7ff23f9059)
+to 0.4.11 for the Mac app and Mac/Linux CLI; unrelated tap packages are retained.
+F-068/B-161 cover this packaging scope. The current CLI template failed stock
+Homebrew checks before repair; the canonical Mac default and Linux overrides now
+pass stock style, strict all-OS/all-architecture formula audit and strict cask audit
+without exclusions. The added real-Homebrew consumer check verifies all six simulated
+platform/architecture URL, inferred-version and SHA256 selections against final
+release bytes. Both Mac packages download successfully, and the installed formula
+passes brew test and reports mo 0.4.11. The existing earlier ~/.local/bin/mo shadows
+the Homebrew CLI on this machine; the tested executable is /opt/homebrew/bin/mo.
+The existing Mac app is ad hoc signed, so its cask retains the notarization caveat;
+no app installation/launch or Linux Homebrew installation is inferred.
+
+F-069/B-162 remain Blocked: no Flathub app repository exists, and initial
+[PR #10133](https://github.com/flathub/flathub/pull/10133) is closed for its missing
+checklist. [Current Flathub policy](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy)
+requires human submission handling and provenance disclosure and prohibits
+AI-assisted manifests and AI-agent submission interactions. The existing 0.4.11
+reference archive has a verified published checksum and exact Momentum/LibreSync
+source pins. No Flathub manifest, submission prose or review reply is generated,
+and no external Flathub branch/body/comment/state is changed. Next action belongs
+to a human reviewing the current rules, packaging provenance and closed submission.
+The signed GitHub Pages Flatpak channel and TestFlight 411 remain already delivered.
+No secrets are added; future automatic Homebrew updates still need their scoped token.
+The immutable release/tag/assets are retained. This follow-up changes Homebrew
+packaging, its consumer check and records; native app feature code remains unchanged.
+
 ### 2026-10-13 — verified 0.4.11 release and internal TestFlight 411
 
 The approved fixes and features are delivered from `e67ac9d` on

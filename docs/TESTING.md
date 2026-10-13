@@ -18,6 +18,27 @@ Native preference/playback tests cover default Bright Finish, persistence, unkno
 choice fallback, off-by-default behavior and silence for undo/reopening. Audio device
 output remains a separate native acceptance check.
 
+## Homebrew release packages (F-068/B-161)
+
+Use a clean task branch in the existing trusted tap; preserve inherited changes.
+Download final release files and SHA256SUMS into `dist`, then render and validate:
+
+```sh
+build-aux/release.py homebrew --assets dist --out "$(brew --repository dan-hart/tap)"
+brew style dan-hart/tap/momentum-cli dan-hart/tap/momentum
+brew audit --formula --strict --os all --arch all dan-hart/tap/momentum-cli
+brew audit --cask --strict dan-hart/tap/momentum
+brew ruby build-aux/tests/test_homebrew_packages.rb "$(build-aux/release.py version)" dist
+brew fetch --formula dan-hart/tap/momentum-cli
+brew fetch --cask dan-hart/tap/momentum
+brew test dan-hart/tap/momentum-cli # requires the current formula installed
+```
+
+The consumer check uses Homebrew's actual loader with simulated Mac/Linux ARM/Intel CLI and
+both Mac cask selections, verifying inferred versions, release URLs and digests
+against the asset bytes. These checks do not launch the app or inspect task data.
+Native Linux Homebrew installation and Mac app launch need separate evidence.
+
 ## Run it
 
 ```sh

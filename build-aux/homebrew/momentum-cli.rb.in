@@ -2,28 +2,22 @@
 # Installs the prebuilt `mo` from the GitHub Release, so no Rust toolchain or LibreSync
 # checkout is needed: brew install dan-hart/tap/momentum-cli
 #
-# `brew audit --strict` notes that `url` inside `on_macos`/`on_linux` is not the
-# homebrew-core layout; the DSL accepts it and this is the usual shape for a tap that
-# ships prebuilt binaries per platform. The `momentum` cask installs the same `mo`, so
-# install one or the other.
+# The universal Mac archive is the default; Linux selects its native architecture.
+# The `momentum` cask installs the same `mo`, so install one or the other.
 class MomentumCli < Formula
   desc "Command-line companion for Momentum: add, list, complete and sync tasks"
   homepage "https://github.com/dan-hart/momentum"
-  version "@VERSION@"
+  url "https://github.com/dan-hart/momentum/releases/download/v@VERSION@/mo-v@VERSION@-macos-universal.tar.gz"
+  sha256 "@SHA_MO_MACOS@"
   license "GPL-3.0-or-later"
-
-  on_macos do
-    url "https://github.com/dan-hart/momentum/releases/download/v#{version}/mo-v#{version}-macos-universal.tar.gz"
-    sha256 "@SHA_MO_MACOS@"
-  end
 
   on_linux do
     on_intel do
-      url "https://github.com/dan-hart/momentum/releases/download/v#{version}/mo-v#{version}-linux-x86_64.tar.gz"
+      url "https://github.com/dan-hart/momentum/releases/download/v@VERSION@/mo-v@VERSION@-linux-x86_64.tar.gz"
       sha256 "@SHA_MO_LINUX_X86_64@"
     end
     on_arm do
-      url "https://github.com/dan-hart/momentum/releases/download/v#{version}/mo-v#{version}-linux-aarch64.tar.gz"
+      url "https://github.com/dan-hart/momentum/releases/download/v@VERSION@/mo-v@VERSION@-linux-aarch64.tar.gz"
       sha256 "@SHA_MO_LINUX_AARCH64@"
     end
   end

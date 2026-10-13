@@ -78,6 +78,13 @@ Before tagging, run on a real Mac what CI cannot: the opt-in nearby-sync test in
 A release with a missing optional secret still completes: the optional job is skipped
 and the release stays reproducible by rerunning the workflow once the secret is set.
 
+Check each channel independently: a successful GitHub Release does not establish
+that Homebrew or Flathub is current. When the tap token is absent, an explicitly
+authorized manual update can use the same renderer with final public assets; run
+the [Homebrew package checks](TESTING.md#homebrew-release-packages-f-068b-161)
+before pushing the two tap definitions. Flathub admission remains a separate human
+process under its current rules.
+
 The workflow publishes desktop apps, CLI archives and verified Android APK/AAB/source
 artifacts. The iOS source version also advances, but this workflow does not submit an
 iOS build to App Store Connect. Android store submissions are separate from these
@@ -117,11 +124,23 @@ its APK is never included in the release. Actual store submission needs separate
 
 ## Flathub
 
-Momentum is not on Flathub yet. The first submission is by hand, with the files from the
-release's `flathub-vX.Y.Z.tar.gz`: the manifest pins the tag's commit and the LibreSync
-tag it was built with, and `cargo-sources.json` vendors every crate for an offline build.
-Once `flathub/io.github.dan_hart.Momentum` exists and `FLATHUB_TOKEN` is set, every later
-release opens its update pull request automatically. Lint before submitting:
+Momentum is not on Flathub yet. As checked on 2026-10-13, initial
+[PR #10133](https://github.com/flathub/flathub/pull/10133) is closed for a missing
+submission checklist and `flathub/io.github.dan_hart.Momentum` does not exist.
+The release's `flathub-vX.Y.Z.tar.gz` is a reference artifact with exact Momentum
+and LibreSync source pins plus offline Cargo sources; it is not an accepted listing
+or proof of a compliant submission.
+
+Follow the [current submission guide](https://docs.flathub.org/docs/for-app-authors/submission)
+and [AI-content policy](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy).
+The policy requires disclosure of known AI-generated app/packaging material,
+prohibits AI-assisted manifests, and requires humans to handle submission PRs,
+commit messages, descriptions and review interactions. A human must review
+provenance, author compliant packaging and handle the existing closed PR under
+its review guidance. Do not use an AI agent or enable the legacy token-gated
+workflow expecting it to perform this first submission. The existing job can
+only target an app repository after admission; any later automation must also
+satisfy the rules in effect at that time. Lint checks remain useful diagnostics:
 
 ```sh
 flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.dan_hart.Momentum.json

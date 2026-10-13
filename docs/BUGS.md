@@ -14,6 +14,20 @@ severity from evidence; do not infer security or data loss from an ordinary sync
 
 Feature evidence began in the isolated task/native-features-release worktree based on 69682872. Final feature source f23df0a and metadata/test correction e67ac9d are verified for the recorded scopes and delivered in 0.4.11; see [PROGRESS.md](PROGRESS.md) for exact-source CI, native limits and release receipts.
 
+## B-161 — Homebrew packages lag releases and the CLI template fails current audit
+
+- **Severity:** Medium. **Impact:** Mac cask and Mac/Linux CLI remained at 0.4.0 while GitHub shipped 0.4.11. Mobile distribution is unaffected.
+- **Cause/fix:** The release has no HOMEBREW_TAP_TOKEN, so its update_homebrew gate is false. Direct authorized publishing uses the existing account. Current stock Homebrew also reproduces two ComponentsOrder errors for the Mac download block and a redundant-version audit error. Put the universal Mac archive at the formula root, infer the version from its literal URL, and retain the native Linux overrides. Actual release URLs and digests are unchanged by the layout correction.
+- **Regression/evidence:** Original stock style/audit checks fail with those diagnostics; corrected definitions pass unmodified style, strict all-OS/all-architecture formula audit and strict cask audit. The real Homebrew loader checks all six simulated package selections against public release bytes, downloads both Mac packages, and installs/tests the CLI at 0.4.11. Public tap main is ae3cb0f. The reusable consumer check is build-aux/tests/test_homebrew_packages.rb.
+- **Status/remaining:** Verified for package definitions, checksums and recorded Mac CLI installation. Native Linux Homebrew installation and Mac app launch are separate checks. Future workflow-driven tap updates still require a scoped tap token; no credential was copied into Actions.
+
+## B-162 — Flathub initial submission was closed and the release has no app repository
+
+- **Severity:** Medium. **Impact:** Linux Flathub listing is unavailable; signed GitHub Pages Flatpak refs are already 0.4.11. Other platforms do not use Flathub.
+- **Cause:** Initial [PR #10133](https://github.com/flathub/flathub/pull/10133) was automatically closed on 2026-09-09 because its submission checklist was missing. No flathub/io.github.dan_hart.Momentum repository exists, and FLATHUB_TOKEN is absent. The release gate is open_flathub_pr=false.
+- **Investigation/evidence:** Live repository/PR state and release gate logs are checked 2026-10-13. The existing 0.4.11 archive checksum matches SHA256SUMS; its source pins are Momentum e67ac9d and LibreSync 839c98c/v0.6.0. This verifies a reference artifact, not Flathub eligibility, admission or an offline Flathub build.
+- **Status/next:** Blocked on human submission under [current Flathub requirements](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy). A human must assess and disclose app/packaging provenance, author a compliant manifest and handle the existing closed submission according to its review guidance. No Flathub files, PR body, comments or reopening were changed by this follow-up.
+
 ## B-139 — Linux task editor project picker selects the wrong item
 
 - **Severity:** Medium. **Impact:** Linux reproduced in a mapped GTK combo, including nonfirst/duplicate-title projects. Other native pickers are unaffected by this GTK factory bug.
