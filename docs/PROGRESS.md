@@ -56,6 +56,25 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-13 — user confirms self-hosted Linux shipping channel
+
+The user clarifies that Linux should ship through the existing signed repository
+on [GitHub Pages](https://dan-hart.github.io/momentum/). That channel is already
+0.4.11 for x86_64 and aarch64. Fresh isolated OSTree pulls confirm both versions
+and Good signature; live .flatpakref/.flatpakrepo endpoints have the correct stable
+app/repository and public key. Homebrew 0.4.11 and TestFlight 411 are also already
+delivered. Flathub admission (F-069/B-162) is now explicitly deferred and is not a
+blocker for the requested release; no Flathub branch/PR/comment/state is changed.
+
+Live inspection found one remaining customer-facing branding gap (F-067/B-163)
+in the separately hosted static page and repository descriptor. [gh-pages commit
+6928b9f](https://github.com/dan-hart/momentum/commit/6928b9f9d2a29b7137aefc5f0e8f463ebe1acd41)
+changes one description line in each file. Public readback verifies the new
+wording. Parsed descriptor key sets, URL and GPG key are preserved; the commit
+diff contains no signed ref, summary or artifact changes. No binary rebuild or
+version bump is needed. Main-source changes in this follow-up are records only;
+the existing primary checkout and its inherited changes remain preserved.
+
 ### 2026-10-13 — Homebrew 0.4.11 published; Flathub human submission required
 
 The user explicitly requested updating both channels. Release gate logs confirm

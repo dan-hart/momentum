@@ -14,6 +14,12 @@ severity from evidence; do not infer security or data loss from an ordinary sync
 
 Feature evidence began in the isolated task/native-features-release worktree based on 69682872. Final feature source f23df0a and metadata/test correction e67ac9d are verified for the recorded scopes and delivered in 0.4.11; see [PROGRESS.md](PROGRESS.md) for exact-source CI, native limits and release receipts.
 
+## B-163 — Self-hosted download page and repository descriptor retain obsolete branding
+
+- **Severity:** Low. **Impact:** The public Linux download page and software-center repository description still mention Super Productivity after the source/native branding cleanup. Other native clients do not consume this Flatpak descriptor.
+- **Cause/fix:** These static files live only on gh-pages, outside the main-source scan. Commit 6928b9f changes the tagline in index.html and Comment in momentum.flatpakrepo to the approved native-planner/optional-sync wording. The two-file diff has one replaced line per file. Parsed descriptor keys, URL, public signing key, signed refs, summary and release artifacts are unchanged.
+- **Evidence/status:** Verified for hosted metadata: public descriptor/page readback, exact two-line GitHub diff, reachable install/repository links and fresh isolated OSTree pulls for both architectures at 0.4.11 with Good signature. No app/data migration, binary rebuild or new version is required. Related F-067; latest PROGRESS handoff records the user-approved self-hosted channel.
+
 ## B-161 — Homebrew packages lag releases and the CLI template fails current audit
 
 - **Severity:** Medium. **Impact:** Mac cask and Mac/Linux CLI remained at 0.4.0 while GitHub shipped 0.4.11. Mobile distribution is unaffected.
@@ -26,7 +32,7 @@ Feature evidence began in the isolated task/native-features-release worktree bas
 - **Severity:** Medium. **Impact:** Linux Flathub listing is unavailable; signed GitHub Pages Flatpak refs are already 0.4.11. Other platforms do not use Flathub.
 - **Cause:** Initial [PR #10133](https://github.com/flathub/flathub/pull/10133) was automatically closed on 2026-09-09 because its submission checklist was missing. No flathub/io.github.dan_hart.Momentum repository exists, and FLATHUB_TOKEN is absent. The release gate is open_flathub_pr=false.
 - **Investigation/evidence:** Live repository/PR state and release gate logs are checked 2026-10-13. The existing 0.4.11 archive checksum matches SHA256SUMS; its source pins are Momentum e67ac9d and LibreSync 839c98c/v0.6.0. This verifies a reference artifact, not Flathub eligibility, admission or an offline Flathub build.
-- **Status/next:** Blocked on human submission under [current Flathub requirements](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy). A human must assess and disclose app/packaging provenance, author a compliant manifest and handle the existing closed submission according to its review guidance. No Flathub files, PR body, comments or reopening were changed by this follow-up.
+- **Status/next:** Planned with user-approved deferral: the user confirms the intended shipping channel is the existing self-hosted signed repository, which is already 0.4.11. Flathub is not a release blocker. Any future admission requires human submission under [current Flathub requirements](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy). A human must assess and disclose app/packaging provenance, author a compliant manifest and handle the existing closed submission according to its review guidance. No Flathub files, PR body, comments or reopening were changed by this follow-up.
 
 ## B-139 — Linux task editor project picker selects the wrong item
 

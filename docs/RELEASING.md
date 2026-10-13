@@ -122,6 +122,18 @@ its temporary decoded key after the job and does not pass signing secrets to ord
 push/PR builds. The bundle alignment fixture uses a separate disposable validation key;
 its APK is never included in the release. Actual store submission needs separate approval.
 
+## Self-hosted Linux distribution
+
+The user-confirmed Linux shipping channel is the signed Flatpak repository on
+[GitHub Pages](https://dan-hart.github.io/momentum/). The release workflow publishes
+both stable architectures there; it does not require Flathub app admission.
+As verified 2026-10-13, both refs are 0.4.11 with valid GPG signatures. New installs
+use momentum.flatpakref; installed copies update through the existing remote.
+Static index.html and momentum.flatpakrepo live on gh-pages and must be inspected
+alongside source branding changes; preserve their URLs, public key and signed
+OSTree files when changing descriptive copy. Future Flathub admission is deferred
+and does not block this self-hosted channel.
+
 ## Flathub
 
 Momentum is not on Flathub yet. As checked on 2026-10-13, initial
