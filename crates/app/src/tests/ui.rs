@@ -1133,23 +1133,111 @@ fn copying_notes_shows_feedback_inside_the_open_editor_and_copies_complete_text(
 #[test]
 fn preferences_on_a_short_desktop_window_have_a_useful_independent_height() {
     on_gtk(|| {
+        for (requested_width, solid_decorations) in [(600, false), (600, true), (480, false), (480, true)] {
+            let (win, _dir) = empty_window();
+            win.set_default_size(requested_width, 400);
+            // Solid native decorations consume five pixels on each side. GNOME
+            // SDK Broadway uses them, so a 600×400 request has 590×390 content.
+            if solid_decorations {
+                win.add_css_class("solid-csd");
+            }
+            win.present();
+            pump_ms(1_000);
+            let parent_size = (win.width(), win.height());
+            assert!(
+                (requested_width - 20..=requested_width).contains(&parent_size.0),
+                "parent width: {parent_size:?}"
+            );
+            assert!((380..=400).contains(&parent_size.1), "parent height: {parent_size:?}");
+            let prefs = crate::prefs::MomentumPrefs::default();
+            prefs.present(Some(&win));
+            pump_ms(1_000);
+            assert!(
+                prefs.height() >= 600,
+                "Preferences need usable desktop height, got {} with parent {parent_size:?} (solid decorations: {solid_decorations})",
+                prefs.height()
+            );
+            assert!(
+                prefs.width() >= 600,
+                "Preferences need usable desktop width, got {}",
+                prefs.width()
+            );
+            let window = prefs
+                .root()
+                .and_downcast::<gtk::Window>()
+                .expect("native preferences window");
+            assert_ne!(window, win.clone().upcast::<gtk::Window>());
+            assert_eq!(window.transient_for(), Some(win.clone().upcast()));
+            assert!(window.is_modal());
+            assert!(window.is_resizable());
+            assert_eq!(
+                (win.width(), win.height()),
+                parent_size,
+                "opening Preferences preserves the parent allocation"
+            );
+            prefs.close();
+            pump_ms(300);
+            assert_eq!(
+                (win.width(), win.height()),
+                parent_size,
+                "closing Preferences preserves the parent allocation"
+            );
+            win.close();
+        }
+    });
+}
+
+#[test]
+fn preferences_keep_compact_windows_embedded_and_scrollable() {
+    on_gtk(|| {
+        for solid_decorations in [false, true] {
+            let (win, _dir) = empty_window();
+            win.set_default_size(450, 400);
+            if solid_decorations {
+                win.add_css_class("solid-csd");
+            }
+            win.present();
+            pump_ms(1_000);
+            let parent_size = (win.width(), win.height());
+            let prefs = crate::prefs::MomentumPrefs::default();
+            prefs.present(Some(&win));
+            pump_ms(1_000);
+            assert!(prefs.is_mapped());
+            assert_eq!(prefs.root(), win.root(), "compact Preferences stay in the task window");
+            assert!(prefs.width() <= parent_size.0);
+            assert!(prefs.height() <= parent_size.1);
+            let scroll = prefs
+                .imp()
+                .reset_typography_row
+                .ancestor(gtk::ScrolledWindow::static_type())
+                .and_downcast::<gtk::ScrolledWindow>()
+                .expect("Preferences controls remain in their native scroller");
+            let adjustment = scroll.vadjustment();
+            assert!(
+                adjustment.upper() > adjustment.page_size(),
+                "compact settings can scroll"
+            );
+            prefs.close();
+            pump_ms(300);
+            assert_eq!((win.width(), win.height()), parent_size);
+            win.close();
+        }
+    });
+}
+
+#[test]
+fn preferences_use_the_available_space_inside_a_large_desktop_window() {
+    on_gtk(|| {
         let (win, _dir) = empty_window();
-        win.set_default_size(600, 400);
+        win.set_default_size(960, 800);
         win.present();
         pump_ms(1_000);
         let prefs = crate::prefs::MomentumPrefs::default();
         prefs.present(Some(&win));
         pump_ms(1_000);
-        assert!(
-            prefs.height() >= 600,
-            "Preferences need usable desktop height, got {}",
-            prefs.height()
-        );
-        assert!(
-            prefs.width() >= 600,
-            "Preferences need usable desktop width, got {}",
-            prefs.width()
-        );
+        assert_eq!(prefs.root(), win.root(), "large task windows host Preferences");
+        assert!(prefs.width() >= 600);
+        assert!(prefs.height() >= 600);
         prefs.close();
         win.close();
     });

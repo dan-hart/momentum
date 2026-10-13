@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Dan Hart
-"""Refresh gettext resources, including strings inside GTK callback macros."""
+"""Refresh gettext resources with stable AppStream and GTK callback extraction."""
 import argparse
 import ast
 from pathlib import Path
@@ -9,6 +9,35 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# System-selected AppStream ITS rules vary: gettext's fallback omits releases,
+# and older versions escape XML entities unless told otherwise. Keep the
+# translatable metadata fields explicit so every maintainer extracts the same
+# keys, including current and historical release notes, on gettext 0.21 onward.
+APPSTREAM_ITS = """<?xml version="1.0"?>
+<its:rules xmlns:its="http://www.w3.org/2005/11/its"
+           xmlns:gt="https://www.gnu.org/s/gettext/ns/its/extensions/1.0" version="2.0">
+  <its:translateRule selector="/component" translate="no"/>
+  <its:translateRule selector="/component/name | /component/summary | /component/description |
+                               /component/developer_name | /component/developer/name |
+                               /component/name_variant_suffix | /component/keywords/keyword |
+                               /component/screenshots/screenshot/caption |
+                               /component/releases/release/description |
+                               /component/agreement/agreement_section/name |
+                               /component/agreement/agreement_section/description" translate="yes"/>
+  <its:withinTextRule selector="/component//description//em |
+                               /component//description//code" withinText="yes"/>
+  <its:translateRule selector="/component/name[@translate = 'no'] |
+                               /component/developer_name[@translate = 'no'] |
+                               /component/developer/name[@translate = 'no'] |
+                               /component/name_variant_suffix[@translate = 'no'] |
+                               /component/keywords/keyword[@translate = 'no'] |
+                               /component/releases/release/description[@translate = 'no'] |
+                               /component/agreement/agreement_section/name[@translate = 'no'] |
+                               /component/agreement/agreement_section/description[@translate = 'no']" translate="no"/>
+  <gt:escapeRule selector="/component" escape="no"/>
+</its:rules>
+"""
 
 
 def message_ids(text):
@@ -34,7 +63,11 @@ def generate(root, output):
             "--add-comments", "--keyword=_", "--keyword=N_",
             "--keyword=C_:1c,2", "--keyword=NC_:1c,2", "--keyword=gettext",
             "--keyword=ngettext:1,2", "--output=" + str(output)]
-    subprocess.run([*args, *files], cwd=root, check=True)
+    metainfo = [file for file in files if file.endswith(
+        (".metainfo.xml", ".metainfo.xml.in", ".metainfo.xml.in.in"))]
+    sources = [file for file in files if file not in metainfo]
+    if sources:
+        subprocess.run([*args, *sources], cwd=root, check=True)
     # gettext >= 0.24 recognizes Rust but skips arbitrary procedural macro
     # bodies. GTK's glib::clone! contains ordinary gettext calls, so retain the
     # earlier C-parser extraction as an additional pass. Older gettext already
@@ -43,6 +76,13 @@ def generate(root, output):
     if rust:
         subprocess.run([*args, "--language=C", "--join-existing", *rust],
                        cwd=root, check=True)
+    if metainfo:
+        with tempfile.TemporaryDirectory(prefix="momentum-appstream-its-") as directory:
+            rules = Path(directory) / "metainfo.its"
+            rules.write_text(APPSTREAM_ITS)
+            join = ["--join-existing"] if sources else []
+            subprocess.run([*args, "--its=" + str(rules), *join, *metainfo],
+                           cwd=root, check=True)
 
 
 def main():

@@ -88,7 +88,7 @@ The approved [design](../specs/2026-10-12-native-features-release-design.md) is 
 **Files:** existing `.github/workflows/{ci,macos,android,release}.yml`, release/version tooling, native signing outputs outside tracked source.
 
 - [x] Complete specification compliance and independent code-quality reviews for shared and native changes; fix findings with regressions and rerun affected gates.
-- [ ] Run both Rust workspace checks, CLI/FFI compatibility, Apple package/build/native lanes, Android native/release tooling, and local Mac nearby integration required by RELEASING.
+- [x] Run both Rust workspace checks, CLI/FFI compatibility, Apple package/build/native lanes, Android native/release tooling, and local Mac nearby integration required by RELEASING. The CI repairs also pass the full local Linux suite, exact Swift 6.3.3 production-source red/green and gettext version matrix.
 - [ ] Run the existing nonpublishing CI/macOS/Android gates on the candidate task branch before main integration. Their push triggers now include task/** so both Linux architectures are checked before main. Use the exact source SHA and do not publish release artifacts from verification runs.
 - [ ] With all applicable candidate gates passing, fetch main, resolve any concurrent changes without touching the primary checkout, verify the integrated source and bump with `build-aux/release.py bump 0.4.10 --summary ...`. Inspect all version/build copies and release notes before committing/pushing main.
 - [ ] Wait for exact release-head CI. Push annotated `v0.4.10`, observe Release completion, verify asset inventory/source provenance/checksums and report optional channel skips accurately.

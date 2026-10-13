@@ -56,6 +56,47 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-13 — hosted candidate failures and release preparation
+
+Candidate `af95d9c` is committed and published on `task/native-features-release`.
+Its Android workflow [38443077705](https://github.com/dan-hart/momentum/actions/runs/38443077705)
+passes, and clean committed-source unsigned Android packaging passes. Main remains
+`69682872`; no tag, release or TestFlight upload has occurred.
+
+The [CI run](https://github.com/dan-hart/momentum/actions/runs/38443077737) catches
+two environmental differences: gettext fallback/AppStream rules extract different
+release-note keys, and solid window decorations reduce a requested 600×400 parent
+to 590×390, bypassing the independent Preferences branch. The latter reproduces the
+hosted 390px height; the useful native allocation assertion remains required. The
+[Mac run](https://github.com/dan-hart/momentum/actions/runs/38443077676) catches a
+Swift 6.3.3 Debug IR-generation crash for the settings-sync Binding setter. Original
+production source reproduces the same compiler stack; an explicit forwarding
+closure emits IR successfully and all 13 portable-settings tests pass under that
+compiler. These repairs require fresh candidate CI before main integration.
+
+Repair regressions are now complete on the dirty candidate: solid-decoration
+Preferences fails at 390px before the fix, then ten focused tests pass; the full
+Linux all-feature/all-target suite passes 512 tests, including 112 mapped GTK
+tests and 250% typography, with six existing ignores. Explicit metainfo ITS rules
+retain release-note keys and normalize XML entities. Gettext 1.0, 0.23.2 and the
+exact CI 0.21 produce identical 684-key sets and pass the unchanged completeness
+check and msgfmt. Four host tooling tests pass; Linux versions run three with one
+existing unavailable-Meson skip. All 590 existing active/obsolete German entries
+retain exact values/fuzzy flags; all 72 native additions remain translated and
+non-fuzzy. Newly extracted release-note entries remain untranslated.
+
+Repair receipts are retained in the ignored native-feature acceptance directory:
+`momentum-prefs-{red,green,full}.log`, the native decoration probe, gettext matrix
+logs and original/fixed Swift 6.3.3 production-source IR logs. Hosted gates remain
+the exact committed-source release condition.
+
+The existing distribution identity was recovered from its verified encrypted
+backup into a new private signing keychain. A real codesign/strict verification
+probe passes; the old keychain and keychain search list are preserved. Existing app
+and extension profiles remain valid. Signed archive/export and internal TestFlight
+processing are still pending. Public-only test instructions are prepared; no tester
+notification or external beta-review action is planned.
+
 ### 2026-10-13 — candidate ready for hosted verification
 
 All current local candidate checks pass for 0.4.10/410/4010, including the final

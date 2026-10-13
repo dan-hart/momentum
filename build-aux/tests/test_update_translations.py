@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Dan Hart
-"""The real extraction pipeline must retain nested native callback messages."""
+"""Real extraction retains native callbacks and consistent AppStream messages."""
 import importlib.util
 from pathlib import Path
 import shutil
@@ -29,6 +29,26 @@ CALLBACK_KEYS = {
 }
 
 
+METAINFO_FIXTURE = """<component type="desktop-application">
+  <id>private.application.id</id>
+  <name>Planner</name>
+  <summary>Plan your day</summary>
+  <description><p>Keep tasks offline.</p></description>
+  <releases>
+    <release version="1.0"><description>
+      <p>New release.</p><ul><li>Recurring previews.</li><li>Morning &amp; Evening.</li></ul>
+    </description></release>
+    <release version="0.9"><description><p>Historical release.</p></description></release>
+    <release version="0.8"><description translate="no"><p>Untranslated release.</p></description></release>
+  </releases>
+</component>
+"""
+METAINFO_KEYS = {
+    "Planner", "Plan your day", "Keep tasks offline.",
+    "New release.", "Recurring previews.", "Morning & Evening.", "Historical release.",
+}
+
+
 @unittest.skipUnless(shutil.which("xgettext"), "GNU gettext is required")
 class ExtractionTests(unittest.TestCase):
     def test_current_native_callbacks_survive_extraction(self):
@@ -48,6 +68,16 @@ class ExtractionTests(unittest.TestCase):
             translations.generate(root, output)
             self.assertEqual(translations.message_ids(output.read_text()), {"Notes copied", "App settings"})
 
+    def test_metainfo_release_notes_survive_fallback_its_rules(self):
+        with tempfile.TemporaryDirectory(prefix="momentum-metainfo-extraction-") as directory:
+            root = Path(directory)
+            (root / "po").mkdir()
+            (root / "po/POTFILES.in").write_text("app.metainfo.xml.in.in\n")
+            (root / "app.metainfo.xml.in.in").write_text(METAINFO_FIXTURE)
+            output = root / "messages.pot"
+            translations.generate(root, output)
+            self.assertEqual(translations.message_ids(output.read_text()), METAINFO_KEYS)
+
     @unittest.skipUnless(shutil.which("meson") and shutil.which("ninja"), "Meson and Ninja are required")
     def test_normal_meson_maintainer_target_uses_supplemental_pass(self):
         with tempfile.TemporaryDirectory(prefix="momentum-meson-extraction-") as directory:
@@ -57,9 +87,10 @@ class ExtractionTests(unittest.TestCase):
             (root / "meson.build").write_text("project('momentum-localization-test')\ni18n = import('i18n')\ngettext_package = 'momentum'\nsubdir('po')\n")
             shutil.copy(ROOT / "po/meson.build", root / "po/meson.build")
             shutil.copy(ROOT / "build-aux/update-translations.py", root / "build-aux/update-translations.py")
-            (root / "po/POTFILES.in").write_text("native.rs\nview.blp\n")
+            (root / "po/POTFILES.in").write_text("native.rs\nview.blp\napp.metainfo.xml.in.in\n")
+            (root / "app.metainfo.xml.in.in").write_text(METAINFO_FIXTURE)
             (root / "po/LINGUAS").write_text("de\n")
-            (root / "po/de.po").write_text('msgid ""\nmsgstr ""\n"Language: de\\n"\n"Content-Type: text/plain; charset=UTF-8\\n"\n')
+            (root / "po/de.po").write_text('msgid ""\nmsgstr ""\n"Language: de\\n"\n"Content-Type: text/plain; charset=UTF-8\\n"\n\nmsgid "Notes copied"\nmsgstr "Notizen kopiert"\n\n#~ msgid "Legacy message"\n#~ msgstr "Alte Nachricht"\n')
             (root / "native.rs").write_text('fn feedback() { glib::clone!(move || { gettext("Notes copied"); }); }\n')
             (root / "view.blp").write_text('Label { label: _("App settings"); }\n')
             for command in (["meson", "setup", str(root / "build"), str(root)],
@@ -67,7 +98,10 @@ class ExtractionTests(unittest.TestCase):
                 result = subprocess.run(command, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(translations.message_ids((root / "po/momentum.pot").read_text()),
-                             {"Notes copied", "App settings"})
+                             {"Notes copied", "App settings"} | METAINFO_KEYS)
+            catalog = (root / "po/de.po").read_text()
+            self.assertIn('msgid "Notes copied"\nmsgstr "Notizen kopiert"', catalog)
+            self.assertIn('#~ msgid "Legacy message"\n#~ msgstr "Alte Nachricht"', catalog)
 
 
 if __name__ == "__main__":

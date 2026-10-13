@@ -435,9 +435,12 @@ impl MomentumPrefs {
             self.connect_app_settings(&owner);
         }
         // A short desktop window must not squeeze a full preferences page.
-        // Compact windows still use libadwaita's adaptive embedded presentation.
+        // Keep libadwaita's compact-width boundary (450px) rather than comparing
+        // the content allocation with a 600px toplevel request: native solid
+        // decorations subtract their padding from that allocation.
+        // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/property.Dialog.presentation-mode.html
         if let Some(parent) =
-            parent.filter(|parent| parent.width() >= 600 && (parent.width() < 720 || parent.height() < 700))
+            parent.filter(|parent| parent.width() > 450 && (parent.width() < 720 || parent.height() < 700))
         {
             adw::prelude::AdwDialogExt::present(self, None::<&gtk::Widget>);
             if let (Some(window), Some(owner)) = (

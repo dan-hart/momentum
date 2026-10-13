@@ -23,8 +23,8 @@ Evidence below is from the dirty isolated task/native-features-release worktree 
 ## B-140 — Linux Preferences is clamped to a short parent window
 
 - **Severity:** Medium. **Impact:** Linux reproduced with a 600 × 400 task window. Other platform settings presentations use different native containers.
-- **Cause/fix:** The embedded AdwDialog inherited the small parent allocation. Prefer useful 720 × 700 sizing and independent native presentation for short desktop parents, retaining compact adaptation. Allocation and 250% typography tests pass.
-- **Status/remaining:** Implemented on Linux; final localized runtime checks pending.
+- **Cause/fix:** The embedded AdwDialog inherited the small parent allocation. Prefer useful 720 × 700 sizing and independent native presentation for short desktop parents. Hosted solid decorations reduce a requested 600 × 400 parent to 590 × 390, so the initial 600px content-width cutoff still embedded Preferences at 390px. Use libadwaita's native 450px compact boundary. Regression checks cover normal/solid decorations at 600px and 480px, independent modal/transient/resizable roots, unchanged parent allocations, compact scrolling and large embedded presentation.
+- **Status/remaining:** Implemented on Linux. The reproduced solid-decoration failure now passes the ten focused native Preferences checks; the full all-feature/all-target Linux suite passes 512 tests (112 GTK), with six existing ignores. Both fresh hosted architecture gates remain pending.
 
 ## B-141 — Linux quick entry shows dense guidance inline
 

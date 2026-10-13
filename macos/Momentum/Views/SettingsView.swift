@@ -158,7 +158,7 @@ private struct SyncSettings: SwiftUI.View {
             }
             Section(String(localized: "App settings")) {
                 Toggle(String(localized: "Sync app settings"), isOn: Binding(
-                    get: { state.appSettingsSync.enabled }, set: state.setAppSettingsSync))
+                    get: { state.appSettingsSync.enabled }, set: { state.setAppSettingsSync($0) }))
                     .disabled(state.isDemo)
                 Text(String(localized: "Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local."))
                     .font(.caption).foregroundStyle(.secondary)
