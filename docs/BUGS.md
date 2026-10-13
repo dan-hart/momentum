@@ -12,25 +12,25 @@ severity from evidence; do not infer security or data loss from an ordinary sync
 
 ## 2026-10-12 — native feature and release work
 
-Evidence below is from the dirty isolated task/native-features-release worktree based on 69682872. Final exact-head and release gates remain in progress; see [PROGRESS.md](PROGRESS.md).
+Feature evidence began in the isolated task/native-features-release worktree based on 69682872. Final feature source f23df0a and metadata/test correction e67ac9d are verified for the recorded scopes and delivered in 0.4.11; see [PROGRESS.md](PROGRESS.md) for exact-source CI, native limits and release receipts.
 
 ## B-139 — Linux task editor project picker selects the wrong item
 
 - **Severity:** Medium. **Impact:** Linux reproduced in a mapped GTK combo, including nonfirst/duplicate-title projects. Other native pickers are unaffected by this GTK factory bug.
 - **Cause/fix:** Factory rendering used the filtered list-item position instead of the original StringList object identity. Resolve the project by model object identity; display/color and saved project ID regression passes.
-- **Status/remaining:** Implemented on Linux; final renamed shipping/runtime checks pending.
+- **Status/remaining:** Verified on Linux for the recorded scope: mapped duplicate-title/nonfirst project regression, persisted ID/display/color, final EN/DE native probes and both hosted architectures/profiles pass. See final release evidence in PROGRESS.
 
 ## B-140 — Linux Preferences is clamped to a short parent window
 
 - **Severity:** Medium. **Impact:** Linux reproduced with a 600 × 400 task window. Other platform settings presentations use different native containers.
 - **Cause/fix:** The embedded AdwDialog inherited the small parent allocation. Prefer useful 720 × 700 sizing and independent native presentation for short desktop parents. Hosted solid decorations reduce a requested 600 × 400 parent to 590 × 390, so the initial 600px content-width cutoff still embedded Preferences at 390px. Use libadwaita's native 450px compact boundary. Regression checks cover normal/solid decorations at 600px and 480px, independent modal/transient/resizable roots, unchanged parent allocations, compact scrolling and large embedded presentation.
-- **Status/remaining:** Implemented on Linux. The reproduced solid-decoration failure now passes the ten focused native Preferences checks; the full all-feature/all-target Linux suite passes 512 tests (112 GTK), with six existing ignores. Both fresh hosted architecture gates remain pending.
+- **Status/remaining:** Verified on Linux for the recorded scope: ten focused normal/solid-decoration Preferences checks, final 250% native keyboard/scrolling controls, 515-test local suites and both hosted architectures/profiles pass. Full-desktop/spoken acceptance remains outside this scope.
 
 ## B-141 — Linux quick entry shows dense guidance inline
 
 - **Severity:** Low. **Impact:** Linux user-reported presentation issue.
 - **Cause/fix:** Use concise Add a task… placeholder with native tooltip and accessibility description for entry, tags, estimate and Escape. Parsing/destination context remains in the shared core.
-- **Status/remaining:** Implemented on Linux; final native/localized inspection pending.
+- **Status/remaining:** Verified on Linux for the recorded scope: initialized EN/DE native quick entry, concise placeholder and tooltip/accessibility guidance pass; parser/destination regressions remain intact.
 
 ## B-142 — Reported iOS project view spinner needs a second tap
 
@@ -42,87 +42,87 @@ Evidence below is from the dirty isolated task/native-features-release worktree 
 
 - **Severity:** Medium. **Impact:** iOS existing share import left new tasks unplanned. Other platforms do not use this extension queue.
 - **Cause/fix:** Capture the local Gregorian day on Add, persist optional plannedDay, and import through the existing Rust draft rule. Legacy queued items preserve their missing day. Midnight/timezone/retry/dedup and hosted Today import tests pass.
-- **Status/remaining:** Implemented on iOS; final shipping extension and supported-runtime checks pending.
+- **Status/remaining:** Verified on iOS for the recorded scope: captured-day midnight/timezone/retry/dedup and hosted Today import tests, both supported simulator lanes and the signed 0.4.11/411 shipping extension pass. Physical share-sheet use remains a device QA limit.
 
 ## B-144 — Upcoming omits future recurring occurrences
 
 - **Severity:** Medium. **Impact:** Shared listing only read persisted tasks, affecting all native clients.
 - **Cause/fix:** Shared read-only recurrence projection supplies preview metadata, respects horizon/start/paused rules and suppresses existing/moved/archived IDs without task writes. Native rows expose only Edit repeat schedule.
-- **Status/remaining:** Implemented on all platforms; core and scoped native regressions pass, final interaction/layout checks pending.
+- **Status/remaining:** Verified on all platforms for the recorded scope: pure projection/core regressions, final native read-only row/schedule action and large-text layouts, consumer builds and tagged artifacts pass. Physical/spoken limits remain in PROGRESS.
 
 ## B-145 — Copy Notes lacks acknowledged success feedback
 
 - **Severity:** Low. **Impact:** User-reported gap across platforms.
 - **Cause/fix:** After successful full copy, show editor-local toast and native Apple/Android haptic. GTK provides accessible visual feedback. Exact payload, modal visibility, failure/disabled silence and repeated deadlines are tested.
-- **Status/remaining:** Implemented on all platforms; scoped native tests pass. Physical vibration/spoken accessibility output is not claimed.
+- **Status/remaining:** Verified on all platforms for the recorded scope: exact Unicode/multiline clipboard, editor-visible feedback, failed/disabled silence and repeated-deadline tests pass. Native Apple/Android dispatch is tested; physical vibration and spoken output are not inferred.
 
 ## B-146 — Native settings changes can replace an unseen synced key
 
 - **Severity:** High. **Impact:** Reproduced during feature implementation on Apple and GTK; Android received the same boundary regression.
 - **Cause/fix:** Stage only local native deltas, read core status before its values, reject stale asynchronous applications and update device summary fields through an atomic core API. Preserve equivalent unsupported native fallbacks. Unseen-sort/local-color tests pass; Android raw-sound preservation repair passes its native regressions and independent review.
-- **Status/remaining:** Implemented on all platforms; final consumers pending.
+- **Status/remaining:** Verified on all platforms for the recorded scope: unseen-key/atomic publication/raw-sound regressions, final native consumers and tagged packaging pass.
 
 ## B-147 — Fresh native stores cannot seed an empty Nextcloud folder
 
 - **Severity:** High. **Impact:** Public Engine loopback reproduction failed for empty, local-task and reimported native-backup stores because absent opaque globalConfig triggered FreshState.
 - **Cause/fix:** Ordinary sync fills absent globalConfig with an empty object only in the detached candidate, preserving existing opaque values. Successful upload persists it; failure/cancel/damage/encryption/unsupported/conflict/persistence cases preserve live data and pending work. Lower-level fresh-state and explicit replacement protections remain.
-- **Status/remaining:** Implemented in shared core; independent spec/quality review approved. Final renamed consumer/runtime checks pending.
+- **Status/remaining:** Verified in shared core and existing consumers for the recorded scope: fresh/empty/local/reimport loopback tests and failure/cancel/damage/encryption/conflict/persistence guards pass; independent review and final platform builds approve the unchanged task format. External hosted-server acceptance remains separate.
 
 ## B-148 — Damaged local snapshot can be treated as an empty store
 
 - **Severity:** Critical. **Impact:** Public checked-startup harness reproduced malformed JSON and structurally incomplete {} snapshots becoming empty, allowing bootstrap to acknowledge real pending work. This was detected while verifying B-147.
 - **Cause/fix:** Present unreadable/malformed state/pending/meta fail startup with privacy-safe file errors. Task collection ids/entities are structurally required; absent snapshot plus task history/pending data also fails. Preserve all original bytes. Legitimate fresh/settings-only stores and optional legacy/opaque fields remain supported.
-- **Status/remaining:** Implemented in shared storage; independent public failure/positive harnesses and store/core tests pass. Final consumers pending.
+- **Status/remaining:** Verified in shared storage and existing consumers for the recorded scope: public failure/positive harnesses preserve damaged bytes; store/core tests and all final native builds pass.
 
 ## B-149 — Cancelling folder-copy ownership can lose cancellation or service recovery
 
 - **Severity:** Medium. **Impact:** New iOS migration tests reproduced Cancel during factory admission being ignored and connection Save being accepted during copy. Android review found cancelled caller context prevents resuming automatic foreground sync.
 - **Cause/fix:** iOS latches cancellation before operation creation and blocks Save while copy owns the connection; cancellation, stale/save-failure boundaries pass. Android resumes automatic foreground ownership in a non-cancellable recovery boundary, with native regression and independent approval.
-- **Status/remaining:** Implemented on iOS/Android. GTK/core cancellation and original-connection retention tests pass; final native scope pending.
+- **Status/remaining:** Verified on iOS/Android for the recorded scope: cancellation admission, Save exclusion, stale/save-failure and automatic-service recovery regressions pass. GTK/core original-connection preservation and final native consumers also pass; external-server/physical limits remain explicit.
 
 ## B-150 — Opening a GTK repeat editor invents a start date
 
 - **Severity:** Medium. **Impact:** Mapped GTK regression reproduced saving an existing paused schedule with no start day assigning today.
 - **Cause/fix:** Only the calendar selection updates the start day; add an accessible Clear start day action. Opening/saving no longer mutates the anchor.
-- **Status/remaining:** Implemented on Linux; RED/GREEN regression passes, final localized native checks pending.
+- **Status/remaining:** Verified on Linux for the recorded scope: original RED/GREEN, localized native schedule action/open/cancel and both hosted architectures/profiles pass; saving preserves the absent anchor.
 
 ## B-151 — macOS portable settings changes leave the visible list stale
 
 - **Severity:** Medium. **Impact:** macOS reproduced by the existing grouping test. Other platforms refresh through their own native adapters.
 - **Cause:** Staging changes the core before the old equality check, so the check no longer detects the changed listing preferences.
-- **Fix/status:** Rebuild the visible listing after portable preferences apply. Implemented on macOS; the original grouping regression and native remote-apply regression pass. Final shipping checks pending.
+- **Fix/status:** Rebuild the visible listing after portable preferences apply. Verified on macOS for the recorded scope; the original grouping regression and native remote-apply regression pass. Final shipping and consumer gates pass; physical/spoken/external-server limits remain in PROGRESS.
 
 ## B-152 — macOS settings-save failure loses its visible error
 
 - **Severity:** Medium. **Impact:** macOS independently reproduced using a denied temporary settings-file write.
 - **Cause:** Rollback succeeds, then forced native refresh clears the failure immediately.
-- **Fix/status:** Retain the rejected partial intent and its error through no-op notifications. A local Retry saves that intent without replacing unseen keys. Bootstrap choices wait for local recovery and task-sync errors have separate actions. Implemented on macOS; native regressions pass and specification review approved. Final shipping checks pending.
+- **Fix/status:** Retain the rejected partial intent and its error through no-op notifications. A local Retry saves that intent without replacing unseen keys. Bootstrap choices wait for local recovery and task-sync errors have separate actions. Verified on macOS for the recorded scope; native regressions pass and specification review approved. Final shipping and consumer gates pass; physical/spoken/external-server limits remain in PROGRESS.
 
 ## B-153 — Failed initial native settings seed exports an empty document
 
 - **Severity:** Medium. **Impact:** macOS independently reproduced; the same unconditional baseline assignment is present on iOS, with equivalent missing full-seed retry on GTK. Android retains its bootstrap flag and is unaffected in the reviewed scope.
 - **Cause:** Native adapters mark their values applied despite a failed durable full seed. The next export stages an empty delta.
-- **Fix/status:** Mark a baseline only after successful full seeding. Native Retry/edit/export/consent recover all nine values, with visible local errors. Core validates and commits settings-only or opted combined imports before native adapters supersede rejected intent. Invalid imports preserve native/core values, pending Retry and durable bytes; valid partial imports retain missing choices and cannot replay old intent. Task-only restore remains usable. GTK captures the imported revision before applying callbacks so later commits remain observable. Implemented on Mac/iOS/GTK; Mac15/iOS18 and GTK atomicity/callback regressions pass with fresh specification and independent quality approval. Final shipping checks pending.
+- **Fix/status:** Mark a baseline only after successful full seeding. Native Retry/edit/export/consent recover all nine values, with visible local errors. Core validates and commits settings-only or opted combined imports before native adapters supersede rejected intent. Invalid imports preserve native/core values, pending Retry and durable bytes; valid partial imports retain missing choices and cannot replay old intent. Task-only restore remains usable. GTK captures the imported revision before applying callbacks so later commits remain observable. Verified on Mac/iOS/GTK for the recorded scope; Mac15/iOS18 and GTK atomicity/callback regressions pass with fresh specification and independent quality approval. Final shipping and consumer gates pass; physical/spoken/external-server limits remain in PROGRESS.
 
 ## B-154 — Failed Linux legacy-folder pin marks migration complete
 
 - **Severity:** High; existing remote connection could be redirected. **Impact:** Linux reproduced with a denied folder-write fixture. Native Apple/Android adapters use separate preservation logic.
 - **Cause/fix:** The marker was written after an ignored folder-save failure. Propagate the error, save the marker only after success, and use the safe effective legacy folder in transport, CLI export and Preferences until pinning succeeds.
 - **Regression evidence:** The failure test was red with the marker incorrectly set and passes after the repair, including retry. Task 7 specification review approved the preservation contract on 2026-10-12.
-- **Status/remaining:** Implemented on Linux; final complete native suite and exact-revision checks pending.
+- **Status/remaining:** Verified on Linux for the recorded scope: original denied-write RED/GREEN/retry, final full native suites and both hosted architectures/profiles pass.
 
 ## B-155 — Android optional settings failure blocks local device controls
 
 - **Severity:** High; turning off local sync or notifications must stay usable. **Impact:** Isolated API26/API37 tests reproduced local controls being blocked after a denied initial portable seed. Mac/iOS/GTK keep local summary/device writes separate from portable failure in the reviewed paths.
 - **Cause:** `updateSettings` and `updatePreferences` guard portable application even for transformations that only change device controls.
-- **Fix/status:** Compute the nine-key portable delta before guarding or staging. Device-only controls persist and refresh local summary behavior while retaining the portable error/recovery state; portable edits/transfers remain guarded. Implemented on Android, with ten repository tests passing on API26/API37 and specification/independent quality approval. Final full native suite and shipping checks pending.
+- **Fix/status:** Compute the nine-key portable delta before guarding or staging. Device-only controls persist and refresh local summary behavior while retaining the portable error/recovery state; portable edits/transfers remain guarded. Verified on Android for the recorded scope, with ten repository tests passing on API26/API37 and specification/independent quality approval. Full native API26/API37 suites and final shipping gates pass; physical/spoken limits remain in PROGRESS.
 
 ## B-156 — Recurring previews copy full notes for every date
 
 - **Severity:** High; long notes cause avoidable memory growth. **Impact:** Isolated public-core fixture with one daily schedule and 30 previews retained about 128.52 MiB additional peak memory for a 4 MiB note, while returning only 2,490 snippet bytes. This is measured amplification, not a reproduced out-of-memory crash.
 - **Cause/fix:** Each projected date cloned the complete template note. Bound notes once on cloned preview configurations using the existing snippet rule; stored templates and materialized tasks retain full notes and metadata.
 - **Regression evidence:** The projection test failed on the original full-note copies and now verifies bounded Unicode/multiline/blank snippets, unchanged state/cursors and full-note materialization. Both Rust workspace lanes pass 396 tests with five existing ignores.
-- **Status/remaining:** Implemented in the shared core; independent review approved. The same bounded 4 MiB/30-preview fixture now peaks at 15.97 MiB versus 136.33 MiB before, with identical output and unchanged task/pending/cursor checks. These are individual synthetic desktop samples. Final consumers pending.
+- **Status/remaining:** Verified in the shared core and native consumers for the recorded scope; independent review approved. The same bounded 4 MiB/30-preview fixture now peaks at 15.97 MiB versus 136.33 MiB before, with identical output and unchanged task/pending/cursor checks. These are individual synthetic desktop samples. All final native consumer/release gates pass.
 
 ## B-157 — macOS recurring preview compresses large text and hides its callout
 
@@ -140,13 +140,13 @@ Evidence below is from the dirty isolated task/native-features-release worktree 
 
 - **Severity:** Medium. **Impact:** Reproduced with initialized English/German resources at 250% in a 440 × 710 native window. The text schedule suffix expands the preview list beyond the viewport, squeezing the title and callout; German's action is offscreen. Other platforms use separate native presentations; B-157/B-158 record their repaired large-text cases.
 - **Cause/fix:** The long text suffix contributes an unbounded minimum width. After replacing it with a native symbolic edit button carrying the complete localized tooltip and accessible name, the hidden selection ActionBar still forces a 602px toolbar width. Hide inactive bulk controls from layout, while retaining their existing active/reveal behavior. Preview actions still open only the repeat schedule.
-- **Status/remaining:** Implemented on Linux; final native scope verified locally. The original mapped regression fails at 571px in the 440px viewport; the repaired GTK lane passes title/callout wrapping, action bounds/focus/open/cancel, exact store/pending/metadata preservation, and real selection entry/bulk/cancel/route-exit visibility. Final X11 and Broadway all-feature/all-target suites each pass 515 tests (115 GTK) with six existing ignores. Initialized English/German rerenders and independent specification/quality review pass; German row 419×262 fits the 440×710 root with complete text and an actual working schedule action. Fresh hosted architecture gates remain required before release.
+- **Status/remaining:** Verified on Linux for the recorded native scope. The original mapped regression fails at 571px in the 440px viewport; the repaired GTK lane passes title/callout wrapping, action bounds/focus/open/cancel, exact store/pending/metadata preservation, and real selection entry/bulk/cancel/route-exit visibility. Final X11 and Broadway all-feature/all-target suites each pass 515 tests (115 GTK) with six existing ignores. Initialized English/German rerenders and independent specification/quality review pass; German row 419×262 fits the 440×710 root with complete text and an actual working schedule action. All four final hosted profile/architecture gates and tagged packaging pass.
 
 ## B-160 — Linux settings actions notify a disposed native window
 
 - **Severity:** High. **Impact:** Reproduced in the candidate ARM GTK suite and on an owned X11/Xvfb runtime with MALLOC_PERTURB_=26, including one test thread. A supported native close probe retaining a menu/popover reports an invalid action group when a GSettings-backed action changes after its window closes. This is a native GTK action-group lifetime defect, separate from B-159 and the shared settings rules.
 - **Cause/fix:** A retained menu observer prolongs the native action group after window disposal, while its settings-action callback still refers to the old window. Detach window-owned actions before the automatically chained parent disposal. Retain normal live-window/background-hide behavior and the existing rejected-settings retry regression.
-- **Status/remaining:** Implemented on Linux; final native scope verified locally. Exact original `7e9517e` exits with SIGSEGV in the unchanged rejected-settings retry fixture; adding only the guarded action detach makes all 112 original GTK tests pass under default and single-threaded X11/MALLOC_PERTURB_=26. Final X11 and Broadway all-feature/all-target suites each pass 515 tests (115 GTK), six existing ignores. Actual shipping task-menu retained close/repeated-destroy and live background action/engine guards pass in initialized EN/DE native probes; these added guards preserve behavior and are not claimed as individually failing before the fix. No action-group or unpresented-dialog critical remains. The repeat-Save fixture now verifies the production handler closes its dialog, removing a redundant second close while retaining its start-date assertion. Independent specification and quality reviews approve the final source. Fresh hosted architecture gates remain required. Other platforms use separate native action lifetimes; no shared-core defect is inferred.
+- **Status/remaining:** Verified on Linux for the recorded native scope. Exact original `7e9517e` exits with SIGSEGV in the unchanged rejected-settings retry fixture; adding only the guarded action detach makes all 112 original GTK tests pass under default and single-threaded X11/MALLOC_PERTURB_=26. Final X11 and Broadway all-feature/all-target suites each pass 515 tests (115 GTK), six existing ignores. Actual shipping task-menu retained close/repeated-destroy and live background action/engine guards pass in initialized EN/DE native probes; these added guards preserve behavior and are not claimed as individually failing before the fix. No action-group or unpresented-dialog critical remains. The repeat-Save fixture now verifies the production handler closes its dialog, removing a redundant second close while retaining its start-date assertion. Independent specification and quality reviews approve the final source. All four final hosted profile/architecture gates and tagged packaging pass. Other platforms use separate native action lifetimes; no shared-core defect is inferred.
 
 ## 2026-10-11 — F-056 completion-sound choices assessment
 

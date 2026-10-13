@@ -56,6 +56,66 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-13 — verified 0.4.11 release and internal TestFlight 411
+
+The approved fixes and features are delivered from `e67ac9d` on
+`task/native-features-release` and remote main. Feature behavior remains the
+verified `f23df0a` source; the final correction changes only the isolated Linux
+schema fixture, both-profile CI coverage and aligned 0.4.11 / Apple 411 / Android
+4011 metadata. The immutable 0.4.10 tag and valid beta 410 are retained after its
+production packaging fixture failure.
+
+Candidate [CI](https://github.com/dan-hart/momentum/actions/runs/38468988843),
+[macOS](https://github.com/dan-hart/momentum/actions/runs/38468988890) and
+[Android](https://github.com/dan-hart/momentum/actions/runs/38468988717) pass at the
+exact source. Main [CI](https://github.com/dan-hart/momentum/actions/runs/38471540357),
+[macOS](https://github.com/dan-hart/momentum/actions/runs/38471540021) and
+[Android](https://github.com/dan-hart/momentum/actions/runs/38471540007) also pass.
+The [tagged workflow](https://github.com/dan-hart/momentum/actions/runs/38473564934)
+passes all required jobs. Both default and Devel Linux architectures are checked
+before packaging. Local optimized/default and development/debug suites each pass
+515 tests, including 115 GTK cases, with zero failures and six existing ignores;
+original optimized schema RED and all-36-key/default equality establish causality.
+
+The [public release](https://github.com/dan-hart/momentum/releases/tag/v0.4.11)
+is neither draft nor prerelease. All 14 published artifact checksums pass.
+Android provenance is e67ac9d / 0.4.11 / 4011, and all 725 compared tracked source files match
+the tag; the offline-vendor config is intentionally replaced as documented. APK/AAB notices
+match; distribution artifacts remain explicitly unsigned. Published APK native
+LOAD/RELRO/ZIP alignment passes for all eight libraries. Public Mac app/CLI are
+arm64 + x86_64, the app passes deep/strict signature verification and reports
+0.4.11 / 411 / Momentum. Both Linux CLI architectures are correct; the tagged ARM
+CLI runs in the isolated Linux VM and reports mo 0.4.11, with matching public
+checksums. The Flathub source manifest pins e67ac9d. Both signed stable repository
+refs report 0.4.11 with valid GPG signatures. Homebrew/Flathub updates are skipped
+by the existing optional-channel configuration; no Flathub PR was created.
+
+The signed internal-only IPA is from e67ac9d; both app/share IDs, 0.4.11/411,
+certificate/profiles, App Group, deep/strict signatures and privacy manifests pass.
+Apple build 5ea8bea8-b8de-4db2-b4b1-29f01a51a785 is VALID, INTERNAL_ONLY and
+IN_BETA_TESTING. Exact en-US notes body is read back after the CLI removes the
+text file's terminal newline. Existing Internal Testers access is complete and
+all-builds; export compliance matches the unchanged 0.4.9 classification. No
+explicit tester notification was requested; Apple's autoNotifyEnabled remains true.
+
+Changed native scope is verified: Linux initialized EN/DE picker, copy/editor
+feedback, overdue/preview/repeat controls, Preferences/250% scrolling and retained
+menu/background action lifetimes; macOS minimum-width German 32pt preview/action
+plus EN project/settings/copy checks; iOS first actual Lists touch, reentry/switch
+and Today plus 113 hosted views (three existing skips) on 26.5/27, maximum-text
+German preview and independent settings controls. Android full opt-in API26 has
+156 passes / six assumptions and API37 has 169 passes / three assumptions;
+99 JVM tests, two-emulator LibreSync persistence and minified 4 KiB/16 KiB runtime
+checks also pass. These native feature sources are unchanged by the metadata/test
+correction. Physical installation/vibration/share use, spoken screen-reader/full
+GNOME acceptance, external hosted-server/scheduler behavior and historical German
+fallbacks remain explicit limits; none is inferred from fixtures or packaging.
+
+F-061–067 and B-139–160 are verified for their recorded scopes. Implementation and
+release checkboxes are complete. Primary task/sync-performance-recovery remains at
+200f686c with all 23 inherited files/status/hashes preserved. The final handoff
+commit changes only documentation; code parity with immutable v0.4.11 is checked.
+
 ### 2026-10-13 — production-profile verification and corrected 0.4.11 release
 
 The feature commit `f23df0a` passed all candidate and main CI, including both
