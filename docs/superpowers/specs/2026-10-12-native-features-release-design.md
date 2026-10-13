@@ -174,6 +174,12 @@ formats. It does not claim a new independent storage or wire schema.
 
 ## Tests and release gates
 
+Release amendment, 2026-10-13: 0.4.10/410 reached internal TestFlight, while
+production-profile Flatpak verification exposed an isolated-test schema mismatch.
+Keep the public tag and beta history intact and deliver the corrected public patch
+as 0.4.11/411 (Android 4011). The feature design and data-format decisions below
+remain unchanged; both Linux build profiles must pass before the new release.
+
 Add behavioral regressions before each bug fix. Shared Rust tests cover recurrence,
 overdue status, settings validation/convergence, backup recovery and compatibility.
 Native tests cover picker display and persistence, first project navigation, share

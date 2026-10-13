@@ -150,7 +150,10 @@ pub fn isolated_settings() -> gio::Settings {
     let directory = std::env::var("GSETTINGS_SCHEMA_DIR")
         .expect("GSETTINGS_SCHEMA_DIR unset: run tests through build-aux/run-tests.sh");
     let source = gio::SettingsSchemaSource::from_directory(directory, None, false).expect("compiled test schema");
-    let schema = source.lookup(*crate::config::APP_ID, false).expect("test app schema");
+    // The runner compiles this isolated fixture as Devel for every Meson profile.
+    let schema = source
+        .lookup("io.github.dan_hart.Momentum.Devel", false)
+        .expect("test app schema");
     gio::Settings::new_full(&schema, Some(&gio::memory_settings_backend_new()), None)
 }
 /// Resets every key a test may have touched.

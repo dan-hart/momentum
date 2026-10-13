@@ -6,7 +6,50 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.11] - 2026-10-13
+
+### Added
+- Ten short CC0 task-completion sounds to choose and preview on Linux, macOS, iOS
+  and Android. Sound stays off by default; when enabled, the default choice is
+  6 · Bright Finish.
+- Native Android app in Kotlin and Jetpack Compose with the shared Rust core: offline
+  tasks, organization, search, recurrence, reminders, optional Nextcloud/LibreSync,
+  Android Keystore, private drafts and SAF backups. Native parity and physical
+  accessibility acceptance remain in progress.
+- Android APK/AAB, matching source, dependency notices, R8 mapping and provenance in
+  the unified tagged release, with optional distribution signing and explicit unsigned
+  filenames otherwise. Release checksums cover all distribution assets. No store upload.
+
+- Optional app-settings import/export, including an independent unchecked option on
+  task backups, and settings-only files. Credentials and device controls stay local.
+- Optional settings sync over the selected Nextcloud or LibreSync connection, with
+  explicit initial-device choices and durable retry after interrupted exchanges.
+- Read-only future recurring occurrences in Upcoming, with Edit repeat schedule.
+- An opt-in, verified Nextcloud folder copy to `momentum` that retains the original.
+
+### Changed
+- Overdue tasks show a labeled callout and date across the native apps.
+- Copy Notes confirms success inside the editor, with native Apple/Android feedback.
+- Momentum owns its crate names, URL entry points and customer-facing naming while
+  preserving existing task, backup and sync formats and required license notices.
+- Linux task entry has concise guidance with a native tooltip and accessibility text.
+
+### Fixed
+- Linux: project selection in the task editor now displays and saves the selected ID,
+  including duplicate project names. Preferences fits independently of a short parent.
+- iOS: the first project selection from Lists loads its tasks without a second tap.
+- iOS: share-sheet tasks capture Today when added, retaining that day across a delayed
+  import or timezone change.
+- Fresh Nextcloud stores can create the required initial configuration safely.
+- Damaged task stores fail visibly before a network exchange instead of opening empty.
+- Folder-copy cancellation retains the original connection, including a late cancel,
+  and resumes automatic sync after cancellation.
+- Release-profile verification uses the runner's isolated test schema consistently; production and development settings remain separate.
+
 ## [0.4.10] - 2026-10-13
+
+Internal TestFlight beta 410. Stable Flatpak packaging exposed an isolated-test
+schema mismatch; the corrected public release is 0.4.11. The original tag is retained.
 
 ### Added
 - Ten short CC0 task-completion sounds to choose and preview on Linux, macOS, iOS

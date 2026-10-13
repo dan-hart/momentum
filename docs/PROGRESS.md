@@ -56,6 +56,40 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-13 — production-profile verification and corrected 0.4.11 release
+
+The feature commit `f23df0a` passed all candidate and main CI, including both
+development-profile Flatpak architectures and macOS/Android builds. Main was
+fast-forwarded to that commit and annotated `v0.4.10` was pushed. Internal
+TestFlight 0.4.10 (410) is verified `VALID`, `INTERNAL_ONLY` and
+`IN_BETA_TESTING`, with exact en-US notes, the existing Internal Testers all-builds
+group and the same export-compliance declaration as 0.4.9.
+
+[Release 38459548121](https://github.com/dan-hart/momentum/actions/runs/38459548121)
+retains that source. The first macOS checkout hit an RPC connection reset; its
+job and dependents were retried on a fresh runner. All tagged development-profile
+checks, universal macOS/CLI packaging and Android packaging pass. Production-profile
+Flatpak packaging exposes two failing isolated completion-sound tests: the runner
+compiles its private fixture schema as Devel, but the helper looks up the compiled
+application ID without parent lookup. Stable builds therefore cannot find that
+fixture. The other 113 native tests pass. The repair binds the helper to the
+runner's fixture ID and retains nonrecursive lookup, a new memory backend per
+fixture and every existing logic assertion; production settings code is unchanged.
+
+Independent specification/quality review approves the fixture repair. Final
+0.4.11 local default/optimized and development/debug configurations each pass
+515 tests, including all 115 GTK cases, with zero failures and six existing ignores.
+Original optimized source reproduces the two schema failures; all 36 schema keys
+and defaults are identical across the runner fixtures. Raw logs retain the known
+headless D-Bus/graphics and narrow-window warnings. Candidate CI now includes
+both default and Devel Flatpak manifests on both architectures,
+with distinct artifact/cache names, so this mismatch is checked before tagging.
+The corrected release uses 0.4.11 / Apple 411 / Android 4011, preserving the already
+public 0.4.10 tag and valid beta 410. Candidate/default-profile checks, final-source
+signed IPA, tagged artifacts and public repository validation remain required.
+The earlier native interaction evidence applies to unchanged feature source;
+version metadata and the isolated test helper are assessed separately.
+
 ### 2026-10-13 — final Linux native acceptance and action lifetime repair
 
 Repaired candidate `7e9517e` passes hosted translation/core/format/version gates.

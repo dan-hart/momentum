@@ -94,10 +94,11 @@ jobs:
           diff <(grep -v '^#' po/LINGUAS | sort) <(ls po/*.po | xargs -n1 basename | sed 's/\.po$//' | sort)
 
   flatpak:
-    name: Flatpak (${{ matrix.arch }})
+    name: Flatpak (${{ matrix.arch }}, ${{ matrix.profile }})
     strategy:
       matrix:
         arch: [x86_64, aarch64]
+        profile: [default, devel]
     runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
@@ -115,8 +116,8 @@ jobs:
         token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
     - uses: flathub-infra/flatpak-github-actions/flatpak-builder@933e9e8ca36e85046ebca8e211f0785c6becac40
       with:
-        bundle: momentum-${{ matrix.arch }}.flatpak
-        manifest-path: build-aux/io.github.dan_hart.Momentum.Devel.json
+        bundle: momentum-${{ matrix.profile }}-${{ matrix.arch }}.flatpak
+        manifest-path: ${{ matrix.profile == 'default' && 'build-aux/io.github.dan_hart.Momentum.json' || 'build-aux/io.github.dan_hart.Momentum.Devel.json' }}
         run-tests: true
         arch: ${{ matrix.arch }}
-        cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
+        cache-key: flatpak-builder-${{ matrix.profile }}-${{ matrix.arch }}-${{ github.sha }}

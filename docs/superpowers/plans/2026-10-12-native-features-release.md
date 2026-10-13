@@ -2,13 +2,25 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Follow test-driven-development and verification-before-completion. Steps use checkbox syntax for tracking.
 
-**Goal:** Deliver the approved native fixes, recurrence previews, overdue/copy feedback, portable settings transfer/sync and compatible Momentum cleanup, then verify and release 0.4.10 including internal TestFlight.
+**Goal:** Deliver the approved native fixes, recurrence previews, overdue/copy feedback, portable settings transfer/sync and compatible Momentum cleanup, then verify and release 0.4.11 including internal TestFlight.
 
 **Architecture:** Rust owns projection, validation, settings convergence and verified folder copying. Native layers own presentation and private preference adapters. Existing task/backup/sync formats and primary-worktree changes remain intact; new portable settings and consent metadata live outside task snapshots.
 
 **Tech Stack:** Rust/UniFFI, GTK4/libadwaita/GSettings, SwiftUI/AppKit/UIKit/UserDefaults, Kotlin/Compose/DataStore, existing Nextcloud and LibreSync transports.
 
 The approved [design](../specs/2026-10-12-native-features-release-design.md) is the acceptance contract. Isolated branch `task/native-features-release`, base `69682872`. Only the controller commits, integrates, pushes, tags or distributes. Maintain focused file ownership and review specification compliance before code quality.
+
+## Release correction — 2026-10-13
+
+Feature source `f23df0a` passed candidate/main CI and shipped as internal TestFlight
+0.4.10 (410). Its immutable `v0.4.10` tag remains published, but stable Flatpak
+packaging exposed two failures in the isolated completion-sound fixture lookup;
+no public GitHub release was created. The test helper now uses the runner’s Devel
+fixture ID for both profiles without changing production settings or assertions.
+CI adds default-profile coverage alongside Devel on both architectures. The final
+public release and matching internal beta use 0.4.11 / Apple 411 / Android 4011.
+The completed feature-source checks below retain their original recorded scope;
+Task 8 tracks the corrected release gates separately.
 
 ## Task 1 Shared row contracts
 
@@ -50,7 +62,7 @@ The approved [design](../specs/2026-10-12-native-features-release-design.md) is 
 - [x] Add editor-local Notes copied feedback after actual clipboard copy; test exact Unicode/multiline contents and visible feedback.
 - [x] Render shared overdue status and explicit recurrence previews with Edit Repeat, suppressing ordinary task actions for previews.
 - [x] Implement the portable preference adapter, independent unchecked transfer controls, settings-only transfer, sync opt-in/bootstrap/recovery and checked folder-migration UI. Test opt-in matrix and excluded-key sentinels using memory GSettings.
-- [ ] Run supported GNOME SDK/Broadway UI suite; macOS typechecking is a preliminary compatibility check only. Inspect actual allocations/accessibility and EN/DE large-text layouts with isolated data.
+- [x] Run supported GNOME SDK/Broadway UI suite; macOS typechecking is a preliminary compatibility check only. Inspect actual allocations/accessibility and EN/DE large-text layouts with isolated data.
 
 ## Task 5 Apple native changes
 
@@ -89,8 +101,8 @@ The approved [design](../specs/2026-10-12-native-features-release-design.md) is 
 
 - [x] Complete specification compliance and independent code-quality reviews for shared and native changes; fix findings with regressions and rerun affected gates.
 - [x] Run both Rust workspace checks, CLI/FFI compatibility, Apple package/build/native lanes, Android native/release tooling, and local Mac nearby integration required by RELEASING. The CI repairs also pass the full local Linux suite, exact Swift 6.3.3 production-source red/green and gettext version matrix.
-- [ ] Run the existing nonpublishing CI/macOS/Android gates on the candidate task branch before main integration. Their push triggers now include task/** so both Linux architectures are checked before main. Use the exact source SHA and do not publish release artifacts from verification runs.
-- [ ] With all applicable candidate gates passing, fetch main, resolve any concurrent changes without touching the primary checkout, verify the integrated source and bump with `build-aux/release.py bump 0.4.10 --summary ...`. Inspect all version/build copies and release notes before committing/pushing main.
-- [ ] Wait for exact release-head CI. Push annotated `v0.4.10`, observe Release completion, verify asset inventory/source provenance/checksums and report optional channel skips accurately.
-- [ ] Build a signed iOS archive/IPA at the verified release revision. Check both IDs, 0.4.10/410, signatures, profiles, App Group and privacy manifests. Resolve live App Store Connect access (initial read-only lookups stalled) before upload. Use existing app 6821523171/internal group, upload and verify VALID processing plus internal group access; keep secrets/receipts outside the repo.
+- [ ] Run the existing nonpublishing CI/macOS/Android gates on the candidate task branch before main integration. Their push triggers now include task/** so default and Devel profiles on both Linux architectures are checked before main. Use the exact source SHA and do not publish release artifacts from verification runs.
+- [ ] With all applicable candidate gates passing, fetch main, resolve any concurrent changes without touching the primary checkout, verify the integrated source and bump with `build-aux/release.py bump 0.4.11 --summary ...`. Inspect all version/build copies and release notes before committing/pushing main.
+- [ ] Wait for exact release-head CI. Push annotated `v0.4.11`, observe Release completion, verify asset inventory/source provenance/checksums and report optional channel skips accurately.
+- [ ] Build a signed iOS archive/IPA at the verified release revision. Check both IDs, 0.4.11/411, signatures, profiles, App Group and privacy manifests. Reuse verified live App Store Connect access and the existing signing identity before upload. Use existing app 6821523171/internal group, upload and verify VALID processing plus internal group access; keep secrets/receipts outside the repo.
 - [ ] Record release/TestFlight evidence and remaining physical/manual scope, preserve the primary branch/HEAD/file hashes, and hand off links without calling an unverified platform Verified.
