@@ -192,6 +192,10 @@ fn archive_view_pages_in_batches() {
 fn selection_mode_bulk_done_today_and_delete_with_undo() {
     on_gtk(|| {
         let (win, _dir) = demo_window();
+        assert!(
+            !shown(&*win.imp().select_bar),
+            "inactive bulk controls do not reserve layout width"
+        );
         let a = id_of(&win, "Plan weekend hike");
         let (home, b) = win.engine().with_store(|s| {
             let home = s.state.task.entities[&a].project_id.clone();
@@ -208,6 +212,10 @@ fn selection_mode_bulk_done_today_and_delete_with_undo() {
         win.go_to(View::project(&home));
         win.set_selecting(true);
         assert!(win.imp().select_bar.is_revealed());
+        assert!(
+            shown(&*win.imp().select_bar),
+            "selection controls remain visible while active"
+        );
         win.toggle_selected(&a);
         win.toggle_selected(&b);
         assert_eq!(win.imp().selected.borrow().len(), 2);
@@ -218,6 +226,10 @@ fn selection_mode_bulk_done_today_and_delete_with_undo() {
             .engine()
             .with_store(|s| s.state.today_ids().contains(&a) && s.state.today_ids().contains(&b)));
         assert!(!win.imp().selecting.get(), "bulk actions leave selection mode");
+        assert!(
+            !shown(&*win.imp().select_bar),
+            "completed bulk action releases layout width"
+        );
         win.set_selecting(true);
         win.toggle_selected(&a);
         win.bulk_done();
@@ -234,6 +246,20 @@ fn selection_mode_bulk_done_today_and_delete_with_undo() {
             win.engine().with_store(|s| s.state.task.entities.contains_key(&b)),
             "bulk delete is undoable"
         );
+        win.set_selecting(true);
+        assert!(shown(&*win.imp().select_bar));
+        win.set_selecting(false);
+        assert!(
+            !shown(&*win.imp().select_bar),
+            "explicit cancellation hides bulk controls"
+        );
+        win.set_selecting(true);
+        win.toggle_selected(&a);
+        win.go_to(View::Upcoming);
+        assert!(!win.imp().selecting.get());
+        assert!(win.imp().selected.borrow().is_empty());
+        assert!(!win.imp().select_bar.is_revealed());
+        assert!(!shown(&*win.imp().select_bar), "route change hides bulk controls");
     });
 }
 #[test]
@@ -475,9 +501,25 @@ fn upcoming_recurring_previews_offer_schedule_editing_without_task_controls() {
         let controls = descendants(first);
         assert!(!first.downcast_ref::<adw::ActionRow>().unwrap().is_activatable());
         assert!(!controls.iter().any(|widget| widget.is::<gtk::CheckButton>()));
-        assert!(controls.iter().any(|widget| widget
-            .downcast_ref::<gtk::Button>()
-            .is_some_and(|button| button.label().as_deref() == Some("Edit repeat schedule"))));
+        let edit = controls
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .find(|button| button.tooltip_text().as_deref() == Some("Edit repeat schedule"))
+            .expect("named schedule action");
+        assert_eq!(edit.icon_name().as_deref(), Some("document-edit-symbolic"));
+        assert!(gtk::test_accessible_has_property(edit, gtk::AccessibleProperty::Label));
+        // GTK's varargs test helper is not wrapped by gtk-rs. It returns an owned
+        // mismatch string, or null when the native accessible value matches.
+        let expected = std::ffi::CString::new("Edit repeat schedule").unwrap();
+        let mismatch: Option<glib::GString> = unsafe {
+            use glib::translate::{from_glib_full, IntoGlib, ToGlibPtr};
+            from_glib_full(gtk::ffi::gtk_test_accessible_check_property(
+                edit.upcast_ref::<gtk::Accessible>().to_glib_none().0,
+                gtk::AccessibleProperty::Label.into_glib(),
+                expected.as_ptr(),
+            ))
+        };
+        assert!(mismatch.is_none(), "schedule action accessible label: {mismatch:?}");
         win.select_all();
         assert!(
             win.imp().selected.borrow().is_empty(),
@@ -488,6 +530,139 @@ fn upcoming_recurring_previews_offer_schedule_editing_without_task_controls() {
                 .with_store(|store| serde_json::to_value(&store.state).unwrap()),
             before
         );
+    });
+}
+
+#[test]
+fn upcoming_recurring_preview_stays_readable_and_reachable_at_250_percent() {
+    on_gtk(|| {
+        reset_settings();
+        reset_typography_settings();
+        settings().set_int("typography-content-scale", 250).unwrap();
+        settings().set_int("typography-interface-scale", 250).unwrap();
+        let (win, directory) = empty_window();
+        win.set_default_size(450, 720);
+        win.add_css_class("solid-csd");
+        let title = "Future repeat with a longer descriptive title";
+        let mut configuration = RepeatCfg::for_task(&Task::new(title, INBOX_PROJECT_ID));
+        configuration.id = "large-text-preview".into();
+        configuration.repeat_cycle = "DAILY".into();
+        configuration.start_date = Some(day_str(today_n() + 1));
+        win.engine().with_store_mut(|store| {
+            store.state.task_repeat_cfg.insert("large-text-preview", configuration);
+            store.save().unwrap();
+        });
+        let before = win
+            .engine()
+            .with_store(|store| serde_json::to_value(&store.state).unwrap());
+        let files = ["state.json", "pending.json", "meta.json"];
+        let bytes: Vec<_> = files
+            .iter()
+            .map(|file| std::fs::read(directory.join(file)).unwrap())
+            .collect();
+        win.go_to(View::Upcoming);
+        win.present();
+        pump_ms(500);
+        let preview = win
+            .engine()
+            .listing(View::Upcoming, 100)
+            .sections
+            .into_iter()
+            .flat_map(|section| section.rows)
+            .find_map(|row| match row {
+                Row::Task { row } if row.occurrence.is_some() => Some(row),
+                _ => None,
+            })
+            .expect("future recurring preview");
+        let row = descendants(win.imp().task_box.upcast_ref())
+            .into_iter()
+            .find(|widget| widget.widget_name() == preview.id)
+            .expect("rendered preview row");
+        let list = row.ancestor(gtk::ListBox::static_type()).expect("preview list");
+        let width = win.width() as f32;
+        let height = win.height() as f32;
+        assert!((400.0..=450.0).contains(&width), "compact native width: {width}");
+        for widget in [&list, &row] {
+            let bounds = widget.compute_bounds(&win).expect("mapped preview bounds");
+            assert!(
+                bounds.x() >= 0.0 && bounds.x() + bounds.width() <= width,
+                "{} must fit compact viewport: {bounds:?}, window {width}x{height}",
+                widget.type_().name()
+            );
+        }
+        let controls = descendants(&row);
+        let edit = controls
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Button>())
+            .next()
+            .expect("schedule action");
+        let bounds = edit.compute_bounds(&win).expect("mapped action bounds");
+        assert!(
+            bounds.x() >= 0.0
+                && bounds.y() >= 0.0
+                && bounds.x() + bounds.width() <= width
+                && bounds.y() + bounds.height() <= height,
+            "first schedule action must be reachable in compact viewport: {bounds:?}, window {width}x{height}"
+        );
+        let labels: Vec<_> = controls
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<gtk::Label>())
+            .collect();
+        let title_label = labels
+            .iter()
+            .find(|label| label.text() == title)
+            .expect("visible long title");
+        let callout = labels
+            .iter()
+            .find(|label| label.text().contains("Recurring preview"))
+            .expect("visible preview callout");
+        for label in [title_label, callout] {
+            let bounds = label.compute_bounds(&win).expect("mapped preview label bounds");
+            assert!(
+                bounds.x() >= 0.0
+                    && bounds.y() >= 0.0
+                    && bounds.x() + bounds.width() <= width
+                    && bounds.y() + bounds.height() <= height,
+                "preview text must stay readable on screen: {bounds:?}"
+            );
+            assert!(
+                !label.layout().is_ellipsized(),
+                "preview title and identity must not be truncated"
+            );
+            assert!(
+                label.layout().pixel_size().1 <= label.height(),
+                "complete wrapped preview text fits its label"
+            );
+        }
+        assert!(!row.downcast_ref::<adw::ActionRow>().unwrap().is_activatable());
+        assert!(!controls.iter().any(|widget| widget.is::<gtk::CheckButton>()));
+        assert!(edit.grab_focus(), "schedule action is keyboard reachable");
+        edit.emit_clicked();
+        pump();
+        let dialog = descendants(win.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<adw::Dialog>().ok())
+            .find(|dialog| dialog.title() == "Repeat")
+            .expect("actual schedule editor opens");
+        dialog.close();
+        pump_ms(250);
+        assert_eq!(
+            win.engine()
+                .with_store(|store| serde_json::to_value(&store.state).unwrap()),
+            before,
+            "projection and editor cancellation preserve tasks and recurrence cursor"
+        );
+        for (file, before) in files.iter().zip(bytes) {
+            assert_eq!(
+                std::fs::read(directory.join(file)).unwrap(),
+                before,
+                "projection and editor cancellation preserve {file} bytes"
+            );
+        }
+        win.close();
+        pump();
+        reset_settings();
+        reset_typography_settings();
     });
 }
 
@@ -1279,10 +1454,10 @@ fn saving_a_repeat_configuration_does_not_invent_a_start_date() {
             .find(|button| button.label().as_deref() == Some("Save"))
             .expect("Save schedule")
             .emit_clicked();
-        pump();
+        pump_ms(300);
         win.engine()
             .with_store(|store| assert_eq!(store.state.task_repeat_cfg.entities[&cfg.id].start_date, None));
-        dialog.close();
+        assert!(!dialog.is_mapped(), "Save closes the native repeat editor");
         win.close();
     });
 }
@@ -3233,5 +3408,100 @@ fn closing_a_window_finalizes_it_without_a_panic() {
         // Finalization runs on the GTK thread; a panic there cannot unwind and would
         // abort this process, so reaching here is the assertion.
         assert!(!win.is_visible());
+    });
+}
+
+#[test]
+fn closed_windows_disconnect_settings_actions_from_retained_native_menus() {
+    on_gtk(|| {
+        for use_close in [true, false] {
+            reset_settings();
+            let (win, _) = demo_window();
+            settings().set_boolean("run-in-background", false).unwrap();
+            win.present();
+            pump_ms(300);
+            let row = descendants(win.imp().task_box.upcast_ref())
+                .into_iter()
+                .find(|widget| widget.widget_name() == id_of(&win, "Write release notes for 0.1"))
+                .expect("shipping task row");
+            let controllers = row.observe_controllers();
+            let press = (0..controllers.n_items())
+                .filter_map(|index| controllers.item(index).and_downcast::<gtk::GestureLongPress>())
+                .next()
+                .expect("shipping context-menu gesture");
+            press.emit_by_name::<()>("pressed", &[&1.0f64, &1.0f64]);
+            pump_ms(300);
+            let popover = descendants(&row)
+                .into_iter()
+                .find_map(|widget| widget.downcast::<gtk::PopoverMenu>().ok())
+                .expect("shipping task context menu");
+            assert!(popover.is_mapped());
+            let criticals = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+            let recorded = criticals.clone();
+            let handler = glib::log_set_handler(
+                Some("GLib-GIO"),
+                glib::LogLevels::LEVEL_CRITICAL,
+                false,
+                false,
+                move |_, _, message| {
+                    if let Ok(mut messages) = recorded.lock() {
+                        messages.push(message.to_string());
+                    }
+                },
+            );
+            let released = win.downgrade();
+            if use_close {
+                win.close();
+            } else {
+                win.destroy();
+                win.destroy(); // Repeated native disposal must be harmless.
+            }
+            drop(win);
+            assert!(
+                released.upgrade().is_none(),
+                "closed native window is released while menu controls remain"
+            );
+            // Native menus can outlive their window while closing. Changing a
+            // shared setting must never notify the disposed window's action group.
+            let s = settings();
+            s.set_string("task-sort", "title").unwrap();
+            s.set_string("sort-direction", "descending").unwrap();
+            s.set_string("upcoming-range", "30").unwrap();
+            s.set_string("row-density", "compact").unwrap();
+            pump_ms(300);
+            glib::log_remove_handler(Some("GLib-GIO"), handler);
+            assert!(
+                criticals.lock().unwrap().is_empty(),
+                "native action lifetime: {:?}",
+                criticals.lock().unwrap()
+            );
+            drop(popover);
+            drop(row);
+            reset_settings();
+        }
+    });
+}
+
+#[test]
+fn background_window_close_preserves_its_live_settings_actions() {
+    on_gtk(|| {
+        reset_settings();
+        let (win, _) = empty_window();
+        settings().set_boolean("run-in-background", true).unwrap();
+        win.present();
+        pump_ms(300);
+        win.close();
+        pump_ms(300);
+        assert!(!win.is_visible());
+        let sort = win
+            .lookup_action("task-sort")
+            .expect("hidden window retains its settings action");
+        sort.change_state(&"title".to_variant());
+        pump();
+        assert_eq!(settings().string("task-sort"), "title");
+        assert_eq!(sort.state(), Some("title".to_variant()));
+        assert_eq!(win.engine().preferences().sort, momentum_core::SortKey::Title);
+        win.destroy();
+        reset_settings();
     });
 }

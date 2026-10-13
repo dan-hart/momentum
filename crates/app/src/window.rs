@@ -82,6 +82,7 @@ mod imp {
         #[template_child]
         pub empty: TemplateChild<adw::StatusPage>,
         pub settings: gio::Settings,
+        pub actions_detached: Cell<bool>,
         pub engine: Arc<Engine>,
         pub view: RefCell<View>,
         pub views: RefCell<Vec<Option<View>>>,
@@ -148,6 +149,7 @@ mod imp {
                 toast_overlay: Default::default(),
                 empty: Default::default(),
                 settings: gio::Settings::new(*APP_ID),
+                actions_detached: Default::default(),
                 engine: if demo { Engine::demo(dir) } else { Engine::open(dir) },
                 view: RefCell::new(View::Today),
                 views: Default::default(),
@@ -205,6 +207,14 @@ mod imp {
     impl ObjectImpl for MomentumWindow {
         /// Widgets parented by hand are given up here, while they are still alive.
         fn dispose(&self) {
+            // A closing native menu can retain GTK's window action group. Remove
+            // its settings observers while the window is alive, before GTK's
+            // parent disposal clears the group and releases the window.
+            if !self.actions_detached.replace(true) {
+                for name in self.obj().list_actions() {
+                    self.obj().remove_action(&name);
+                }
+            }
             if self.tag_popover.parent().is_some() {
                 self.tag_popover.unparent();
             }
@@ -1457,6 +1467,7 @@ impl MomentumWindow {
             imp.selected.borrow_mut().clear();
         }
         imp.select_cancel.set_visible(on);
+        imp.select_bar.set_visible(on);
         imp.select_bar.set_revealed(on);
         imp.add_clamp.set_visible(!on && *imp.view.borrow() != View::Search);
         self.refresh_tasks();
@@ -1475,6 +1486,9 @@ impl MomentumWindow {
 
     fn update_selection_ui(&self) {
         let imp = self.imp();
+        // An unrevealed ActionBar still contributes its full minimum width.
+        // Remove inactive bulk controls from layout in compact large-text views.
+        imp.select_bar.set_visible(imp.selecting.get());
         let n = imp.selected.borrow().len();
         imp.select_count.set_text(&format!(
             "{n} {}",
@@ -2645,6 +2659,7 @@ impl MomentumWindow {
             imp.selecting.set(false);
             imp.selected.borrow_mut().clear();
             imp.select_cancel.set_visible(false);
+            imp.select_bar.set_visible(false);
             imp.select_bar.set_revealed(false);
         }
         imp.archive_shown.set(100);
@@ -2911,10 +2926,12 @@ impl MomentumWindow {
         if let Some(occurrence) = &t.occurrence {
             row.add_prefix(&gtk::Image::from_icon_name("media-playlist-repeat-symbolic"));
             let edit = gtk::Button::builder()
-                .label(gettext("Edit repeat schedule"))
+                .icon_name("document-edit-symbolic")
+                .tooltip_text(gettext("Edit repeat schedule"))
                 .valign(gtk::Align::Center)
                 .css_classes(["flat"])
                 .build();
+            edit.update_property(&[gtk::accessible::Property::Label(&gettext("Edit repeat schedule"))]);
             let configuration = occurrence.repeat_cfg_id.clone();
             edit.connect_clicked(glib::clone!(
                 #[weak(rename_to = win)]

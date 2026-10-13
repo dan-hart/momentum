@@ -136,6 +136,18 @@ Evidence below is from the dirty isolated task/native-features-release worktree 
 - **Cause/fix:** Give Recurring preview its own wrapping caption and omit only its duplicate visual metadata part. Keep the complete shared accessibility value and schedule-only action.
 - **Status/remaining:** Verified on iOS for the recorded scope: rebuilt 0.4.10/410 native German maximum-text screenshot shows the full wrapping callout and schedule action; both 113-test hosted view suites and first-touch routes pass again. Compiled German 442/442 entries and shared/app strings pass. Physical/spoken limits remain in PROGRESS.
 
+## B-159 — Linux recurring previews overflow compact large-text windows
+
+- **Severity:** Medium. **Impact:** Reproduced with initialized English/German resources at 250% in a 440 × 710 native window. The text schedule suffix expands the preview list beyond the viewport, squeezing the title and callout; German's action is offscreen. Other platforms use separate native presentations; B-157/B-158 record their repaired large-text cases.
+- **Cause/fix:** The long text suffix contributes an unbounded minimum width. After replacing it with a native symbolic edit button carrying the complete localized tooltip and accessible name, the hidden selection ActionBar still forces a 602px toolbar width. Hide inactive bulk controls from layout, while retaining their existing active/reveal behavior. Preview actions still open only the repeat schedule.
+- **Status/remaining:** Implemented on Linux; final native scope verified locally. The original mapped regression fails at 571px in the 440px viewport; the repaired GTK lane passes title/callout wrapping, action bounds/focus/open/cancel, exact store/pending/metadata preservation, and real selection entry/bulk/cancel/route-exit visibility. Final X11 and Broadway all-feature/all-target suites each pass 515 tests (115 GTK) with six existing ignores. Initialized English/German rerenders and independent specification/quality review pass; German row 419×262 fits the 440×710 root with complete text and an actual working schedule action. Fresh hosted architecture gates remain required before release.
+
+## B-160 — Linux settings actions notify a disposed native window
+
+- **Severity:** High. **Impact:** Reproduced in the candidate ARM GTK suite and on an owned X11/Xvfb runtime with MALLOC_PERTURB_=26, including one test thread. A supported native close probe retaining a menu/popover reports an invalid action group when a GSettings-backed action changes after its window closes. This is a native GTK action-group lifetime defect, separate from B-159 and the shared settings rules.
+- **Cause/fix:** A retained menu observer prolongs the native action group after window disposal, while its settings-action callback still refers to the old window. Detach window-owned actions before the automatically chained parent disposal. Retain normal live-window/background-hide behavior and the existing rejected-settings retry regression.
+- **Status/remaining:** Implemented on Linux; final native scope verified locally. Exact original `7e9517e` exits with SIGSEGV in the unchanged rejected-settings retry fixture; adding only the guarded action detach makes all 112 original GTK tests pass under default and single-threaded X11/MALLOC_PERTURB_=26. Final X11 and Broadway all-feature/all-target suites each pass 515 tests (115 GTK), six existing ignores. Actual shipping task-menu retained close/repeated-destroy and live background action/engine guards pass in initialized EN/DE native probes; these added guards preserve behavior and are not claimed as individually failing before the fix. No action-group or unpresented-dialog critical remains. The repeat-Save fixture now verifies the production handler closes its dialog, removing a redundant second close while retaining its start-date assertion. Independent specification and quality reviews approve the final source. Fresh hosted architecture gates remain required. Other platforms use separate native action lifetimes; no shared-core defect is inferred.
+
 ## 2026-10-11 — F-056 completion-sound choices assessment
 
 This is a requested enhancement to feedback and settings, rather than a reproduced
@@ -144,6 +156,7 @@ all four native platforms and adds Android’s optional sound setting. Default,
 persistence, fallback and completion-only regression evidence is recorded in
 [PROGRESS.md](PROGRESS.md). Existing unrelated defects retain their own status;
 audible output and physical-device acceptance are separate verification gates.
+
 
 ## B-138 — Android CI cannot find the SDK manager
 

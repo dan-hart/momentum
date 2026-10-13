@@ -56,6 +56,49 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-13 — final Linux native acceptance and action lifetime repair
+
+Repaired candidate `7e9517e` passes hosted translation/core/format/version gates.
+Its ARM Flatpak test process exits with SIGSEGV, without a Rust assertion or native
+backtrace; the matrix cancels x86. Retrying the same source reproduces the failure. X11/Xvfb with
+MALLOC_PERTURB_=26 reproduces it locally on both default and single-threaded
+libtest execution. Native stack/active-test tracing identifies settings-action
+notification after disposed windows. A supported retained-menu/normal-close probe
+also reaches an invalid action group. B-160 detaches window-owned actions once,
+before GTK parent disposal. Exact original `7e9517e` fails; adding only that cleanup
+makes all 112 original GTK tests pass with both default and single-threaded X11
+execution. The final X11/MALLOC_PERTURB_=26 and Broadway all-feature/all-target
+lanes each pass 515 tests (115 GTK), with six existing ignores. Actual shipping
+retained-menu close/repeated-destroy and live background action/engine guards pass
+in initialized EN/DE probes; the added guards are preservation coverage, while the
+unchanged failed-settings retry is the reproduced red/green regression. Independent
+specification and quality reviews approve the final source. No action-group or
+unpresented-dialog critical remains; three isolated reminder D-Bus fixture criticals
+also occur in the original-source comparator. No concurrency or backend switch is
+used to conceal the failure. Fresh hosted gates remain required. Main remains
+`69682872`.
+
+Initialized English/German native GTK probes pass the changed project picker,
+exact clipboard/editor toast, overdue callout, repeat-editor action and Preferences
+window/250% scrolling controls. They also expose B-159: the recurring suffix and
+hidden bulk-controls minimum push compact 250% previews beyond the viewport. The
+repaired final full all-feature/all-target lanes pass 515 tests (115 GTK), with six
+existing ignores. Initialized EN/DE native rerenders and independent two-stage
+review pass: German 250% preview row is 419×262 in a 440×710 root, with full title,
+callout and a reachable schedule action. Exact tooltip/accessible label and actual
+repeat-editor activation pass. Final production hashes are `5539175f…db8eb6b`
+(window) and `16a0c87a…95520a` (UI tests). The receipt bundle digest is
+`4e7da2301e163f11751a2de34673756697dfb5c74bc080f587b7f1af21e204c3`.
+Fresh hosted architecture gates remain required. Existing untranslated legacy
+German strings, spoken accessibility and physical/full-desktop checks remain
+explicit limits outside this changed-feature language and native-fixture scope.
+
+The candidate signed archive and internal-only local IPA export succeed. Deep/strict
+app/share signatures, both 0.4.10/410 IDs/display names, existing certificate/profiles,
+App Group and privacy manifests pass. Its source is `7e9517e`; the later Linux repair
+requires a final-source archive receipt. No TestFlight upload, main push, tag or
+public release has occurred.
+
 ### 2026-10-13 — hosted candidate failures and release preparation
 
 Candidate `af95d9c` is committed and published on `task/native-features-release`.
