@@ -56,7 +56,7 @@ performed for this handoff.
 
 ## Current priorities
 
-### 2026-10-13 — required automatic install channels implemented; hosted check next
+### 2026-10-13 — required automatic Homebrew and hosted Flatpak channels verified
 
 The user requests every future release to update Homebrew and the existing hosted
 Flatpak repository automatically, skipping Flathub. F-070/B-164 implement required
@@ -66,7 +66,7 @@ trusted signed-version readback for both architectures and an explicit legacy Pa
 build request. The public fingerprint is pinned in FLATPAK_GPG_FINGERPRINT; the
 existing Flatpak signing key is retained. No personal token/key is copied.
 
-The focused dirty release worktree passes all 23 publisher/workflow regressions,
+The focused implementation checkpoint passes all 23 publisher/workflow regressions,
 actionlint 1.7.12 and changed-shell checks. Real Linux OSTree verifies both 0.4.11
 refs and Good signature, rejects a stale requested version and an unexpected key,
 and tests both-ref downgrade/export guards. Independent plan/code reviews approve
@@ -74,12 +74,30 @@ the final plumbing; regressions cover missing credentials and rejected commit/pu
 errors, including a retry after a failed push. Required OSTree/GPG command packages
 are explicit in the hosted readback job.
 
-The scoped credential and public variable are configured. Next: push the verified
-plumbing to main, run the shared Install channels workflow against existing 0.4.11
-assets and record SSH/Pages authentication plus both live version/signature results.
-Hosted execution remains outstanding. No new app build, tag, version bump, TestFlight
-IPA or Flathub submission is needed. Historical release assets and the primary
-checkout's 23 inherited changes are preserved.
+Main and the retained task/native-features-release branch receive source
+[102a978](https://github.com/dan-hart/momentum/commit/102a9787e9295d92227c36e7bc7e7a0bbfb8d499).
+The shared [Install channels run 38488293659](https://github.com/dan-hart/momentum/actions/runs/38488293659)
+is successful at that exact source: all 23 regressions run on Ubuntu; Homebrew
+checks out with the dedicated SSH credential, validates final public checksums
+and successfully reruns publication with unchanged 0.4.11 definitions. Public tap
+main remains ae3cb0f; both formula/cask bytes match the verified consumer definitions.
+All six real Homebrew platform/architecture selections also pass locally.
+
+The hosted job verifies built-in token write access, successfully requests the
+legacy Pages build and reads both exact 0.4.11 versions with the pinned trusted
+signature. Pages reports built at gh-pages 6928b9f. Public stable commits are
+x86_64 646d5de9f2eda7fe7f89ea7796bd670aa29cd7bed5976a6e95cadbbcf696a843
+and aarch64 0f0020711d3af4dbb98b225f77d9c9c51ed15b619a8da7319bb61889d7608664.
+The configured Homebrew key is write-enabled only on dan-hart/homebrew-tap; its
+private half is retained in the encrypted Momentum Actions secret. Task-owned
+local key files and their pointer are deleted after successful hosted verification.
+
+This verifies the shared production publisher/readback and required workflow
+graph against existing assets. A future new tag/full native release has not been
+run. Source version stays 0.4.11; immutable tag source e67ac9d, binaries and TestFlight
+411 remain unchanged. No Flathub submission or public visibility change occurs.
+Primary branch/HEAD/status and all 23 inherited file hashes match the preservation
+receipt. The handoff commit updates records only and is pushed to both branches.
 
 ### 2026-10-13 — user confirms self-hosted Linux shipping channel
 

@@ -22,9 +22,9 @@ workflow. A repository-scoped SSH deploy key authenticates tap updates.
   and review the focused diff.
 - [x] Create the dedicated Homebrew deploy key and Momentum Actions secret securely;
   verify narrow scope and avoid logging/storing private material in the repository.
-- [ ] Push verified plumbing to main and dispatch the shared workflow at 0.4.11.
-- [ ] Verify both hosted refs/signatures, SSH update/rerun results and public tap state.
-- [ ] Update FEATURES, BUGS, PROGRESS, TESTING and RELEASING with exact evidence,
+- [x] Push verified plumbing to main and dispatch the shared workflow at 0.4.11.
+- [x] Verify both hosted refs/signatures, SSH update/rerun results and public tap state.
+- [x] Update FEATURES, BUGS, PROGRESS, TESTING and RELEASING with exact evidence,
   push the handoff, and recheck primary preservation and remote parity.
 
 ## Review refinements
@@ -51,3 +51,15 @@ The shared hosted job explicitly requests a legacy GitHub Pages build with pages
 because GITHUB_TOKEN pushes alone do not trigger that build. It verifies write
 authentication and public readback with no private signing material. The export job
 checks the imported private key's public fingerprint before any build/export.
+
+## Verification receipt
+
+Source 102a978 and Actions run [38488293659](https://github.com/dan-hart/momentum/actions/runs/38488293659)
+pass both shared jobs and all 23 regressions against the existing 0.4.11 release.
+Scoped SSH authentication, public asset checksums, successful unchanged-version
+publication, built-in repository/Pages permissions, completed Pages build and both
+exact trusted signed refs are verified. Local workflow/shell lint, six Homebrew
+consumers, real Linux OSTree positive/negative controls and independent review pass.
+Task-owned local key files are removed; the encrypted Actions secret remains.
+No native rebuild, new version/tag, TestFlight upload or Flathub submission occurs.
+The final handoff changes documentation only and preserves the primary checkout.

@@ -55,7 +55,9 @@ and again in the shared publisher job before the scoped credential checkout.
 
 A manual `Install channels` run against an existing release checks actual SSH
 write authentication, final asset bytes, built-in repository/Pages permissions
-and both public signed architecture versions without rebuilding apps. Use the
+and both public signed architecture versions without rebuilding apps. The exact-source
+102a978 run [38488293659](https://github.com/dan-hart/momentum/actions/runs/38488293659)
+passes all 23 regressions and both jobs against 0.4.11; Pages subsequently reports built. Use the
 command in [RELEASING.md](RELEASING.md#what-the-workflow-does). Native Linux
 OSTree positive/negative controls separately exercise stale versions, unexpected
 keys and downgrade protection. Record the actual Actions revision/run and public
