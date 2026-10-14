@@ -14,6 +14,14 @@ severity from evidence; do not infer security or data loss from an ordinary sync
 
 Feature evidence began in the isolated task/native-features-release worktree based on 69682872. Final feature source f23df0a and metadata/test correction e67ac9d are verified for the recorded scopes and delivered in 0.4.11; see [PROGRESS.md](PROGRESS.md) for exact-source CI, native limits and release receipts.
 
+## B-164 — Optional install-channel gates allow incomplete release delivery
+
+- **Severity:** Medium. **Impact:** A successful release can silently omit the Mac/Linux Homebrew tap and hosted Linux repository when optional publishing credentials are absent. Mobile distribution is unaffected.
+- **Reproduction/cause:** 0.4.11 skipped Homebrew because its token was missing. The hosted signing gate was also optional, and commit failures were swallowed. Built-in workflow-token pushes do not automatically trigger a legacy GitHub Pages build.
+- **Fix:** Require publishing credentials and a pinned public signing fingerprint before builds; require both signed architecture exports and the shared checksum-aware Homebrew/hosted workflow. Use a repository-scoped deploy key, explicitly request Pages, reject older versions and propagate Git failures. A retry after a rejected push publishes its existing local commit even if the definitions are unchanged. Remove Flathub submission and archive work per the user's chosen self-hosted channel.
+- **Regression/evidence:** Twenty-three isolated Python/Git/workflow regressions and actionlint/shell checks pass; commit/push rejection and retry cases fail before their fixes. Real Linux OSTree verifies both public 0.4.11 versions and signatures, rejects stale versions, a different fingerprint and downgrade attempts. Independent plan/code reviews approve the focused release plumbing.
+- **Status/remaining:** Implemented for Linux/macOS release automation; configured scoped SSH credential and public trust variable. Hosted Actions execution against existing 0.4.11 assets is outstanding. Native app builds, immutable assets, TestFlight and Android delivery are unchanged. F-070.
+
 ## B-163 — Self-hosted download page and repository descriptor retain obsolete branding
 
 - **Severity:** Low. **Impact:** The public Linux download page and software-center repository description still mention Super Productivity after the source/native branding cleanup. Other native clients do not consume this Flatpak descriptor.
@@ -25,7 +33,7 @@ Feature evidence began in the isolated task/native-features-release worktree bas
 - **Severity:** Medium. **Impact:** Mac cask and Mac/Linux CLI remained at 0.4.0 while GitHub shipped 0.4.11. Mobile distribution is unaffected.
 - **Cause/fix:** The release has no HOMEBREW_TAP_TOKEN, so its update_homebrew gate is false. Direct authorized publishing uses the existing account. Current stock Homebrew also reproduces two ComponentsOrder errors for the Mac download block and a redundant-version audit error. Put the universal Mac archive at the formula root, infer the version from its literal URL, and retain the native Linux overrides. Actual release URLs and digests are unchanged by the layout correction.
 - **Regression/evidence:** Original stock style/audit checks fail with those diagnostics; corrected definitions pass unmodified style, strict all-OS/all-architecture formula audit and strict cask audit. The real Homebrew loader checks all six simulated package selections against public release bytes, downloads both Mac packages, and installs/tests the CLI at 0.4.11. Public tap main is ae3cb0f. The reusable consumer check is build-aux/tests/test_homebrew_packages.rb.
-- **Status/remaining:** Verified for package definitions, checksums and recorded Mac CLI installation. Native Linux Homebrew installation and Mac app launch are separate checks. Future workflow-driven tap updates still require a scoped tap token; no credential was copied into Actions.
+- **Status/remaining:** Verified for package definitions, checksums and recorded Mac CLI installation. Native Linux Homebrew installation and Mac app launch are separate checks. The former missing automation credential is addressed separately by F-070/B-164 with a dedicated tap deploy key; no personal token is copied into Actions.
 
 ## B-162 — Flathub initial submission was closed and the release has no app repository
 

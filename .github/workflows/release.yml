@@ -1,7 +1,8 @@
 # One release for every platform. Pushing a vX.Y.Z tag (or dispatching with an existing
 # tag) runs the full CI and macOS suites against that tag, then builds every binary,
 # publishes the GitHub Release with all of them attached, updates the Homebrew tap,
-# publishes the signed Flatpak repository, and opens the Flathub update.
+# publishes and verifies the signed self-hosted Flatpak repository. Flathub submission
+# is deliberately excluded.
 #
 # Cut a release with:  build-aux/release.py bump X.Y.Z && git commit -a && git tag ...
 # Details, required secrets and what happens when one is missing: docs/RELEASING.md.
@@ -18,9 +19,10 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 concurrency:
-  group: release-${{ inputs.tag || github.ref_name }}
+  group: momentum-release
   cancel-in-progress: false
 
 env:
@@ -36,15 +38,25 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      publish_flatpak_repo: ${{ steps.gates.outputs.publish_flatpak_repo }}
-      update_homebrew: ${{ steps.gates.outputs.update_homebrew }}
       sign_macos: ${{ steps.gates.outputs.sign_macos }}
       notarize_macos: ${{ steps.gates.outputs.notarize_macos }}
-      open_flathub_pr: ${{ steps.gates.outputs.open_flathub_pr }}
     steps:
+      - name: Check out release tooling
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Required publishing configuration
+        env:
+          HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
+          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+          FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+          FLATPAK_GPG_FINGERPRINT: ${{ vars.FLATPAK_GPG_FINGERPRINT }}
+        run: python3 build-aux/release-channels.py credentials
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
+          persist-credentials: false
       - name: Every copy of the version equals the tag
         run: build-aux/release.py check --tag "$TAG"
       - id: version
@@ -76,18 +88,12 @@ jobs:
       # Job-level `if:` cannot read secrets, so decide here which optional steps run.
       - id: gates
         env:
-          FLATPAK_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
-          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
           NOTARY: ${{ secrets.APPLE_APP_PASSWORD }}
-          FLATHUB: ${{ secrets.FLATHUB_TOKEN }}
         run: |
           gate() { echo "$1=$([ -n "$2" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"; }
-          gate publish_flatpak_repo "$FLATPAK_KEY"
-          gate update_homebrew "$TAP_TOKEN"
           gate sign_macos "$P12"
           gate notarize_macos "$NOTARY"
-          gate open_flathub_pr "$FLATHUB"
           cat "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------- 2. every test passes
@@ -261,7 +267,11 @@ jobs:
   flatpak-repo:
     name: Publish Flatpak repository (${{ matrix.arch }})
     needs: [verify, tests, macos-tests]
-    if: needs.verify.outputs.publish_flatpak_repo == 'true'
+    env:
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      ARCH: ${{ matrix.arch }}
+      KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+      EXPECTED_FINGERPRINT: ${{ vars.FLATPAK_GPG_FINGERPRINT }}
     # Architectures run one after the other so both export into the same OSTree repo.
     strategy:
       max-parallel: 1
@@ -284,6 +294,12 @@ jobs:
           ref: ${{ env.LIBRESYNC_REF }}
           path: src/libresync-src
           token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
+      - name: Check out release tooling
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: release-tools
+          persist-credentials: false
       - name: Check out the repository branch
         uses: actions/checkout@v4
         with:
@@ -291,18 +307,22 @@ jobs:
           path: repo
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Import signing key
-        run: |
-          echo "${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}" | gpg --batch --import
-          echo "KEY_ID=${{ secrets.FLATPAK_GPG_KEY_ID }}" >> "$GITHUB_ENV"
+        env:
+          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        run: printf '%s' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --import
+      - name: Preserve the trusted signing identity
+        run: python3 release-tools/build-aux/release-channels.py check-signing-key --key-id "$KEY_ID" --fingerprint "$EXPECTED_FINGERPRINT"
       - name: Build and export
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           [ -f repo/config ] || ostree init --repo=repo --mode=archive
           # git does not keep empty directories; OSTree expects these to exist.
           mkdir -p repo/refs/heads repo/refs/remotes repo/refs/mirrors repo/objects repo/tmp repo/state
+          python3 release-tools/build-aux/release-channels.py check-flatpak --repo repo --version "$RELEASE_VERSION"
           flatpak-builder --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub \
             --arch=${{ matrix.arch }} --default-branch=stable \
-            --repo=repo --gpg-sign="$KEY_ID" build-dir src/build-aux/$APP_ID.json
+            --repo=repo --gpg-sign="$KEY_ID" build-dir "src/build-aux/$APP_ID.json"
+          python3 release-tools/build-aux/release-channels.py check-flatpak --repo repo --version "$RELEASE_VERSION" --arch "$ARCH"
           flatpak build-update-repo --generate-static-deltas --prune --prune-depth=3 \
             --gpg-sign="$KEY_ID" repo
           # Site files must survive the OSTree metadata regeneration.
@@ -312,14 +332,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Publish $TAG (${{ matrix.arch }})" || echo "nothing to publish"
-          git push
+          python3 ../release-tools/build-aux/release-channels.py publish-git --repo . --branch gh-pages --message "Publish $TAG ($ARCH)"
 
   # ----------------------------------------------------------- 5. the GitHub Release
   release:
     name: GitHub Release
-    needs: [verify, flatpak, macos, cli-linux, android]
+    needs: [verify, flatpak, flatpak-repo, macos, cli-linux, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -332,21 +350,6 @@ jobs:
           path: dist
           pattern: "{flatpak-*,macos,cli-linux-*,android-release}"
           merge-multiple: true
-      - name: Flathub manifest pinned to this tag
-        run: |
-          COMMIT=$(git rev-parse "$TAG^{commit}")
-          # An annotated tag lists twice; the "^{}" line is the commit it points at.
-          REFS=$(git ls-remote https://github.com/dan-hart/LibreSync.git "refs/tags/$LIBRESYNC_REF*")
-          LIBRESYNC_COMMIT=$(echo "$REFS" | grep "$LIBRESYNC_REF^{}\$" | cut -f1)
-          [ -n "$LIBRESYNC_COMMIT" ] || LIBRESYNC_COMMIT=$(echo "$REFS" | head -n1 | cut -f1)
-          mkdir -p dist/flathub
-          build-aux/release.py flathub --tag "$TAG" --commit "$COMMIT" \
-            --libresync-ref "$LIBRESYNC_REF" --libresync-commit "$LIBRESYNC_COMMIT" \
-            --out "dist/flathub/$APP_ID.json"
-          python3 -m venv .venv && .venv/bin/pip -q install aiohttp toml tomlkit
-          curl -fsSLO https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py
-          .venv/bin/python flatpak-cargo-generator.py Cargo.lock -o dist/flathub/cargo-sources.json
-          (cd dist/flathub && tar -czf "../flathub-$TAG.tar.gz" "$APP_ID.json" cargo-sources.json)
       - name: Digests
         run: |
           build-aux/release.py checksums --assets dist
@@ -369,68 +372,15 @@ jobs:
             dist/*-android-*.json
             dist/SHA256SUMS.txt
 
-  # ------------------------------------------------------------ 6. the Homebrew tap
-  homebrew:
-    name: Update Homebrew tap
-    needs: [verify, release]
-    if: needs.verify.outputs.update_homebrew == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          pattern: "{macos,cli-linux-*}"
-          merge-multiple: true
-      - uses: actions/checkout@v4
-        with:
-          repository: dan-hart/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: tap
-      - name: Render the formula and cask
-        run: |
-          NOTARIZED=""
-          [ "${{ needs.verify.outputs.notarize_macos }}" = true ] && NOTARIZED=--notarized
-          build-aux/release.py homebrew --assets dist --out tap $NOTARIZED
-          cat tap/Formula/momentum-cli.rb tap/Casks/momentum.rb
-      - name: Push
-        working-directory: tap
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/momentum-cli.rb Casks/momentum.rb
-          git commit -m "momentum ${{ needs.verify.outputs.version }}"
-          git push
-
-  # ----------------------------------------------------------------- 7. Flathub
-  flathub:
-    name: Open the Flathub update
-    needs: [verify, release]
-    if: needs.verify.outputs.open_flathub_pr == 'true'
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-      - name: Push a branch and open the pull request
-        run: |
-          if ! gh repo view "flathub/$APP_ID" >/dev/null 2>&1; then
-            echo "::notice::flathub/$APP_ID does not exist yet. Submit the app once with the manifest attached to the release (flathub-$TAG.tar.gz); later releases open the update automatically."
-            exit 0
-          fi
-          gh repo clone "flathub/$APP_ID" flathub
-          cd flathub
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "release-$TAG"
-          tar -xzf "../dist/flathub-$TAG.tar.gz"
-          git add "$APP_ID.json" cargo-sources.json
-          git commit -m "Update to $TAG"
-          git push -u origin "release-$TAG"
-          gh pr create --fill --title "Update to $TAG" \
-            --body "Momentum $TAG: https://github.com/dan-hart/momentum/releases/tag/$TAG"
+  # ---------------------------------------------- 6. required install channels
+  install-channels:
+    name: Publish and verify install channels
+    needs: [verify, release, flatpak-repo]
+    uses: ./.github/workflows/install-channels.yml
+    with:
+      version: ${{ needs.verify.outputs.version }}
+      tooling_ref: ${{ github.sha }}
+      notarized: ${{ needs.verify.outputs.notarize_macos == 'true' }}
+      gpg_fingerprint: ${{ vars.FLATPAK_GPG_FINGERPRINT }}
+    secrets:
+      HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}

@@ -1,0 +1,144 @@
+name: Install channels
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      tooling_ref:
+        type: string
+        required: true
+      notarized:
+        type: boolean
+        required: false
+        default: false
+      gpg_fingerprint:
+        type: string
+        required: true
+    secrets:
+      HOMEBREW_TAP_SSH_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing release version (blank uses the source version)"
+        required: false
+        default: ""
+      tooling_ref:
+        description: "Tooling revision (blank uses this workflow revision)"
+        required: false
+        default: ""
+      notarized:
+        description: "The released Mac app was notarized"
+        type: boolean
+        required: false
+        default: false
+      gpg_fingerprint:
+        description: "Trusted public signing fingerprint (blank uses the configured variable)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  REQUESTED_VERSION: ${{ inputs.version }}
+  EXPECTED_FINGERPRINT: ${{ inputs.gpg_fingerprint || vars.FLATPAK_GPG_FINGERPRINT }}
+
+jobs:
+  homebrew:
+    name: Update Homebrew tap
+    runs-on: ubuntu-latest
+    concurrency:
+      group: momentum-homebrew-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tooling_ref || github.sha }}
+          persist-credentials: false
+      - name: Publisher and workflow regressions
+        run: |
+          python3 -m pip install PyYAML==6.0.2
+          python3 -m unittest discover -s build-aux/tests -p 'test_release_channels.py' -v
+      - name: Required Homebrew credential
+        env:
+          HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
+        run: python3 build-aux/release-channels.py credentials --channel homebrew
+      - name: Resolve release version
+        id: version
+        run: |
+          RELEASE_VERSION=$(python3 build-aux/release-channels.py version --version "$REQUESTED_VERSION")
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Download final public release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release download "v$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern "Momentum-v$RELEASE_VERSION-macos.zip" \
+            --pattern "mo-v$RELEASE_VERSION-*.tar.gz" --pattern SHA256SUMS.txt
+      - name: Check out the scoped Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/homebrew-tap
+          ref: main
+          ssh-key: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
+          ssh-strict: true
+          path: tap
+      - name: Validate and publish both definitions
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          NOTARIZED: ${{ inputs.notarized }}
+        run: |
+          git -C tap config user.name "github-actions[bot]"
+          git -C tap config user.email "github-actions[bot]@users.noreply.github.com"
+          NOTARY_ARGUMENT=()
+          if [ "$NOTARIZED" = true ]; then NOTARY_ARGUMENT=(--notarized); fi
+          python3 build-aux/release-channels.py homebrew --tap tap --assets dist \
+            --version "$RELEASE_VERSION" "${NOTARY_ARGUMENT[@]}"
+
+  hosted:
+    name: Deploy and verify hosted Flatpak
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tooling_ref || github.sha }}
+          persist-credentials: false
+      - name: Resolve release version
+        id: version
+        run: |
+          RELEASE_VERSION=$(python3 build-aux/release-channels.py version --version "$REQUESTED_VERSION")
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Check out the hosted repository ref
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: hosted-repo
+          filter: blob:none
+          sparse-checkout: momentum.flatpakrepo
+          sparse-checkout-cone-mode: false
+      - name: Verify automatic repository write access
+        run: git -C hosted-repo push --dry-run origin HEAD:gh-pages
+      - name: Request the GitHub Pages build explicitly
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --jq .status
+      - name: Install public readback tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q flatpak ostree gnupg
+      - name: Verify trusted signed versions for both architectures
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          FLATPAK_USER_DIR: ${{ runner.temp }}/momentum-flatpak-readback
+        run: |
+          command -v flatpak
+          command -v ostree
+          command -v gpg
+          flatpak remote-add --user --if-not-exists momentum https://dan-hart.github.io/momentum/momentum.flatpakrepo
+          python3 build-aux/release-channels.py verify-hosted --repo "$FLATPAK_USER_DIR/repo" \
+            --version "$RELEASE_VERSION" --fingerprint "$EXPECTED_FINGERPRINT"

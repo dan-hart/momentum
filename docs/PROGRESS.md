@@ -56,6 +56,31 @@ performed for this handoff.
 
 ## Current priorities
 
+### 2026-10-13 — required automatic install channels implemented; hosted check next
+
+The user requests every future release to update Homebrew and the existing hosted
+Flatpak repository automatically, skipping Flathub. F-070/B-164 implement required
+preflight and channel dependencies, a dedicated write-enabled deploy key scoped to
+dan-hart/homebrew-tap, checksum-aware publication from final public assets, exact
+trusted signed-version readback for both architectures and an explicit legacy Pages
+build request. The public fingerprint is pinned in FLATPAK_GPG_FINGERPRINT; the
+existing Flatpak signing key is retained. No personal token/key is copied.
+
+The focused dirty release worktree passes all 23 publisher/workflow regressions,
+actionlint 1.7.12 and changed-shell checks. Real Linux OSTree verifies both 0.4.11
+refs and Good signature, rejects a stale requested version and an unexpected key,
+and tests both-ref downgrade/export guards. Independent plan/code reviews approve
+the final plumbing; regressions cover missing credentials and rejected commit/push
+errors, including a retry after a failed push. Required OSTree/GPG command packages
+are explicit in the hosted readback job.
+
+The scoped credential and public variable are configured. Next: push the verified
+plumbing to main, run the shared Install channels workflow against existing 0.4.11
+assets and record SSH/Pages authentication plus both live version/signature results.
+Hosted execution remains outstanding. No new app build, tag, version bump, TestFlight
+IPA or Flathub submission is needed. Historical release assets and the primary
+checkout's 23 inherited changes are preserved.
+
 ### 2026-10-13 — user confirms self-hosted Linux shipping channel
 
 The user clarifies that Linux should ship through the existing signed repository

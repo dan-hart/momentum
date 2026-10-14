@@ -39,6 +39,28 @@ both Mac cask selections, verifying inferred versions, release URLs and digests
 against the asset bytes. These checks do not launch the app or inspect task data.
 Native Linux Homebrew installation and Mac app launch need separate evidence.
 
+## Release-channel automation (F-070/B-164)
+
+```sh
+python3 -m pip install PyYAML==6.0.2
+python3 -m unittest discover -s build-aux/tests -p 'test_release_channels.py' -v
+actionlint -shellcheck='' .github/workflows/release.yml .github/workflows/install-channels.yml .github/workflows/ci.yml
+```
+
+The parser is a test-only dependency. These regressions use fake assets and real
+isolated temporary Git repositories: missing credentials without disclosure,
+checksum corruption, dirty/older guards, commit/push failures, failed-push retry,
+idempotency and workflow dependencies/permissions. They run in the small CI lane
+and again in the shared publisher job before the scoped credential checkout.
+
+A manual `Install channels` run against an existing release checks actual SSH
+write authentication, final asset bytes, built-in repository/Pages permissions
+and both public signed architecture versions without rebuilding apps. Use the
+command in [RELEASING.md](RELEASING.md#what-the-workflow-does). Native Linux
+OSTree positive/negative controls separately exercise stale versions, unexpected
+keys and downgrade protection. Record the actual Actions revision/run and public
+channel refs in PROGRESS; this scope does not establish a new native build.
+
 ## Run it
 
 ```sh

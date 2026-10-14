@@ -5,8 +5,8 @@
 One version, one tag, one workflow. Every app and the command line carry the same
 version, a release is a `vX.Y.Z` tag, and the Release workflow does the rest: it runs the
 whole test suite against the tag, builds every binary, attaches them to a GitHub Release,
-updates the Homebrew tap, publishes the signed Flatpak repository, and opens the Flathub
-update.
+updates the Homebrew tap, and publishes and verifies the signed self-hosted Flatpak
+repository. Both install channels are required. Flathub submission is excluded.
 
 Android is a required build in the same tag-driven workflow. It attaches APK/AAB,
 matching source, notices, R8 mapping and provenance to the GitHub Release. Optional
@@ -64,26 +64,46 @@ Before tagging, run on a real Mac what CI cannot: the opt-in nearby-sync test in
 
 | Job | What | Runs when |
 |---|---|---|
-| Verify | tag equals every version copy; release notes from the changelog | always |
+| Verify | required publishing credentials and public signing fingerprint; tag equals every version copy; release notes from the changelog | always; missing configuration fails before builds |
 | CI, macOS | the complete `ci.yml` and `macos.yml` suites against the tag: rustfmt, core tests, translations, the Flatpak build with the headless GTK UI tests on both architectures, the macOS unit tests, app build and localization checks | always |
 | Flatpak bundle | `momentum-vX.Y.Z-{x86_64,aarch64}.flatpak` from the release manifest, tests included | tests passed |
 | macOS app and mo | `Momentum-vX.Y.Z-macos.zip` (universal, `mo` inside `Contents/MacOS`) and `mo-vX.Y.Z-macos-universal.tar.gz`, via `macos/scripts/package-app.sh` | tests passed |
 | mo for Linux | `mo-vX.Y.Z-linux-{x86_64,aarch64}.tar.gz`, built on Ubuntu 22.04 so the binary loads on Homebrew's glibc and on any desktop distribution of the last few years | tests passed |
 | Android APK, bundle and source | Reuses `android.yml` at the exact tag: pinned public native source, Python/JVM tests, release lint, APK and bundle-produced APK 16 KiB alignment, matching APK/AAB metadata/notices/signatures, and committed source with pinned LibreSync and original locked Rust crates. Attaches `Momentum-vX.Y.Z-android[-unsigned].apk`, `.aab`, and `-android-{source.tar.gz,notices.txt,mapping.txt,distribution.txt,provenance.json}` | CI/macOS tests passed; any failed Android check blocks the GitHub Release |
-| Publish Flatpak repository | signed OSTree commits for both architectures on `gh-pages`, the repository behind `flatpak install --user https://dan-hart.github.io/momentum/momentum.flatpakref` | tests passed and the signing key is configured |
-| GitHub Release | the release named *Momentum X.Y.Z* with every file above, `SHA256SUMS.txt`, and `flathub-vX.Y.Z.tar.gz` (the Flathub manifest pinned to the tag plus regenerated `cargo-sources.json`) | every build succeeded |
-| Update Homebrew tap | writes `Formula/momentum-cli.rb` and `Casks/momentum.rb` in `dan-hart/homebrew-tap` from `build-aux/homebrew/*.rb.in` with the assets' digests | the tap token is configured |
-| Open the Flathub update | pushes a branch and pull request to `flathub/io.github.dan_hart.Momentum` with the pinned manifest | the Flathub token is configured and that repository exists |
+| Publish Flatpak repository | signed OSTree commits for both architectures on `gh-pages`; checks the signing identity, rejects downgrades, verifies each export and preserves site files | tests passed; required before the GitHub Release |
+| GitHub Release | the release named *Momentum X.Y.Z* with every build artifact above and `SHA256SUMS.txt` | every build and both hosted exports succeeded |
+| Update Homebrew tap | validates final public asset digests and writes `Formula/momentum-cli.rb` and `Casks/momentum.rb` in `dan-hart/homebrew-tap` with a dedicated SSH deploy key | required after the GitHub Release |
+| Deploy and verify hosted Flatpak | explicitly requests a GitHub Pages build, then verifies both public stable refs have the requested version and trusted GPG signature | required after the GitHub Release and both exports |
 
-A release with a missing optional secret still completes: the optional job is skipped
-and the release stays reproducible by rerunning the workflow once the secret is set.
+The Release workflow succeeds only after both install-channel jobs pass. A GitHub
+Release can exist while the final channel jobs are still running or have failed;
+check the workflow result before announcing complete delivery. Missing required
+credentials fail preflight. Optional Mac notarization and Android signing retain
+their existing fallback behavior.
 
-Check each channel independently: a successful GitHub Release does not establish
-that Homebrew or Flathub is current. When the tap token is absent, an explicitly
-authorized manual update can use the same renderer with final public assets; run
-the [Homebrew package checks](TESTING.md#homebrew-release-packages-f-068b-161)
-before pushing the two tap definitions. Flathub admission remains a separate human
-process under its current rules.
+Release runs share one repository-wide concurrency group. Both Flatpak architecture
+exports run serially, and manual/automatic Homebrew publishers share a separate
+lock. Publication rejects older versions and dirty tap checkouts, preserves unrelated
+packages and propagates commit/push failures. Rerunning an unchanged version checks
+write authentication and pushes any existing local commit before reporting success.
+The hosted verifier pins the full public signing fingerprint, requires exact versions
+on both architectures and retries boundedly for Pages propagation.
+
+The shared `Install channels` workflow can repair or verify an existing release
+without rebuilding native apps or changing its immutable tag/assets:
+
+```sh
+gh workflow run install-channels.yml --repo dan-hart/momentum --ref main \
+  -f version=0.4.11 -f notarized=false
+```
+
+Use the released Mac app's actual notarization state. Blank manual version/tooling
+inputs resolve from the current workflow source. The production caller supplies
+the exact release version, tooling revision, notarization result and trusted public
+fingerprint. An older tag still contains its original workflow; use this shared
+workflow for existing assets instead of expecting a tag rerun to rewrite history.
+Run the [Homebrew package checks](TESTING.md#homebrew-release-packages-f-068b-161)
+when changing package definitions or templates.
 
 The workflow publishes desktop apps, CLI archives and verified Android APK/AAB/source
 artifacts. The iOS source version also advances, but this workflow does not submit an
@@ -105,13 +125,19 @@ one for people who want the app.
 
 | Secret | Used by | Without it |
 |---|---|---|
-| `FLATPAK_GPG_PRIVATE_KEY`, `FLATPAK_GPG_KEY_ID` | Publish Flatpak repository | the repository on `gh-pages` is not updated; bundles are still attached to the release |
-| `HOMEBREW_TAP_TOKEN` | Update Homebrew tap | the tap is not updated. A fine-grained personal access token with *Contents: read and write* on `dan-hart/homebrew-tap` |
+| `FLATPAK_GPG_PRIVATE_KEY`, `FLATPAK_GPG_KEY_ID` | Publish Flatpak repository | required; release preflight fails. Preserve the existing repository signing identity |
+| `HOMEBREW_TAP_SSH_KEY` | Update Homebrew tap | required; release preflight fails. Private half of the dedicated write-enabled deploy key on `dan-hart/homebrew-tap`; stored only as an encrypted Momentum Actions secret |
 | `MACOS_CERTIFICATE_P12`, `MACOS_CERTIFICATE_PASSWORD` | macOS app and mo | the app and `mo` are signed ad hoc, and the cask tells users to install with `--no-quarantine`. The P12 is the *Developer ID Application* certificate with its private key, base64-encoded |
 | `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | macOS app and mo | the app is not notarized. The password is an app-specific password for the Apple ID; the team ID is also needed for Developer ID signing |
-| `FLATHUB_TOKEN` | Open the Flathub update | no pull request is opened; the manifest is still attached to the release. A token that can push branches and open pull requests on the Flathub app repository |
 | `LIBRESYNC_TOKEN` | every LibreSync checkout | falls back to the workflow token, which is enough while LibreSync is public |
 | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Android release build only | all absent: unsigned APK/AAB remain attached with explicit filenames/instructions; partially configured: build fails. The keystore is base64-encoded and temporary on the runner; no development key is used for distribution |
+
+`FLATPAK_GPG_FINGERPRINT` is a required public repository variable, not a secret.
+It pins the existing full primary fingerprint
+`07BA47734E3A0B72D20267940D8E046EFEEF00F0`. Preflight validates its format;
+exports and public readback require that exact identity. The hosted job uses the
+built-in workflow token with Contents and Pages write permissions to publish the
+repository and explicitly request its legacy Pages build. It needs no Flathub token.
 
 Keep an offline backup of the Flatpak signing key: a lost key means a new repository for
 every user.
@@ -139,9 +165,10 @@ and does not block this self-hosted channel.
 Momentum is not on Flathub yet. As checked on 2026-10-13, initial
 [PR #10133](https://github.com/flathub/flathub/pull/10133) is closed for a missing
 submission checklist and `flathub/io.github.dan_hart.Momentum` does not exist.
-The release's `flathub-vX.Y.Z.tar.gz` is a reference artifact with exact Momentum
-and LibreSync source pins plus offline Cargo sources; it is not an accepted listing
-or proof of a compliant submission.
+Future releases generate no Flathub submission archive and open no Flathub PR.
+Historical archives, including 0.4.11, remain immutable reference artifacts; they
+do not prove admission or submission eligibility. The build still obtains GNOME
+runtime/SDK dependencies from Flathub.
 
 Follow the [current submission guide](https://docs.flathub.org/docs/for-app-authors/submission)
 and [AI-content policy](https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy).
@@ -149,10 +176,8 @@ The policy requires disclosure of known AI-generated app/packaging material,
 prohibits AI-assisted manifests, and requires humans to handle submission PRs,
 commit messages, descriptions and review interactions. A human must review
 provenance, author compliant packaging and handle the existing closed PR under
-its review guidance. Do not use an AI agent or enable the legacy token-gated
-workflow expecting it to perform this first submission. The existing job can
-only target an app repository after admission; any later automation must also
-satisfy the rules in effect at that time. Lint checks remain useful diagnostics:
+its review guidance if admission is requested later. The former token-gated
+submission job has been removed. Lint checks remain useful diagnostics:
 
 ```sh
 flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.dan_hart.Momentum.json
