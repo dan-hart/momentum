@@ -140,6 +140,8 @@ pub enum TaskGroup {
 #[cfg_attr(feature = "ffi", derive(uniffi::Record))]
 pub struct Preferences {
     pub group_by: GroupBy,
+    /// Device-local visibility of today's Morning/Evening families in Today.
+    pub show_day_period_tasks_in_today: bool,
     pub sort: SortKey,
     pub direction: SortDirection,
     /// Days shown in Coming Up: 7 or 30.
@@ -164,6 +166,7 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             group_by: GroupBy::MorningNight,
+            show_day_period_tasks_in_today: true,
             sort: SortKey::Manual,
             direction: SortDirection::Ascending,
             upcoming_days: 7,

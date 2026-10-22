@@ -31,6 +31,7 @@ struct SettingsView: SwiftUI.View {
 private struct GeneralSettings: SwiftUI.View {
     @Environment(AppState.self) private var state
     @Environment(\.locale) private var locale
+    @AppStorage(PrefKey.showDayPeriodTasksInToday) private var showDayPeriods = true
     @AppStorage(PrefKey.autoArchive) private var autoArchive = false
     @AppStorage(PrefKey.completionSound) private var completionSound = false
     @AppStorage(PrefKey.completionSoundChoice) private var completionSoundChoiceRaw = CompletionSoundChoice.defaultChoice.rawValue
@@ -66,6 +67,7 @@ private struct GeneralSettings: SwiftUI.View {
     var body: some SwiftUI.View {
         Form {
             Section(String(localized: "Tasks")) {
+                Toggle(String(localized: "Show Morning and Evening tasks in Today"), isOn: $showDayPeriods)
                 Toggle(String(localized: "Archive completed tasks immediately"), isOn: $autoArchive)
                 Text(String(localized: "A task you complete goes straight to the archive. Undo brings it back."))
                     .appFont(.caption).foregroundStyle(.secondary)

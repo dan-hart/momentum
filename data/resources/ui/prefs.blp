@@ -115,6 +115,10 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     Adw.PreferencesGroup {
       title: _("Tasks");
 
+      Adw.SwitchRow day_period_today_row {
+        title: _("Show Morning and Evening tasks in Today");
+      }
+
       Adw.SwitchRow auto_archive_row {
         title: _("Archive completed tasks immediately");
         subtitle: _("A completed task goes straight to the archive and syncs. Undo brings it back.");

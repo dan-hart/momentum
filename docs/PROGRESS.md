@@ -1,9 +1,75 @@
 # Momentum progress and handoff
 
-Updated: 2026-10-13. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
+## 2026-10-22 — F-071 day-period sections
+
+- **Authority/revision:** user approved the [design](superpowers/specs/2026-10-22-day-period-sections-design.md)
+  and implementation on Linux, macOS, iOS and Android. Local branch
+  `task/day-period-sections`, dirty worktree based on `f9637e2`; no commit, push or
+  release requested. The initial checkout had no tracked edits.
+- **Scope:** shared Today filtering and conditional Morning → Today → Evening
+  separator policy, native EN/DE visibility controls and separator rendering.
+  The default-on preference stays device-local and outside settings transfer/sync.
+  Today's hidden families remain available in slot destinations; overdue tasks stay
+  visible in Today. Task data, sidebar membership and task-wide summaries are preserved.
+- **Shared verification:** `cargo test --workspace --exclude momentum --all-features
+  --all-targets` passes: 399 tests, zero failures, five existing opt-in ignores. The
+  first sandboxed core run could not bind local socket fixtures; the socket-enabled
+  workspace rerun passes, including all 208 core tests. GTK consumer/tests compile
+  after the final selection fix. Shared separator combinations, filtering under all
+  grouping modes, completed families, overdue retention and unaffected sidebar/counts
+  are covered. Spec and quality reviews caught and corrected GTK hidden selection
+  retention; both reviewers approved the fix. Native Linux display/accessibility
+  acceptance remains unavailable on this Mac.
+- **Apple:** 207 MomentumKit and 170 portable MomentumMobile tests pass. Shipping
+  macOS arm64 Debug and iOS simulator Debug builds pass with signing disabled after
+  the final header correction. Two scoped iOS 27 hosted regressions pass: durable
+  local preference/worker refresh and production TaskScreen heading order plus
+  selection shrinking from three tasks to one. The rendered screenshot was inspected:
+  horizontal lines appear above Today and Evening, with all headings visible.
+  Native tests exposed a multi-child SwiftUI header losing Today/Evening labels;
+  the final single VStack header and explicit heading traits fix that on both Apple
+  apps. The selection fixture explicitly injects iPad keyboard capability. These
+  checks do not establish macOS live interaction, iOS 26.5, physical-device or spoken
+  VoiceOver acceptance.
+- **Android:** 101 JVM tests pass, including generated Kotlin/Rust visibility and
+  separator-boundary coverage. Debug app, instrumentation APK and lintDebug pass.
+  The unchanged notices task initially lacked the cached Guava parent POM; resolving
+  its existing public parent metadata through Gradle restored the full gate without
+  dependencies or packaging changes. Repository persistence/recovery/transfer and
+  four native Compose cases (conditional lines, selection, EN/DE and 2× text) compile.
+  Instrumentation could not execute: two fresh owned API37 AVD boots failed with
+  unavailable HVF and host mprotect permission errors. No native RED/green or
+  TalkBack/physical-device claim is made.
+- **Tooling/review:** fresh pinned/checksum-verified LibreSync dependency, regenerated
+  Apple bindings/static slices and Android host/both ABI libraries; CI-owned Rust
+  formatting, schema validation, gettext checks, Apple/Android resource parsing,
+  changed-document file targets and diff whitespace pass. Broad cargo fmt also
+  inspects the unchanged pinned LibreSync source; its upstream formatting differences
+  are excluded using the repository's existing CI package list. Independent spec
+  and quality reviews approve all four implementations. No task data, user settings
+  or installed apps were used for fixtures. Owned test simulators/AVDs were removed.
+- **Status/next:** F-071 is Implemented on all four platforms. Remaining acceptance:
+  supported Linux native interaction/accessibility, macOS live interaction, Android
+  native instrumentation and device/spoken checks. Existing unrelated deferrals are
+  unchanged. Prior release/runtime evidence elsewhere in this file does not apply to
+  this dirty revision; no publication or integration was performed.
+- **Evidence:** `/private/tmp/momentum-day-period-workspace.log`,
+  `momentum-day-period-{momentumkit,mobile-final,macos-build-final,ios-build-final}.log`,
+  `momentum-day-period-android-{green-build,lint}.log` and GTK logs use the same
+  `/private/tmp/` prefix. Native worker result:
+  `ios/DerivedData/TestReports/day-period-final.xcresult` (worker passed; the earlier
+  render failure is retained); final render/selection result:
+  `/private/tmp/day-period-selection-fixed.xcresult`. Inspected synthetic screenshot:
+  `ios/DerivedData/TestReports/day-period-native.png`. Outputs are local/ignored.
+
+Updated: 2026-10-22. Product rules live in [AGENTS.md](../AGENTS.md); exact capability
 and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
+
+As of 2026-10-22, the current checkout is local `task/day-period-sections` based on
+`f9637e2`, implementing approved F-071. No publication is authorized for this change.
+The earlier workspace and release authorizations below retain their historical scope.
 
 Current 2026-10-12 work is isolated on `task/native-features-release`, based on
 remote main `69682872`. The primary `task/sync-performance-recovery` checkout and

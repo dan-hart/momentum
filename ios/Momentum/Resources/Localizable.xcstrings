@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+  "Show Morning and Evening tasks in Today": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Show Morning and Evening tasks in Today"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Morgen- und Abendaufgaben in Heute anzeigen"
+        }
+      }
+    }
+  },
     "" : {
       "shouldTranslate" : false
     },

@@ -31,6 +31,9 @@ import com.codedbydan.momentum.core.*
                     GroupBy.PROJECT -> R.string.project; GroupBy.TAG -> R.string.tags; GroupBy.ESTIMATE -> R.string.time_estimate }),
                     prefs.groupBy == group, state.view != View.Upcoming) { vm.preferences { it.copy(groupBy = group) } }
             }
+            SettingSwitch(R.string.show_day_period_tasks_in_today, prefs.showDayPeriodTasksInToday) { visible ->
+                vm.preferences { it.copy(showDayPeriodTasksInToday = visible) }
+            }
             Text(stringResource(R.string.sort), style = MaterialTheme.typography.titleSmall)
             SortKey.entries.forEach { sort ->
                 ChoiceRow(stringResource(when(sort) { SortKey.MANUAL -> R.string.manual; SortKey.TITLE -> R.string.title;

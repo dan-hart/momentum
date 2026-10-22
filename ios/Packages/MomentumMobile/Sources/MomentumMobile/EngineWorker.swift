@@ -93,6 +93,10 @@ public actor EngineWorker {
         engine.setPreferences(prefs: preferences)
     }
 
+    public func setDayPeriodTasksInToday(visible: Bool) {
+        engine.setDayPeriodTasksInToday(visible: visible)
+    }
+
     public func setDeviceSummaryPreferences(_ preferences: MomentumCore.Preferences) throws {
         try engine.setDeviceSummaryPreferences(enabled: preferences.morningSummaryEnabled, time: preferences.morningSummaryTime)
     }

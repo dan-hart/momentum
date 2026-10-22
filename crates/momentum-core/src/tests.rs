@@ -3139,3 +3139,138 @@ fn concurrent_reminder_identity_upgrades_preserve_every_alias() {
     }
     assert_eq!(e.with_store(|s| s.state.task.entities.len()), 1);
 }
+
+#[test]
+fn day_period_visibility_filters_today_families_in_every_grouping_only() {
+    let (e, _dir) = empty();
+    e.add_task("Morning family #Morning".into(), View::Today);
+    e.add_task("Evening family #Evening".into(), View::Today);
+    e.add_task("Plain".into(), View::Today);
+    e.add_task("Completed morning #Morning".into(), View::Today);
+    let morning = id_of(&e, "Morning family");
+    let evening = id_of(&e, "Evening family");
+    let completed = id_of(&e, "Completed morning");
+    e.add_subtask(morning.clone(), "Morning child".into());
+    e.add_subtask(completed.clone(), "Completed child".into());
+    e.bulk_done(vec![completed.clone()]);
+    let mut overdue = Task::new("Overdue slotted", INBOX_PROJECT_ID);
+    overdue.due_day = Some(day_str(today_n() - 1));
+    overdue.tag_ids = vec![tag_id(&e, "Evening")];
+    let overdue_id = overdue.id.clone();
+    e.dispatch(Action::AddTask {
+        task: overdue,
+        bottom: true,
+    });
+    let sidebar = e.sidebar();
+    let counts = [TaskCountMode::DueToday, TaskCountMode::TodayIncludingOverdue].map(|mode| e.task_count(mode));
+    let alternate_views = [
+        View::Morning,
+        View::Tonight,
+        View::project(INBOX_PROJECT_ID),
+        View::tag(&tag_id(&e, "Morning")),
+    ];
+    let alternate: Vec<_> = alternate_views.iter().map(|v| e.listing(v.clone(), 100)).collect();
+    assert!(e.preferences().show_day_period_tasks_in_today);
+    for group_by in [
+        GroupBy::MorningNight,
+        GroupBy::None,
+        GroupBy::Project,
+        GroupBy::Tag,
+        GroupBy::Estimate,
+    ] {
+        e.set_preferences(Preferences {
+            group_by,
+            ..Default::default()
+        });
+        let search_before = e.search("family".into());
+        e.set_day_period_tasks_in_today(false);
+        let listing = e.listing(View::Today, 100);
+        assert_eq!(
+            row_ids(&listing).len(),
+            2,
+            "only plain and overdue remain for {group_by:?}"
+        );
+        assert!(row_ids(&listing).contains(&overdue_id));
+        assert!(!row_ids(&listing).contains(&morning));
+        assert!(!row_ids(&listing).contains(&evening));
+        assert!(!row_ids(&listing).contains(&completed));
+        assert!(listing.all_done.is_none());
+        assert_eq!(e.sidebar(), sidebar);
+        assert_eq!(
+            [TaskCountMode::DueToday, TaskCountMode::TodayIncludingOverdue].map(|mode| e.task_count(mode)),
+            counts
+        );
+        assert_eq!(e.search("family".into()), search_before);
+    }
+    e.set_preferences(Preferences {
+        show_day_period_tasks_in_today: false,
+        ..Default::default()
+    });
+    for (view, expected) in alternate_views.into_iter().zip(alternate) {
+        assert_eq!(e.listing(view, 100), expected);
+    }
+    e.bulk_done(vec![id_of(&e, "Plain"), overdue_id]);
+    let listing = e.listing(View::Today, 100);
+    assert_eq!(listing.all_done, Some(AllDone::Today { completed: 1 }));
+    assert_eq!(row_ids(&listing), [id_of(&e, "Plain")]);
+}
+
+#[test]
+fn hidden_day_period_only_today_has_visible_empty_state() {
+    let (e, _dir) = empty();
+    e.add_task("Only #Morning".into(), View::Today);
+    e.set_preferences(Preferences {
+        show_day_period_tasks_in_today: false,
+        ..Default::default()
+    });
+    let listing = e.listing(View::Today, 100);
+    assert!(listing.sections.is_empty());
+    assert_eq!(listing.empty, Some(EmptyState::Today));
+    e.bulk_done(vec![id_of(&e, "Only")]);
+    let listing = e.listing(View::Today, 100);
+    assert_eq!(listing.empty, Some(EmptyState::Today));
+    assert!(listing.all_done.is_none());
+}
+
+#[test]
+fn day_period_separators_cover_every_populated_group_combination() {
+    for mask in 0..8 {
+        let (e, _dir) = empty();
+        for (bit, title) in [(1, "Morning #Morning"), (2, "Today"), (4, "Evening #Evening")] {
+            if mask & bit != 0 {
+                e.add_task(title.into(), View::Today);
+            }
+        }
+        e.add_task("Done #Morning".into(), View::Today);
+        e.bulk_done(vec![id_of(&e, "Done")]);
+        let listing = e.listing(View::Today, 100);
+        let open_count = listing.sections.len() - 1;
+        for index in 0..=listing.sections.len() {
+            let expected = index > 0 && index < open_count;
+            assert_eq!(
+                day_period_separator_before(&listing, index as u32, GroupBy::MorningNight),
+                expected,
+                "mask {mask}, index {index}"
+            );
+            for group_by in [GroupBy::None, GroupBy::Project, GroupBy::Tag, GroupBy::Estimate] {
+                assert!(!day_period_separator_before(&listing, index as u32, group_by));
+            }
+            for view in [
+                View::Morning,
+                View::Tonight,
+                View::Upcoming,
+                View::Archive,
+                View::Search,
+                View::project(INBOX_PROJECT_ID),
+            ] {
+                let mut elsewhere = listing.clone();
+                elsewhere.view = view;
+                assert!(!day_period_separator_before(
+                    &elsewhere,
+                    index as u32,
+                    GroupBy::MorningNight
+                ));
+            }
+        }
+    }
+}

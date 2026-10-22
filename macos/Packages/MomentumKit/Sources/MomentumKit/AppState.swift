@@ -167,6 +167,7 @@ public final class AppState {
         }
         let initialSettingsStatus = engine.settingsSyncStatus()
         self.appSettingsSync = initialSettingsStatus
+        engine.setDayPeriodTasksInToday(visible: p.showDayPeriodTasksInToday)
         do { try engine.setDeviceSummaryPreferences(enabled: p.core.morningSummaryEnabled, time: p.core.morningSummaryTime) }
         catch { appSettingsError = Strings.error(error) }
         self.selectedSyncMethod = p.syncMethod
@@ -322,6 +323,7 @@ public final class AppState {
             syncFailureKind = nil
             banner = nil
         }
+        engine.setDayPeriodTasksInToday(visible: p.showDayPeriodTasksInToday)
         do { try engine.setDeviceSummaryPreferences(enabled: p.core.morningSummaryEnabled, time: p.core.morningSummaryTime) }
         catch { appSettingsError = Strings.error(error) }
         refresh()
@@ -421,6 +423,7 @@ public final class AppState {
         guard force || portableRevision != appSettingsSync.revision else { return }
         do {
             try PortableAppSettings.apply(engine.portableSettingsJson(), to: defaults)
+            engine.setDayPeriodTasksInToday(visible: prefs.showDayPeriodTasksInToday)
             try engine.setDeviceSummaryPreferences(enabled: prefs.core.morningSummaryEnabled, time: prefs.core.morningSummaryTime)
             portableRevision = appSettingsSync.revision
             lastNativeSettings = try PortableAppSettings.encode(defaults)

@@ -18,6 +18,19 @@ import Testing
         return (d, name)
     }
 
+    @Test func dayPeriodVisibilityDefaultsToTrueAndPersistsLocally() {
+        let name = "momentum-day-period-\(UUID())"
+        let d = UserDefaults(suiteName: name)!
+        defer { d.removePersistentDomain(forName: name) }
+        #expect(Preferences(d).core.showDayPeriodTasksInToday)
+        Preferences.register(d)
+        #expect(Preferences(d).core.showDayPeriodTasksInToday)
+        d.set(false, forKey: "show-day-period-tasks-in-today")
+        #expect(!Preferences(UserDefaults(suiteName: name)!).core.showDayPeriodTasksInToday)
+        d.removeObject(forKey: "show-day-period-tasks-in-today")
+        #expect(Preferences(d).core.showDayPeriodTasksInToday)
+    }
+
     @Test func theDefaultsMatchTheGnomeSchema() {
         let (d, name) = freshDefaults()
         defer { d.removePersistentDomain(forName: name) }

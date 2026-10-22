@@ -196,6 +196,7 @@ struct MomentumCommands: Commands {
 /// is disabled there rather than offering a choice that would not apply.
 struct SortMenu: SwiftUI.View {
     let state: AppState
+    @AppStorage(PrefKey.showDayPeriodTasksInToday) private var showDayPeriods = true
     @AppStorage(PrefKey.groupBy) private var group = "morning-night"
     @AppStorage(PrefKey.taskSort) private var sort = "manual"
     @AppStorage(PrefKey.sortDirection) private var direction = "ascending"
@@ -211,6 +212,7 @@ struct SortMenu: SwiftUI.View {
             Text(String(localized: "Time Estimate")).tag("estimate")
         }
         .disabled(state.view == .upcoming)
+        Toggle(String(localized: "Show Morning and Evening tasks in Today"), isOn: $showDayPeriods)
         Picker(String(localized: "Sort By"), selection: $sort) {
             Text(String(localized: "Manual Order")).tag("manual")
             Text(String(localized: "Title")).tag("title")

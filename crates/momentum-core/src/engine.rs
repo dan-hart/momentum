@@ -826,6 +826,10 @@ impl Engine {
     pub fn set_preferences(&self, prefs: Preferences) {
         self.lock().prefs = prefs;
     }
+    /// Update device-local Today visibility without replacing portable preferences.
+    pub fn set_day_period_tasks_in_today(&self, visible: bool) {
+        self.lock().prefs.show_day_period_tasks_in_today = visible;
+    }
     /// Update device-only summary choices without replacing portable preferences.
     pub fn set_device_summary_preferences(&self, enabled: bool, time: ClockTime) -> Result<(), CoreError> {
         if time.hour > 23 || time.minute > 59 {

@@ -1,10 +1,32 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Dan Hart
+import Foundation
 import MomentumCore
 import Testing
 @testable import MomentumKit
 
 @MainActor @Suite struct GroupingTests {
+    @Test func hidingDayPeriodsRefreshesTodayAndReconcilesSelection() throws {
+        let h = Harness()
+        let morning = try #require(h.state.listing.sections.first { $0.group == .morning })
+        let hidden = morning.rows.compactMap { row -> String? in
+            if case .task(let task) = row { return task.id }; return nil
+        }
+        let retained = try #require(h.state.listing.sections.first { $0.group == .today }?.rows.first)
+        guard case .task(let task) = retained else { return }
+        h.state.selection = Set(hidden + [task.id])
+        h.defaults.set(false, forKey: "show-day-period-tasks-in-today")
+        h.state.preferencesChanged()
+        #expect(Set(h.rows).isDisjoint(with: hidden))
+        #expect(h.state.selection == [task.id])
+        h.state.go(to: .morning)
+        #expect(Set(h.rows) == Set(hidden))
+        h.state.go(to: .today)
+        h.defaults.set(true, forKey: "show-day-period-tasks-in-today")
+        h.state.preferencesChanged()
+        #expect(Set(hidden).isSubset(of: Set(h.rows)))
+    }
+
     @Test func changingGroupingRefreshesTheListAndPreservesTaskIdentity() {
         let h = Harness()
         let original = h.state.listing

@@ -28,7 +28,7 @@ struct TaskListView: SwiftUI.View {
                                 .selectionDisabled()
                         }
                     }
-                    ForEach(state.listing.sections, id: \.identity) { section in
+                    ForEach(Array(state.listing.sections.enumerated()), id: \.element.identity) { index, section in
                         Section {
                             ForEach(section.rows, id: \.rowId) { row in
                                 rowView(row)
@@ -40,21 +40,28 @@ struct TaskListView: SwiftUI.View {
                                     .selectionDisabled()
                             }
                         } header: {
-                            if let group = section.group, let headingColor = groupColor(group) {
-                                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    if let context = Strings.sectionContextTitle(section) {
-                                        Text(context + " ·")
-                                            .foregroundStyle(section.kind == .overdue ? Color.red : .secondary)
-                                    }
-                                    Text(Strings.groupTitle(group))
-                                        .foregroundStyle(headingColor)
+                            VStack(alignment: .leading, spacing: 8) {
+                                if dayPeriodSeparatorBefore(listing: state.listing, sectionIndex: UInt32(index), groupBy: state.prefs.core.groupBy) {
+                                    Divider().accessibilityHidden(true)
                                 }
-                                .appFont(.headline)
-                                .accessibilityElement(children: .combine)
-                            } else if let title = Strings.sectionTitle(section) {
-                                Text(title)
+                                if let group = section.group, let headingColor = groupColor(group) {
+                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                        if let context = Strings.sectionContextTitle(section) {
+                                            Text(context + " ·")
+                                                .foregroundStyle(section.kind == .overdue ? Color.red : .secondary)
+                                        }
+                                        Text(Strings.groupTitle(group))
+                                            .foregroundStyle(headingColor)
+                                    }
                                     .appFont(.headline)
-                                    .foregroundStyle(section.kind == .overdue ? Color.red : .secondary)
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityAddTraits(.isHeader)
+                                } else if let title = Strings.sectionTitle(section) {
+                                    Text(title)
+                                        .appFont(.headline)
+                                        .foregroundStyle(section.kind == .overdue ? Color.red : .secondary)
+                                        .accessibilityAddTraits(.isHeader)
+                                }
                             }
                         }
                     }

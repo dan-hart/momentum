@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="show_day_period_tasks_in_today">Show Morning and Evening tasks in Today</string>
+</resources>

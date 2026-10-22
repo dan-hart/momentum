@@ -263,6 +263,20 @@ import Testing
         #expect(h.defaults.string(forKey: PrefKey.taskSort) == "title")
         #expect(!h.defaults.bool(forKey: PrefKey.colorfulLabels))
     }
+    @Test func dayPeriodVisibilityDoesNotTransferAndPortableRefreshPreservesIt() throws {
+        let source = Harness(demo: false)
+        let target = Harness(demo: false)
+        source.defaults.set(false, forKey: "show-day-period-tasks-in-today")
+        source.state.preferencesChanged()
+        let encoded = try PortableAppSettings.encode(source.defaults)
+        #expect(!encoded.contains("show-day-period"))
+        try PortableAppSettings.apply(encoded, to: target.defaults)
+        #expect(Preferences(target.defaults).core.showDayPeriodTasksInToday)
+        source.state.refreshAppSettings(force: true)
+        #expect(!source.engine.preferences().showDayPeriodTasksInToday)
+        #expect(!Preferences(source.defaults).core.showDayPeriodTasksInToday)
+    }
+
     @Test func onlyApprovedPortableValuesLeaveNativePreferences() throws {
         let h = Harness(demo: false)
         h.defaults.set("private-credential-sentinel", forKey: PrefKey.nextcloudServer)

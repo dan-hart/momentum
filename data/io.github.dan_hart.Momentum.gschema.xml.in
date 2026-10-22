@@ -22,6 +22,10 @@
     <key name="compress" type="b"><default>false</default><summary>Gzip the sync file</summary></key>
     <key name="projects-collapsed" type="b"><default>false</default><summary>Projects section collapsed in the sidebar</summary></key>
     <key name="tags-collapsed" type="b"><default>false</default><summary>Tags section collapsed in the sidebar</summary></key>
+    <key name="show-day-period-tasks-in-today" type="b">
+      <default>true</default>
+      <summary>Show Morning and Evening tasks in Today</summary>
+    </key>
     <key name="group-by" type="s">
       <choices><choice value="morning-night"/><choice value="none"/><choice value="project"/><choice value="tag"/><choice value="estimate"/></choices>
       <default>'morning-night'</default>

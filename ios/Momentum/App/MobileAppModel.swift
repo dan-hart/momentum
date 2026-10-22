@@ -256,6 +256,7 @@ struct FeedbackToast: Identifiable, Equatable {
                 pendingNativeSettingsIntent = try? PortableAppSettings.encode(defaults)
             }
             appSettingsSync = await opened.appSettingsSyncStatus()
+            await opened.setDayPeriodTasksInToday(visible: Preferences(defaults).showDayPeriodTasksInToday)
             try await opened.setDeviceSummaryPreferences(Preferences(defaults).core)
             worker = opened
             startupFailure = nil
@@ -538,6 +539,7 @@ struct FeedbackToast: Identifiable, Equatable {
     func preferencesChanged() async {
         do { try await stageAppSettings(explicit: false) }
         catch { appSettingsError = Strings.error(error) }
+        await worker?.setDayPeriodTasksInToday(visible: Preferences(defaults).showDayPeriodTasksInToday)
         do { try await worker?.setDeviceSummaryPreferences(Preferences(defaults).core) }
         catch { appSettingsError = Strings.error(error) }
         revision += 1
@@ -602,6 +604,7 @@ struct FeedbackToast: Identifiable, Equatable {
             lastNativeSettings = try PortableAppSettings.encode(defaults)
             appSettingsError = nativeSettingsStageError
             let preferences = Preferences(defaults).core
+            await worker.setDayPeriodTasksInToday(visible: preferences.showDayPeriodTasksInToday)
             try await worker.setDeviceSummaryPreferences(preferences)
         } catch { if generation == appSettingsRefreshGeneration { appSettingsError = Strings.error(error) } }
     }

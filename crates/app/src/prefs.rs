@@ -59,6 +59,8 @@ mod imp {
         #[template_child]
         pub auto_archive_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub day_period_today_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub completion_sound_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub completion_sound_choice_row: TemplateChild<adw::ComboRow>,
@@ -195,6 +197,8 @@ mod imp {
                 ),
             );
             s.bind("auto-archive", &*self.auto_archive_row, "active").build();
+            s.bind("show-day-period-tasks-in-today", &*self.day_period_today_row, "active")
+                .build();
             s.bind("completion-sound", &*self.completion_sound_row, "active")
                 .build();
             let sound_labels = crate::sound::CompletionSoundChoice::ALL.map(|choice| choice.label());

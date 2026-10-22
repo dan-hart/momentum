@@ -52,6 +52,13 @@ import com.codedbydan.momentum.core.*
             }
         }
         listing.sections.forEachIndexed { index, section ->
+            if(dayPeriodSeparatorBefore(listing, index.toUInt(), snapshot.preferences.groupBy)) {
+                item("day-period-separator-$index") {
+                    HorizontalDivider(Modifier.padding(horizontal = 20.dp)
+                        .testTag("day-period-separator-$index").semantics { hideFromAccessibility() },
+                        color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
             item("heading-$index") {
                 sectionText(section)?.let {
                     val groupIds = section.rows.filterIsInstance<Row.Task>().filter { row -> !row.row.archived && row.row.occurrence == null }.map { row -> row.row.id }

@@ -52,6 +52,7 @@ struct SettingsScreen: View {
 private struct TaskListSettings: View {
     @Environment(MobileAppModel.self) private var model
     @AppStorage(PrefKey.autoArchive) private var autoArchive = false
+    @AppStorage(PrefKey.showDayPeriodTasksInToday) private var showDayPeriods = true
     @AppStorage(PrefKey.groupBy) private var group = "morning-night"
     @AppStorage(PrefKey.taskSort) private var sort = "manual"
     @AppStorage(PrefKey.sortDirection) private var direction = "ascending"
@@ -64,6 +65,8 @@ private struct TaskListSettings: View {
                                        options: [("morning-night", "Morning & Night"), ("none", "None"),
                                                  ("project", "Project"), ("tag", "Tag"), ("estimate", "Time Estimate")])
                     .accessibilityIdentifier("settings-group")
+                Toggle("Show Morning and Evening tasks in Today", isOn: $showDayPeriods)
+                    .accessibilityIdentifier("settings-day-periods")
                 AdaptiveSettingsPicker("Sort By", symbol: "line.3.horizontal.decrease", selection: $sort,
                                        options: [("manual", "Manual Order"), ("title", "Title"), ("due", "Due Day"),
                                                  ("estimate", "Estimate"), ("created", "Created")])
@@ -88,7 +91,7 @@ private struct TaskListSettings: View {
         .navigationTitle("Task Lists")
         .momentumNavigationCanvas()
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: "\(autoArchive)-\(group)-\(sort)-\(direction)-\(range)") {
+        .onChange(of: "\(autoArchive)-\(group)-\(showDayPeriods)-\(sort)-\(direction)-\(range)") {
             Task { await model.preferencesChanged() }
         }
     }

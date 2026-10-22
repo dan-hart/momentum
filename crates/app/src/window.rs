@@ -630,6 +630,7 @@ impl MomentumWindow {
             ),
         );
         self.add_action(&group_by);
+        self.add_action(&imp.settings.create_action("show-day-period-tasks-in-today"));
         self.add_action(&imp.settings.create_action("task-sort"));
         self.add_action(&imp.settings.create_action("sort-direction"));
         self.add_action(&imp.settings.create_action("upcoming-range"));
@@ -644,7 +645,13 @@ impl MomentumWindow {
             ),
         );
         // The preferences the core computes with: handed over whenever they change.
-        for key in ["group-by", "task-sort", "sort-direction", "upcoming-range"] {
+        for key in [
+            "group-by",
+            "task-sort",
+            "sort-direction",
+            "upcoming-range",
+            "show-day-period-tasks-in-today",
+        ] {
             imp.settings.connect_changed(
                 Some(key),
                 glib::clone!(
@@ -1135,6 +1142,8 @@ impl MomentumWindow {
     /// by the core and must not be replaced from a native snapshot.
     fn apply_preferences(&self) {
         let s = &self.imp().settings;
+        self.engine()
+            .set_day_period_tasks_in_today(s.boolean("show-day-period-tasks-in-today"));
         if let Err(error) = self.engine().set_device_summary_preferences(
             s.boolean("morning-summary-enabled"),
             ClockTime {
@@ -3082,6 +3091,18 @@ impl MomentumWindow {
         } else {
             imp.engine.listing(view.clone(), imp.archive_shown.get())
         };
+        // Refreshes can hide rows without leaving selection mode (for example,
+        // the local Today visibility preference). Bulk actions must use visible rows.
+        let visible: HashSet<&str> = listing
+            .sections
+            .iter()
+            .flat_map(|section| &section.rows)
+            .filter_map(|row| match row {
+                Row::Task { row } => Some(row.id.as_str()),
+                _ => None,
+            })
+            .collect();
+        imp.selected.borrow_mut().retain(|id| visible.contains(id.as_str()));
         let title = match &listing.title {
             ViewTitle::Today => gettext("Today"),
             ViewTitle::Morning => gettext("Morning"),
@@ -3154,7 +3175,16 @@ impl MomentumWindow {
             imp.task_box.append(&page);
             imp.rows.borrow_mut().push(String::new());
         }
-        for section in &listing.sections {
+        for (index, section) in listing.sections.iter().enumerate() {
+            if momentum_core::day_period_separator_before(&listing, index as u32, self.engine().preferences().group_by)
+            {
+                let separator = gtk::Separator::builder()
+                    .orientation(gtk::Orientation::Horizontal)
+                    .accessible_role(gtk::AccessibleRole::Presentation)
+                    .name("day-period-separator")
+                    .build();
+                imp.task_box.append(&separator);
+            }
             let base = self.section_title(&section.kind, section.count);
             let heading = match &section.group {
                 Some(group) => {

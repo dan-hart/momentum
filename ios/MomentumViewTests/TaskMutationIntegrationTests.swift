@@ -1,12 +1,44 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import Accessibility
 import Foundation
+import MomentumKit
 import MomentumCore
 import MomentumMobile
 import SwiftUI
 import XCTest
 
 @MainActor final class TaskMutationIntegrationTests: XCTestCase {
+    func testLocalDayPeriodPreferenceRefreshesWorkerAndSurvivesReopen() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let name = "momentum-day-period-tests-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await model.foreground()
+        _ = await model.perform(.add("Morning fixture", .today))
+        let worker = try XCTUnwrap(model.worker)
+        let initial = await worker.snapshot(view: .today)
+        let taskID = try XCTUnwrap(initial.tasks.first?.id)
+        _ = await model.organize(.slot([taskID], .morning))
+        let before = model.revision
+        defaults.set(false, forKey: PrefKey.showDayPeriodTasksInToday)
+        await model.preferencesChanged()
+        XCTAssertGreaterThan(model.revision, before)
+        let hidden = await worker.snapshot(view: .today)
+        XCTAssertFalse(hidden.tasks.contains { $0.id == taskID })
+        let morning = await worker.snapshot(view: .morning)
+        XCTAssertTrue(morning.tasks.contains { $0.id == taskID })
+        let reopened = MobileAppModel(isolatedDirectory: directory, defaults: UserDefaults(suiteName: name)!)
+        await reopened.foreground()
+        let reopenedWorker = try XCTUnwrap(reopened.worker)
+        let persisted = await reopenedWorker.snapshot(view: .today)
+        XCTAssertFalse(persisted.tasks.contains { $0.id == taskID })
+        defaults.set(true, forKey: PrefKey.showDayPeriodTasksInToday)
+        await model.preferencesChanged()
+        let shown = await worker.snapshot(view: .today)
+        XCTAssertTrue(shown.tasks.contains { $0.id == taskID })
+    }
+
     func testFeedbackToastTimesOutDeterministicallyAndSaveFailurePersists() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let name = "momentum-toast-timeout-tests-\(UUID())"

@@ -161,6 +161,7 @@ pub fn reset_settings() {
     let s = settings();
     for k in [
         "group-by",
+        "show-day-period-tasks-in-today",
         "task-sort",
         "sort-direction",
         "upcoming-range",

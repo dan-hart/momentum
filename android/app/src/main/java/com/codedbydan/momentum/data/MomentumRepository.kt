@@ -83,7 +83,7 @@ class MomentumRepository internal constructor(
                 store.edit { native -> PortableAppSettings.apply(it.portableSettingsJson(), native) }
                 val prefs = store.data.first().also { lastNativePreferences = it }
                 val local = corePreferences(prefs)
-                it.setDeviceSummaryPreferences(local.morningSummaryEnabled, local.morningSummaryTime)
+                it.applyDevicePreferences(local)
                 it.stagePortableSettings(PortableAppSettings.encode(appSettings(prefs), corePreferences(prefs)))
                 portableRevision = it.settingsSyncStatus().revision
                 needsNativeBootstrap = false
@@ -139,6 +139,7 @@ class MomentumRepository internal constructor(
                 store.edit { PortableAppSettings.apply(engine.portableSettingsJson(), it) }
                 if(needsNativeBootstrap) {
                     val native = store.data.first()
+                    engine.applyDevicePreferences(corePreferences(native))
                     engine.stagePortableSettings(PortableAppSettings.encode(appSettings(native), corePreferences(native)))
                     portableRevision = engine.settingsSyncStatus().revision
                     needsNativeBootstrap = false
@@ -221,13 +222,15 @@ class MomentumRepository internal constructor(
             if(portableChanged) stagePortableSettings(PortableAppSettings.changedDocument(next, previous))
             throw error
         }
-        // Rust already applied the portable rules. Update only device-local
-        // summary fields atomically without replacing a concurrent portable commit.
-        if(prefs.morningSummaryEnabled != originalPreferences.morningSummaryEnabled || prefs.morningSummaryTime != originalPreferences.morningSummaryTime) {
-            setDeviceSummaryPreferences(prefs.morningSummaryEnabled, prefs.morningSummaryTime)
-        }
+        // Rust already applied the portable rules. Narrow setters retain any
+        // concurrent portable commit while applying durable device-only choices.
+        applyDevicePreferences(prefs)
         if(portableChanged) portableRevision = null
         refreshPortableLocked(this)
+    }
+    private fun Engine.applyDevicePreferences(prefs: Preferences) {
+        setDeviceSummaryPreferences(prefs.morningSummaryEnabled, prefs.morningSummaryTime)
+        setDayPeriodTasksInToday(prefs.showDayPeriodTasksInToday)
     }
     suspend fun draft(input: EditorDraft): TaskDraft? = read {
         if (input.problem() != null) return@read null
@@ -285,6 +288,7 @@ private inline fun <reified T : Enum<T>> enumValueOr(value: String?, fallback: T
 private fun corePreferences(prefs: androidx.datastore.preferences.core.Preferences): com.codedbydan.momentum.core.Preferences =
     com.codedbydan.momentum.core.Preferences(
         enumValueOr(prefs[stringPreferencesKey("group")], GroupBy.MORNING_NIGHT),
+        prefs[booleanPreferencesKey("show-day-period-tasks-in-today")] ?: true,
         enumValueOr(prefs[stringPreferencesKey("sort")], SortKey.MANUAL),
         enumValueOr(prefs[stringPreferencesKey("direction")], SortDirection.ASCENDING),
         (prefs[intPreferencesKey("upcoming-days")] ?: 7).let { if (it == 30) 30u else 7u },
@@ -316,6 +320,7 @@ private fun writeSettings(it: MutablePreferences, settings: AppSettings) {
 }
 private fun writeCorePreferences(it: MutablePreferences, prefs: Preferences) {
     it[stringPreferencesKey("group")] = prefs.groupBy.name
+    it[booleanPreferencesKey("show-day-period-tasks-in-today")] = prefs.showDayPeriodTasksInToday
     it[stringPreferencesKey("sort")] = prefs.sort.name
     it[stringPreferencesKey("direction")] = prefs.direction.name
     it[intPreferencesKey("upcoming-days")] = prefs.upcomingDays.toInt()

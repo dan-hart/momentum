@@ -157,3 +157,21 @@ mod mutation_tests;
 
 #[cfg(test)]
 mod portable_tests;
+
+/// Whether a native decorative divider precedes this populated Today day-period section.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn day_period_separator_before(listing: &Listing, section_index: u32, group_by: GroupBy) -> bool {
+    let is_populated_day_period = |section: &Section| {
+        section.kind == SectionKind::Plain
+            && !section.rows.is_empty()
+            && matches!(
+                section.group,
+                Some(TaskGroup::Morning | TaskGroup::Today | TaskGroup::Evening)
+            )
+    };
+    let index = section_index as usize;
+    listing.view == View::Today
+        && group_by == GroupBy::MorningNight
+        && listing.sections.get(index).is_some_and(is_populated_day_period)
+        && listing.sections[..index].iter().any(is_populated_day_period)
+}

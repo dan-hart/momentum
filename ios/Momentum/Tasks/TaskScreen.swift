@@ -110,6 +110,7 @@ struct TaskScreen: SwiftUI.View {
     }
 
 
+    @AppStorage(PrefKey.showDayPeriodTasksInToday) private var showDayPeriods = true
     @AppStorage(PrefKey.groupBy) private var groupBy = "morning-night"
     @AppStorage(PrefKey.taskSort) private var sortKey = "manual"
     @AppStorage(PrefKey.sortDirection) private var sortDirection = "ascending"
@@ -128,6 +129,7 @@ struct TaskScreen: SwiftUI.View {
         }
         .pickerStyle(.menu)
         .disabled(view == .upcoming)
+        Toggle("Show Morning and Evening tasks in Today", isOn: $showDayPeriods)
         Picker("Sort By", selection: $sortKey) {
             Text("Manual Order").tag("manual")
             Text("Title").tag("title")
@@ -191,7 +193,7 @@ struct TaskScreen: SwiftUI.View {
                         }
                         .frame(maxWidth: .infinity).padding(.vertical)
                     }
-                    ForEach(Array(snapshot.listing.sections.enumerated()), id: \.offset) { _, section in
+                    ForEach(Array(snapshot.listing.sections.enumerated()), id: \.offset) { index, section in
                         Section {
                             ForEach(section.rows, id: \.mobileID) { row in
                                 switch row {
@@ -210,8 +212,14 @@ struct TaskScreen: SwiftUI.View {
                                 Text(Strings.sectionNote(note)).font(.footnote).foregroundStyle(AccentTheme.secondaryText)
                             }
                         } header: {
-                            if let title = Strings.sectionTitle(section) {
-                                Text(title).foregroundStyle(sectionColor(section.group))
+                            VStack(alignment: .leading, spacing: 8) {
+                                if dayPeriodSeparatorBefore(listing: snapshot.listing, sectionIndex: UInt32(index), groupBy: Preferences(model.defaults).core.groupBy) {
+                                    Divider().accessibilityHidden(true)
+                                }
+                                if let title = Strings.sectionTitle(section) {
+                                    Text(title).foregroundStyle(sectionColor(section.group))
+                                        .accessibilityAddTraits(.isHeader)
+                                }
                             }
                         }
                     }
@@ -259,7 +267,7 @@ struct TaskScreen: SwiftUI.View {
         ))
         .onAppear { isVisible = true }
         .onDisappear { isVisible = false }
-        .onChange(of: "\(groupBy)-\(sortKey)-\(sortDirection)-\(upcomingRange)") {
+        .onChange(of: "\(groupBy)-\(showDayPeriods)-\(sortKey)-\(sortDirection)-\(upcomingRange)") {
             Task { await model.preferencesChanged() }
         }
         .navigationTitle(title)

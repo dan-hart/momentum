@@ -3380,3 +3380,7 @@ msgstr ""
 
 #~ msgid "Sync with Nextcloud"
 #~ msgstr "Mit Nextcloud synchronisieren"
+
+#: data/resources/ui/window.blp data/resources/ui/prefs.blp
+msgid "Show Morning and Evening tasks in Today"
+msgstr "Morgen- und Abendaufgaben in Heute anzeigen"

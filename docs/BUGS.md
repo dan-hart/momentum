@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-10-13. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-10-22. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in
@@ -9,6 +9,15 @@ Keep resolved entries. Verification gaps without a known product defect belong i
 Severity: Critical = data loss/security/core unusable; High = major workflow impaired;
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
+
+## 2026-10-22 — day-period sections feature assessment
+
+F-071 extends F-037 with conditional native separators and optional exclusion of
+today's Morning/Evening families from Today on all four platforms. Source inspection
+at f9637e2 confirms Morning → Today → Evening ordering already exists in Rust; the
+requested separator and visibility controls are new capabilities, not a reproduced
+ordering defect. No new B-ID is assigned. Regression and native verification limits
+are recorded in the dated [PROGRESS.md](PROGRESS.md) handoff.
 
 ## 2026-10-12 — native feature and release work
 

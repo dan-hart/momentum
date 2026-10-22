@@ -154,6 +154,7 @@ class PortableSettingsRepositoryTest {
             it[booleanPreferencesKey("background-sync")] = true
             it[stringPreferencesKey("provider")] = SyncProvider.Nextcloud.name
             it[booleanPreferencesKey("morning-summary")] = true
+            it[booleanPreferencesKey("show-day-period-tasks-in-today")] = false
             it[booleanPreferencesKey("compact")] = true
         } } finally { scope.coroutineContext[Job]!!.cancelAndJoin() }
     }
@@ -167,6 +168,7 @@ class PortableSettingsRepositoryTest {
         try {
             val before = repo.snapshot(View.Today)
             assertNotNull(before.appSettingsError)
+            assertFalse(before.preferences.showDayPeriodTasksInToday)
             assertTrue(before.settings.notifications); assertTrue(before.settings.automaticSync); assertTrue(before.settings.backgroundSync)
             assertEquals(SyncProvider.Nextcloud, before.settings.provider); assertTrue(before.preferences.morningSummaryEnabled)
             val portableBefore = repo.read { portableSettingsJson() }
@@ -174,9 +176,10 @@ class PortableSettingsRepositoryTest {
             repo.updateSettings { it.copy(provider = SyncProvider.Off) }
             repo.updateSettings { it.copy(automaticSync = false) }
             repo.updateSettings { it.copy(backgroundSync = false) }
-            repo.updatePreferences { it.copy(morningSummaryEnabled = false) }
+            repo.updatePreferences { it.copy(morningSummaryEnabled = false, showDayPeriodTasksInToday = true) }
             val changed = repo.snapshot(View.Today)
             assertNotNull(changed.appSettingsError)
+            assertTrue(changed.preferences.showDayPeriodTasksInToday)
             assertFalse(changed.settings.notifications); assertFalse(changed.settings.automaticSync); assertFalse(changed.settings.backgroundSync)
             assertEquals(SyncProvider.Off, changed.settings.provider); assertFalse(changed.preferences.morningSummaryEnabled)
             assertEquals(portableBefore, repo.read { portableSettingsJson() })
@@ -188,6 +191,7 @@ class PortableSettingsRepositoryTest {
             repo.close(); repo = MomentumRepository(context, directory)
             val reopened = repo.snapshot(View.Today)
             assertNotNull(reopened.appSettingsError)
+            assertTrue(reopened.preferences.showDayPeriodTasksInToday)
             assertFalse(reopened.settings.notifications); assertFalse(reopened.settings.automaticSync); assertFalse(reopened.settings.backgroundSync)
             assertEquals(SyncProvider.Off, reopened.settings.provider); assertFalse(reopened.preferences.morningSummaryEnabled)
             assertEquals(portableBefore, repo.read { portableSettingsJson() })
@@ -195,6 +199,7 @@ class PortableSettingsRepositoryTest {
             repo.refreshAppSettings()
             val recovered = repo.snapshot(View.Today)
             assertNull(recovered.appSettingsError)
+            assertTrue(recovered.preferences.showDayPeriodTasksInToday)
             assertEquals(9, JSONObject(repo.read { portableSettingsJson() }).getJSONObject("values").length())
             assertFalse(recovered.settings.notifications); assertFalse(recovered.preferences.morningSummaryEnabled)
         } finally { repo.close(); directory.deleteRecursively() }
@@ -223,5 +228,32 @@ class PortableSettingsRepositoryTest {
             assertEquals(9, values.length()); assertFalse(snapshot.settingsSync!!.enabled)
         } finally { repo.close(); directory.deleteRecursively() }
     }
+
+    @Test fun dayPeriodVisibilityPersistsRefreshesAndNeverTransfers() = runBlocking { fixture { repo, directory ->
+        assertTrue(repo.snapshot(View.Today).preferences.showDayPeriodTasksInToday)
+        val draft = TaskDraft("Morning local visibility", "INBOX_PROJECT", java.time.LocalDate.now().toString(), null, null, 0.0, "", emptyList(), emptyList())
+        val id = repo.create(draft, View.Morning).id!!
+        repo.updatePreferences { it.copy(showDayPeriodTasksInToday = false, groupBy = GroupBy.NONE) }
+        val hidden = repo.snapshot(View.Today)
+        assertFalse(hidden.preferences.showDayPeriodTasksInToday)
+        assertFalse(hidden.listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+        assertTrue(repo.snapshot(View.Morning).listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+        val exported = File(directory, "day-period-settings.json")
+        repo.exportAppSettings(exported)
+        assertEquals(9, JSONObject(exported.readText()).getJSONObject("values").length())
+        assertFalse(exported.readText().contains("showDayPeriod"))
+        repo.updatePreferences { it.copy(showDayPeriodTasksInToday = true) }
+        repo.importAppSettings(exported)
+        assertTrue(repo.snapshot(View.Today).preferences.showDayPeriodTasksInToday)
+        repo.updatePreferences { it.copy(showDayPeriodTasksInToday = false) }
+        repo.close()
+        val reopened = MomentumRepository(ApplicationProvider.getApplicationContext(), directory)
+        try {
+            assertFalse(reopened.snapshot(View.Today).preferences.showDayPeriodTasksInToday)
+            assertFalse(reopened.snapshot(View.Today).listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+            reopened.updatePreferences { it.copy(showDayPeriodTasksInToday = true) }
+            assertTrue(reopened.snapshot(View.Today).listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+        } finally { reopened.close() }
+    } }
 
 }

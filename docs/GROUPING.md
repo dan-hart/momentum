@@ -1,4 +1,4 @@
-# Group By (F-037)
+# Group By (F-037, F-071)
 
 Revised 2026-09-16 for Linux and macOS; required for the future native iOS and Android
 clients. This is an offline presentation preference, independent of task sorting and
@@ -23,6 +23,18 @@ sync. It does not change tasks, their tags/projects/estimates, or saved manual o
   day-period category, not an extra due-date filter). If both tags exist, Morning wins.
   Grouping changes presentation only; existing sidebar views still filter by due day.
   Moving a task to the other day period removes opposing tags; undo restores them.
+- **Day-period separation (F-071, approved 2026-10-22):** Today uses native horizontal
+  lines between populated Morning/Today/Evening groups under Morning & Night grouping.
+  No empty group or leading/trailing line is inserted; Morning and Evening alone have
+  one line between them. Other grouping modes and lists retain their presentation.
+- **Show Morning and Evening tasks in Today:** a default-on, device-local setting on
+  Linux, macOS, iOS and Android. Turning it off hides today's slotted parent/subtask
+  families, including their completed rows, from Today under every grouping mode.
+  Existing Morning/Evening destinations, Search and project/tag lists keep their tasks.
+  Overdue tasks remain visible because slot destinations only show today's tasks.
+  This choice is excluded from settings transfer and optional settings sync. Visible
+  selection/empty/all-done states follow the filtered listing; sidebar counts and
+  task-wide summaries retain their established task-membership meanings.
 - Overdue tasks remain in the Today view within their selected group, with their due
   dates visible. **Coming Up does not use Group By** (revised 2026-09-28): it keeps its
   7/30-day filter and is always one section per day, soonest first — Tomorrow, then the

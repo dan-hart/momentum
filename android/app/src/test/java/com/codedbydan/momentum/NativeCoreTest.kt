@@ -69,4 +69,51 @@ class NativeCoreTest {
             assertTrue(engine.saveTask(id, original.copy(title = "Changed")).changed)
         } finally { engine.destroy(); directory.deleteRecursively() }
     }
+    @Test fun generatedDayPeriodBoundaryPolicyHandlesPopulatedAndMissingMiddleSections() {
+        val directory = Files.createTempDirectory("momentum-day-period-").toFile()
+        val engine = Engine.openChecked(directory.absolutePath)
+        try {
+            engine.createTaskWithId(draft("Morning").copy(dueDay = java.time.LocalDate.now().toString()), View.Morning)
+            engine.createTaskWithId(draft("Evening").copy(dueDay = java.time.LocalDate.now().toString()), View.Tonight)
+            fun separators(): List<Int> {
+                val listing = engine.listing(View.Today, 100u)
+                return listing.sections.indices.filter { dayPeriodSeparatorBefore(listing, it.toUInt(), engine.preferences().groupBy) }
+            }
+            assertEquals(listOf(1), separators())
+            val today = engine.createTaskWithId(draft("Today").copy(dueDay = java.time.LocalDate.now().toString()), View.Today).id!!
+            assertEquals(listOf(1, 2), separators())
+            engine.setDone(today, true)
+            assertEquals(listOf(1), separators())
+            engine.stagePortableSettings("""{"version":1,"values":{"grouping":"none"}}""")
+            assertEquals(emptyList<Int>(), separators())
+            val morning = engine.listing(View.Morning, 100u)
+            assertTrue(morning.sections.indices.none { dayPeriodSeparatorBefore(morning, it.toUInt(), GroupBy.MORNING_NIGHT) })
+        } finally { engine.destroy(); directory.deleteRecursively() }
+    }
+
+    @Test fun generatedLocalVisibilitySetterSurvivesPortableChangesAndPreservesSlotDestinations() {
+        val directory = Files.createTempDirectory("momentum-day-period-").toFile()
+        val engine = Engine.openChecked(directory.absolutePath)
+        try {
+            assertTrue(engine.preferences().showDayPeriodTasksInToday)
+            val morning = engine.createTaskWithId(draft("Morning").copy(dueDay = java.time.LocalDate.now().toString()), View.Morning).id!!
+            val plain = engine.createTaskWithId(draft("Today").copy(dueDay = java.time.LocalDate.now().toString()), View.Today).id!!
+            val evening = engine.createTaskWithId(draft("Evening").copy(dueDay = java.time.LocalDate.now().toString()), View.Tonight).id!!
+            engine.setDone(evening, true)
+            engine.setDayPeriodTasksInToday(false)
+            for(group in listOf("morning-night", "none", "project", "tag", "estimate")) {
+                engine.stagePortableSettings("""{"version":1,"values":{"grouping":"$group","sort":"title"}}""")
+                assertFalse(engine.preferences().showDayPeriodTasksInToday)
+                assertEquals(SortKey.TITLE, engine.preferences().sort)
+                val rows = engine.listing(View.Today, 100u).sections.flatMap { it.rows }.filterIsInstance<Row.Task>()
+                assertEquals(listOf(plain), rows.map { it.row.id })
+            }
+            assertTrue(engine.listing(View.Morning, 100u).sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == morning })
+            assertTrue(engine.listing(View.Tonight, 100u).sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == evening })
+            assertFalse(engine.portableSettingsJson().contains("showDayPeriod"))
+            engine.setDayPeriodTasksInToday(true)
+            assertEquals(setOf(morning, plain, evening), engine.listing(View.Today, 100u).sections.flatMap { it.rows }.filterIsInstance<Row.Task>().map { it.row.id }.toSet())
+        } finally { engine.destroy(); directory.deleteRecursively() }
+    }
+
 }

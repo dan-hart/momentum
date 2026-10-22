@@ -9,6 +9,22 @@ import Testing
         FileManager.default.temporaryDirectory.appendingPathComponent("momentum-mobile-test-\(UUID())")
     }
 
+    @Test func deviceDayPeriodVisibilityRefreshesSnapshotsWithoutChangingPortableSettings() async throws {
+        let dir = directory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let worker = await EngineWorker.open(directory: dir)
+        _ = await worker.perform(.add("Morning fixture", .today))
+        let id = try #require(await worker.lastAddedTaskID())
+        _ = await worker.organize(.slot([id], .morning))
+        let before = try await worker.portableSettingsJSON()
+        await worker.setDayPeriodTasksInToday(visible: false)
+        #expect(await worker.snapshot(view: .today).tasks.isEmpty)
+        #expect(await worker.snapshot(view: .morning).tasks.map(\.id) == [id])
+        #expect(try await worker.portableSettingsJSON() == before)
+        await worker.setDayPeriodTasksInToday(visible: true)
+        #expect(await worker.snapshot(view: .today).tasks.map(\.id) == [id])
+    }
+
     @Test func offlineTaskPersistsAcrossReopen() async throws {
         let dir = directory()
         defer { try? FileManager.default.removeItem(at: dir) }

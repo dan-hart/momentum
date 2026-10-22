@@ -49,7 +49,7 @@ import Testing
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let worker = await EngineWorker.open(directory: directory)
-        let preferences = MomentumCore.Preferences(groupBy: .morningNight, sort: .manual,
+        let preferences = MomentumCore.Preferences(groupBy: .morningNight, showDayPeriodTasksInToday: true, sort: .manual,
             direction: .ascending, upcomingDays: 7, autoArchive: true,
             morningSummaryEnabled: false, morningSummaryTime: ClockTime(hour: 8, minute: 0))
         await worker.setPreferences(preferences)

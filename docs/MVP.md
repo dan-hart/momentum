@@ -111,6 +111,12 @@ HH:MM" while a reminder is pending; the notification body reads "Due at HH:MM".
   None is flat; Completed remains separate; subtasks stay with parents and due dates
   remain visible on rows. Tag/project headings retain their saved colors.
   Exact rules, estimate intervals and mobile acceptance: [GROUPING.md](GROUPING.md).
+
+  F-071 adds native separators between populated Morning/Today/Evening groups in
+  Today. A default-on **Show Morning and Evening tasks in Today** setting hides
+  today's slotted families, including completed rows, when disabled, under every
+  grouping mode. Morning/Evening remain accessible through native list navigation;
+  overdue tasks remain visible. The choice persists only on this device.
 - **Sorting** via the header's View Options menu: Manual Order (upstream's list order),
   Title, Due Day, Estimate, Created; plus Ascending or Descending. Applies to open and done
   tasks separately. Persists.

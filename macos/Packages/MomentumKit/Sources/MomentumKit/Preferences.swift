@@ -20,6 +20,7 @@ public enum PrefKey {
     public static let projectsCollapsed = "projects-collapsed"
     public static let tagsCollapsed = "tags-collapsed"
     public static let groupBy = "group-by"
+    public static let showDayPeriodTasksInToday = "show-day-period-tasks-in-today"
     public static let taskSort = "task-sort"
     public static let sortDirection = "sort-direction"
     public static let upcomingRange = "upcoming-range"
@@ -155,6 +156,7 @@ public struct Preferences {
             PrefKey.compress: false,
             PrefKey.syncEnabled: false,
             PrefKey.groupBy: "morning-night",
+            PrefKey.showDayPeriodTasksInToday: true,
             PrefKey.taskSort: "manual",
             PrefKey.sortDirection: "ascending",
             PrefKey.upcomingRange: "7",
@@ -221,6 +223,10 @@ public struct Preferences {
                          minute: UInt32((0...59).contains(minute) ? minute : 0))
     }
 
+    public var showDayPeriodTasksInToday: Bool {
+        defaults.object(forKey: PrefKey.showDayPeriodTasksInToday) as? Bool ?? true
+    }
+
     /// The preferences the core computes with.
     public var core: MomentumCore.Preferences {
         let group: GroupBy
@@ -241,7 +247,7 @@ public struct Preferences {
         }
         let direction: SortDirection = defaults.string(forKey: PrefKey.sortDirection) == "descending" ? .descending : .ascending
         let days = UInt32(defaults.string(forKey: PrefKey.upcomingRange) ?? "7") ?? 7
-        return MomentumCore.Preferences(groupBy: group, sort: sort, direction: direction, upcomingDays: days,
+        return MomentumCore.Preferences(groupBy: group, showDayPeriodTasksInToday: showDayPeriodTasksInToday, sort: sort, direction: direction, upcomingDays: days,
                                         autoArchive: defaults.bool(forKey: PrefKey.autoArchive),
                                         morningSummaryEnabled: defaults.bool(forKey: PrefKey.morningSummaryEnabled),
                                         morningSummaryTime: morningSummaryTime)

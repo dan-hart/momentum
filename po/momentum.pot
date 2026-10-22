@@ -3180,3 +3180,7 @@ msgstr ""
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:277
 msgid "System-wide shortcuts through the GlobalShortcuts portal"
 msgstr ""
+
+#: data/resources/ui/window.blp data/resources/ui/prefs.blp
+msgid "Show Morning and Evening tasks in Today"
+msgstr ""

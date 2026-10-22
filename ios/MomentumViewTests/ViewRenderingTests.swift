@@ -8,6 +8,55 @@ import UIKit
 import XCTest
 
 @MainActor final class ViewRenderingTests: XCTestCase {
+    func testDayPeriodSectionsRenderAndLocalToggleReconcilesSelection() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let name = "momentum-day-period-render-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name); try? FileManager.default.removeItem(at: directory) }
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults,
+                                   platformCapabilities: MobilePlatformCapabilities(isPad: true))
+        await model.foreground()
+        let worker = try XCTUnwrap(model.worker)
+        for (title, slot) in [("Morning fixture", Slot.morning), ("Evening fixture", Slot.tonight)] {
+            _ = await model.perform(.add(title, .today))
+            let addedID = await worker.lastAddedTaskID()
+            let id = try XCTUnwrap(addedID)
+            _ = await model.organize(.slot([id], slot))
+        }
+        _ = await model.perform(.add("Today fixture", .today))
+        let mounted = try HostingFixture.mount(
+            NavigationStack { TaskScreen(view: .today) }.environment(model).environment(model.sync),
+            defaults: defaults, defaultsName: name, size: CGSize(width: 768, height: 1024),
+            horizontalSizeClass: .regular
+        )
+        defer { mounted.unmount() }
+        try await mounted.wait(until: "day-period headings") {
+            ["Morning", "Today", "Evening"].allSatisfy { mounted.hasAccessibilityElement(label: $0) }
+        }
+        let headings = mounted.accessibilitySnapshot().filter { $0.traits.contains(.header) }
+        let morning = try XCTUnwrap(headings.first { $0.label == "Morning" })
+        // Today is also the navigation title; the list heading is below that title.
+        let today = try XCTUnwrap(headings.filter { $0.label == "Today" }.max { $0.frame.minY < $1.frame.minY })
+        let evening = try XCTUnwrap(headings.first { $0.label == "Evening" })
+        XCTAssertLessThan(morning.frame.minY, today.frame.minY)
+        XCTAssertLessThan(today.frame.minY, evening.frame.minY)
+        let attachment = XCTAttachment(image: mounted.renderedImage())
+        attachment.name = "Today day-period native separators"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertTrue(mounted.selectAllTasks())
+        try await mounted.wait(until: "three selected day-period tasks") {
+            mounted.hasAccessibilityElement(label: "Actions (3)")
+        }
+        defaults.set(false, forKey: PrefKey.showDayPeriodTasksInToday)
+        await model.preferencesChanged()
+        try await mounted.wait(until: "selection reconciles after filtering day periods") {
+            mounted.hasAccessibilityElement(label: "Actions (1)")
+                && !mounted.hasAccessibilityElement(label: "Morning fixture")
+                && !mounted.hasAccessibilityElement(label: "Evening fixture")
+        }
+    }
+
     func testStartupSkeletonMotionPolicyCapsAndPausesAnimation() {
         let animated = StartupSkeletonMotionPolicy(
             isComplete: false,

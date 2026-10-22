@@ -541,9 +541,19 @@ pub(crate) fn listing(
         }
         _ => {
             let ids = view_task_ids(store, view);
+            let today = today_str();
             let (mut open, mut done): (Vec<&Task>, Vec<&Task>) = (vec![], vec![]);
             for id in ids {
                 if let Some(t) = store.state.task.entities.get(&id) {
+                    // Filter the root before expanding its children, including completed
+                    // families. Overdue roots are appended separately below.
+                    if *view == View::Today
+                        && !prefs.show_day_period_tasks_in_today
+                        && slot_of(store, t).is_some()
+                        && t.plan_day().as_deref() == Some(today.as_str())
+                    {
+                        continue;
+                    }
                     if t.is_done {
                         done.push(t)
                     } else {
