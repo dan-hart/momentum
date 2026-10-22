@@ -225,3 +225,6 @@ recovery retain their files; Android can evict cache, and users can explicitly c
 Momentum's cache in system Settings when its sharing capacity is full. App storage
 must not be cleared for that purpose. Chooser cancellation has no dependable
 grant-lifetime callback, so it does not trigger deletion of a possibly active share.
+
+See the [Settings and daily-view guide](../docs/SETTINGS.md) for the native Settings
+overhaul, search discovery, About, completion messages and sound auditioning.

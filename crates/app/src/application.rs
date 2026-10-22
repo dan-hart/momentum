@@ -417,6 +417,10 @@ impl MomentumApplication {
             .application_name(gettext("Momentum"))
             .application_icon(*APP_ID)
             .developer_name("Dan Hart")
+            .copyright("© 2026 Dan Hart")
+            .comments(gettext("A little more room for your day.\n\nOffline by design: your tasks work without an account.\nPrivacy first: sync is optional and off by default.\nOpen source: free to build, use and self-host under GPL-3.0-or-later."))
+            .support_url("https://github.com/dan-hart/momentum/issues")
+            .debug_info(format!("Momentum {}\nBuild: {}\nPlatform: Linux", *VERSION, *PROFILE))
             .license_type(gtk::License::Gpl30)
             .website("https://github.com/dan-hart/momentum")
             .issue_url("https://github.com/dan-hart/momentum/issues")
@@ -424,6 +428,19 @@ impl MomentumApplication {
             .translator_credits(gettext("translator-credits"))
             .developers(Self::authors())
             .build();
+        dialog.add_link(&gettext("Source Code"), "https://github.com/dan-hart/momentum");
+        dialog.add_legal_section(
+            &gettext("License"),
+            None,
+            gtk::License::Custom,
+            Some(include_str!("../../../LICENSES/GPL-3.0-or-later.txt")),
+        );
+        dialog.add_legal_section(
+            &gettext("Acknowledgments"),
+            None,
+            gtk::License::Custom,
+            Some(include_str!("../../../NOTICE.md")),
+        );
         crate::typography::register_interface_root(&dialog);
 
         dialog.present(Some(&self.main_window()));

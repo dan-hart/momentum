@@ -3924,7 +3924,307 @@
           }
         }
       }
+    },
+  "Make room for what matters.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Platz für das Wesentliche."
+        }
+      }
     }
+  },
+  "Our values": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Unsere Werte"
+        }
+      }
+    }
+  },
+  "Offline, without an account": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Offline, ohne Konto"
+        }
+      }
+    }
+  },
+  "Your tasks stay usable wherever you are.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Deine Aufgaben bleiben überall nutzbar."
+        }
+      }
+    }
+  },
+  "Privacy and optional sync": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Datenschutz und optionale Synchronisierung"
+        }
+      }
+    }
+  },
+  "Sync is your choice. No advertising or tracking.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Du entscheidest über Sync. Keine Werbung oder Nachverfolgung."
+        }
+      }
+    }
+  },
+  "Free and open source": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Frei und quelloffen"
+        }
+      }
+    }
+  },
+  "GPL-3.0-or-later. Free to build, use and self-host.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "GPL-3.0-or-later. Frei zum Erstellen, Nutzen und Selbsthosten."
+        }
+      }
+    }
+  },
+  "Developer & Project": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Entwickler & Projekt"
+        }
+      }
+    }
+  },
+  "Copy app details": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "App-Details kopieren"
+        }
+      }
+    }
+  },
+  "Search settings": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Einstellungen durchsuchen"
+        }
+      }
+    }
+  },
+  "Clear search": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Suche löschen"
+        }
+      }
+    }
+  },
+  "No matching settings": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Keine passenden Einstellungen"
+        }
+      }
+    }
+  },
+  "See all settings results": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Alle Einstellungsergebnisse anzeigen"
+        }
+      }
+    }
+  },
+  "About Momentum": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Über Momentum"
+        }
+      }
+    }
+  },
+  "Compact rows": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Kompakte Zeilen"
+        }
+      }
+    }
+  },
+  "Typography": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Typografie"
+        }
+      }
+    }
+  },
+  "Uses the system appearance and accent color.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verwendet die Darstellung und Akzentfarbe des Systems."
+        }
+      }
+    }
+  },
+  "This setting belongs to an inactive sync provider. Choose that provider to edit its connection; opening this result does not change your provider.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Diese Einstellung gehört zu einem inaktiven Sync-Anbieter. Wähle diesen Anbieter, um seine Verbindung zu bearbeiten. Das Öffnen dieses Ergebnisses ändert den Anbieter nicht."
+        }
+      }
+    }
+  },
+  "Notification permission": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Mitteilungsberechtigung"
+        }
+      }
+    }
+  },
+  "Notifications allowed": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Mitteilungen erlaubt"
+        }
+      }
+    }
+  },
+  "Notifications unavailable": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Mitteilungen nicht verfügbar"
+        }
+      }
+    }
+  },
+  "Task reminders are configured on each task.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Aufgabenerinnerungen werden für jede Aufgabe einzeln eingerichtet."
+        }
+      }
+    }
+  },
+  "This list is clear for now.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Diese Liste ist im Moment frei."
+        }
+      }
+    }
+  },
+  "Saved sound from another version": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Gespeicherter Klang aus einer anderen Version"
+        }
+      }
+    }
+  },
+  "Preview any sound before choosing it. Volume follows your device's sound settings.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Höre jeden Klang an, bevor du ihn auswählst. Die Lautstärke folgt den Klangeinstellungen deines Geräts."
+        }
+      }
+    }
+  },
+  "Legacy": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Bisheriger Klang"
+        }
+      }
+    }
+  },
+  "Version": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Version"
+        }
+      }
+    }
+  },
+  "Build": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Build"
+        }
+      }
+    }
+  },
+  "The Momentum folder is already selected.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Der Momentum-Ordner ist bereits ausgewählt."
+        }
+      }
+    }
+  }
   },
   "version" : "1.1"
 }

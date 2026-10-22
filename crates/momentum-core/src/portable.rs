@@ -49,21 +49,9 @@ fn validate(key: &str, v: &Value) -> Result<bool, CoreError> {
         "upcomingDays" => matches!(v.as_u64(), Some(7 | 30)),
         "autoArchive" | "colorfulLabels" | "completionSoundEnabled" => v.is_boolean(),
         "rowDensity" => v.as_str().is_some_and(|s| ["regular", "compact"].contains(&s)),
-        "completionSoundChoice" => v.as_str().is_some_and(|s| {
-            [
-                "wood-pop",
-                "double-check",
-                "rounded-lift",
-                "pocket-piano",
-                "string-flick",
-                "bright-finish",
-                "harp-snap",
-                "click-and-glow",
-                "tiny-ta-da",
-                "warm-spark",
-            ]
-            .contains(&s)
-        }),
+        // Sound IDs are extensible opaque strings. Older clients retain future choices
+        // and resolve them locally; validating an enumerated list loses new catalogs.
+        "completionSoundChoice" => v.as_str().is_some_and(|s| !s.is_empty() && s.len() <= 256),
         _ => return Ok(false),
     };
     if valid {

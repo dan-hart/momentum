@@ -1119,7 +1119,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ton beim Erledigen"
+            "value": "Abschlussklang"
           }
         }
       }
@@ -2993,6 +2993,2176 @@
           "stringUnit": {
             "state": "translated",
             "value": "„%@“ wird nicht mehr wiederholt"
+          }
+        }
+      }
+    },
+    "completion.message.1": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning list, cleared. Take a breath."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgenliste erledigt. Atme durch."
+          }
+        }
+      }
+    },
+    "completion.message.2": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A little more room in your morning."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas mehr Platz in deinem Morgen."
+          }
+        }
+      }
+    },
+    "completion.message.3": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your morning tasks are tucked away."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Morgenaufgaben sind gut versorgt."
+          }
+        }
+      }
+    },
+    "completion.message.4": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A calm pause between plans."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine ruhige Pause zwischen den Plänen."
+          }
+        }
+      }
+    },
+    "completion.message.5": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning essentials, taken care of."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Wichtigste für den Morgen ist erledigt."
+          }
+        }
+      }
+    },
+    "completion.message.6": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One less thing on your mind."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Sache weniger im Kopf."
+          }
+        }
+      }
+    },
+    "completion.message.7": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your morning list can rest now."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Morgenliste darf jetzt ruhen."
+          }
+        }
+      }
+    },
+    "completion.message.8": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There's space for a slower moment."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es ist Platz für einen langsameren Moment."
+          }
+        }
+      }
+    },
+    "completion.message.9": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning plans, all checked off."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgenpläne, alle abgehakt."
+          }
+        }
+      }
+    },
+    "completion.message.10": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That part of the day is settled."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Teil des Tages ist geschafft."
+          }
+        }
+      }
+    },
+    "completion.message.11": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clear morning list. A little breathing room."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine freie Morgenliste. Etwas Luft zum Atmen."
+          }
+        }
+      }
+    },
+    "completion.message.12": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take a moment before the next thing."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nimm dir einen Moment vor dem Nächsten."
+          }
+        }
+      }
+    },
+    "completion.message.13": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your morning list has nothing left to ask."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Morgenliste hat nichts mehr zu fragen."
+          }
+        }
+      }
+    },
+    "completion.message.14": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A small finish. A welcome pause."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein kleiner Abschluss. Eine willkommene Pause."
+          }
+        }
+      }
+    },
+    "completion.message.15": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning tasks, wrapped up neatly."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Morgenaufgaben sind ordentlich erledigt."
+          }
+        }
+      }
+    },
+    "completion.message.16": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let the next moment be unhurried."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lass dir beim nächsten Moment Zeit."
+          }
+        }
+      }
+    },
+    "completion.message.17": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your morning checklist is at ease."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Morgenliste ist entspannt."
+          }
+        }
+      }
+    },
+    "completion.message.18": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can put this list down for a while."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kannst diese Liste eine Weile weglegen."
+          }
+        }
+      }
+    },
+    "completion.message.19": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A little calm after the morning tasks."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas Ruhe nach den Morgenaufgaben."
+          }
+        }
+      }
+    },
+    "completion.message.20": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning list complete. Settle into your day."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgenliste erledigt. Komm in deinem Tag an."
+          }
+        }
+      }
+    },
+    "completion.message.21": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All clear for today. Take a breath."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles erledigt für heute. Atme durch."
+          }
+        }
+      }
+    },
+    "completion.message.22": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing left on today's list."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts mehr auf der heutigen Liste."
+          }
+        }
+      }
+    },
+    "completion.message.23": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can put the checklist down."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kannst die Checkliste weglegen."
+          }
+        }
+      }
+    },
+    "completion.message.24": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The list is quiet. Enjoy the space."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Liste ist still. Genieße den Freiraum."
+          }
+        }
+      }
+    },
+    "completion.message.25": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's loose ends are tied up."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die losen Enden von heute sind verknüpft."
+          }
+        }
+      }
+    },
+    "completion.message.26": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clear list and a little peace of mind."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine freie Liste und etwas innere Ruhe."
+          }
+        }
+      }
+    },
+    "completion.message.27": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything planned for today is taken care of."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles für heute Geplante ist erledigt."
+          }
+        }
+      }
+    },
+    "completion.message.28": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let the next thing be something you enjoy."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lass das Nächste etwas Schönes sein."
+          }
+        }
+      }
+    },
+    "completion.message.29": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's checklist can rest."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutige Checkliste darf ruhen."
+          }
+        }
+      }
+    },
+    "completion.message.30": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is room to just be for a moment."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es ist Raum, einen Moment einfach zu sein."
+          }
+        }
+      }
+    },
+    "completion.message.31": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All checked off. No need to rush onward."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles abgehakt. Kein Grund zur Eile."
+          }
+        }
+      }
+    },
+    "completion.message.32": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your plans for today are settled."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Pläne für heute sind erledigt."
+          }
+        }
+      }
+    },
+    "completion.message.33": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A little less to carry in your head."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas weniger im Kopf zu tragen."
+          }
+        }
+      }
+    },
+    "completion.message.34": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's list has nothing more to ask."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutige Liste hat nichts mehr zu fragen."
+          }
+        }
+      }
+    },
+    "completion.message.35": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take the win. Then take a break."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freu dich darüber. Mach dann eine Pause."
+          }
+        }
+      }
+    },
+    "completion.message.36": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A quiet finish feels good, too."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auch ein stiller Abschluss tut gut."
+          }
+        }
+      }
+    },
+    "completion.message.37": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The tasks are done. The pause is yours."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Aufgaben sind erledigt. Die Pause gehört dir."
+          }
+        }
+      }
+    },
+    "completion.message.38": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let yourself enjoy an empty checklist."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genieße eine leere Checkliste."
+          }
+        }
+      }
+    },
+    "completion.message.39": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's list is complete. Breathe out."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutige Liste ist fertig. Atme aus."
+          }
+        }
+      }
+    },
+    "completion.message.40": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest belongs in the day, too."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auch Erholung gehört zum Tag."
+          }
+        }
+      }
+    },
+    "completion.message.41": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The list is clear. The afternoon is yours."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Liste ist frei. Der Nachmittag gehört dir."
+          }
+        }
+      }
+    },
+    "completion.message.42": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A little afternoon breathing room."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas Luft zum Atmen am Nachmittag."
+          }
+        }
+      }
+    },
+    "completion.message.43": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's tasks are done. Find a comfortable pace."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Aufgaben von heute sind erledigt. Finde dein Tempo."
+          }
+        }
+      }
+    },
+    "completion.message.44": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can leave the checklist here for now."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kannst die Checkliste jetzt liegen lassen."
+          }
+        }
+      }
+    },
+    "completion.message.45": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An open afternoon feels rather nice."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein freier Nachmittag fühlt sich schön an."
+          }
+        }
+      }
+    },
+    "completion.message.46": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything on today's list is settled."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles auf der heutigen Liste ist geklärt."
+          }
+        }
+      }
+    },
+    "completion.message.47": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pause in the afternoon, without a task attached."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Pause am Nachmittag, ganz ohne Aufgabe."
+          }
+        }
+      }
+    },
+    "completion.message.48": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make a little room for something enjoyable."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schaffe etwas Platz für etwas Schönes."
+          }
+        }
+      }
+    },
+    "completion.message.49": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's checklist is taking the afternoon off."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutige Checkliste hat nachmittags frei."
+          }
+        }
+      }
+    },
+    "completion.message.50": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clear list. Maybe a little fresh air?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine freie Liste. Vielleicht etwas frische Luft?"
+          }
+        }
+      }
+    },
+    "completion.message.51": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The afternoon can move a little more slowly now."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Nachmittag darf jetzt langsamer werden."
+          }
+        }
+      }
+    },
+    "completion.message.52": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's loose ends are behind you."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die losen Enden von heute liegen hinter dir."
+          }
+        }
+      }
+    },
+    "completion.message.53": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing left to check off this afternoon."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute Nachmittag ist nichts mehr abzuhaken."
+          }
+        }
+      }
+    },
+    "completion.message.54": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There's room for a proper pause."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es ist Platz für eine richtige Pause."
+          }
+        }
+      }
+    },
+    "completion.message.55": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The checklist is done. Let the afternoon unfold."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Checkliste ist fertig. Lass den Nachmittag kommen."
+          }
+        }
+      }
+    },
+    "completion.message.56": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's plans are taken care of. Get comfortable."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutigen Pläne sind versorgt. Mach es dir bequem."
+          }
+        }
+      }
+    },
+    "completion.message.57": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A calmer afternoon starts with a clear list."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine freie Liste macht den Nachmittag ruhiger."
+          }
+        }
+      }
+    },
+    "completion.message.58": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave a little space for yourself today."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lass heute etwas Raum für dich selbst."
+          }
+        }
+      }
+    },
+    "completion.message.59": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The afternoon has a little less on its mind."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Nachmittag hat etwas weniger im Kopf."
+          }
+        }
+      }
+    },
+    "completion.message.60": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All done for today. Enjoy this quieter stretch."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles erledigt für heute. Genieße die ruhigere Zeit."
+          }
+        }
+      }
+    },
+    "completion.message.61": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's list is done. Let the evening be gentle."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutige Liste ist fertig. Lass den Abend sanft sein."
+          }
+        }
+      }
+    },
+    "completion.message.62": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing left on today's checklist. Settle in."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts mehr auf der heutigen Checkliste. Komm zur Ruhe."
+          }
+        }
+      }
+    },
+    "completion.message.63": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The day can end on a quieter note."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Tag darf ruhiger ausklingen."
+          }
+        }
+      }
+    },
+    "completion.message.64": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's loose ends can stay tied up."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die losen Enden von heute dürfen verknüpft bleiben."
+          }
+        }
+      }
+    },
+    "completion.message.65": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The checklist is resting. You can, too."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Checkliste ruht. Du darfst das auch."
+          }
+        }
+      }
+    },
+    "completion.message.66": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All done for today. Make yourself comfortable."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles erledigt für heute. Mach es dir bequem."
+          }
+        }
+      }
+    },
+    "completion.message.67": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave today's list here for the night."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lass die heutige Liste für die Nacht liegen."
+          }
+        }
+      }
+    },
+    "completion.message.68": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let the rest of the evening feel a little lighter."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lass den restlichen Abend etwas leichter werden."
+          }
+        }
+      }
+    },
+    "completion.message.69": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's plans are complete. Breathe out slowly."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutigen Pläne sind erledigt. Atme langsam aus."
+          }
+        }
+      }
+    },
+    "completion.message.70": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clear list for a softer landing."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine freie Liste für eine sanftere Landung."
+          }
+        }
+      }
+    },
+    "completion.message.71": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There's nothing more on today's checklist."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf der heutigen Checkliste steht nichts mehr."
+          }
+        }
+      }
+    },
+    "completion.message.72": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The evening doesn't need another checkmark."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Abend braucht kein weiteres Häkchen."
+          }
+        }
+      }
+    },
+    "completion.message.73": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's tasks are tucked away."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutigen Aufgaben sind gut verstaut."
+          }
+        }
+      }
+    },
+    "completion.message.74": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can close the list and enjoy the quiet."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kannst die Liste schließen und die Ruhe genießen."
+          }
+        }
+      }
+    },
+    "completion.message.75": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The day is complete. A little calm comes next."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Tag ist erledigt. Jetzt darf etwas Ruhe kommen."
+          }
+        }
+      }
+    },
+    "completion.message.76": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave a little room for winding down."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lass etwas Raum zum Herunterkommen."
+          }
+        }
+      }
+    },
+    "completion.message.77": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's checklist has said its goodnight."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die heutige Checkliste hat gute Nacht gesagt."
+          }
+        }
+      }
+    },
+    "completion.message.78": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A peaceful finish to today's plans."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein friedlicher Abschluss für die heutigen Pläne."
+          }
+        }
+      }
+    },
+    "completion.message.79": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing left here to hold your attention tonight."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier wartet heute Abend nichts mehr auf dich."
+          }
+        }
+      }
+    },
+    "completion.message.80": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All checked off. Let the day settle."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles abgehakt. Lass den Tag ausklingen."
+          }
+        }
+      }
+    },
+    "completion.message.81": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evening list, cleared. Take a breath."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abendliste erledigt. Atme durch."
+          }
+        }
+      }
+    },
+    "completion.message.82": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your evening tasks are taken care of."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Abendaufgaben sind versorgt."
+          }
+        }
+      }
+    },
+    "completion.message.83": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing left on this evening's checklist."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts mehr auf der abendlichen Checkliste."
+          }
+        }
+      }
+    },
+    "completion.message.84": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A little breathing room around your evening plans."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas Luft rund um deine Abendpläne."
+          }
+        }
+      }
+    },
+    "completion.message.85": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This part of the day is settled."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Teil des Tages ist geklärt."
+          }
+        }
+      }
+    },
+    "completion.message.86": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your evening list can rest now."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Abendliste darf jetzt ruhen."
+          }
+        }
+      }
+    },
+    "completion.message.87": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evening plans, all checked off."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abendpläne, alle abgehakt."
+          }
+        }
+      }
+    },
+    "completion.message.88": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One quieter corner of the day."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine ruhigere Ecke des Tages."
+          }
+        }
+      }
+    },
+    "completion.message.89": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The evening checklist has nothing more to ask."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Abendcheckliste hat nichts mehr zu fragen."
+          }
+        }
+      }
+    },
+    "completion.message.90": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clear evening list feels good."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine freie Abendliste tut gut."
+          }
+        }
+      }
+    },
+    "completion.message.91": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Those evening loose ends are tied up."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die losen Enden des Abends sind verknüpft."
+          }
+        }
+      }
+    },
+    "completion.message.92": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take a small pause. This list is complete."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mach eine kleine Pause. Diese Liste ist fertig."
+          }
+        }
+      }
+    },
+    "completion.message.93": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your evening essentials are tucked away."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Wichtigste für den Abend ist gut verstaut."
+          }
+        }
+      }
+    },
+    "completion.message.94": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A little less to think about later."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas weniger, an das du später denken musst."
+          }
+        }
+      }
+    },
+    "completion.message.95": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The evening list is ready to be put down."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Abendliste ist bereit, weggelegt zu werden."
+          }
+        }
+      }
+    },
+    "completion.message.96": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything on this list is settled."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles auf dieser Liste ist geklärt."
+          }
+        }
+      }
+    },
+    "completion.message.97": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evening checklist complete. Let yourself pause."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abendcheckliste erledigt. Gönn dir eine Pause."
+          }
+        }
+      }
+    },
+    "completion.message.98": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This list has reached a comfortable stopping point."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Liste hat einen guten Ruhepunkt erreicht."
+          }
+        }
+      }
+    },
+    "completion.message.99": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A welcome bit of calm around the evening tasks."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein willkommenes bisschen Ruhe rund um die Abendaufgaben."
+          }
+        }
+      }
+    },
+    "completion.message.100": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your evening list is clear. Enjoy the space."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Abendliste ist frei. Genieße den Raum."
+          }
+        }
+      }
+    },
+    "Dynamic empty-state messages": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dynamische Nachrichten bei leeren Listen"
+          }
+        }
+      }
+    },
+    "Celebrate": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feiern"
+          }
+        }
+      }
+    },
+    "Volume": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lautstärke"
+          }
+        }
+      }
+    },
+    "Sounds & Feedback": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Töne & Feedback"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschau"
+          }
+        }
+      }
+    },
+    "One task in Morning": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Aufgabe am Morgen"
+          }
+        }
+      }
+    },
+    "%u tasks in Morning": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%u Aufgaben am Morgen"
+          }
+        }
+      }
+    },
+    "One task in Evening": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Aufgabe am Abend"
+          }
+        }
+      }
+    },
+    "%u tasks in Evening": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%u Aufgaben am Abend"
+          }
+        }
+      }
+    },
+    "Go to Morning": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Morgen"
+          }
+        }
+      }
+    },
+    "Go to Evening": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Abend"
+          }
+        }
+      }
+    },
+    "Morning list complete": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgenliste erledigt"
+          }
+        }
+      }
+    },
+    "Evening list complete": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abendliste erledigt"
+          }
+        }
+      }
+    },
+    "Today's list is complete": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heutige Liste erledigt"
+          }
+        }
+      }
+    },
+    "Soft Knock": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sanftes Klopfen"
+          }
+        }
+      }
+    },
+    "Little Lift": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleiner Auftrieb"
+          }
+        }
+      }
+    },
+    "Felt Finish": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filzfinale"
+          }
+        }
+      }
+    },
+    "Warm Thumb": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warmer Daumen"
+          }
+        }
+      }
+    },
+    "Gentle Pair": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sanftes Paar"
+          }
+        }
+      }
+    },
+    "Small Bloom": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleine Blüte"
+          }
+        }
+      }
+    },
+    "Sunny Tap": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonnentupfer"
+          }
+        }
+      }
+    },
+    "Pocket Harp": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taschenharfe"
+          }
+        }
+      }
+    },
+    "Easy Landing": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sanfte Landung"
+          }
+        }
+      }
+    },
+    "Quiet Cheer": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leiser Jubel"
+          }
+        }
+      }
+    },
+    "Make room for what matters.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Platz für das Wesentliche."
+          }
+        }
+      }
+    },
+    "Our values": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsere Werte"
+          }
+        }
+      }
+    },
+    "Offline, without an account": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline, ohne Konto"
+          }
+        }
+      }
+    },
+    "Your tasks stay usable wherever you are.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Aufgaben bleiben überall nutzbar."
+          }
+        }
+      }
+    },
+    "Privacy and optional sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datenschutz und optionale Synchronisierung"
+          }
+        }
+      }
+    },
+    "Sync is your choice. No advertising or tracking.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du entscheidest über Sync. Keine Werbung oder Nachverfolgung."
+          }
+        }
+      }
+    },
+    "Free and open source": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frei und quelloffen"
+          }
+        }
+      }
+    },
+    "GPL-3.0-or-later. Free to build, use and self-host.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPL-3.0-or-later. Frei zum Erstellen, Nutzen und Selbsthosten."
+          }
+        }
+      }
+    },
+    "Developer & Project": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entwickler & Projekt"
+          }
+        }
+      }
+    },
+    "Copy app details": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App-Details kopieren"
+          }
+        }
+      }
+    },
+    "Search settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen durchsuchen"
+          }
+        }
+      }
+    },
+    "Clear search": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche löschen"
+          }
+        }
+      }
+    },
+    "No matching settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine passenden Einstellungen"
+          }
+        }
+      }
+    },
+    "See all settings results": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Einstellungsergebnisse anzeigen"
+          }
+        }
+      }
+    },
+    "About Momentum": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über Momentum"
+          }
+        }
+      }
+    },
+    "Compact rows": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompakte Zeilen"
+          }
+        }
+      }
+    },
+    "Typography": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Typografie"
+          }
+        }
+      }
+    },
+    "Uses the system appearance and accent color.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwendet die Darstellung und Akzentfarbe des Systems."
+          }
+        }
+      }
+    },
+    "This setting belongs to an inactive sync provider. Choose that provider to edit its connection; opening this result does not change your provider.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Einstellung gehört zu einem inaktiven Sync-Anbieter. Wähle diesen Anbieter, um seine Verbindung zu bearbeiten. Das Öffnen dieses Ergebnisses ändert den Anbieter nicht."
+          }
+        }
+      }
+    },
+    "Notification permission": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungsberechtigung"
+          }
+        }
+      }
+    },
+    "Open System Settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systemeinstellungen öffnen"
+          }
+        }
+      }
+    },
+    "Notifications allowed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungen erlaubt"
+          }
+        }
+      }
+    },
+    "Notifications unavailable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungen nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Task reminders are configured on each task.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabenerinnerungen werden für jede Aufgabe einzeln eingerichtet."
+          }
+        }
+      }
+    },
+    "This list is clear for now.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Liste ist im Moment frei."
+          }
+        }
+      }
+    },
+    "Saved sound from another version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gespeicherter Klang aus einer anderen Version"
+          }
+        }
+      }
+    },
+    "Preview any sound before choosing it. Volume follows your device's sound settings.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Höre jeden Klang an, bevor du ihn auswählst. Die Lautstärke folgt den Klangeinstellungen deines Geräts."
+          }
+        }
+      }
+    },
+    "Legacy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bisheriger Klang"
+          }
+        }
+      }
+    },
+    "Go to Tonight": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu heute Abend"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
+    "Build": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build"
+          }
+        }
+      }
+    },
+    "The Momentum folder is already selected.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Momentum-Ordner ist bereits ausgewählt."
+          }
+        }
+      }
+    },
+    "Take a moment to enjoy the space.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nimm dir einen Moment und genieße den Freiraum."
           }
         }
       }

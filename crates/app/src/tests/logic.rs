@@ -362,7 +362,7 @@ fn demo_data_is_what_the_screenshots_and_tests_rely_on() {
 }
 
 #[test]
-fn completion_sound_catalog_has_the_ten_approved_choices_and_default_six() {
+fn completion_sound_catalog_preserves_legacy_and_adds_quiet_choices() {
     use crate::sound::CompletionSoundChoice;
     let slugs = [
         "wood-pop",
@@ -375,13 +375,23 @@ fn completion_sound_catalog_has_the_ten_approved_choices_and_default_six() {
         "click-and-glow",
         "tiny-ta-da",
         "warm-spark",
+        "soft-knock",
+        "little-lift",
+        "felt-finish",
+        "warm-thumb",
+        "gentle-pair",
+        "small-bloom",
+        "sunny-tap",
+        "pocket-harp",
+        "easy-landing",
+        "quiet-cheer",
     ];
     assert_eq!(CompletionSoundChoice::ALL.map(|choice| choice.slug()), slugs);
-    assert_eq!(CompletionSoundChoice::default(), CompletionSoundChoice::BrightFinish);
+    assert_eq!(CompletionSoundChoice::default(), CompletionSoundChoice::LittleLift);
     for (index, choice) in CompletionSoundChoice::ALL.into_iter().enumerate() {
         assert_eq!(CompletionSoundChoice::from_setting(choice.slug()), choice);
         assert_eq!(choice.index(), index as u32);
-        assert!(choice.label().starts_with(&format!("{} ", index + 1)));
+        assert!(!choice.label().is_empty());
         assert_eq!(
             choice.resource(),
             format!("/io/github/dan_hart/Momentum/sounds/{}.wav", slugs[index])
@@ -390,7 +400,7 @@ fn completion_sound_catalog_has_the_ten_approved_choices_and_default_six() {
     for unknown in ["", "future-sound", "BRIGHT-FINISH", "../../other"] {
         assert_eq!(
             CompletionSoundChoice::from_setting(unknown),
-            CompletionSoundChoice::BrightFinish
+            CompletionSoundChoice::LittleLift
         );
     }
 }
@@ -404,8 +414,8 @@ fn completion_sound_choice_persists_while_disabled_and_unknown_values_fall_back(
         schema.has_key("completion-sound-choice"),
         "the selected sound has a persistent preference"
     );
-    assert_eq!(s.string("completion-sound-choice"), "bright-finish");
-    assert_eq!(selected_choice(&s), CompletionSoundChoice::BrightFinish);
+    assert_eq!(s.string("completion-sound-choice"), "little-lift");
+    assert_eq!(selected_choice(&s), CompletionSoundChoice::LittleLift);
     for choice in CompletionSoundChoice::ALL {
         s.set_string("completion-sound-choice", choice.slug()).unwrap();
         s.set_boolean("completion-sound", true).unwrap();
@@ -414,7 +424,7 @@ fn completion_sound_choice_persists_while_disabled_and_unknown_values_fall_back(
         assert_eq!(selected_choice(&reopened), choice);
     }
     s.set_string("completion-sound-choice", "future-sound").unwrap();
-    assert_eq!(selected_choice(&s), CompletionSoundChoice::BrightFinish);
+    assert_eq!(selected_choice(&s), CompletionSoundChoice::LittleLift);
     assert_eq!(
         s.string("completion-sound-choice"),
         "future-sound",

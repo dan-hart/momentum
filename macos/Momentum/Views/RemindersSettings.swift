@@ -5,12 +5,16 @@ import MomentumKit
 import SwiftUI
 
 struct RemindersSettings: SwiftUI.View {
+    var body: some SwiftUI.View { Form { RemindersSettingsControls() }.formStyle(.grouped) }
+}
+
+struct RemindersSettingsControls: SwiftUI.View {
     @Environment(AppState.self) private var model
     var announce: (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
     private var state: RemindersImport { model.reminders }
 
     var body: some SwiftUI.View {
-        Form {
+        Group {
             Section {
                 if !state.connected {
                     Button("Connect Apple Reminders") { Task { await state.connect() } }

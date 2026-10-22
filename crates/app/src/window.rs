@@ -5,14 +5,14 @@
 //! goes back to it and comes out as an [`Outcome`] that this file turns into a refresh, a
 //! toast and an Undo button.
 
+use crate::settings_ui::N_;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
 use momentum_core::{
     AllDone, ClockTime, DayLabel, DayRelation, EmptyState, Engine, EstimateRange, GroupBy, MonthlyRule, Outcome,
-    Preferences, RepeatDescription, Row, SectionKind, SectionNote, Slot, SortDirection, SortKey, TaskGroup, TaskRow,
-    ViewTitle,
+    RepeatDescription, Row, SectionKind, SectionNote, Slot, TaskGroup, TaskRow, ViewTitle,
 };
 use momentum_model::{day_number, day_str, now_ms, today_str, INBOX_PROJECT_ID};
 use momentum_oplog::Action;
@@ -63,6 +63,7 @@ mod imp {
         #[template_child]
         pub task_box: TemplateChild<gtk::Box>,
         pub current_list: RefCell<Option<gtk::ListBox>>,
+        pub completion_message: RefCell<crate::empty_messages::Selection>,
         #[template_child]
         pub add_entry: TemplateChild<gtk::Entry>,
         #[template_child]
@@ -139,6 +140,7 @@ mod imp {
                 content_page: Default::default(),
                 task_box: Default::default(),
                 current_list: Default::default(),
+                completion_message: Default::default(),
                 add_entry: Default::default(),
                 sync_button: Default::default(),
                 sync_label: Default::default(),
@@ -497,6 +499,11 @@ impl MomentumWindow {
 
     fn setup(&self) {
         let imp = self.imp();
+        self.connect_is_active_notify(|window| {
+            if !window.is_active() {
+                crate::sound::stop();
+            }
+        });
         crate::typography::register_content_root(&*imp.add_entry);
         self.apply_preferences();
         self.import_cli_config();
@@ -651,6 +658,7 @@ impl MomentumWindow {
             "sort-direction",
             "upcoming-range",
             "show-day-period-tasks-in-today",
+            "dynamic-empty-state-messages",
         ] {
             imp.settings.connect_changed(
                 Some(key),
@@ -1017,11 +1025,14 @@ impl MomentumWindow {
             ),
         );
         self.update_sync_button();
+        let phase = Rc::new(Cell::new(crate::empty_messages::local_phase()));
         glib::timeout_add_seconds_local(
             30,
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
+                #[strong]
+                phase,
                 #[upgrade_or]
                 glib::ControlFlow::Break,
                 move || {
@@ -1030,6 +1041,11 @@ impl MomentumWindow {
                     if w.engine().day_changed() {
                         w.spawn_repeats();
                         w.refresh();
+                    } else {
+                        let current = crate::empty_messages::local_phase();
+                        if phase.replace(current) != current && w.imp().view.borrow().is_day() {
+                            w.refresh_tasks();
+                        }
                     }
                     glib::ControlFlow::Continue
                 }
@@ -1876,9 +1892,18 @@ impl MomentumWindow {
     /// Start a new boxed-list section (optionally titled), like an AdwPreferencesGroup.
     fn new_section(&self, title: Option<&str>, task_group: Option<&TaskGroup>) -> gtk::ListBox {
         let imp = self.imp();
+        let calm = *imp.view.borrow() == View::Today && self.engine().preferences().group_by == GroupBy::MorningNight;
         let group = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
-            .spacing(6)
+            .spacing(if calm { 12 } else { 6 })
+            .margin_top(if calm { 18 } else { 0 })
+            .margin_start(
+                if calm && matches!(task_group, Some(TaskGroup::Morning | TaskGroup::Evening)) {
+                    12
+                } else {
+                    0
+                },
+            )
             .build();
         if let Some(t) = title {
             let label = gtk::Label::builder()
@@ -1903,7 +1928,20 @@ impl MomentumWindow {
                     ));
                 }
             }
-            group.append(&label);
+            if calm && matches!(task_group, Some(TaskGroup::Morning | TaskGroup::Evening)) {
+                let heading = gtk::Box::builder().spacing(8).build();
+                heading.append(&gtk::Image::from_icon_name(
+                    if matches!(task_group, Some(TaskGroup::Morning)) {
+                        "weather-clear-symbolic"
+                    } else {
+                        "weather-clear-night-symbolic"
+                    },
+                ));
+                heading.append(&label);
+                group.append(&heading);
+            } else {
+                group.append(&label);
+            }
         }
         let list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
@@ -1914,6 +1952,9 @@ impl MomentumWindow {
             self,
             move |_, row| w.activate_row(&row.widget_name())
         ));
+        if calm {
+            list.add_css_class("day-period-list");
+        }
         group.append(&list);
         imp.task_box.append(&group);
         *imp.current_list.borrow_mut() = Some(list.clone());
@@ -2640,6 +2681,16 @@ impl MomentumWindow {
                 );
             }
         }
+        if matches!(current, View::Morning | View::Tonight)
+            && !imp.views.borrow().iter().any(|v| v.as_ref() == Some(&current))
+            && matches!(
+                imp.engine.day_status(current.clone()).completion,
+                momentum_core::DayCompletion::PeriodComplete | momentum_core::DayCompletion::DayComplete
+            )
+        {
+            imp.sidebar_list.unselect_all();
+            return;
+        }
         let idx = imp
             .views
             .borrow()
@@ -3086,10 +3137,15 @@ impl MomentumWindow {
         let searching = view == View::Search;
         imp.add_clamp.set_visible(!searching && !imp.selecting.get());
         imp.search_clamp.set_visible(searching);
-        let listing = if searching {
-            imp.engine.search(imp.filter.borrow().clone())
+        let (listing, day_status) = if searching {
+            (imp.engine.search(imp.filter.borrow().clone()), None)
+        } else if view.is_day() {
+            let snapshot = imp
+                .engine
+                .listing_with_day_status(view.clone(), imp.archive_shown.get());
+            (snapshot.listing, Some(snapshot.status))
         } else {
-            imp.engine.listing(view.clone(), imp.archive_shown.get())
+            (imp.engine.listing(view.clone(), imp.archive_shown.get()), None)
         };
         // Refreshes can hide rows without leaving selection mode (for example,
         // the local Today visibility preference). Bulk actions must use visible rows.
@@ -3122,9 +3178,27 @@ impl MomentumWindow {
         imp.empty.set_title(&title);
         imp.empty.set_description(Some(&desc));
         // Everything is done: celebrate above the Completed section and offer to archive.
-        if let Some(all_done) = &listing.all_done {
-            let (title, desc) = match all_done {
-                AllDone::Morning => (gettext("Morning done"), gettext("The rest of the day is yours.")),
+        let complete = day_status.as_ref().is_some_and(|s| {
+            matches!(
+                s.completion,
+                momentum_core::DayCompletion::PeriodComplete | momentum_core::DayCompletion::DayComplete
+            )
+        });
+        let hidden_only = listing.sections.is_empty()
+            && day_status
+                .as_ref()
+                .is_some_and(|s| s.hidden_morning + s.hidden_evening > 0);
+        let hidden_work = day_status
+            .as_ref()
+            .is_some_and(|s| s.hidden_morning + s.hidden_evening > 0);
+        if (!view.is_day() && listing.all_done.is_some())
+            || complete
+            || hidden_only
+            || (hidden_work && listing.all_done.is_some())
+        {
+            let context_done = AllDone::Context;
+            let (mut title, mut desc) = match listing.all_done.as_ref().unwrap_or(&context_done) {
+                AllDone::Morning => (gettext("Morning done"), gettext("Your morning list is complete.")),
                 AllDone::Tonight => (
                     gettext("All done for tonight"),
                     gettext("Enjoy the rest of your evening."),
@@ -3140,6 +3214,31 @@ impl MomentumWindow {
                 ),
                 AllDone::Context => (gettext("All caught up"), gettext("Every task here is complete.")),
             };
+            if let Some(status) = &day_status {
+                if !complete {
+                    title = gettext("Today's list is clear");
+                    desc = gettext("More tasks are waiting in Morning or Evening.");
+                } else {
+                    title = match view {
+                        View::Morning => gettext("Morning done"),
+                        View::Tonight => gettext("All done for tonight"),
+                        _ => gettext("All done for today"),
+                    };
+                    desc = match view {
+                        View::Morning => gettext("Your morning list is complete."),
+                        View::Tonight => gettext("Your evening list is complete."),
+                        _ => gettext("Everything planned for today is complete."),
+                    };
+                    if imp.settings.boolean("dynamic-empty-state-messages") {
+                        let hour = glib::DateTime::now_local().map(|date| date.hour() as u8).unwrap_or(12);
+                        let mut selection = imp.completion_message.borrow_mut();
+                        selection.update(&view, status.completion, &today_str(), hour);
+                        if let Some(id) = selection.id {
+                            desc = crate::empty_messages::message(id);
+                        }
+                    }
+                }
+            }
             // A hand-built panel: AdwStatusPage collapses inside a vertical box.
             let page = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
@@ -3171,20 +3270,21 @@ impl MomentumWindow {
                 .margin_top(12)
                 .css_classes(["suggested-action", "pill"])
                 .build();
-            page.append(&archive);
+            if listing.can_archive {
+                page.append(&archive);
+            }
+            if complete && imp.settings.boolean("dynamic-empty-state-messages") {
+                page.append(&crate::empty_messages::celebrate_button());
+            }
             imp.task_box.append(&page);
             imp.rows.borrow_mut().push(String::new());
         }
-        for (index, section) in listing.sections.iter().enumerate() {
-            if momentum_core::day_period_separator_before(&listing, index as u32, self.engine().preferences().group_by)
-            {
-                let separator = gtk::Separator::builder()
-                    .orientation(gtk::Orientation::Horizontal)
-                    .accessible_role(gtk::AccessibleRole::Presentation)
-                    .name("day-period-separator")
-                    .build();
-                imp.task_box.append(&separator);
-            }
+        if !complete {
+            imp.completion_message
+                .borrow_mut()
+                .update(&view, momentum_core::DayCompletion::Pending, &today_str(), 0);
+        }
+        for section in &listing.sections {
             let base = self.section_title(&section.kind, section.count);
             let heading = match &section.group {
                 Some(group) => {
@@ -3213,6 +3313,119 @@ impl MomentumWindow {
             }
             if let Some(note) = &section.note {
                 self.section_note(note);
+            }
+        }
+        if let Some(status) = day_status.filter(|_| view == View::Today) {
+            for (count, destination, period, action) in [
+                (status.hidden_morning, View::Morning, "Morning", N_("Go to Morning")),
+                (status.hidden_evening, View::Tonight, "Evening", N_("Go to Tonight")),
+            ] {
+                if count == 0 {
+                    continue;
+                }
+                let footer = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .spacing(4)
+                    .margin_top(18)
+                    .halign(gtk::Align::Center)
+                    .build();
+                let wording = if count == 1 {
+                    gettext("1 task in {}")
+                } else {
+                    gettext("{} tasks in {}")
+                };
+                let text = if count == 1 {
+                    wording.replacen("{}", &gettext(period), 1)
+                } else {
+                    wording
+                        .replacen("{}", &count.to_string(), 1)
+                        .replacen("{}", &gettext(period), 1)
+                };
+                footer.append(
+                    &gtk::Label::builder()
+                        .label(text)
+                        .css_classes(["dim-label", "caption"])
+                        .wrap(true)
+                        .justify(gtk::Justification::Center)
+                        .build(),
+                );
+                let button = gtk::Button::builder()
+                    .label(gettext(action))
+                    .css_classes(["flat"])
+                    .build();
+                button.connect_clicked(glib::clone!(
+                    #[weak(rename_to=w)]
+                    self,
+                    move |_| w.go_to(destination.clone())
+                ));
+                footer.append(&button);
+                imp.task_box.append(&footer);
+                imp.rows.borrow_mut().push(String::new());
+            }
+        }
+        if searching {
+            let matches = momentum_core::search_settings(imp.filter.borrow().clone(), crate::settings_ui::entries());
+            if !matches.is_empty() {
+                let group = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .spacing(6)
+                    .margin_top(24)
+                    .build();
+                group.append(
+                    &gtk::Label::builder()
+                        .label(gettext("Settings"))
+                        .xalign(0.0)
+                        .css_classes(["heading"])
+                        .build(),
+                );
+                for entry in matches.iter().take(5) {
+                    let button = gtk::Button::builder()
+                        .css_classes(["flat"])
+                        .halign(gtk::Align::Fill)
+                        .build();
+                    let content = gtk::Box::builder()
+                        .orientation(gtk::Orientation::Vertical)
+                        .spacing(3)
+                        .build();
+                    content.append(&gtk::Label::builder().label(&entry.title).xalign(0.0).wrap(true).build());
+                    content.append(
+                        &gtk::Label::builder()
+                            .label(crate::settings_ui::category(&entry.category))
+                            .xalign(0.0)
+                            .css_classes(["dim-label", "caption"])
+                            .build(),
+                    );
+                    button.set_child(Some(&content));
+                    let id = entry.id.clone();
+                    button.connect_clicked(glib::clone!(
+                        #[weak(rename_to=w)]
+                        self,
+                        move |_| {
+                            let prefs = crate::prefs::MomentumPrefs::default();
+                            prefs.present(Some(&w));
+                            prefs.reveal(&id);
+                        }
+                    ));
+                    group.append(&button);
+                }
+                if matches.len() > 5 {
+                    let more = gtk::Button::builder()
+                        .label(gettext("See all settings results"))
+                        .css_classes(["flat"])
+                        .build();
+                    more.connect_clicked(glib::clone!(
+                        #[weak(rename_to=w)]
+                        self,
+                        move |_| {
+                            let prefs = crate::prefs::MomentumPrefs::default();
+                            prefs.present(Some(&w));
+                            prefs.search_for(&w.imp().filter.borrow());
+                        }
+                    ));
+                    group.append(&more);
+                }
+                imp.task_box.append(&group);
+                imp.rows.borrow_mut().push(String::new());
             }
         }
         if listing.more_available > 0 {

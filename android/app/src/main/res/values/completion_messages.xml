@@ -1,0 +1,104 @@
+<resources>
+    <string-array name="completion_messages">
+        <item>Morning list, cleared. Take a breath.</item>
+        <item>A little more room in your morning.</item>
+        <item>Your morning tasks are tucked away.</item>
+        <item>A calm pause between plans.</item>
+        <item>Morning essentials, taken care of.</item>
+        <item>One less thing on your mind.</item>
+        <item>Your morning list can rest now.</item>
+        <item>There\'s space for a slower moment.</item>
+        <item>Morning plans, all checked off.</item>
+        <item>That part of the day is settled.</item>
+        <item>A clear morning list. A little breathing room.</item>
+        <item>Take a moment before the next thing.</item>
+        <item>Your morning list has nothing left to ask.</item>
+        <item>A small finish. A welcome pause.</item>
+        <item>Morning tasks, wrapped up neatly.</item>
+        <item>Let the next moment be unhurried.</item>
+        <item>Your morning checklist is at ease.</item>
+        <item>You can put this list down for a while.</item>
+        <item>A little calm after the morning tasks.</item>
+        <item>Morning list complete. Settle into your day.</item>
+        <item>All clear for today. Take a breath.</item>
+        <item>Nothing left on today\'s list.</item>
+        <item>You can put the checklist down.</item>
+        <item>The list is quiet. Enjoy the space.</item>
+        <item>Today\'s loose ends are tied up.</item>
+        <item>A clear list and a little peace of mind.</item>
+        <item>Everything planned for today is taken care of.</item>
+        <item>Let the next thing be something you enjoy.</item>
+        <item>Today\'s checklist can rest.</item>
+        <item>There is room to just be for a moment.</item>
+        <item>All checked off. No need to rush onward.</item>
+        <item>Your plans for today are settled.</item>
+        <item>A little less to carry in your head.</item>
+        <item>Today\'s list has nothing more to ask.</item>
+        <item>Take the win. Then take a break.</item>
+        <item>A quiet finish feels good, too.</item>
+        <item>The tasks are done. The pause is yours.</item>
+        <item>Let yourself enjoy an empty checklist.</item>
+        <item>Today\'s list is complete. Breathe out.</item>
+        <item>Rest belongs in the day, too.</item>
+        <item>The list is clear. The afternoon is yours.</item>
+        <item>A little afternoon breathing room.</item>
+        <item>Today\'s tasks are done. Find a comfortable pace.</item>
+        <item>You can leave the checklist here for now.</item>
+        <item>An open afternoon feels rather nice.</item>
+        <item>Everything on today\'s list is settled.</item>
+        <item>A pause in the afternoon, without a task attached.</item>
+        <item>Make a little room for something enjoyable.</item>
+        <item>Today\'s checklist is taking the afternoon off.</item>
+        <item>A clear list. Maybe a little fresh air?</item>
+        <item>The afternoon can move a little more slowly now.</item>
+        <item>Today\'s loose ends are behind you.</item>
+        <item>Nothing left to check off this afternoon.</item>
+        <item>There\'s room for a proper pause.</item>
+        <item>The checklist is done. Let the afternoon unfold.</item>
+        <item>Today\'s plans are taken care of. Get comfortable.</item>
+        <item>A calmer afternoon starts with a clear list.</item>
+        <item>Leave a little space for yourself today.</item>
+        <item>The afternoon has a little less on its mind.</item>
+        <item>All done for today. Enjoy this quieter stretch.</item>
+        <item>Today\'s list is done. Let the evening be gentle.</item>
+        <item>Nothing left on today\'s checklist. Settle in.</item>
+        <item>The day can end on a quieter note.</item>
+        <item>Today\'s loose ends can stay tied up.</item>
+        <item>The checklist is resting. You can, too.</item>
+        <item>All done for today. Make yourself comfortable.</item>
+        <item>Leave today\'s list here for the night.</item>
+        <item>Let the rest of the evening feel a little lighter.</item>
+        <item>Today\'s plans are complete. Breathe out slowly.</item>
+        <item>A clear list for a softer landing.</item>
+        <item>There\'s nothing more on today\'s checklist.</item>
+        <item>The evening doesn\'t need another checkmark.</item>
+        <item>Today\'s tasks are tucked away.</item>
+        <item>You can close the list and enjoy the quiet.</item>
+        <item>The day is complete. A little calm comes next.</item>
+        <item>Leave a little room for winding down.</item>
+        <item>Today\'s checklist has said its goodnight.</item>
+        <item>A peaceful finish to today\'s plans.</item>
+        <item>Nothing left here to hold your attention tonight.</item>
+        <item>All checked off. Let the day settle.</item>
+        <item>Evening list, cleared. Take a breath.</item>
+        <item>Your evening tasks are taken care of.</item>
+        <item>Nothing left on this evening\'s checklist.</item>
+        <item>A little breathing room around your evening plans.</item>
+        <item>This part of the day is settled.</item>
+        <item>Your evening list can rest now.</item>
+        <item>Evening plans, all checked off.</item>
+        <item>One quieter corner of the day.</item>
+        <item>The evening checklist has nothing more to ask.</item>
+        <item>A clear evening list feels good.</item>
+        <item>Those evening loose ends are tied up.</item>
+        <item>Take a small pause. This list is complete.</item>
+        <item>Your evening essentials are tucked away.</item>
+        <item>A little less to think about later.</item>
+        <item>The evening list is ready to be put down.</item>
+        <item>Everything on this list is settled.</item>
+        <item>Evening checklist complete. Let yourself pause.</item>
+        <item>This list has reached a comfortable stopping point.</item>
+        <item>A welcome bit of calm around the evening tasks.</item>
+        <item>Your evening list is clear. Enjoy the space.</item>
+    </string-array>
+</resources>

@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 @Composable fun TypographySettings(settings: AppSettings, change: ((AppSettings) -> AppSettings) -> Unit) {
     SettingHeading(R.string.typography)
     Text(stringResource(R.string.typography_hint), style = MaterialTheme.typography.bodyMedium)
-    Text(stringResource(R.string.font), style = MaterialTheme.typography.titleSmall)
+    SettingHeading(R.string.font)
     NativeFont.entries.forEach { choice ->
         val label = stringResource(when(choice) {
             NativeFont.System -> R.string.font_system
@@ -37,8 +37,8 @@ import kotlin.math.roundToInt
             Text(label, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
         }
     }
-    TypographyScale(R.string.content_text_size, settings.contentTextScale) { scale -> change { it.copy(contentTextScale = scale) } }
-    TypographyScale(R.string.interface_text_size, settings.interfaceTextScale) { scale -> change { it.copy(interfaceTextScale = scale) } }
+    SettingAnchor(R.string.content_text_size) { TypographyScale(R.string.content_text_size, settings.contentTextScale) { scale -> change { it.copy(contentTextScale = scale) } } }
+    SettingAnchor(R.string.interface_text_size) { TypographyScale(R.string.interface_text_size, settings.interfaceTextScale) { scale -> change { it.copy(interfaceTextScale = scale) } } }
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.interface_text_size), style = MaterialTheme.typography.labelLarge)
@@ -47,9 +47,9 @@ import kotlin.math.roundToInt
             TaskContentText { Text(stringResource(R.string.typography_preview)) }
         }
     }
-    OutlinedButton(onClick = { change(::resetNativeTypography) }, modifier = Modifier.heightIn(min = 48.dp)) {
+    SettingAnchor(R.string.typography_reset) { OutlinedButton(onClick = { change(::resetNativeTypography) }, modifier = Modifier.heightIn(min = 48.dp)) {
         Text(stringResource(R.string.typography_reset))
-    }
+    } }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

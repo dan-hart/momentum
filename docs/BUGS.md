@@ -10,6 +10,71 @@ Severity: Critical = data loss/security/core unusable; High = major workflow imp
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
 
+## B-170 — Native period completion loses its destination or shows stale claims
+
+- **Severity:** Medium. **Impact:** Android source/unit-reproduced final-period
+  autoarchive fallback; Apple source-confirmed stale completed-row presentation.
+- **Cause/fix:** native navigation previously fell back when the last slot task was
+  archived, before interpreting scoped completion. Preserve a completed current
+  period using the atomic snapshot. Apple additionally gates legacy AllDone copy
+  with core day truth; stale completed rows get neutral copy and archive access.
+- **Status/evidence:** Implemented on Android and Apple with JNI/model/presentation
+  regressions and final builds. GTK preserves completed current periods too. Full
+  native accessibility/device interaction remains unverified; F-073/PROGRESS.
+
+## B-171 — macOS Settings search result has an incomplete click target
+
+- **Severity:** Low. **Impact:** reproduced in an isolated live Mac demo build:
+  clicking result text opened Settings, but the wider row's center did not.
+- **Cause/fix:** intrinsic-width plain Button labels inside the task List. Expand
+  both Settings search result labels to full-width rectangular hit regions and use
+  native borderless button behavior. Footer actions also get separate accessible
+  containment/labels and full-width action regions.
+- **Status/evidence:** Implemented; final Mac/iOS builds cover the changed shared
+  views. Route state is unit-tested. Isolated live Mac recheck confirms row-center
+  activation now opens the matching setting. Both separate footer rows independently
+  activate the correct period in live Mac inspection. Broader native screen-reader output
+  remains separate from this scoped interaction proof; see PROGRESS.
+
+## B-168 — Completion audio is too loud and cannot be auditioned before saving
+
+- **Severity:** Medium. **Impact:** user-reported loudness on the current experience;
+  source confirms unattenuated native playback and preview gated on a saved choice
+  and automatic playback. Physical loudness was not reproduced on each device.
+- **Fix/status:** Implemented on all platforms: quiet original masters, shared local
+  gain, single-clip playback, independent candidate previews and preserved legacy/
+  unknown choices. Rust portable sound identifiers are now extensible strings in
+  the existing format. F-074; native listening remains unverified.
+- **Regression evidence:** original/new PCM byte parity, duration/levels/endpoints;
+  native recording-player, SoundPool lifecycle, bounded gain and preview/state units;
+  portable known/future sound round-trip regression failed before the validator fix.
+
+## B-169 — Completion celebration crosses day/period membership boundaries
+
+- **Severity:** Medium. **Impact:** reproduced by adversarial shared-core unit tests;
+  affects all native day-status consumers before the review fix.
+- **Reproduction:** finish an unscheduled/future task in another context and open an
+  unplanned Today/period; or finish today's Morning work while an overdue Morning
+  task remains visible only in Today.
+- **Cause/fix:** completion evidence and pending period membership used broad date
+  rules. Separate exact-day period membership from whole-day overdue membership for
+  active and archived tasks, with timed-date precedence. Atomic listing/status is
+  preserved. Four new regressions include failing-before/passing-after evidence.
+- **Status:** Implemented across shared consumers. Broader native interactions remain
+  outside the unit proof; verification is recorded in PROGRESS.
+
+## B-167 — Linux task entry exposes distracting syntax examples
+
+- **Severity:** Low. **Impact:** user-reported on Linux; source confirms examples
+  in the main entry and floating quick-add tooltips/accessibility descriptions.
+- **Expected:** a simple “Add a task” prompt matching the requested macOS wording.
+- **Fix/status:** Implemented on Linux: both entry placeholders and tooltips use the
+  existing EN/DE “Add a task” label; verbose accessibility descriptions are removed.
+  Parsing and keyboard actions are unchanged. Other platforms are unaffected by
+  this Linux-specific correction. Native Linux interaction remains unverified.
+- **Evidence:** source/localization inspection and formatting checks, 2026-10-22
+  dirty worktree on `task/native-experience-overhaul`; see PROGRESS.
+
 ## 2026-10-22 — day-period sections feature assessment
 
 F-071 extends F-037 with conditional native separators and optional exclusion of

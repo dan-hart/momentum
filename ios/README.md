@@ -217,3 +217,6 @@ Only incomplete reminders are imported into Inbox; Apple Reminders remains uncha
 Automatic import checks while Momentum is active and when it reopens. iOS does not
 guarantee imports while Momentum is closed. See [mapping, verification and identity
 limits](../docs/APPLE-REMINDERS.md).
+
+See the [Settings and daily-view guide](../docs/SETTINGS.md) for the native Settings
+overhaul, search discovery, About, completion messages and sound auditioning.

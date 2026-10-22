@@ -3373,3 +3373,267 @@ fn day_period_separator_ignores_empty_sections_and_out_of_range_indices() {
         assert!(!day_period_separator_before(&listing, index, GroupBy::MorningNight));
     }
 }
+
+#[test]
+fn day_status_tracks_hidden_families_and_completion_without_search_index() {
+    let (e, _dir) = empty();
+    assert_eq!(e.day_status(View::Today).completion, DayCompletion::Unplanned);
+    e.add_task("Morning work".into(), View::Morning);
+    let morning = id_of(&e, "Morning work");
+    e.add_subtask(morning.clone(), "Child".into());
+    e.add_tag_by_name(vec![morning.clone()], "Evening".into());
+    e.add_task("Evening work".into(), View::Tonight);
+    let evening = id_of(&e, "Evening work");
+    e.set_day_period_tasks_in_today(false);
+    let status = e.day_status(View::Today);
+    assert_eq!((status.hidden_morning, status.hidden_evening), (1, 1));
+    assert_eq!(status.completion, DayCompletion::Pending);
+    assert_eq!(e.day_status(View::Morning).hidden_morning, 0);
+    e.set_done(morning, true);
+    assert_eq!(e.day_status(View::Morning).completion, DayCompletion::PeriodComplete);
+    e.set_done(evening.clone(), true);
+    e.archive_done();
+    assert_eq!(e.day_status(View::Today).completion, DayCompletion::DayComplete);
+    assert_eq!(e.day_status(View::Tonight).completion, DayCompletion::DayComplete);
+    assert!(!e.has_search_index());
+    e.add_task("New work".into(), View::Today);
+    assert_eq!(e.day_status(View::Today).completion, DayCompletion::Pending);
+}
+
+#[test]
+fn day_status_excludes_future_subtasks_and_overdue_from_hidden_counts() {
+    let (e, _dir) = empty();
+    e.add_task("Overdue".into(), View::Morning);
+    e.add_task("Future".into(), View::Tonight);
+    let old = id_of(&e, "Overdue");
+    let future = id_of(&e, "Future");
+    e.with_store_mut(|s| {
+        s.state.task.entities.get_mut(&old).unwrap().due_day = Some(day_str(today_n() - 1));
+        s.state.task.entities.get_mut(&future).unwrap().due_day = Some(day_str(today_n() + 1));
+    });
+    e.set_day_period_tasks_in_today(false);
+    let status = e.day_status(View::Today);
+    assert_eq!((status.hidden_morning, status.hidden_evening), (0, 0));
+    assert_eq!(status.completion, DayCompletion::Pending);
+}
+
+#[test]
+fn settings_matching_ranks_localized_metadata_and_deduplicates_destinations() {
+    let entry = |id: &str, title: &str, aliases: &[&str]| SettingsEntry {
+        id: id.into(),
+        category: "appearance".into(),
+        title: title.into(),
+        description: "".into(),
+        aliases: aliases.iter().map(|s| s.to_string()).collect(),
+    };
+    let entries = vec![
+        entry("alias", "Typography", &["text size"]),
+        entry("prefix", "Text size reset", &[]),
+        entry("exact", "Text size", &[]),
+        entry("exact", "Text size", &[]),
+    ];
+    assert_eq!(
+        search_settings(" TEXT   SIZE ".into(), entries.clone())
+            .iter()
+            .map(|e| e.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["exact", "prefix", "alias"]
+    );
+    assert!(search_settings(" ".into(), entries.clone()).is_empty());
+    assert!(search_settings("missing".into(), entries).is_empty());
+    let directory = settings_directory();
+    let unique: std::collections::HashSet<_> = directory.iter().map(|d| &d.id).collect();
+    assert_eq!(unique.len(), directory.len());
+    assert!(directory.iter().all(|d| !d.platforms.is_empty()));
+}
+
+#[test]
+fn completion_message_pools_respect_scope_and_clock_boundaries() {
+    assert_eq!(
+        completion_message_ids(View::Morning, DayCompletion::DayComplete, 18),
+        (1..=20).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        completion_message_ids(View::Tonight, DayCompletion::PeriodComplete, 9),
+        (81..=100).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        completion_message_ids(View::Today, DayCompletion::DayComplete, 11).len(),
+        20
+    );
+    assert_eq!(
+        completion_message_ids(View::Today, DayCompletion::DayComplete, 12),
+        (21..=60).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        completion_message_ids(View::Today, DayCompletion::DayComplete, 17).len(),
+        40
+    );
+    assert_eq!(
+        completion_message_ids(View::Today, DayCompletion::DayComplete, 18),
+        (21..=40).chain(61..=80).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        completion_message_ids(View::Today, DayCompletion::DayComplete, 100),
+        completion_message_ids(View::Today, DayCompletion::DayComplete, 23)
+    );
+    assert!(completion_message_ids(View::Today, DayCompletion::Pending, 12).is_empty());
+    assert!(completion_message_ids(View::Today, DayCompletion::PeriodComplete, 12).is_empty());
+}
+
+#[test]
+fn day_status_uses_the_same_day_membership_as_period_listings() {
+    let (e, _dir) = empty();
+    e.add_task("Overdue morning".into(), View::Morning);
+    let overdue = id_of(&e, "Overdue morning");
+    e.with_store_mut(|s| s.state.task.entities.get_mut(&overdue).unwrap().due_day = Some(day_str(today_n() - 1)));
+    assert!(row_ids(&e.listing(View::Morning, 100)).is_empty());
+    assert_eq!(e.day_status(View::Morning).completion, DayCompletion::Unplanned);
+    e.add_task("Today's morning".into(), View::Morning);
+    e.set_done(id_of(&e, "Today's morning"), true);
+    assert_eq!(e.day_status(View::Morning).completion, DayCompletion::PeriodComplete);
+    assert_eq!(e.day_status(View::Today).completion, DayCompletion::Pending);
+    e.set_done(overdue, true);
+    e.archive_done();
+    assert_eq!(e.day_status(View::Today).completion, DayCompletion::DayComplete);
+    assert_eq!(e.day_status(View::Morning).completion, DayCompletion::DayComplete);
+    assert!(!e.has_search_index());
+}
+
+#[test]
+fn day_status_rejects_unplanned_and_future_completion_evidence_including_archive() {
+    for planned in [None, Some(day_str(today_n() + 1))] {
+        let (e, _dir) = empty();
+        e.add_task("Unrelated completion".into(), View::Morning);
+        let id = id_of(&e, "Unrelated completion");
+        e.with_store_mut(|s| s.state.task.entities.get_mut(&id).unwrap().due_day = planned.clone());
+        e.set_done(id, true);
+        for archived in [false, true] {
+            if archived {
+                e.archive_done();
+            }
+            for view in [View::Today, View::Morning, View::Tonight] {
+                assert_eq!(
+                    e.day_status(view).completion,
+                    DayCompletion::Unplanned,
+                    "planned={planned:?}, archived={archived}"
+                );
+            }
+        }
+        assert!(!e.has_search_index());
+    }
+}
+
+#[test]
+fn day_status_overdue_completion_belongs_to_today_but_not_a_period() {
+    let (e, _dir) = empty();
+    e.add_task("Overdue morning".into(), View::Morning);
+    let id = id_of(&e, "Overdue morning");
+    e.with_store_mut(|s| s.state.task.entities.get_mut(&id).unwrap().due_day = Some(day_str(today_n() - 1)));
+    e.set_done(id, true);
+    for archived in [false, true] {
+        if archived {
+            e.archive_done();
+        }
+        assert_eq!(e.day_status(View::Today).completion, DayCompletion::DayComplete);
+        assert_eq!(e.day_status(View::Morning).completion, DayCompletion::Unplanned);
+    }
+}
+
+#[test]
+fn day_status_completion_evidence_uses_timed_date_precedence_in_archive() {
+    for timed_day in [today_n() - 1, today_n(), today_n() + 1] {
+        let (e, _dir) = empty();
+        e.add_task("Timed morning".into(), View::Morning);
+        let id = id_of(&e, "Timed morning");
+        e.with_store_mut(|s| {
+            let task = s.state.task.entities.get_mut(&id).unwrap();
+            task.due_day = Some(today_str());
+            task.due_with_time = Some(local_ms(&day_str(timed_day), 12, 0).unwrap());
+        });
+        e.set_done(id, true);
+        for archived in [false, true] {
+            if archived {
+                e.archive_done();
+            }
+            assert_eq!(
+                e.day_status(View::Today).completion,
+                if timed_day <= today_n() {
+                    DayCompletion::DayComplete
+                } else {
+                    DayCompletion::Unplanned
+                }
+            );
+            assert_eq!(
+                e.day_status(View::Morning).completion,
+                if timed_day == today_n() {
+                    DayCompletion::DayComplete
+                } else {
+                    DayCompletion::Unplanned
+                }
+            );
+        }
+    }
+}
+
+#[test]
+fn day_status_rollover_reopen_and_atomic_snapshot_do_not_celebrate_unplanned_periods() {
+    let (e, _dir) = empty();
+    e.add_task("Evening".into(), View::Tonight);
+    let id = id_of(&e, "Evening");
+    e.set_done(id.clone(), true);
+    assert_eq!(e.day_status(View::Morning).completion, DayCompletion::Unplanned);
+    assert_eq!(e.day_status(View::Tonight).completion, DayCompletion::DayComplete);
+    let tomorrow = day_str(today_n() + 1);
+    let prefs = e.preferences();
+    e.with_store(|s| {
+        assert_eq!(
+            crate::listing::day_status(s, &prefs, &View::Today, &tomorrow).completion,
+            DayCompletion::Unplanned
+        )
+    });
+    e.set_done(id, false);
+    let snapshot = e.listing_with_day_status(View::Today, 60);
+    assert_eq!(snapshot.status.completion, DayCompletion::Pending);
+    assert_eq!(row_ids(&snapshot.listing).len(), 1);
+    assert!(!e.has_search_index());
+}
+
+#[test]
+fn settings_search_handles_german_cross_field_tokens_and_order_independent_ties() {
+    let entries = vec![
+        SettingsEntry {
+            id: "a".into(),
+            category: "Darstellung".into(),
+            title: "Schriftgröße".into(),
+            description: "Größe des Textes".into(),
+            aliases: vec!["font text size".into()],
+        },
+        SettingsEntry {
+            id: "b".into(),
+            category: "Aufgaben".into(),
+            title: "Abend".into(),
+            description: "Aufgaben für heute".into(),
+            aliases: vec!["night evening".into()],
+        },
+    ];
+    assert_eq!(search_settings("SCHRIFTGRÖSSE".into(), entries.clone())[0].id, "a");
+    assert_eq!(search_settings("heute night".into(), entries.clone())[0].id, "b");
+    let mut reverse = entries.clone();
+    reverse.reverse();
+    assert_eq!(
+        search_settings("text".into(), entries),
+        search_settings("text".into(), reverse)
+    );
+    let directory = settings_directory();
+    let exact_alarm = directory.iter().find(|d| d.id == "notifications.exact-alarm").unwrap();
+    assert_eq!(exact_alarm.platforms, vec![SettingsPlatform::Android]);
+    let reminders = directory
+        .iter()
+        .find(|d| d.id == "integrations.reminders-import")
+        .unwrap();
+    assert_eq!(
+        reminders.platforms,
+        vec![SettingsPlatform::Macos, SettingsPlatform::Ios]
+    );
+}

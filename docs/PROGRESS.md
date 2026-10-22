@@ -1,5 +1,96 @@
 # Momentum progress and handoff
 
+## 2026-10-22 — F-071–F-074 native experience overhaul
+
+- **Authority/revision:** user approved the combined designs and implementation on
+  Linux, macOS, iOS and Android, adversarial review, unit tests, and commit/push to
+  `task/native-experience-overhaul` (renamed locally and published from the prior
+  `3b17d16` head). No PR, merge, tag or release requested. Evidence below is the
+  final dirty worktree unless a narrower check is stated. Designs live under
+  [superpowers/specs](superpowers/specs/2026-10-22-settings-discovery-about-design.md),
+  with the [execution plan](superpowers/plans/2026-10-22-native-experience-overhaul.md).
+- **Task views:** F-071 replaces the originally approved lines with native sun/moon
+  headings, whitespace and indentation only in Today/Morning & Night. A centered
+  conditional footer counts hidden unfinished Morning/Evening root families and
+  opens the appropriate destination; overdue tasks remain visible. Rust provides
+  atomic listing/day-status queries so native clients do not infer completion from
+  a filtered empty list. F-073 adds 100 English/German messages, scoped/time-aware
+  eligibility, stable per-visit selection without immediate repeats, day rollover,
+  a local default-on opt-out and explicit brief celebration with reduced-motion
+  alternatives. Static copy remains truthful with hidden work or stale done rows.
+- **Settings/About:** F-072 adds eight conceptual categories, native Settings search,
+  separate Settings results in task search and exact native routes. Existing values,
+  controls, consent, sync/bootstrap/folder-copy/retry and backup flows are preserved.
+  macOS uses a Settings sidebar; iOS adapts compact navigation to an iPad split view;
+  Android uses Compose category/detail pages; GTK uses named AdwPreferencesPages
+  and native built-in search. Rich About content uses real app details, project links,
+  developer/values, sanitized copy and offline legal notices. Linux retains native
+  AdwAboutDialog. Device-local controls remain outside settings sync/transfer.
+- **Sounds:** F-074 adds ten original 0.22–0.43-second quiet resonator masters, explicit
+  candidate audition before selection even with automatic feedback off, bounded
+  local 35% default gain, single-clip replacement/cancellation, and native mute policy.
+  Legacy ten choices/assets and opaque future IDs remain readable/round-trippable;
+  fresh default is Little Lift. Generator, provenance, licenses and identical native
+  copies are included. B-168 records reported loudness versus measured/source proof;
+  perceived loudness on physical output devices remains a listening check.
+- **Adversarial review/fixes:** B-169 fixes cross-context completion evidence and
+  overdue period membership, with four additional Rust regressions (three failed
+  before the fix). Native review fixed Android archived-period navigation, competing/
+  missing Settings anchors and audition exception/cancellation handling; Apple
+  retained-view reselection, stale completed-row claims and route/query fallback.
+  GTK review fixed unknown/legacy sound labels, inactive-provider explanations,
+  missing background-sync discovery, time-boundary refresh and preview cancellation.
+  Reviewers approved the resulting source/spec/quality and meaningful unit coverage.
+  A live Mac check additionally found narrow search-row hit areas; these were widened
+  and row-center activation was rechecked successfully. Footer actions were separated
+  into individual native rows to avoid combining two navigation actions.
+- **Automated evidence:** final Rust workspace all-features/all-targets excluding
+  GTK: **414 passed, zero failures, five existing opt-in ignores**. Final full
+  MomentumKit: **230 tests/49 suites passed**. Portable MomentumMobile: **170 tests**
+  passed. Android: **116 JVM tests**, debug APK, lintDebug and existing instrumentation
+  source compilation pass with regenerated reviewed native libraries. GTK consumer
+  and existing tests compile; three pure native regressions (message stability,
+  bounded gain and discovery contracts) pass. No new rendered UI suites were added
+  or run; existing sound UI assertions were adapted to the changed contract. Existing
+  iOS rendered-test sources compile with build-for-testing; no rendered tests ran.
+- **Build/resource evidence:** reviewed macOS Debug and generic iOS Simulator builds
+  pass, with subsequent narrow search hit-area/footer changes checked in the final
+  builds referenced below. Native GTK app build, Blueprint resource/schema checks,
+  all twenty sound master parity/level/endpoint checks, EN/DE catalogs and source
+  formatting/diff checks pass. The built-Mac German localization verifier passes.
+- **Native inspection/limits:** isolated Mac QA used a separate application ID,
+  demo data and disabled sync. Settings categories, search-to-volume highlighting,
+  rich About content, global Settings discovery/activation, preserved task query and
+  hidden Morning/Evening counts were observed. The final native rows independently
+  activated Morning and Tonight; finishing the single demo Morning task showed a
+  scoped encouraging completion message while Today still contained unfinished work.
+  The demo task was reopened after inspection. Preview did not enable automatic
+  sound or change the selected candidate. This is scoped inspection, not full
+  VoiceOver/large-text/rotation/animation/listening acceptance. GTK launched with
+  isolated demo data/in-memory preferences on macOS; this is not Linux runtime
+  validation. Linux runtime, mobile device interaction, TalkBack/VoiceOver, long
+  German/large-text layouts, iPad rotation and device listening remain unverified.
+  Platform ledgers therefore stay **Implemented**, with exact tested scope above.
+- **Evidence paths:** `/private/tmp/momentum-overhaul-{workspace-final,kit-full-final,gtk-check,gtk-build,gtk-units-final,gtk-volume,gtk-discovery,blueprint,localization-check}.log`;
+  `/tmp/android-accepted-proof.log`; `/tmp/momentum-apple-acceptance.log` (42 affected
+  tests), `/tmp/momentum-{macos,ios}-separate-footer.log` (final builds),
+  `/tmp/momentum-ios-adaptive.log`, `/tmp/momentum-apple-localization.log`; `/tmp/momentum-mobile-final.log`;
+  `/tmp/momentum-ios-existing-tests-compile.log` (compile only).
+  Final publication/head readback is reported in the chat handoff.
+
+## 2026-10-22 — B-167 simplified Linux task entry
+
+- User requested the Linux task-entry prompt match macOS's simple “Add a task”.
+  Source already had a short placeholder, but tooltips/accessibility descriptions
+  still exposed tag and hour/minute examples. Both main and floating quick-add
+  now use the existing localized simple label without examples. Parsing is unchanged.
+- Local changes on renamed/published `task/native-experience-overhaul`, based on
+  `3b17d16`. Existing proposed overhaul specifications remain separate pending
+  design approval. No commit/push of this copy correction yet.
+- Source, EN/DE catalog and formatting checks cover this copy-only change; no new
+  tests or app rebuild required. Linux runtime visual/accessibility acceptance is
+  unavailable on this macOS host, so status is Implemented, not Verified.
+
 ## 2026-10-22 — F-071 adversarial review and unit-test follow-up
 
 - **Authority/revision:** user requested a dedicated branch commit/push, adversarial

@@ -6,17 +6,167 @@ using Adw 1;
 
 template $MomentumPrefs: Adw.PreferencesDialog {
   title: _("Preferences");
-  content-width: 720;
+  search-enabled: true;
+  content-width: 800;
   content-height: 700;
 
-  Adw.PreferencesPage {
+  Adw.PreferencesPage tasks_page {
+    name: "tasks";
+    title: _("Tasks & Planning");
+    icon-name: "view-list-symbolic";
+    Adw.PreferencesGroup {
+      title: _("Tasks");
+
+      Adw.ComboRow grouping_row { title: _("Group By"); subtitle: _("Organize by morning and night, project, tag, or time estimate"); }
+      Adw.ComboRow sorting_row { title: _("Sort By"); }
+      Adw.ComboRow direction_row { title: _("Order"); }
+      Adw.ComboRow upcoming_row { title: _("Upcoming"); }
+      Adw.SwitchRow day_period_today_row {
+        title: _("Show Morning and Evening tasks in Today");
+        subtitle: _("Keep morning and evening (night) tasks in Today, or use their sidebar lists");
+      }
+
+      Adw.SwitchRow auto_archive_row {
+        title: _("Archive completed tasks immediately");
+        subtitle: _("A completed task goes straight to the archive and syncs. Undo brings it back.");
+      }
+
+      Adw.SwitchRow dynamic_messages_row {
+        title: _("Dynamic empty-state messages");
+        subtitle: _("Encouraging messages and optional celebrations when your list is complete");
+      }
+    }
+  }
+
+  Adw.PreferencesPage appearance_page {
+    name: "appearance";
+    title: _("Appearance");
+    icon-name: "applications-graphics-symbolic";
+    Adw.PreferencesGroup {
+      title: _("Appearance");
+
+      Adw.SwitchRow colorful_row {
+        title: _("Color-code projects and tags");
+        subtitle: _("Use the saved colors of projects and labels");
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Typography");
+      description: _("Use the system font by default, or choose an app font and independent relative sizes.");
+
+      Adw.ActionRow {
+        title: _("Font");
+        subtitle: _("Applies to Momentum only; Reset Typography restores the system font");
+
+        [suffix]
+        Gtk.FontDialogButton font_button {
+          valign: center;
+          use-font: true;
+          use-size: false;
+          dialog: Gtk.FontDialog {
+            title: _("Choose Font");
+          };
+        }
+      }
+
+      Adw.SpinRow content_scale_row {
+        title: _("Content size");
+        subtitle: _("Task titles, notes, and task entry, as a percentage of the system text size");
+        numeric: true;
+        snap-to-ticks: true;
+        digits: 0;
+        adjustment: Gtk.Adjustment { lower: 75; upper: 250; step-increment: 5; page-increment: 25; };
+      }
+
+      Adw.SpinRow interface_scale_row {
+        title: _("Interface size");
+        subtitle: _("Navigation, settings, headings, and controls, as a percentage of the system text size");
+        numeric: true;
+        snap-to-ticks: true;
+        digits: 0;
+        adjustment: Gtk.Adjustment { lower: 75; upper: 250; step-increment: 5; page-increment: 25; };
+      }
+
+      Adw.ButtonRow reset_typography_row {
+        title: _("Reset Typography");
+        start-icon-name: "edit-undo-symbolic";
+      }
+    }
+  }
+
+  Adw.PreferencesPage sounds_page {
+    name: "sounds";
+    title: _("Sounds & Feedback");
+    icon-name: "audio-volume-high-symbolic";
+    Adw.PreferencesGroup sound_group {
+      title: _("Completion sounds");
+      Adw.SwitchRow completion_sound_row {
+        title: _("Play a sound when a task is completed");
+        subtitle: _("A short sound when you mark a task done. Off by default.");
+      }
+
+      Adw.ComboRow completion_sound_choice_row {
+        title: _("Selected sound");
+        subtitle: _("Preview a candidate below before choosing it");
+      }
+      Adw.ButtonRow completion_sound_preview_row {
+        title: _("Preview selected sound");
+        start-icon-name: "audio-volume-high-symbolic";
+      }
+      Adw.SpinRow sound_volume_row {
+        title: _("Sound volume");
+        subtitle: _("Applies to previews and task completion; system volume still applies");
+        digits: 0;
+        adjustment: Gtk.Adjustment { lower: 0; upper: 100; step-increment: 5; page-increment: 10; };
+      }
+    }
+  }
+
+  Adw.PreferencesPage notifications_page {
+    name: "notifications";
+    title: _("Notifications");
+    icon-name: "preferences-system-notifications-symbolic";
+    Adw.PreferencesGroup {
+      title: _("Notifications");
+      description: _("Summarize today's tasks once a day at this local time, or when Momentum next opens. Task reminders are separate.");
+
+      Adw.ActionRow { name: "notifications.reminders"; title: _("Task reminders"); subtitle: _("Set reminders in task details. Momentum must be running to deliver them."); }
+      Adw.SwitchRow morning_summary_row {
+        title: _("Morning summary");
+        subtitle: _("Off by default. Momentum must be running to send notifications.");
+      }
+      Adw.SpinRow morning_hour_row {
+        title: _("Hour (0–23)");
+        numeric: true;
+        snap-to-ticks: true;
+        adjustment: Gtk.Adjustment { lower: 0; upper: 23; step-increment: 1; page-increment: 1; };
+      }
+      Adw.SpinRow morning_minute_row {
+        title: _("Minute");
+        numeric: true;
+        snap-to-ticks: true;
+        adjustment: Gtk.Adjustment { lower: 0; upper: 59; step-increment: 1; page-increment: 5; };
+      }
+    }
+  }
+
+  Adw.PreferencesPage sync_page {
+    name: "sync";
+    title: _("Sync & Devices");
+    icon-name: "emblem-synchronizing-symbolic";
     Adw.PreferencesGroup {
       title: _("Sync");
       description: _("Choose one service. Switching keeps your tasks and saved connections.");
 
+      Adw.ActionRow sync_status_row { name: "sync.status"; title: _("Sync status"); subtitle: _("Choose a provider to connect your devices"); }
       Adw.ComboRow method_row {
         title: _("Sync method");
         subtitle: _("Off by default. Nothing leaves this device until you turn it on.");
+      }
+          Adw.SwitchRow background_sync_row {
+        title: _("Sync in the background");
+        subtitle: _("Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works.");
       }
     }
 
@@ -102,6 +252,30 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         title: _("Retry app settings sync");
         start-icon-name: "view-refresh-symbolic";
       }
+
+
+    }
+  }
+
+  Adw.PreferencesPage data_page {
+    name: "data";
+    title: _("Data & Backups");
+    icon-name: "document-save-symbolic";
+    Adw.PreferencesGroup {
+      title: _("Backup");
+
+      Adw.ButtonRow {
+        title: _("Import Backup JSON…");
+        subtitle: _("Restore tasks from a backup");
+        action-name: "app.import";
+      }
+
+      Adw.ButtonRow {
+        title: _("Export Backup JSON…");
+        subtitle: _("Save a copy of your tasks");
+        action-name: "app.export";
+      }
+
       Adw.ButtonRow settings_export_row {
         title: _("Export app settings…");
         start-icon-name: "document-save-symbolic";
@@ -111,57 +285,12 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         start-icon-name: "document-open-symbolic";
       }
     }
+  }
 
-    Adw.PreferencesGroup {
-      title: _("Tasks");
-
-      Adw.SwitchRow day_period_today_row {
-        title: _("Show Morning and Evening tasks in Today");
-      }
-
-      Adw.SwitchRow auto_archive_row {
-        title: _("Archive completed tasks immediately");
-        subtitle: _("A completed task goes straight to the archive and syncs. Undo brings it back.");
-      }
-
-      Adw.SwitchRow completion_sound_row {
-        title: _("Play a sound when a task is completed");
-        subtitle: _("A short sound when you mark a task done. Off by default.");
-      }
-
-      Adw.ComboRow completion_sound_choice_row {
-        title: _("Completion sound");
-        subtitle: _("Choose a short sound for completed tasks");
-      }
-
-      Adw.ButtonRow completion_sound_preview_row {
-        title: _("Preview sound");
-        start-icon-name: "audio-volume-high-symbolic";
-      }
-    }
-
-    Adw.PreferencesGroup {
-      title: _("Notifications");
-      description: _("Summarize today's tasks once a day at this local time, or when Momentum next opens. Task reminders are separate.");
-
-      Adw.SwitchRow morning_summary_row {
-        title: _("Morning summary");
-        subtitle: _("Off by default. Momentum must be running to send notifications.");
-      }
-      Adw.SpinRow morning_hour_row {
-        title: _("Hour (0–23)");
-        numeric: true;
-        snap-to-ticks: true;
-        adjustment: Gtk.Adjustment { lower: 0; upper: 23; step-increment: 1; page-increment: 1; };
-      }
-      Adw.SpinRow morning_minute_row {
-        title: _("Minute");
-        numeric: true;
-        snap-to-ticks: true;
-        adjustment: Gtk.Adjustment { lower: 0; upper: 59; step-increment: 1; page-increment: 5; };
-      }
-    }
-
+  Adw.PreferencesPage integrations_page {
+    name: "integrations";
+    title: _("App & Integrations");
+    icon-name: "preferences-system-symbolic";
     Adw.PreferencesGroup {
       title: _("Desktop");
 
@@ -170,10 +299,7 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         subtitle: _("Keep reminders and sync running after the window closes, and start at login");
       }
 
-      Adw.SwitchRow background_sync_row {
-        title: _("Sync in the background");
-        subtitle: _("Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works.");
-      }
+
 
       Adw.ComboRow background_count_row {
         title: _("Background task count");
@@ -185,71 +311,17 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         subtitle: _("The key in every shortcut, so Ctrl+E becomes Super+E. Combinations the desktop uses itself, such as Super+A on GNOME, do not reach Momentum.");
       }
     }
+  }
 
-    Adw.PreferencesGroup {
-      title: _("Appearance");
-
-      Adw.SwitchRow colorful_row {
-        title: _("Color-code projects and tags");
-        subtitle: _("Use the saved colors of projects and labels");
-      }
-    }
-
-    Adw.PreferencesGroup {
-      title: _("Typography");
-      description: _("Use the system font by default, or choose an app font and independent relative sizes.");
-
-      Adw.ActionRow {
-        title: _("Font");
-        subtitle: _("Applies to Momentum only; Reset Typography restores the system font");
-
-        [suffix]
-        Gtk.FontDialogButton font_button {
-          valign: center;
-          use-font: true;
-          use-size: false;
-          dialog: Gtk.FontDialog {
-            title: _("Choose Font");
-          };
-        }
-      }
-
-      Adw.SpinRow content_scale_row {
-        title: _("Content size");
-        subtitle: _("Task titles, notes, and task entry, as a percentage of the system text size");
-        numeric: true;
-        snap-to-ticks: true;
-        digits: 0;
-        adjustment: Gtk.Adjustment { lower: 75; upper: 250; step-increment: 5; page-increment: 25; };
-      }
-
-      Adw.SpinRow interface_scale_row {
-        title: _("Interface size");
-        subtitle: _("Navigation, settings, headings, and controls, as a percentage of the system text size");
-        numeric: true;
-        snap-to-ticks: true;
-        digits: 0;
-        adjustment: Gtk.Adjustment { lower: 75; upper: 250; step-increment: 5; page-increment: 25; };
-      }
-
-      Adw.ButtonRow reset_typography_row {
-        title: _("Reset Typography");
-        start-icon-name: "edit-undo-symbolic";
-      }
-    }
-
-    Adw.PreferencesGroup {
-      title: _("Backup");
-
-      Adw.ButtonRow {
-        title: _("Import Backup JSON…");
-        action-name: "app.import";
-      }
-
-      Adw.ButtonRow {
-        title: _("Export Backup JSON…");
-        action-name: "app.export";
-      }
+  Adw.PreferencesPage about_page {
+    name: "about";
+    title: _("About & Help");
+    icon-name: "help-about-symbolic";
+    Adw.PreferencesGroup about_group {
+      title: _("About & Help");
+      description: _("Offline by design. Open source. Made for your day.");
+      Adw.ButtonRow about_row { title: _("About Momentum"); start-icon-name: "help-about-symbolic"; action-name: "app.about"; }
     }
   }
+
 }

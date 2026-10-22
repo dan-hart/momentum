@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import MomentumKit
 import MomentumMobile
 import SwiftUI
 import UniformTypeIdentifiers
@@ -52,7 +53,7 @@ struct BackupSettings: View {
                                   subtitle: "Save a copy in Files or another location")
                         .frame(minHeight: 44)
                 }
-                .accessibilityIdentifier("backup-export")
+                .accessibilityIdentifier("backup-export").settingsTarget("data.tasks-export")
                 .disabled(!available)
             } footer: {
                 Text("Backups include your tasks, projects, tags, and repeat schedules. Keep a copy somewhere safe.")
@@ -67,7 +68,7 @@ struct BackupSettings: View {
                                   subtitle: "Choose a Momentum backup")
                         .frame(minHeight: 44)
                 }
-                .accessibilityIdentifier("backup-import")
+                .accessibilityIdentifier("backup-import").settingsTarget("data.tasks-import")
                 .disabled(!available)
                 if let selected = state.selection {
                     VStack(alignment: .leading, spacing: 4) {
@@ -92,13 +93,13 @@ struct BackupSettings: View {
             Section {
                 Button("Import app settings", systemImage: "square.and.arrow.down") {
                     settingsOnly = true; importing = true
-                }.disabled(!available)
+                }.settingsTarget("data.settings-import").disabled(!available)
                 Button("Export app settings", systemImage: "square.and.arrow.up") {
                     settingsOnly = true
                     Task {
                         if await settingsState.prepareExport(operation: { try await model.exportAppSettings() }) { exportingSettings = true }
                     }
-                }.disabled(!available)
+                }.settingsTarget("data.settings-export").disabled(!available)
                 if let selected = settingsState.selection {
                     Text(verbatim: selected.name).fixedSize(horizontal: false, vertical: true)
                     Button("Retry importing app settings") {

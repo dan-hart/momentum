@@ -153,7 +153,7 @@ struct RootView: SwiftUI.View {
             }
             .accessibilityIdentifier(MobileTab.search.accessibilityIdentifier)
             Tab(MobileTab.settings.title, systemImage: MobileTab.settings.symbol, value: MobileTab.settings.rawValue) {
-                NavigationStack { SettingsScreen() }
+                SettingsScreen()
                     .accessibilityHidden(isPresentingStartupSkeleton)
             }
             .accessibilityIdentifier(MobileTab.settings.accessibilityIdentifier)

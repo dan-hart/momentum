@@ -78,11 +78,11 @@ import Testing
         #expect(defaults.string(forKey: PrefKey.nextcloudServer) == "https://fixture.invalid")
     }
 
-    @Test func completionSoundStartsWithBrightFinishWhileRemainingOff() {
+    @Test func completionSoundStartsWithLittleLiftWhileRemainingOff() {
         let (d, name) = freshDefaults()
         defer { d.removePersistentDomain(forName: name) }
         #expect(!Preferences(d).completionSound)
-        #expect(d.string(forKey: PrefKey.completionSoundChoice) == "bright-finish")
+        #expect(d.string(forKey: PrefKey.completionSoundChoice) == "little-lift")
     }
 
     @Test func everyCompletionSoundChoiceSurvivesRecreationAndToggling() {
@@ -103,12 +103,12 @@ import Testing
         let name = "momentum-prefs-\(UUID().uuidString)"
         let d = UserDefaults(suiteName: name)!
         defer { d.removePersistentDomain(forName: name) }
-        #expect(Preferences(d).completionSoundChoice == .brightFinish)
+        #expect(Preferences(d).completionSoundChoice == .littleLift)
         d.set("future-sound", forKey: PrefKey.completionSoundChoice)
-        #expect(Preferences(d).completionSoundChoice == .brightFinish)
+        #expect(Preferences(d).completionSoundChoice == .littleLift)
         #expect(d.string(forKey: PrefKey.completionSoundChoice) == "future-sound")
         d.set("", forKey: PrefKey.completionSoundChoice)
-        #expect(Preferences(d).completionSoundChoice == .brightFinish)
+        #expect(Preferences(d).completionSoundChoice == .littleLift)
     }
 
     @Test func completionSoundPersistsWhenPreferencesAreRecreated() {

@@ -21,17 +21,35 @@ struct TaskListView: SwiftUI.View {
         // overlay, and every top-level item is a Section with a stable identity.
         Group {
                 List(selection: $state.selection) {
-                    if let allDone = state.listing.allDone {
+                    if state.isSearching && !state.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        SettingsSearchResults(query: state.searchText).selectionDisabled()
+                    }
+                    if CompletedListPresentation.resolve(view: state.view, completion: state.dayStatus.completion) == .dayCompletion {
+                        DayCompletionView(view: state.view, completion: state.dayStatus.completion)
+                            .listRowSeparator(.hidden).selectionDisabled()
+                        if state.listing.allDone != nil {
+                            Button(String(localized: "Archive Completed")) { state.archiveDone() }
+                                .buttonStyle(.borderless).selectionDisabled()
+                        }
+                    } else if let allDone = state.listing.allDone {
                         Section {
-                            AllDoneView(allDone: allDone)
-                                .listRowSeparator(.hidden)
-                                .selectionDisabled()
+                            if CompletedListPresentation.resolve(view: state.view, completion: state.dayStatus.completion) == .neutralDay {
+                                Text(String(localized: "This list is clear for now.")).foregroundStyle(.secondary)
+                                Button(String(localized: "Archive Completed")) { state.archiveDone() }
+                                    .buttonStyle(.borderless).selectionDisabled()
+                            } else {
+                                AllDoneView(allDone: allDone)
+                                    .listRowSeparator(.hidden)
+                                    .selectionDisabled()
+                            }
                         }
                     }
                     ForEach(Array(state.listing.sections.enumerated()), id: \.element.identity) { index, section in
                         Section {
                             ForEach(section.rows, id: \.rowId) { row in
                                 rowView(row)
+                                    .listRowSeparator(calmLayout && section.kind != .completed ? .hidden : .automatic)
+                                    .padding(.leading, calmLayout && (section.group == .morning || section.group == .evening) ? 12 : 0)
                             }
                             if let note = section.note {
                                 Text(Strings.sectionNote(note))
@@ -41,9 +59,6 @@ struct TaskListView: SwiftUI.View {
                             }
                         } header: {
                             VStack(alignment: .leading, spacing: 8) {
-                                if dayPeriodSeparatorBefore(listing: state.listing, sectionIndex: UInt32(index), groupBy: state.prefs.core.groupBy) {
-                                    Divider().accessibilityHidden(true)
-                                }
                                 if let group = section.group, let headingColor = groupColor(group) {
                                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                                         if let context = Strings.sectionContextTitle(section) {
@@ -57,13 +72,36 @@ struct TaskListView: SwiftUI.View {
                                     .accessibilityElement(children: .combine)
                                     .accessibilityAddTraits(.isHeader)
                                 } else if let title = Strings.sectionTitle(section) {
-                                    Text(title)
+                                    HStack {
+                                        if calmLayout && (section.group == .morning || section.group == .evening) {
+                                            Image(systemName: section.group == .morning ? "sun.max" : "moon").accessibilityHidden(true)
+                                        }
+                                        Text(title)
+                                    }
+                                        .padding(.top, calmLayout && index > 0 && section.kind != .completed ? 24 : 0)
                                         .appFont(.headline)
                                         .foregroundStyle(section.kind == .overdue ? Color.red : .secondary)
                                         .accessibilityAddTraits(.isHeader)
                                 }
                             }
                         }
+                        .listSectionSeparator(calmLayout && section.kind != .completed ? .hidden : .automatic)
+                    }
+                    if state.dayStatus.hiddenMorning > 0 || state.dayStatus.hiddenEvening > 0 {
+                        Section {
+                            if state.listing.empty != nil {
+                                Text(String(localized: "This list is clear for now.")).foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity).listRowSeparator(.hidden)
+                            }
+                            if state.dayStatus.hiddenMorning > 0 {
+                                HiddenDayTaskHint(count: state.dayStatus.hiddenMorning, morning: true) { state.go(to: .morning) }
+                                    .listRowSeparator(.hidden)
+                            }
+                            if state.dayStatus.hiddenEvening > 0 {
+                                HiddenDayTaskHint(count: state.dayStatus.hiddenEvening, morning: false) { state.go(to: .tonight) }
+                                    .listRowSeparator(.hidden)
+                            }
+                        }.selectionDisabled()
                     }
                     if state.listing.moreAvailable > 0 {
                         Section {
@@ -78,7 +116,7 @@ struct TaskListView: SwiftUI.View {
                 }
                 .listStyle(.inset)
                 .overlay {
-                    if let empty = state.listing.empty {
+                    if let empty = state.listing.empty, (!state.isSearching || SettingsDiscovery.results(state.searchText, platform: .macos).isEmpty), state.dayStatus.completion != .dayComplete, state.dayStatus.completion != .periodComplete, state.dayStatus.hiddenMorning == 0, state.dayStatus.hiddenEvening == 0 {
                         let copy = Strings.empty(empty, modifier: state.modifier.symbol, syncConfigured: state.prefs.syncConfigured)
                         EmptyTaskListView(copy: copy)
                     }
@@ -127,6 +165,7 @@ struct TaskListView: SwiftUI.View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    private var calmLayout: Bool { state.view == .today && state.prefs.core.groupBy == .morningNight }
     private func orderedIds(_ ids: Set<String>) -> [String] {
         state.allRowIds.filter { ids.contains($0) }
     }

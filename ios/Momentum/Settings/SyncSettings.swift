@@ -6,6 +6,7 @@ import SwiftUI
 
 struct SyncSettings: View {
     @Environment(MobileAppModel.self) private var model
+    @Environment(\.settingsDestination) private var settingsDestination
     @Bindable var state: NextcloudSyncState
     @AppStorage(PrefKey.backgroundSync) private var backgroundSync = true
     @AccessibilityFocusState private var failureFocused: Bool
@@ -14,6 +15,10 @@ struct SyncSettings: View {
 
     var body: some View {
         Form {
+            if let target = settingsDestination,
+               (["sync.nextcloud", "sync.automatic", "sync.compression", "sync.folder-copy"].contains(target) && state.provider != .nextcloud) || (["sync.libresync", "sync.devices"].contains(target) && state.provider != .libresync) || (["sync.status", "sync.background"].contains(target) && state.provider == .off) {
+                Text("This setting belongs to an inactive sync provider. Choose that provider to edit its connection; opening this result does not change your provider.").settingsTarget(target)
+            }
             if !state.allowed {
                 Section {
                     Label("Sync is disabled in preview and test mode.", systemImage: "network.slash")
@@ -25,7 +30,7 @@ struct SyncSettings: View {
                     NavigationLink { SyncProviderSettings(state: state) } label: {
                         SettingsLabel("Sync Provider", symbol: "network", subtitle: LocalizedStringKey(state.provider.label))
                     }
-                    .accessibilityIdentifier("sync-provider")
+                    .accessibilityIdentifier("sync-provider").settingsTarget("sync.provider")
                 } else {
                     LabeledContent("Sync Provider") { Text("Off").foregroundStyle(Color.primary) }
                         .accessibilityIdentifier("sync-provider-readonly")
@@ -37,7 +42,7 @@ struct SyncSettings: View {
             Section {
                 Toggle("Sync app settings", isOn: Binding(
                     get: { model.appSettingsSync?.enabled == true },
-                    set: { value in Task { await model.setAppSettingsSync(value) } }))
+                    set: { value in Task { await model.setAppSettingsSync(value) } })).settingsTarget("sync.settings")
                     .disabled(!state.allowed || model.worker == nil)
                 if let status = model.appSettingsSync, status.enabled, !status.bootstrapRequired {
                     if status.pendingKeys > 0 {
@@ -83,7 +88,7 @@ struct SyncSettings: View {
             }
             if state.provider != .off, state.allowed {
                 Section {
-                    Toggle("Sync in the background", isOn: $backgroundSync)
+                    Toggle("Sync in the background", isOn: $backgroundSync).settingsTarget("sync.background")
                         .disabled(state.provider != .nextcloud)
                         .accessibilityIdentifier("sync-background")
                 } header: { Text("Background").foregroundStyle(Color.primary) }
@@ -99,7 +104,7 @@ struct SyncSettings: View {
                 if state.loading { ProgressView("Loading Connection…") }
                 if state.loaded { connection }
             } else if state.provider == .libresync {
-                libreSync
+                libreSync.settingsTarget("sync.libresync")
             }
             if state.provider != .off, state.loaded {
                 connectionTest
@@ -176,13 +181,13 @@ struct SyncSettings: View {
                         .frame(minHeight: 44)
                 }
                 .disabled(!state.canSync)
-                .accessibilityIdentifier("sync-now")
+                .accessibilityIdentifier("sync-now").settingsTarget("sync.status")
                 NavigationLink { LibreSyncSettings(state: nearby) } label: {
                     SettingsLabel("Nearby Devices", symbol: "antenna.radiowaves.left.and.right")
                         .frame(minHeight: 44)
                 }
                 .disabled(nearby.phase != .running)
-                .accessibilityIdentifier("libresync-devices")
+                .accessibilityIdentifier("libresync-devices").settingsTarget("sync.devices")
             } footer: {
                 Text("LibreSync exchanges encrypted task data directly with linked devices while Momentum is open. No Momentum account is required.")
                     .foregroundStyle(AccentTheme.secondaryText)
@@ -223,7 +228,7 @@ struct SyncSettings: View {
                     .frame(minHeight: 44)
             }
             .disabled(!state.canSync)
-            .accessibilityIdentifier("sync-now")
+            .accessibilityIdentifier("sync-now").settingsTarget("sync.status")
         } footer: {
             Text(state.lowPowerMode
                  ? "Sync Now remains available. Automatic sync resumes when Low Power Mode turns off."
@@ -248,7 +253,7 @@ struct SyncSettings: View {
                 field("Server URL") {
                     TextField("Server URL", text: $state.draft.serverURL)
                         .keyboardType(.URL).textContentType(.URL)
-                        .accessibilityIdentifier("sync-server")
+                        .accessibilityIdentifier("sync-server").settingsTarget("sync.nextcloud")
                 }
                 field("Username") {
                     TextField("Username", text: $state.draft.userName)
@@ -271,6 +276,9 @@ struct SyncSettings: View {
             .autocorrectionDisabled()
             .disabled(state.folderCopyInProgress)
 
+            if state.draft.folder == "momentum", settingsDestination == "sync.folder-copy" {
+                Text("The Momentum folder is already selected.").settingsTarget("sync.folder-copy")
+            }
             if state.draft.folder != "momentum" || state.folderCopy != .idle {
                 Section {
                     switch state.folderCopy {
@@ -288,7 +296,7 @@ struct SyncSettings: View {
                     if !state.folderCopyInProgress, state.draft.folder != "momentum" {
                         Button("Copy to Momentum folder…") { confirmingFolderCopy = true }
                             .disabled(!state.canCopyFolder || model.isRestoringBackup)
-                            .accessibilityIdentifier("sync-copy-folder")
+                            .accessibilityIdentifier("sync-copy-folder").settingsTarget("sync.folder-copy")
                     }
                 } footer: {
                     Text("The original folder stays intact. The saved folder changes only after every copied file is verified.")
@@ -296,8 +304,8 @@ struct SyncSettings: View {
             }
 
             Section {
-                Toggle("Sync Automatically", isOn: $state.draft.automatic)
-                Toggle("Compress Sync File", isOn: $state.draft.compress)
+                Toggle("Sync Automatically", isOn: $state.draft.automatic).settingsTarget("sync.automatic")
+                Toggle("Compress Sync File", isOn: $state.draft.compress).settingsTarget("sync.compression")
                 field("Encryption Password (Optional)") {
                     SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()

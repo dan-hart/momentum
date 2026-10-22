@@ -18,7 +18,7 @@ import Testing
         for (key, translated) in labels {
             #expect(german.localizedString(forKey: key, value: nil, table: "Localizable") == translated)
         }
-        #expect(CompletionSoundChoice.allCases.map { $0.label(locale: Locale(identifier: "de_DE")) } == labels.map { $0.1 })
+        #expect(CompletionSoundChoice.allCases.filter(\.isLegacy).map { $0.label(locale: Locale(identifier: "de_DE")) } == labels.map { $0.1 })
     }
 
     @Test func germanResourcesAreAvailableInThePackageBundle() throws {

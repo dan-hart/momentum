@@ -28,6 +28,9 @@ data class AppSettings(
     val colorfulLabels: Boolean = true,
     val notifications: Boolean = false,
     val completionSound: Boolean = false,
+    val completionSoundRaw: String? = null,
+    val completionSoundVolume: Float = 0.35f,
+    val dynamicEmptyMessages: Boolean = true,
     val completionSoundChoice: CompletionSoundChoice = CompletionSoundChoice.defaultChoice,
     val provider: SyncProvider = SyncProvider.Off,
     val automaticSync: Boolean = true,
@@ -53,6 +56,7 @@ data class Snapshot(
     val parentTitles: Map<String, String> = emptyMap(),
     val settingsSync: SettingsSyncStatus? = null,
     val appSettingsError: String? = null,
+    val dayStatus: DayStatus? = null,
 )
 
 /** One engine per application. Disk/FFI work never runs on the Android main thread. */
@@ -122,11 +126,13 @@ class MomentumRepository internal constructor(
     suspend fun detail(id: String): TaskDetail? = read { taskDetail(id) }
     suspend fun snapshot(view: View, query: String = "", archiveLimit: UInt = 100u): Snapshot = readProjection {
         refreshPortableLocked(this)
-        val resolved = if (viewExists(view)) view else View.Today
-        val list = if (resolved == View.Search) search(query) else listing(resolved, archiveLimit)
+        val periodListing = if(view == View.Morning || view == View.Tonight) listingWithDayStatus(view, archiveLimit) else null
+        val resolved = resolvedListingView(view, viewExists(view), periodListing?.status?.completion)
+        val dayListing = if(resolved == View.Search) null else if(resolved == view && periodListing != null) periodListing else listingWithDayStatus(resolved, archiveLimit)
+        val list = if (resolved == View.Search) search(query) else dayListing!!.listing
         val parents = list.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().mapNotNull { it.row.parentId }.distinct()
             .mapNotNull { id -> taskRow(id)?.title?.let { id to it } }.toMap()
-        Snapshot(list, sidebar(), projects(), tags(), preferences(), appSettings(nativePreferencesForDisplay()), syncStatus(), canUndo(), parents, settingsSyncStatus(), portableError)
+        Snapshot(list, sidebar(), projects(), tags(), preferences(), appSettings(nativePreferencesForDisplay()), syncStatus(), canUndo(), parents, settingsSyncStatus(), portableError, dayListing?.status)
     }!! // Snapshots have unconditional admission and always produce a value.
     suspend fun settings(): AppSettings = read { refreshPortableLocked(this); appSettings(nativePreferencesForDisplay()) }
     private suspend fun nativePreferencesForDisplay(): androidx.datastore.preferences.core.Preferences = try {
@@ -279,7 +285,11 @@ private fun appSettings(prefs: androidx.datastore.preferences.core.Preferences):
     colorfulLabels = prefs[booleanPreferencesKey("colorful-labels")] ?: true,
     notifications = prefs[booleanPreferencesKey("notifications")] ?: false,
     completionSound = prefs[booleanPreferencesKey("completion-sound")] ?: false,
-    completionSoundChoice = CompletionSoundChoice.resolve(prefs[stringPreferencesKey("completion-sound-choice")]),
+    completionSoundVolume = com.codedbydan.momentum.platform.boundedSoundVolume(prefs[floatPreferencesKey("completion-sound-volume")] ?: 0.35f),
+    dynamicEmptyMessages = prefs[booleanPreferencesKey("dynamic-empty-messages")] ?: true,
+    completionSoundChoice = CompletionSoundChoice.resolve(prefs[stringPreferencesKey("completion-sound-choice")]
+        ?: if(prefs[booleanPreferencesKey("completion-sound")] != null) "bright-finish" else null),
+    completionSoundRaw = prefs[stringPreferencesKey("completion-sound-choice")],
     provider = enumValueOr(prefs[stringPreferencesKey("provider")], SyncProvider.Off),
     automaticSync = prefs[booleanPreferencesKey("automatic-sync")] ?: true,
     backgroundSync = prefs[booleanPreferencesKey("background-sync")] ?: false,
@@ -314,8 +324,10 @@ private fun writeSettings(it: MutablePreferences, settings: AppSettings) {
     it[booleanPreferencesKey("colorful-labels")] = settings.colorfulLabels
     it[booleanPreferencesKey("notifications")] = settings.notifications
     it[booleanPreferencesKey("completion-sound")] = settings.completionSound
+    it[floatPreferencesKey("completion-sound-volume")] = com.codedbydan.momentum.platform.boundedSoundVolume(settings.completionSoundVolume)
+    it[booleanPreferencesKey("dynamic-empty-messages")] = settings.dynamicEmptyMessages
     val soundKey = stringPreferencesKey("completion-sound-choice")
-    if(CompletionSoundChoice.resolve(it[soundKey]) != settings.completionSoundChoice) it[soundKey] = settings.completionSoundChoice.key
+    if(it[soundKey] == null || settings.completionSoundRaw == settings.completionSoundChoice.key || CompletionSoundChoice.resolve(it[soundKey]) != settings.completionSoundChoice) it[soundKey] = settings.completionSoundChoice.key
     it[stringPreferencesKey("provider")] = settings.provider.name
     it[booleanPreferencesKey("automatic-sync")] = settings.automaticSync
     it[booleanPreferencesKey("background-sync")] = settings.backgroundSync
@@ -337,4 +349,9 @@ private fun writeCorePreferences(it: MutablePreferences, prefs: Preferences) {
     it[booleanPreferencesKey("morning-summary")] = prefs.morningSummaryEnabled
     it[intPreferencesKey("summary-hour")] = prefs.morningSummaryTime.hour.toInt()
     it[intPreferencesKey("summary-minute")] = prefs.morningSummaryTime.minute.toInt()
+}
+
+internal fun resolvedListingView(view: View, exists: Boolean, completion: DayCompletion?): View {
+    val completedPeriod = (view == View.Morning || view == View.Tonight) && completion in listOf(DayCompletion.PERIOD_COMPLETE, DayCompletion.DAY_COMPLETE)
+    return if(exists || completedPeriod) view else View.Today
 }

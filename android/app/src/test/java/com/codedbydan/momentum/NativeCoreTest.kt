@@ -26,6 +26,54 @@ class NativeCoreTest {
         } finally { engine.destroy(); directory.deleteRecursively() }
     }
 
+    @Test fun generatedDaySnapshotKeepsHiddenWorkAndCompletionInAgreement() {
+        val directory = Files.createTempDirectory("momentum-day-status-").toFile()
+        val engine = Engine.openChecked(directory.absolutePath)
+        try {
+            val id = engine.createTaskWithId(draft("Hidden morning").copy(dueDay = java.time.LocalDate.now().toString()), View.Morning).id!!
+            engine.setDayPeriodTasksInToday(false)
+            val hidden = engine.listingWithDayStatus(View.Today, 100u)
+            assertEquals(1u, hidden.status.hiddenMorning)
+            assertEquals(DayCompletion.PENDING, hidden.status.completion)
+            assertTrue(completionMessageIds(View.Today, hidden.status.completion, 18u).isEmpty())
+            engine.setDone(id, true)
+            val complete = engine.listingWithDayStatus(View.Today, 100u)
+            assertEquals(0u, complete.status.hiddenMorning)
+            assertEquals(DayCompletion.DAY_COMPLETE, complete.status.completion)
+            assertEquals(40, completionMessageIds(View.Today, complete.status.completion, 18u).size)
+            engine.setDone(id, false)
+            assertEquals(DayCompletion.PENDING, engine.dayStatus(View.Today).completion)
+        } finally { engine.destroy(); directory.deleteRecursively() }
+    }
+
+    @Test fun autoarchivedPeriodRetainsItsOwnCompletionAlongsideUnfinishedToday() {
+        val directory = Files.createTempDirectory("momentum-period-completion-").toFile()
+        val engine = Engine.openChecked(directory.absolutePath)
+        try {
+            engine.setPreferences(engine.preferences().copy(autoArchive = true))
+            val day = java.time.LocalDate.now().toString()
+            val morning = engine.createTaskWithId(draft("Morning").copy(dueDay = day), View.Morning).id!!
+            val today = engine.createTaskWithId(draft("Still today").copy(dueDay = day), View.Today).id!!
+            engine.setDone(morning, true)
+            val period = engine.listingWithDayStatus(View.Morning, 100u)
+            assertEquals(DayCompletion.PERIOD_COMPLETE, period.status.completion)
+            assertFalse(period.listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == today })
+            assertEquals(View.Morning, com.codedbydan.momentum.data.resolvedListingView(View.Morning, engine.viewExists(View.Morning), period.status.completion))
+            assertEquals(DayCompletion.PENDING, engine.dayStatus(View.Today).completion)
+        } finally { engine.destroy(); directory.deleteRecursively() }
+    }
+
+    @Test fun generatedDirectoryAndSearchResolveStableAndroidDestinations() {
+        val available = settingsDirectory().filter { SettingsPlatform.ANDROID in it.platforms }
+        assertEquals(available.size, available.map { it.id }.distinct().size)
+        assertTrue(available.any { it.id == "tasks.dynamic-messages" })
+        val metadata = listOf(SettingsEntry("tasks.dynamic-messages", "Tasks", "Dynamic empty-state messages", "", listOf("encouragement")),
+            SettingsEntry("sounds.volume", "Sounds", "Volume", "Quiet feedback", listOf("loudness")))
+        assertEquals("sounds.volume", searchSettings(" loudness ", metadata).single().id)
+        assertEquals("tasks.dynamic-messages", searchSettings("empty messages", metadata).single().id)
+        assertTrue(searchSettings("", metadata).isEmpty())
+    }
+
     @Test fun generatedErrorRetainsDetailsAndNeverResetsDamagedStore() {
         val directory = Files.createTempDirectory("momentum-kotlin-").toFile()
         try {

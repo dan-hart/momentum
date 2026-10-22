@@ -78,6 +78,7 @@ struct TaskScreen: SwiftUI.View {
     var onInitialSnapshotReady: @MainActor () -> Void = {}
     var showsSidebarButton = false
     var onSnapshotAssignment: @MainActor (TaskSnapshotTransition, Transaction) -> Void = { _, _ in }
+    @State private var hiddenDestination: MomentumCore.View?
     @State private var snapshot: TaskSnapshot?
     @State private var query = ""
     @State private var archiveLimit: UInt32 = 100
@@ -157,6 +158,7 @@ struct TaskScreen: SwiftUI.View {
         .pickerStyle(.menu)
     }
 
+    private var calmLayout: Bool { view == .today && Preferences(model.defaults).core.groupBy == .morningNight }
     private var refreshKey: String { "\(view)-\(model.worker != nil)-\(model.revision)-\(query)-\(archiveLimit)" }
     private var title: String {
         view == .upcoming ? String(localized: "Upcoming")
@@ -167,7 +169,10 @@ struct TaskScreen: SwiftUI.View {
         Group {
             if let snapshot {
                 List(selection: $selection) {
-                    if let empty = snapshot.listing.empty {
+                    if view == .search && !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        SettingsSearchResults(query: query).selectionDisabled(true)
+                    }
+                    if let empty = snapshot.listing.empty, snapshot.dayStatus.completion != .dayComplete, snapshot.dayStatus.completion != .periodComplete, snapshot.dayStatus.hiddenMorning == 0, snapshot.dayStatus.hiddenEvening == 0 {
                         let copy = Strings.empty(empty, modifier: "⌘", syncConfigured: false)
                         ContentUnavailableView {
                             Label {
@@ -182,16 +187,29 @@ struct TaskScreen: SwiftUI.View {
                         }
                         .listRowBackground(Color.clear)
                     }
-                    if let allDone = snapshot.listing.allDone {
-                        let copy = Strings.allDone(allDone)
-                        VStack(spacing: 12) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.largeTitle).foregroundStyle(.tint).accessibilityHidden(true)
-                            Text(copy.title).font(.title2.bold())
-                            Text(copy.description).foregroundStyle(AccentTheme.secondaryText)
+                    if CompletedListPresentation.resolve(view: view, completion: snapshot.dayStatus.completion) == .dayCompletion {
+                        DayCompletionView(view: view, completion: snapshot.dayStatus.completion)
+                            .listRowBackground(Color.clear)
+                        if snapshot.listing.allDone != nil {
                             Button("Archive Completed") { act(.archive) }
                         }
-                        .frame(maxWidth: .infinity).padding(.vertical)
+                    } else if let allDone = snapshot.listing.allDone {
+                        if CompletedListPresentation.resolve(view: view, completion: snapshot.dayStatus.completion) == .neutralDay {
+                            VStack(spacing: 12) {
+                                Text("This list is clear for now.").foregroundStyle(AccentTheme.secondaryText)
+                                Button("Archive Completed") { act(.archive) }
+                            }.frame(maxWidth: .infinity).padding(.vertical)
+                        } else {
+                            let copy = Strings.allDone(allDone)
+                            VStack(spacing: 12) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.largeTitle).foregroundStyle(.tint).accessibilityHidden(true)
+                                Text(copy.title).font(.title2.bold())
+                                Text(copy.description).foregroundStyle(AccentTheme.secondaryText)
+                                Button("Archive Completed") { act(.archive) }
+                            }
+                            .frame(maxWidth: .infinity).padding(.vertical)
+                        }
                     }
                     ForEach(Array(snapshot.listing.sections.enumerated()), id: \.offset) { index, section in
                         Section {
@@ -200,6 +218,9 @@ struct TaskScreen: SwiftUI.View {
                                 case .task(let task):
                                     taskRow(task, snapshot: snapshot)
                                         .listRowInsets(TaskRowDensity.from(rowDensity).rowInsets)
+                                        .listRowSeparator(calmLayout && section.kind != .completed ? .hidden : .automatic)
+                                        .listRowBackground(calmLayout && section.kind != .completed ? Color.clear : nil)
+                                        .padding(.leading, calmLayout && (section.group == .morning || section.group == .evening) ? 8 : 0)
                                         .tag(task.id)
                                         .selectionDisabled(task.archived || task.occurrence != nil)
                                 case .project(let project):
@@ -213,14 +234,35 @@ struct TaskScreen: SwiftUI.View {
                             }
                         } header: {
                             VStack(alignment: .leading, spacing: 8) {
-                                if dayPeriodSeparatorBefore(listing: snapshot.listing, sectionIndex: UInt32(index), groupBy: Preferences(model.defaults).core.groupBy) {
-                                    Divider().accessibilityHidden(true)
-                                }
                                 if let title = Strings.sectionTitle(section) {
-                                    Text(title).foregroundStyle(sectionColor(section.group))
+                                    HStack {
+                                        if calmLayout && (section.group == .morning || section.group == .evening) {
+                                            Image(systemName: section.group == .morning ? "sun.max" : "moon").accessibilityHidden(true)
+                                        }
+                                        Text(title)
+                                    }.padding(.top, calmLayout && index > 0 && section.kind != .completed ? 24 : 0)
+                                        .foregroundStyle(sectionColor(section.group))
                                         .accessibilityAddTraits(.isHeader)
                                 }
                             }
+                        }
+                        .listSectionSeparator(calmLayout && section.kind != .completed ? .hidden : .automatic)
+                    }
+                    if snapshot.dayStatus.hiddenMorning > 0 || snapshot.dayStatus.hiddenEvening > 0 {
+                        Section {
+                            if snapshot.listing.empty != nil {
+                                Text("This list is clear for now.").foregroundStyle(AccentTheme.secondaryText)
+                                    .frame(maxWidth: .infinity).listRowBackground(Color.clear)
+                            }
+                            if snapshot.dayStatus.hiddenMorning > 0 {
+                                HiddenDayTaskHint(count: snapshot.dayStatus.hiddenMorning, morning: true, usesEveningName: true) { hiddenDestination = .morning }
+                                    .listRowBackground(Color.clear).listRowSeparator(.hidden).selectionDisabled(true)
+                            }
+                            if snapshot.dayStatus.hiddenEvening > 0 {
+                                HiddenDayTaskHint(count: snapshot.dayStatus.hiddenEvening, morning: false, usesEveningName: true) { hiddenDestination = .tonight }
+                                    .listRowBackground(Color.clear).listRowSeparator(.hidden).selectionDisabled(true)
+                            }
+
                         }
                     }
                     if snapshot.listing.moreAvailable > 0 {
@@ -238,6 +280,9 @@ struct TaskScreen: SwiftUI.View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .navigationDestination(isPresented: Binding(get: { hiddenDestination != nil }, set: { if !$0 { hiddenDestination = nil } })) {
+                    if let hiddenDestination { TaskScreen(view: hiddenDestination) }
+                }
                 .modifier(PullToRefresh(enabled: sync.provider != .off) { await model.pullToRefresh() })
                 .contentMargins(.bottom, 76, for: .scrollContent)
                 .dropDestination(for: ExternalTaskText.self) { items, _ in
@@ -367,7 +412,9 @@ struct TaskScreen: SwiftUI.View {
             let transaction = startupTransition.transaction
             onSnapshotAssignment(startupTransition, transaction)
             withTransaction(transaction) { snapshot = result }
-            guard result.viewExists else {
+            let completedPeriod = (view == .morning || view == .tonight)
+                && (result.dayStatus.completion == .periodComplete || result.dayStatus.completion == .dayComplete)
+            guard result.viewExists || completedPeriod else {
                 if dismissesWhenViewDisappears { dismiss() }
                 return
             }

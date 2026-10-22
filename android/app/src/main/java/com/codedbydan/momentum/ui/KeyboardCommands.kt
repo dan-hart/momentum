@@ -178,8 +178,7 @@ internal val LocalKeyboardCommandBridge = staticCompositionLocalOf<KeyboardComma
 
 @Composable fun KeyboardModifierSettings(settings: AppSettings, change: ((AppSettings) -> AppSettings) -> Unit) {
     var help by rememberSaveable { mutableStateOf(false) }
-    Text(stringResource(R.string.keyboard_shortcuts), style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = 12.dp).semantics { heading() })
+    SettingHeading(R.string.keyboard_shortcuts)
     Text(stringResource(R.string.keyboard_modifier_hint), style = MaterialTheme.typography.bodyMedium)
     KeyboardModifier.entries.forEach { modifier ->
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(settings.keyboardModifier == modifier,

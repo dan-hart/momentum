@@ -6,7 +6,7 @@ SPDX-PackageSupplier = "Dan Hart <race-unbent-water@duck.com>"
 SPDX-PackageDownloadLocation = "https://github.com/dan-hart/momentum"
 
 [[annotations]]
-path = ["data/icons/**", "data/resources/screenshots/**", "data/*.in", "data/*.in.in", "data/resources/resources.gresource.xml", "data/resources/sounds/provenance.json", "po/**", "docs/**", "*.md", "momentum.doap", "Cargo.toml", "Cargo.lock", "crates/*/Cargo.toml", "rustfmt.toml", ".editorconfig", ".gitignore", ".gitallowed", ".github/**", "build-aux/*.json", "build-aux/flathub/**", "REUSE.toml", "meson_options.txt", "crates/app/meson.build", "po/meson.build"]
+path = ["data/icons/**", "data/resources/screenshots/**", "data/*.in", "data/*.in.in", "data/resources/resources.gresource.xml", "data/resources/sounds/provenance.json", "data/resources/sounds/quiet-provenance.json", "po/**", "docs/**", "*.md", "momentum.doap", "Cargo.toml", "Cargo.lock", "crates/*/Cargo.toml", "rustfmt.toml", ".editorconfig", ".gitignore", ".gitallowed", ".github/**", "build-aux/*.json", "build-aux/flathub/**", "REUSE.toml", "meson_options.txt", "crates/app/meson.build", "po/meson.build"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Dan Hart"
 SPDX-License-Identifier = "GPL-3.0-or-later"
@@ -22,3 +22,9 @@ path = ["meson.build", "data/meson.build", "data/icons/meson.build", "data/resou
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Bilal Elmoussaoui and the gtk-rust-template contributors"
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["data/resources/sounds/soft-knock.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/soft-knock.wav", "android/app/src/main/res/raw/soft_knock.wav", "data/resources/sounds/little-lift.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/little-lift.wav", "android/app/src/main/res/raw/little_lift.wav", "data/resources/sounds/felt-finish.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/felt-finish.wav", "android/app/src/main/res/raw/felt_finish.wav", "data/resources/sounds/warm-thumb.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/warm-thumb.wav", "android/app/src/main/res/raw/warm_thumb.wav", "data/resources/sounds/gentle-pair.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/gentle-pair.wav", "android/app/src/main/res/raw/gentle_pair.wav", "data/resources/sounds/small-bloom.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/small-bloom.wav", "android/app/src/main/res/raw/small_bloom.wav", "data/resources/sounds/sunny-tap.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/sunny-tap.wav", "android/app/src/main/res/raw/sunny_tap.wav", "data/resources/sounds/pocket-harp.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/pocket-harp.wav", "android/app/src/main/res/raw/pocket_harp.wav", "data/resources/sounds/easy-landing.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/easy-landing.wav", "android/app/src/main/res/raw/easy_landing.wav", "data/resources/sounds/quiet-cheer.wav", "macos/Packages/MomentumKit/Sources/MomentumKit/Resources/quiet-cheer.wav", "android/app/src/main/res/raw/quiet_cheer.wav"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Dan Hart"
+SPDX-License-Identifier = "GPL-3.0-or-later"

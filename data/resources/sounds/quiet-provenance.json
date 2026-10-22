@@ -1,0 +1,224 @@
+{
+  "date": "2026-10-22",
+  "creator": "Momentum contributors",
+  "license": "GPL-3.0-or-later",
+  "origin": "Original additive resonator synthesis; no third-party samples",
+  "generator": "build-aux/generate-quiet-sounds.py",
+  "default": "little-lift",
+  "peak_ceiling_dbfs": -18,
+  "rms_ceiling_dbfs": -32,
+  "options": [
+    {
+      "slug": "soft-knock",
+      "duration": 0.22,
+      "kind": "wood",
+      "notes": [
+        [
+          0,
+          520,
+          0.065,
+          1
+        ]
+      ],
+      "sha256": "2f74a6d15333fc1060067475381461d91d4dedf1f8b5bac0e8620d9f66ef6a8a"
+    },
+    {
+      "slug": "little-lift",
+      "duration": 0.32,
+      "kind": "felt",
+      "notes": [
+        [
+          0,
+          440,
+          0.1,
+          0.8
+        ],
+        [
+          0.075,
+          660,
+          0.12,
+          1
+        ]
+      ],
+      "sha256": "9ebe93cf328eaa20cfdade70ee424488a94a7e0f836bfff238aea13add63fed7"
+    },
+    {
+      "slug": "felt-finish",
+      "duration": 0.28,
+      "kind": "felt",
+      "notes": [
+        [
+          0,
+          523.25,
+          0.12,
+          1
+        ],
+        [
+          0,
+          659.25,
+          0.11,
+          0.35
+        ]
+      ],
+      "sha256": "2d395df7568e50de7dacda7306945ffc1b53ba709a139280c80f7a44aa01ed2d"
+    },
+    {
+      "slug": "warm-thumb",
+      "duration": 0.3,
+      "kind": "pluck",
+      "notes": [
+        [
+          0,
+          392,
+          0.13,
+          1
+        ],
+        [
+          0.06,
+          587.33,
+          0.1,
+          0.45
+        ]
+      ],
+      "sha256": "401fd4549789d367c0018ee6b9b6b0bf64989a660650872dd9a2352fdcf22d98"
+    },
+    {
+      "slug": "gentle-pair",
+      "duration": 0.3,
+      "kind": "wood",
+      "notes": [
+        [
+          0,
+          580,
+          0.07,
+          0.75
+        ],
+        [
+          0.095,
+          730,
+          0.075,
+          1
+        ]
+      ],
+      "sha256": "430912109c39901d83be7205a66f1c80fb603bf5dbe364fd29b89ac8c1ce4bb4"
+    },
+    {
+      "slug": "small-bloom",
+      "duration": 0.4,
+      "kind": "felt",
+      "notes": [
+        [
+          0,
+          349.23,
+          0.15,
+          0.55
+        ],
+        [
+          0.045,
+          440,
+          0.14,
+          0.65
+        ],
+        [
+          0.09,
+          523.25,
+          0.16,
+          0.8
+        ]
+      ],
+      "sha256": "1c208d6c28b20c80d9e0199f8215e5c3aeed05e9b0189e2b6724e4e4a018923a"
+    },
+    {
+      "slug": "sunny-tap",
+      "duration": 0.24,
+      "kind": "wood",
+      "notes": [
+        [
+          0,
+          698.46,
+          0.075,
+          1
+        ],
+        [
+          0,
+          1046.5,
+          0.055,
+          0.15
+        ]
+      ],
+      "sha256": "052ab8c0723f954c120cad2f50aa00f13fac1ff1e5f8916d199e4236e75aeea8"
+    },
+    {
+      "slug": "pocket-harp",
+      "duration": 0.37,
+      "kind": "pluck",
+      "notes": [
+        [
+          0,
+          440,
+          0.13,
+          0.6
+        ],
+        [
+          0.05,
+          554.37,
+          0.12,
+          0.65
+        ],
+        [
+          0.1,
+          659.25,
+          0.13,
+          0.7
+        ]
+      ],
+      "sha256": "c594b6dce4695c808c3a5c001fadf0014afd0e3a5b0d2571ced206420c550fcd"
+    },
+    {
+      "slug": "easy-landing",
+      "duration": 0.36,
+      "kind": "felt",
+      "notes": [
+        [
+          0,
+          659.25,
+          0.1,
+          0.5
+        ],
+        [
+          0.08,
+          523.25,
+          0.15,
+          0.85
+        ]
+      ],
+      "sha256": "02a54c7cf09369476f6cba20fa1c3f23e117a286d92b06604d0959fd9c399cd9"
+    },
+    {
+      "slug": "quiet-cheer",
+      "duration": 0.43,
+      "kind": "pluck",
+      "notes": [
+        [
+          0,
+          392,
+          0.12,
+          0.55
+        ],
+        [
+          0.07,
+          493.88,
+          0.12,
+          0.6
+        ],
+        [
+          0.14,
+          587.33,
+          0.13,
+          0.7
+        ]
+      ],
+      "sha256": "f68dd2a4683d68c240ec3e5715b5804bc5003552e97540a7242fe308a4e0001e"
+    }
+  ]
+}

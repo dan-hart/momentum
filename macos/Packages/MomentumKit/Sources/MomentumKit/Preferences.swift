@@ -31,6 +31,8 @@ public enum PrefKey {
     public static let autoArchive = "auto-archive"
     /// Play the bundled chime when a change completes tasks. Off by default on every platform.
     public static let completionSound = "completion-sound"
+    public static let dynamicEmptyMessages = "dynamic-empty-messages"
+    public static let completionSoundVolume = "completion-sound-volume"
     public static let completionSoundChoice = "completion-sound-choice"
     public static let morningSummaryEnabled = "morning-summary-enabled"
     public static let morningSummaryHour = "morning-summary-hour"
@@ -166,6 +168,8 @@ public struct Preferences {
             PrefKey.dockBadgeMode: DockBadgeMode.dueToday.rawValue,
             PrefKey.modifierKey: "command",
             PrefKey.autoArchive: false,
+            PrefKey.dynamicEmptyMessages: true,
+            PrefKey.completionSoundVolume: 0.35,
             PrefKey.completionSound: false,
             PrefKey.completionSoundChoice: CompletionSoundChoice.defaultChoice.rawValue,
             PrefKey.morningSummaryEnabled: false,

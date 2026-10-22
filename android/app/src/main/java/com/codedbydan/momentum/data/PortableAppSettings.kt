@@ -16,7 +16,7 @@ internal object PortableAppSettings {
             .put("direction", if(preferences.direction == SortDirection.ASCENDING) "ascending" else "descending")
             .put("upcomingDays", preferences.upcomingDays.toInt()).put("autoArchive", preferences.autoArchive)
             .put("rowDensity", if(settings.compact) "compact" else "regular").put("colorfulLabels", settings.colorfulLabels)
-            .put("completionSoundEnabled", settings.completionSound).put("completionSoundChoice", settings.completionSoundChoice.key)).toString()
+            .put("completionSoundEnabled", settings.completionSound).put("completionSoundChoice", portableSoundValue(settings))).toString()
 
     fun changedDocument(previous: String, changed: String): String {
         val old = values(previous); val next = values(changed); val delta = JSONObject()
@@ -61,7 +61,11 @@ internal object PortableAppSettings {
         }
         boolean("autoArchive", "auto-archive"); boolean("colorfulLabels", "colorful-labels")
         boolean("completionSoundEnabled", "completion-sound")
-        string("completionSoundChoice", CompletionSoundChoice.entries.map { it.key }, "completion-sound-choice")
+        if(values.has("completionSoundChoice")) {
+            val value = values.get("completionSoundChoice")
+            require(value is String && value.isNotBlank() && value.toByteArray(Charsets.UTF_8).size <= 256) { "Invalid app setting: completionSoundChoice" }
+            updates += { target[stringPreferencesKey("completion-sound-choice")] = value }
+        }
         updates.forEach { it() }
     }
     fun values(json: String): JSONObject {
@@ -71,4 +75,10 @@ internal object PortableAppSettings {
     }
     private fun group(value: GroupBy): String = when(value) { GroupBy.MORNING_NIGHT -> "morning-night"; else -> value.name.lowercase() }
     private fun sort(value: SortKey): String = value.name.lowercase()
+}
+
+internal fun portableSoundValue(settings: AppSettings): String {
+    val raw = settings.completionSoundRaw
+    return if(raw != null && CompletionSoundChoice.entries.none { it.key == raw } && settings.completionSoundChoice == CompletionSoundChoice.resolve(raw)) raw
+        else settings.completionSoundChoice.key
 }

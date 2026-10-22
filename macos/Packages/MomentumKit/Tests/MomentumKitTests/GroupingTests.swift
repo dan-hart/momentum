@@ -78,3 +78,30 @@ import Testing
         #expect(labels == ["Up to 15 min", "16–30 min", "31–60 min", "1–2 hours", "Over 2 hours", "No estimate"])
     }
 }
+
+@MainActor @Suite struct DayCompletionPresentationTests {
+    @Test func autoArchivedMorningCompletionKeepsTheCurrentDestination() throws {
+        let h = Harness()
+        h.defaults.set(true, forKey: PrefKey.autoArchive)
+        h.state.preferencesChanged()
+        h.state.go(to: .morning)
+        let tasks = h.rows
+        try #require(!tasks.isEmpty)
+        h.state.toggleDone(tasks)
+        #expect(h.state.view == .morning)
+        #expect(h.state.dayStatus.completion == .periodComplete || h.state.dayStatus.completion == .dayComplete)
+    }
+    @Test func hiddenCountsAndVisibleRowsRefreshTogetherAfterPreferencesChange() {
+        let h = Harness()
+        h.defaults.set(false, forKey: PrefKey.showDayPeriodTasksInToday)
+        h.state.preferencesChanged()
+        #expect(h.state.dayStatus.hiddenMorning > 0)
+        #expect(h.state.dayStatus.completion == .pending)
+        #expect(!h.state.listing.sections.contains { $0.group == .morning || $0.group == .evening })
+        h.defaults.set(true, forKey: PrefKey.showDayPeriodTasksInToday)
+        h.state.preferencesChanged()
+        #expect(h.state.dayStatus.hiddenMorning == 0)
+        #expect(h.state.dayStatus.hiddenEvening == 0)
+        #expect(h.state.listing.sections.contains { $0.group == .morning })
+    }
+}

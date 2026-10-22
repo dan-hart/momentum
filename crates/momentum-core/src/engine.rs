@@ -862,6 +862,23 @@ impl Engine {
             g.prefs.group_by,
         )
     }
+    /// Query content and completion eligibility under one store lock.
+    pub fn listing_with_day_status(&self, view: View, archive_limit: u32) -> DayListing {
+        let mut g = self.lock();
+        let idx = matches!(&view, View::Archive).then(|| g.index());
+        let listing = listing::group_listing(
+            &g.store,
+            listing::listing(&g.store, idx.as_deref(), &view, &g.prefs, archive_limit as usize),
+            g.prefs.group_by,
+        );
+        let status = listing::day_status(&g.store, &g.prefs, &view, &today_str());
+        DayListing { listing, status }
+    }
+    /// Day-state query without constructing the task/archive search index.
+    pub fn day_status(&self, view: View) -> DayStatus {
+        let g = self.lock();
+        listing::day_status(&g.store, &g.prefs, &view, &today_str())
+    }
     /// Upcoming top-level tasks in the configured window, optionally including completed
     /// tasks for automation queries. Uses the same local-day bounds and order as the view.
     pub fn upcoming_task_ids(&self, include_completed: bool) -> Vec<String> {

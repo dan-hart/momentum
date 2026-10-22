@@ -19,3 +19,12 @@ row.compact-row > box.header {
 row.compact-row .subtitle {
   font-size: 0.9em;
 }
+
+/* A quiet day-period hierarchy uses whitespace instead of repeated rules. */
+list.day-period-list, list.day-period-list > row {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+list.day-period-list > row { margin-top: 3px; margin-bottom: 3px; }
+.settings-target { outline: 2px solid var(--accent-bg-color); outline-offset: -2px; }

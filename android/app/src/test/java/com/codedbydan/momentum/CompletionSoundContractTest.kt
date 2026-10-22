@@ -9,21 +9,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CompletionSoundContractTest {
-    @Test fun soundIsOffAndBrightFinishIsTheDefaultChoice() {
+    @Test fun soundIsOffAndLittleLiftIsTheDefaultChoice() {
         assertFalse(AppSettings().completionSound)
-        assertEquals(CompletionSoundChoice.BRIGHT_FINISH, AppSettings().completionSoundChoice)
+        assertEquals(CompletionSoundChoice.LITTLE_LIFT, AppSettings().completionSoundChoice)
     }
 
     @Test fun allTenApprovedStableChoicesExistInTheirNumberedOrder() {
         assertEquals(listOf("wood-pop", "double-check", "rounded-lift", "pocket-piano", "string-flick",
             "bright-finish", "harp-snap", "click-and-glow", "tiny-ta-da", "warm-spark"),
-            CompletionSoundChoice.entries.map { it.key })
-        assertEquals(10, CompletionSoundChoice.entries.map { it.resource }.distinct().size)
+            CompletionSoundChoice.entries.take(10).map { it.key })
+        assertEquals(20, CompletionSoundChoice.entries.map { it.resource }.distinct().size)
     }
 
     @Test fun unknownOrAbsentChoiceFallsBackAndTogglingPreservesChoice() {
         for(key in listOf(null, "", "future-sound", "BRIGHT_FINISH"))
-            assertEquals(CompletionSoundChoice.BRIGHT_FINISH, CompletionSoundChoice.resolve(key))
+            assertEquals(CompletionSoundChoice.LITTLE_LIFT, CompletionSoundChoice.resolve(key))
         for(choice in CompletionSoundChoice.entries) {
             assertEquals(choice, CompletionSoundChoice.resolve(choice.key))
             val selected = AppSettings(completionSound = true, completionSoundChoice = choice)

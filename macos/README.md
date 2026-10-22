@@ -95,7 +95,7 @@ Regular and Compact rows.
 
 ## Fonts
 
-Open **Settings → Fonts → Choose Font…** to use the macOS Fonts panel. The chosen
+Open **Settings → Appearance → Choose Font…** to use the macOS Fonts panel. The chosen
 family and face apply to app text. **Content size** controls task titles, subtitles,
 notes and task entry; **Interface size** controls navigation, settings and app controls.
 Both range from 10–32 pt and default to 13 pt. The Fonts panel's size also changes the
@@ -227,3 +227,6 @@ Inbox tasks; Apple Reminders is never modified. Fetch/save failures have a real 
 and results/errors receive localized accessibility announcements. See
 [the import contract](../docs/APPLE-REMINDERS.md) for mapping, source identity and
 cross-device limits, and [PROGRESS](../docs/PROGRESS.md) for dated verification.
+
+See the [Settings and daily-view guide](../docs/SETTINGS.md) for categories, native search,
+About, quiet sound previews and Morning/Evening presentation.

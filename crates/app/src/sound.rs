@@ -22,16 +22,26 @@ pub enum CompletionSoundChoice {
     RoundedLift,
     PocketPiano,
     StringFlick,
-    #[default]
     BrightFinish,
     HarpSnap,
     ClickAndGlow,
     TinyTaDa,
     WarmSpark,
+    SoftKnock,
+    #[default]
+    LittleLift,
+    FeltFinish,
+    WarmThumb,
+    GentlePair,
+    SmallBloom,
+    SunnyTap,
+    PocketHarp,
+    EasyLanding,
+    QuietCheer,
 }
 
 impl CompletionSoundChoice {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 20] = [
         Self::WoodPop,
         Self::DoubleCheck,
         Self::RoundedLift,
@@ -42,6 +52,29 @@ impl CompletionSoundChoice {
         Self::ClickAndGlow,
         Self::TinyTaDa,
         Self::WarmSpark,
+        Self::SoftKnock,
+        Self::LittleLift,
+        Self::FeltFinish,
+        Self::WarmThumb,
+        Self::GentlePair,
+        Self::SmallBloom,
+        Self::SunnyTap,
+        Self::PocketHarp,
+        Self::EasyLanding,
+        Self::QuietCheer,
+    ];
+
+    pub const NEW: [Self; 10] = [
+        Self::SoftKnock,
+        Self::LittleLift,
+        Self::FeltFinish,
+        Self::WarmThumb,
+        Self::GentlePair,
+        Self::SmallBloom,
+        Self::SunnyTap,
+        Self::PocketHarp,
+        Self::EasyLanding,
+        Self::QuietCheer,
     ];
 
     pub fn slug(self) -> &'static str {
@@ -56,6 +89,16 @@ impl CompletionSoundChoice {
             Self::ClickAndGlow => "click-and-glow",
             Self::TinyTaDa => "tiny-ta-da",
             Self::WarmSpark => "warm-spark",
+            Self::SoftKnock => "soft-knock",
+            Self::LittleLift => "little-lift",
+            Self::FeltFinish => "felt-finish",
+            Self::WarmThumb => "warm-thumb",
+            Self::GentlePair => "gentle-pair",
+            Self::SmallBloom => "small-bloom",
+            Self::SunnyTap => "sunny-tap",
+            Self::PocketHarp => "pocket-harp",
+            Self::EasyLanding => "easy-landing",
+            Self::QuietCheer => "quiet-cheer",
         }
     }
 
@@ -74,7 +117,7 @@ impl CompletionSoundChoice {
     }
 
     pub fn label(self) -> String {
-        match self {
+        let label = match self {
             Self::WoodPop => gettext("1 Wood Pop"),
             Self::DoubleCheck => gettext("2 Double Check"),
             Self::RoundedLift => gettext("3 Rounded Lift"),
@@ -85,6 +128,21 @@ impl CompletionSoundChoice {
             Self::ClickAndGlow => gettext("8 Click and Glow"),
             Self::TinyTaDa => gettext("9 Tiny Ta-Da"),
             Self::WarmSpark => gettext("10 Warm Spark"),
+            Self::SoftKnock => gettext("Soft Knock"),
+            Self::LittleLift => gettext("Little Lift"),
+            Self::FeltFinish => gettext("Felt Finish"),
+            Self::WarmThumb => gettext("Warm Thumb"),
+            Self::GentlePair => gettext("Gentle Pair"),
+            Self::SmallBloom => gettext("Small Bloom"),
+            Self::SunnyTap => gettext("Sunny Tap"),
+            Self::PocketHarp => gettext("Pocket Harp"),
+            Self::EasyLanding => gettext("Easy Landing"),
+            Self::QuietCheer => gettext("Quiet Cheer"),
+        };
+        if self.index() < 10 {
+            gettext("Previous sound: {}").replace("{}", &label)
+        } else {
+            label
         }
     }
 
@@ -140,7 +198,10 @@ pub fn play_completion(choice: CompletionSoundChoice) {
 
 #[cfg(not(test))]
 pub fn play_completion(choice: CompletionSoundChoice) {
+    stop();
     let file = gtk::MediaFile::for_resource(&choice.resource());
+    let settings = gio::Settings::new(*crate::config::APP_ID);
+    file.set_volume(volume_gain(settings.double("completion-sound-volume")));
     file.connect_error_notify(|f| {
         if let Some(e) = f.error() {
             tracing::warn!("completion sound could not play: {e}");
@@ -158,4 +219,34 @@ pub fn play_completion(choice: CompletionSoundChoice) {
     });
     file.play();
     PLAYING.with(|p| *p.borrow_mut() = Some(file));
+}
+
+/// Bounded local gain, including corrupt/nonfinite callers.
+pub fn volume_gain(value: f64) -> f64 {
+    if value.is_finite() {
+        value.clamp(0.0, 1.0)
+    } else {
+        0.35
+    }
+}
+
+pub fn stop() {
+    #[cfg(not(test))]
+    PLAYING.with(|current| {
+        if let Some(file) = current.borrow_mut().take() {
+            file.pause();
+        }
+    });
+}
+
+#[cfg(test)]
+mod volume_tests {
+    #[test]
+    fn gain_is_bounded_and_invalid_values_use_quiet_default() {
+        assert_eq!(super::volume_gain(-1.0), 0.0);
+        assert_eq!(super::volume_gain(2.0), 1.0);
+        assert_eq!(super::volume_gain(0.35), 0.35);
+        assert_eq!(super::volume_gain(f64::NAN), 0.35);
+        assert_eq!(super::volume_gain(f64::INFINITY), 0.35);
+    }
 }

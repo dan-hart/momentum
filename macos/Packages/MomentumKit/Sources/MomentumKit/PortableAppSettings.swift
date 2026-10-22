@@ -38,7 +38,7 @@ import MomentumCore
             "upcomingDays": core.upcomingDays >= 30 ? 30 : 7, "autoArchive": core.autoArchive,
             "rowDensity": defaults.string(forKey: PrefKey.rowDensity) == "compact" ? "compact" : "regular",
             "colorfulLabels": preferences.colorful, "completionSoundEnabled": preferences.completionSound,
-            "completionSoundChoice": preferences.completionSoundChoice.id]
+            "completionSoundChoice": defaults.string(forKey: PrefKey.completionSoundChoice) ?? CompletionSoundChoice.defaultChoice.id]
         let data = try JSONSerialization.data(withJSONObject: ["version": 1, "values": values], options: [.sortedKeys])
         return String(decoding: data, as: UTF8.self)
     }

@@ -39,6 +39,8 @@ data class UiState(
     val importReady: Boolean = false,
     val importPreparing: Boolean = false,
     val settingsPage: String = "main",
+    val settingsQuery: String = "",
+    val settingsDestination: String? = null,
     val editorLoading: Boolean = false,
     val editorUnavailable: Boolean = false,
     val editorCapacityError: Boolean = false,
@@ -174,6 +176,13 @@ class MomentumViewModel(
         } else navigate(when(tab) { Tab.Today -> restoreView(saved["today-view"], saved["today-context"]); Tab.Upcoming -> View.Upcoming; else -> View.Search }, tab)
     }
     fun settingsPage(page: String) { saved["settings-page"] = page; mutable.update { it.copy(settingsPage = page) } }
+    fun searchSettings(query: String) { mutable.update { it.copy(settingsQuery = query) } }
+    fun openSettingsDestination(id: String, query: String = "") {
+        val category = com.codedbydan.momentum.ui.settingsRoute(id)
+        settingsPage(category)
+        mutable.update { it.copy(settingsDestination = id, settingsQuery = query) }
+        tab(Tab.Settings)
+    }
     fun openSync() { settingsPage("sync"); tab(Tab.Settings) }
     fun search(query: String) {
         if(query.length > 4096) {
@@ -531,7 +540,24 @@ class MomentumViewModel(
             try { repository.updateSettings(change); notifyChanges(); refresh() } catch(e: Exception) { fail(e) }
         }.also { soundSettingsJob = it }
     }
-    fun previewCompletionSound() = viewModelScope.launch { playCurrentCompletionSound() }
+    fun previewCompletionSound(choice: com.codedbydan.momentum.platform.CompletionSoundChoice): Job {
+        val generation = ++soundGeneration
+        soundPlayer.cancelPending()
+        return viewModelScope.launch {
+            try {
+                if(!soundForeground) return@launch
+                soundSettingsJob?.join()
+                val settings = repository.settings()
+                if(soundForeground && generation == soundGeneration) {
+                    soundPlayer.volume(settings.completionSoundVolume)
+                    soundPlayer.play(choice)
+                }
+            } catch(e: Exception) {
+                if(e is CancellationException) throw e
+                // An optional audition must never interrupt task management.
+            }
+        }
+    }
     fun stopCompletionSound() { ++soundGeneration; soundPlayer.cancelPending() }
     fun completionSoundForeground(visible: Boolean) {
         soundForeground = visible
@@ -543,7 +569,7 @@ class MomentumViewModel(
             val generation = soundGeneration
             soundSettingsJob?.join()
             val settings = repository.settings()
-            if(soundForeground && generation == soundGeneration && settings.completionSound) soundPlayer.play(settings.completionSoundChoice)
+            if(soundForeground && generation == soundGeneration && settings.completionSound) { soundPlayer.volume(settings.completionSoundVolume); soundPlayer.play(settings.completionSoundChoice) }
         } catch(e: Exception) {
             if(e is CancellationException) throw e
             // Optional feedback must not turn a successfully persisted task into a failed action.
@@ -595,8 +621,14 @@ class MomentumViewModel(
                         requireNotNull(input)
                         file.outputStream().use { output ->
                             val buffer = ByteArray(8192); var total = 0L
-                            while(true) { ensureActive(); val count = input.read(buffer); if(count < 0) break
-                                total += count; require(total <= 64L * 1024 * 1024); output.write(buffer, 0, count) }
+                            while(true) {
+                                ensureActive()
+                                val count = input.read(buffer)
+                                if(count < 0) break
+                                total += count
+                                require(total <= 64L * 1024 * 1024)
+                                output.write(buffer, 0, count)
+                            }
                         }
                     }
                 }

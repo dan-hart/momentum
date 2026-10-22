@@ -1,0 +1,71 @@
+"Tasks & Planning" = "Aufgaben & Planung";
+"Group By" = "Gruppieren nach";
+"Sort By" = "Sortieren nach";
+"Sort direction" = "Sortierreihenfolge";
+"Upcoming range" = "Zeitraum für Demnächst";
+"Show Morning and Evening tasks in Today" = "Morgen- und Abendaufgaben in Heute anzeigen";
+"Archive completed tasks immediately" = "Erledigte Aufgaben sofort archivieren";
+"Dynamic empty-state messages" = "Dynamische Nachrichten für leere Listen";
+"Appearance" = "Darstellung";
+"Color-code projects and tags" = "Projekte und Tags farbig markieren";
+"Accent Color" = "Akzentfarbe";
+"Compact rows" = "Kompakte Zeilen";
+"Font" = "Schrift";
+"Content size" = "Inhaltsgröße";
+"Interface size" = "Oberflächengröße";
+"Reset Typography" = "Typografie zurücksetzen";
+"Sounds & Feedback" = "Klänge & Feedback";
+"Completion sound" = "Abschlussklang";
+"Choose completion sound" = "Abschlussklang auswählen";
+"Completion sound volume" = "Lautstärke des Abschlussklangs";
+"Haptic feedback" = "Haptisches Feedback";
+"Notifications" = "Mitteilungen";
+"Notification permission" = "Mitteilungsberechtigung";
+"Task reminders" = "Aufgabenerinnerungen";
+"Morning summary" = "Morgenübersicht";
+"Sync & Devices" = "Sync & Geräte";
+"Sync method" = "Sync-Methode";
+"Nextcloud connection" = "Nextcloud-Verbindung";
+"LibreSync" = "LibreSync";
+"Sync automatically" = "Automatisch synchronisieren";
+"Compress the sync file" = "Sync-Datei komprimieren";
+"Linked devices" = "Verknüpfte Geräte";
+"Sync status and retry" = "Sync-Status und erneut versuchen";
+"Sync app settings" = "App-Einstellungen synchronisieren";
+"Copy to Momentum folder" = "In Momentum-Ordner kopieren";
+"Data & Backups" = "Daten & Sicherungen";
+"Import Backup" = "Sicherung importieren";
+"Export Backup" = "Sicherung exportieren";
+"Import app settings" = "App-Einstellungen importieren";
+"Export app settings" = "App-Einstellungen exportieren";
+"Data storage" = "Datenspeicher";
+"App & Integrations" = "App & Integrationen";
+"Keyboard Shortcuts" = "Tastaturkurzbefehle";
+"Keep running in the background" = "Im Hintergrund weiterlaufen";
+"Dock badge" = "Dock-Badge";
+"Show in the menu bar" = "In der Menüleiste anzeigen";
+"Apple Reminders" = "Apple Erinnerungen";
+"About & Help" = "Info & Hilfe";
+"About Momentum" = "Über Momentum";
+"Source Code" = "Quellcode";
+"Report an Issue" = "Problem melden";
+"License" = "Lizenz";
+"Acknowledgments" = "Danksagungen";
+"Sync in the background" = "Im Hintergrund synchronisieren";
+"App Badge" = "App-Badge";
+
+"Grouping, sorting, and completed tasks" = "Gruppierung, Sortierung und erledigte Aufgaben";
+
+"Colors, text, and list density" = "Farben, Text und Listendichte";
+
+"Completion sounds, previews, and feedback" = "Abschlusstöne, Vorschau und Feedback";
+
+"Permissions, reminders, and morning summary" = "Berechtigungen, Erinnerungen und Morgenübersicht";
+
+"Connections, devices, and recovery" = "Verbindungen, Geräte und Wiederherstellung";
+
+"Import, export, and restore" = "Importieren, exportieren und wiederherstellen";
+
+"Shortcuts and Apple Reminders" = "Kurzbefehle und Apple Erinnerungen";
+
+"Project, version, and licenses" = "Projekt, Version und Lizenzen";

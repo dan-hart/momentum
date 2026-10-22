@@ -18,3 +18,5 @@ crates/app/src/search_provider.rs
 crates/app/src/sound.rs
 crates/app/src/task_form.rs
 crates/app/src/window.rs
+crates/app/src/settings_ui.rs
+crates/app/src/empty_messages.rs

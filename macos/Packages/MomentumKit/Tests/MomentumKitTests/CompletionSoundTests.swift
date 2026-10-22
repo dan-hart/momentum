@@ -7,15 +7,16 @@ import Testing
 @testable import MomentumKit
 
 @MainActor @Suite struct CompletionSoundTests {
-    @Test func theCatalogKeepsTheApprovedOrderAndSixAsDefault() {
-        #expect(CompletionSoundChoice.allCases.map(\.rawValue) == [
+    @Test func theCatalogPreservesLegacyIDsAndAddsTenCandidates() {
+        #expect(CompletionSoundChoice.allCases.filter(\.isLegacy).map(\.rawValue) == [
             "wood-pop", "double-check", "rounded-lift", "pocket-piano", "string-flick",
             "bright-finish", "harp-snap", "click-and-glow", "tiny-ta-da", "warm-spark",
         ])
-        #expect(CompletionSoundChoice.defaultChoice == .brightFinish)
-        #expect(CompletionSoundChoice.resolve(nil) == .brightFinish)
-        #expect(CompletionSoundChoice.resolve("unknown") == .brightFinish)
-        for (index, choice) in CompletionSoundChoice.allCases.enumerated() {
+        #expect(CompletionSoundChoice.defaultChoice == .littleLift)
+        #expect(CompletionSoundChoice.resolve(nil) == .littleLift)
+        #expect(CompletionSoundChoice.resolve("unknown") == .littleLift)
+        #expect(CompletionSoundChoice.candidates.count == 10)
+        for (index, choice) in CompletionSoundChoice.allCases.filter(\.isLegacy).enumerated() {
             #expect(choice.label.hasPrefix("\(index + 1) "))
         }
     }
@@ -55,5 +56,92 @@ import Testing
             #expect(seen.insert(hash).inserted, "Each option must be a distinct sound")
         }
         #expect(seen.count == 10)
+    }
+}
+
+@MainActor @Suite struct QuietCompletionSoundTests {
+    @Test func gainIsBoundedAndSilentAtZero() {
+        #expect(CompletionSound.boundedVolume(-1) == 0)
+        #expect(CompletionSound.boundedVolume(0) == 0)
+        #expect(CompletionSound.boundedVolume(0.35) == 0.35)
+        #expect(CompletionSound.boundedVolume(8) == 1)
+        #expect(CompletionSound.boundedVolume(.nan) == 0.35)
+    }
+    @Test func previewDoesNotChangeSavedChoiceOrAutomaticPreference() {
+        let name = UUID().uuidString
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(false, forKey: PrefKey.completionSound)
+        defaults.set("future-unknown", forKey: PrefKey.completionSoundChoice)
+        let player = CompletionSound(defaults: defaults)
+        player.preview(.softKnock, volume: 0)
+        player.stop()
+        #expect(defaults.bool(forKey: PrefKey.completionSound) == false)
+        #expect(defaults.string(forKey: PrefKey.completionSoundChoice) == "future-unknown")
+    }
+}
+
+@MainActor private final class RecordingCompletionClip: CompletionAudioClip {
+    var volume: Float = 1
+    var plays = 0
+    var stops = 0
+    func play() -> Bool { plays += 1; return true }
+    func stop() { stops += 1 }
+}
+
+@MainActor @Suite struct CompletionAuditionTests {
+    @Test func unsavedPreviewIgnoresAutomaticToggleAndReplacesPriorPlayback() {
+        let name = UUID().uuidString
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(false, forKey: PrefKey.completionSound)
+        defaults.set("wood-pop", forKey: PrefKey.completionSoundChoice)
+        var clips: [RecordingCompletionClip] = []
+        var paths: [String] = []
+        let player = CompletionSound(defaults: defaults) { url in
+            let clip = RecordingCompletionClip(); clips.append(clip); paths.append(url.lastPathComponent)
+            return clip
+        }
+        player.preview(.softKnock, volume: 0.35)
+        #expect(paths == ["soft-knock.wav"])
+        #expect(clips.first?.plays == 1)
+        #expect(clips.first?.volume == 0.35)
+        player.preview(.littleLift, volume: 0.5)
+        #expect(clips.count == 2)
+        #expect(clips.first?.stops == 1)
+        #expect(clips.last?.volume == 0.5)
+        player.stop()
+        #expect(clips.last?.stops == 1)
+        #expect(!defaults.bool(forKey: PrefKey.completionSound))
+        #expect(defaults.string(forKey: PrefKey.completionSoundChoice) == "wood-pop")
+    }
+    @Test func completionAndPreviewUseTheSameGainWithoutOverlapping() {
+        let name = UUID().uuidString
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(0.2, forKey: PrefKey.completionSoundVolume)
+        var clips: [RecordingCompletionClip] = []
+        let player = CompletionSound(defaults: defaults) { _ in
+            let clip = RecordingCompletionClip(); clips.append(clip); return clip
+        }
+        player.playCompletion(.woodPop)
+        player.preview(.softKnock, volume: defaults.double(forKey: PrefKey.completionSoundVolume))
+        #expect(clips.count == 2)
+        #expect(clips.allSatisfy { $0.volume == 0.2 })
+        #expect(clips.first?.stops == 1)
+        player.stop()
+    }
+    @Test func zeroGainCancelsPreviousSoundWithoutStartingAnother() {
+        let name = UUID().uuidString
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        let clip = RecordingCompletionClip()
+        var loads = 0
+        let player = CompletionSound(defaults: defaults) { _ in loads += 1; return clip }
+        player.preview(.softKnock, volume: 0.5)
+        player.preview(.littleLift, volume: 0)
+        #expect(loads == 1)
+        #expect(clip.plays == 1)
+        #expect(clip.stops == 1)
     }
 }

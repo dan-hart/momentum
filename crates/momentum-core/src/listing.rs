@@ -907,3 +907,103 @@ pub(crate) fn group_listing(store: &Store, mut listing: Listing, by: GroupBy) ->
     listing.sections = grouped;
     listing
 }
+
+/// Read only root/date/completion/tag fields from archived values. Ordinary listings
+/// never call this query or build a search index solely for completion evidence.
+pub(crate) fn day_status(store: &Store, prefs: &Preferences, view: &View, today: &str) -> DayStatus {
+    let mut status = DayStatus {
+        hidden_morning: 0,
+        hidden_evening: 0,
+        completion: DayCompletion::Unplanned,
+    };
+    if !view.is_day() {
+        return status;
+    }
+    let wanted = match view {
+        View::Morning => Some(Slot::Morning),
+        View::Tonight => Some(Slot::Tonight),
+        _ => None,
+    };
+    let mut any_pending = false;
+    let mut scope_pending = false;
+    let mut any_done = false;
+    let mut scope_done = false;
+    for task in store.state.task.iter().filter(|t| t.parent_id.is_none()) {
+        let slot = slot_of(store, task);
+        let planned = task.plan_day();
+        if !task.is_done && planned.as_deref().is_some_and(|day| day <= today) {
+            any_pending = true;
+            scope_pending |= wanted.is_none() || (planned.as_deref() == Some(today) && slot == wanted);
+            if *view == View::Today && !prefs.show_day_period_tasks_in_today && planned.as_deref() == Some(today) {
+                match slot {
+                    Some(Slot::Morning) => status.hidden_morning += 1,
+                    Some(Slot::Tonight) => status.hidden_evening += 1,
+                    _ => {}
+                }
+            }
+        }
+        if task.is_done
+            && planned.as_deref().is_some_and(|day| day <= today)
+            && task.done_on.is_some_and(|ms| day_of_ms(ms) == today)
+        {
+            any_done = true;
+            scope_done |= wanted.is_none() || (planned.as_deref() == Some(today) && slot == wanted);
+        }
+    }
+    // When open work already determines the answer, archive scanning is unnecessary.
+    if !scope_pending {
+        for tier in ["archiveYoung", "archiveOld"] {
+            let Some(entities) = store
+                .state
+                .rest
+                .get(tier)
+                .and_then(|v| v.get("task"))
+                .and_then(|v| v.get("entities"))
+                .and_then(|v| v.as_object())
+            else {
+                continue;
+            };
+            for value in entities.values() {
+                // Match Task::plan_day without deserializing the archive or its
+                // opaque fields. A timed date takes precedence over dueDay.
+                let planned = value
+                    .get("dueWithTime")
+                    .and_then(|v| v.as_u64())
+                    .map(day_of_ms)
+                    .or_else(|| value.get("dueDay").and_then(|v| v.as_str()).map(str::to_owned));
+                if value.get("parentId").is_some_and(|v| !v.is_null())
+                    || value.get("isDone").and_then(|v| v.as_bool()) != Some(true)
+                    || !planned.as_deref().is_some_and(|day| day <= today)
+                    || !value
+                        .get("doneOn")
+                        .and_then(|v| v.as_u64())
+                        .is_some_and(|ms| day_of_ms(ms) == today)
+                {
+                    continue;
+                }
+                any_done = true;
+                let slot = slot_from_names(
+                    value
+                        .get("tagIds")
+                        .and_then(|v| v.as_array())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|v| v.as_str())
+                        .filter_map(|id| store.state.tag.entities.get(id))
+                        .map(|tag| tag.title.as_str()),
+                );
+                scope_done |= wanted.is_none() || (planned.as_deref() == Some(today) && slot == wanted);
+            }
+        }
+    }
+    status.completion = if scope_pending {
+        DayCompletion::Pending
+    } else if !any_pending && any_done && (wanted.is_none() || scope_done) {
+        DayCompletion::DayComplete
+    } else if scope_done {
+        DayCompletion::PeriodComplete
+    } else {
+        DayCompletion::Unplanned
+    };
+    status
+}

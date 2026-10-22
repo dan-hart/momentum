@@ -15,7 +15,20 @@ public enum CompletionSoundChoice: String, CaseIterable, Identifiable, Sendable 
     case tinyTaDa = "tiny-ta-da"
     case warmSpark = "warm-spark"
 
-    public static let defaultChoice: Self = .brightFinish
+    case softKnock = "soft-knock"
+    case littleLift = "little-lift"
+    case feltFinish = "felt-finish"
+    case warmThumb = "warm-thumb"
+    case gentlePair = "gentle-pair"
+    case smallBloom = "small-bloom"
+    case sunnyTap = "sunny-tap"
+    case pocketHarp = "pocket-harp"
+    case easyLanding = "easy-landing"
+    case quietCheer = "quiet-cheer"
+
+    public var isLegacy: Bool { Self.allCases.firstIndex(of: self)! < 10 }
+    public static var candidates: [Self] { allCases.filter { !$0.isLegacy } }
+    public static let defaultChoice: Self = .littleLift
     public var id: String { rawValue }
 
     /// Present unknown future values as the default without overwriting the saved slug.
@@ -31,6 +44,16 @@ public enum CompletionSoundChoice: String, CaseIterable, Identifiable, Sendable 
         let bundle = Bundle.module.path(forResource: language, ofType: "lproj")
             .flatMap(Bundle.init(path:)) ?? .module
         return switch self {
+        case .softKnock: String(localized: "Soft Knock", bundle: bundle, locale: locale)
+        case .littleLift: String(localized: "Little Lift", bundle: bundle, locale: locale)
+        case .feltFinish: String(localized: "Felt Finish", bundle: bundle, locale: locale)
+        case .warmThumb: String(localized: "Warm Thumb", bundle: bundle, locale: locale)
+        case .gentlePair: String(localized: "Gentle Pair", bundle: bundle, locale: locale)
+        case .smallBloom: String(localized: "Small Bloom", bundle: bundle, locale: locale)
+        case .sunnyTap: String(localized: "Sunny Tap", bundle: bundle, locale: locale)
+        case .pocketHarp: String(localized: "Pocket Harp", bundle: bundle, locale: locale)
+        case .easyLanding: String(localized: "Easy Landing", bundle: bundle, locale: locale)
+        case .quietCheer: String(localized: "Quiet Cheer", bundle: bundle, locale: locale)
         case .woodPop: String(localized: "1 Wood Pop", bundle: bundle, locale: locale)
         case .doubleCheck: String(localized: "2 Double Check", bundle: bundle, locale: locale)
         case .roundedLift: String(localized: "3 Rounded Lift", bundle: bundle, locale: locale)

@@ -10,6 +10,7 @@ import SwiftUI
 
 struct MomentumCommands: Commands {
     let state: AppState
+    @Environment(\.openSettings) private var openSettings
 
     @FocusedValue(\.selectAllTasks) private var selectAllTasks
 
@@ -20,6 +21,12 @@ struct MomentumCommands: Commands {
     private var single: Bool { state.target != nil }
 
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button(String(localized: "About Momentum")) {
+                SettingsNavigation.shared.open("about.app")
+                openSettings()
+            }
+        }
         CommandGroup(replacing: .newItem) {
             Button(String(localized: "New Task…")) { state.newTask() }
                 .keyboardShortcut(shortcut(.newTask))

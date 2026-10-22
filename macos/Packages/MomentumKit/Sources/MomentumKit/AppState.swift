@@ -69,6 +69,7 @@ public final class AppState {
     public let reminders: RemindersImport
 
     public private(set) var view: View = .today
+    public private(set) var dayStatus: DayStatus
     public private(set) var listing: Listing
     public private(set) var sidebar: Sidebar
     public var selection: Set<String> = []
@@ -176,7 +177,9 @@ public final class AppState {
         self.projectsExpanded = !defaults.bool(forKey: PrefKey.projectsCollapsed)
         self.tagsExpanded = !defaults.bool(forKey: PrefKey.tagsCollapsed)
         self.sidebar = engine.sidebar()
-        self.listing = engine.listing(view: .today, archiveLimit: 100)
+        let initialDay = engine.listingWithDayStatus(view: .today, archiveLimit: 100)
+        self.listing = initialDay.listing
+        self.dayStatus = initialDay.status
         self.syncStatus = engine.syncStatus()
         self.todayOpenCount = engine.todayOpenCount()
         _ = engine.spawnRepeats()
@@ -402,13 +405,17 @@ public final class AppState {
 
     private func refreshListing() {
         sidebar = engine.sidebar()
-        if !engine.viewExists(view: view) {
-            // The slot emptied, or the project or tag is gone.
+        let requestedView = view
+        let requestedDay = engine.listingWithDayStatus(view: view, archiveLimit: archiveLimit)
+        let completedPeriod = (view == .morning || view == .tonight)
+            && (requestedDay.status.completion == .periodComplete || requestedDay.status.completion == .dayComplete)
+        if !engine.viewExists(view: view) && !completedPeriod {
+            // An empty unplanned slot, or a deleted project/tag, safely returns to Today.
             view = .today
         }
-        listing = view == .search
-            ? engine.search(query: searchText)
-            : engine.listing(view: view, archiveLimit: archiveLimit)
+        let day = view == requestedView ? requestedDay : engine.listingWithDayStatus(view: view, archiveLimit: archiveLimit)
+        listing = view == .search ? engine.search(query: searchText) : day.listing
+        dayStatus = day.status
         selection = selection.intersection(Set(allRowIds))
         todayOpenCount = engine.todayOpenCount()
         syncStatus = engine.syncStatus()

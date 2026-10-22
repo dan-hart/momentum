@@ -3,6 +3,8 @@
 # Copyright (C) 2026 Dan Hart
 """Verify the approved completion masters, short PCM WAV shape, and native copies."""
 import hashlib
+import importlib.util
+import io
 import json
 from pathlib import Path
 import re
@@ -85,16 +87,53 @@ def check(root=ROOT):
         if old.exists():
             errors.append(f"Obsolete clip remains: {old.relative_to(root)}")
     resources = ElementTree.parse(root / "data/resources/resources.gresource.xml")
+    quiet = json.loads((directory / "quiet-provenance.json").read_text())
+    new_slugs = [o["slug"] for o in quiet["options"]]
+    if len(new_slugs) != 10 or len(set(new_slugs)) != 10 or quiet.get("license") != "GPL-3.0-or-later":
+        errors.append("Expected ten original quiet compositions with declared rights")
+    for option in quiet["options"]:
+        slug = option["slug"]
+        for file in [directory / f"{slug}.wav", root / "macos/Packages/MomentumKit/Sources/MomentumKit/Resources" / f"{slug}.wav", root / "android/app/src/main/res/raw" / f"{slug.replace('-', '_')}.wav"]:
+            if hashlib.sha256(file.read_bytes()).hexdigest() != option["sha256"]:
+                errors.append(f"{file.name}: quiet master byte mismatch")
+            with wave.open(str(file)) as audio:
+                if (audio.getnchannels(), audio.getsampwidth(), audio.getframerate()) != (1,2,44100):
+                    errors.append(f"{file.name}: wrong PCM shape")
+                samples = struct.unpack('<' + 'h' * audio.getnframes(), audio.readframes(audio.getnframes()))
+                duration = len(samples) / 44100
+                import math
+                peak = max(map(abs, samples)) / 32768
+                rms = math.sqrt(sum((v / 32768) ** 2 for v in samples) / len(samples))
+                if not .18 <= duration <= .45 or abs(duration-option['duration']) > 1/44100:
+                    errors.append(f"{file.name}: wrong quiet duration")
+                if not 0 < peak <= 10 ** (-18/20) + 1/32768 or rms > 10 ** (-32/20) + 1/32768:
+                    errors.append(f"{file.name}: quiet level outside bounds")
+                if samples[0] != 0 or samples[-1] != 0:
+                    errors.append(f"{file.name}: abrupt endpoint")
+    # Verify provenance against reproducible synthesis, rather than merely trusting
+    # mutually agreeing platform copies and a mutable manifest.
+    spec = importlib.util.spec_from_file_location("quiet_generator", root / "build-aux/generate-quiet-sounds.py")
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+    for slug, duration, notes, kind in generator.CHOICES:
+        samples = generator.render(duration, notes, kind)
+        output = io.BytesIO()
+        with wave.open(output, "wb") as audio:
+            audio.setparams((1, 2, 44100, 0, "NONE", "not compressed"))
+            audio.writeframes(struct.pack('<' + 'h' * len(samples), *[round(x * 32767) for x in samples]))
+        if output.getvalue() != (directory / f"{slug}.wav").read_bytes():
+            errors.append(f"{slug}: master is not reproducible from its generator")
+    expected_slugs = list(APPROVED) + new_slugs
     bundled = [node.text for node in resources.iter("file") if (node.text or "").startswith("sounds/")]
-    if bundled != [f"sounds/{slug}.wav" for slug in APPROVED]:
-        errors.append("Linux gresource must bundle exactly the ten approved WAVs in catalog order")
+    if bundled != [f"sounds/{slug}.wav" for slug in expected_slugs]:
+        errors.append("Linux gresource must bundle ten legacy and ten quiet WAVs in catalog order")
     swift = (root / "macos/Packages/MomentumKit/Sources/MomentumKit/CompletionSoundChoice.swift").read_text()
-    if re.findall(r'case \w+ = "([^"]+)"', swift) != list(APPROVED):
+    if re.findall(r'case \w+ = "([^"]+)"', swift) != expected_slugs:
         errors.append("Apple catalog slugs must match the approved order")
     kotlin_catalogs = list((root / "android/app/src/main").rglob("CompletionSoundChoice.kt"))
     if len(kotlin_catalogs) != 1:
         errors.append("Android must have one CompletionSoundChoice catalog")
-    elif re.findall(r'^\s*[A-Za-z][A-Za-z0-9_]*\("([^"]+)"', kotlin_catalogs[0].read_text(), re.MULTILINE) != list(APPROVED):
+    elif re.findall(r'^\s*[A-Za-z][A-Za-z0-9_]*\("([^"]+)"', kotlin_catalogs[0].read_text(), re.MULTILINE) != expected_slugs:
         errors.append("Android catalog slugs must match the approved order")
     return errors
 
@@ -108,7 +147,7 @@ def main():
         print(f"ERROR: {error}", file=sys.stderr)
     if errors:
         return 1
-    print("Completion sounds: all 10 approved PCM16 masters match across Linux, Apple and Android")
+    print("Completion sounds: all 20 legacy and quiet PCM16 masters match across Linux, Apple and Android")
     return 0
 
 

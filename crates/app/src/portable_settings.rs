@@ -23,7 +23,7 @@ pub fn encode(settings: &gio::Settings) -> String {
         let value = match portable {
             "autoArchive" | "colorfulLabels" | "completionSoundEnabled" => json!(settings.boolean(native)),
             "upcomingDays" => json!(settings.string(native).parse::<u32>().unwrap_or(7)),
-            "completionSoundChoice" => json!(crate::sound::selected_choice(settings).slug()),
+            "completionSoundChoice" => json!(settings.string("completion-sound-choice").as_str()),
             _ => json!(settings.string(native).as_str()),
         };
         values.insert(portable.into(), value);

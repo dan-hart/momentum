@@ -861,3 +861,27 @@ fn day_period_visibility_setter_is_local_and_portable_updates_preserve_it() {
     assert!(values(&e).get("showDayPeriodTasksInToday").is_none());
     assert_eq!(e.with_store(|s| serde_json::to_value(&s.pending).unwrap()), pending);
 }
+
+#[test]
+fn quiet_sound_choices_round_trip_without_changing_local_only_preferences() {
+    let (e, _dir) = engine();
+    for slug in [
+        "soft-knock",
+        "little-lift",
+        "felt-finish",
+        "warm-thumb",
+        "gentle-pair",
+        "small-bloom",
+        "sunny-tap",
+        "pocket-harp",
+        "easy-landing",
+        "quiet-cheer",
+        "unknown-future-sound",
+    ] {
+        let document = json!({"version":1,"values":{"completionSoundChoice":slug}}).to_string();
+        e.stage_portable_settings(document).unwrap();
+        assert_eq!(values(&e)["completionSoundChoice"], slug);
+    }
+    assert!(values(&e).get("completionSoundVolume").is_none());
+    assert!(values(&e).get("dynamicEmptyStateMessages").is_none());
+}

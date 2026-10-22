@@ -19,5 +19,16 @@
     <file>sounds/click-and-glow.wav</file>
     <file>sounds/tiny-ta-da.wav</file>
     <file>sounds/warm-spark.wav</file>
+    <!-- Original quiet resonators, GPL-3.0-or-later -->
+    <file>sounds/soft-knock.wav</file>
+    <file>sounds/little-lift.wav</file>
+    <file>sounds/felt-finish.wav</file>
+    <file>sounds/warm-thumb.wav</file>
+    <file>sounds/gentle-pair.wav</file>
+    <file>sounds/small-bloom.wav</file>
+    <file>sounds/sunny-tap.wav</file>
+    <file>sounds/pocket-harp.wav</file>
+    <file>sounds/easy-landing.wav</file>
+    <file>sounds/quiet-cheer.wav</file>
   </gresource>
 </gresources>

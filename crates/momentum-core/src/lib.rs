@@ -18,6 +18,8 @@ mod folder_migration;
 pub use folder_migration::NextcloudFolderMigrationReport;
 pub mod ipc;
 mod listing;
+mod settings;
+pub use settings::*;
 mod notification_schedule;
 pub mod notifications;
 mod occurrences;
@@ -174,4 +176,26 @@ pub fn day_period_separator_before(listing: &Listing, section_index: u32, group_
         && group_by == GroupBy::MorningNight
         && listing.sections.get(index).is_some_and(is_populated_day_period)
         && listing.sections[..index].iter().any(is_populated_day_period)
+}
+
+/// Stable catalog IDs; native code selects and keeps one message stable while visible.
+#[cfg_attr(feature = "ffi", uniffi::export)]
+pub fn completion_message_ids(view: View, completion: DayCompletion, hour: u32) -> Vec<u32> {
+    if !matches!(completion, DayCompletion::PeriodComplete | DayCompletion::DayComplete) {
+        return vec![];
+    }
+    match view {
+        View::Morning => (1..=20).collect(),
+        View::Tonight => (81..=100).collect(),
+        View::Today if completion == DayCompletion::DayComplete => {
+            let mut ids: Vec<_> = (21..=40).collect();
+            match hour.min(23) {
+                12..=17 => ids.extend(41..=60),
+                18..=23 => ids.extend(61..=80),
+                _ => {}
+            }
+            ids
+        }
+        _ => vec![],
+    }
 }

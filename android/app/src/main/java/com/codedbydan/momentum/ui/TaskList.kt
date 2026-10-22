@@ -43,7 +43,18 @@ import com.codedbydan.momentum.core.*
         enabled = state.view != View.Archive), contentPadding = PaddingValues(bottom = 96.dp)) {
         if(state.selecting) item("drop-destinations") { TaskDestinations(state, vm) }
         else if(state.view != View.Archive && state.view != View.Search) item("quick-add") { QuickAdd(state, vm) }
-        if (listing.empty != null) item("empty") {
+        if(state.view == View.Search && state.query.isNotBlank()) item("settings-results") {
+            val matches = searchSettings(state.query, settingsEntries())
+            if(matches.isNotEmpty()) {
+                SettingHeading(R.string.settings_results)
+                matches.take(5).forEach { result -> TextButton({ vm.openSettingsDestination(result.id) }) { Text("${result.title} · ${result.category}") } }
+                if(matches.size > 5) TextButton({ vm.openSettingsDestination("main", state.query) }) { Text(stringResource(R.string.all_settings_results)) }
+            }
+        }
+        val dayView = state.view == View.Today || state.view == View.Morning || state.view == View.Tonight
+        val completed = snapshot.dayStatus?.completion in listOf(DayCompletion.DAY_COMPLETE, DayCompletion.PERIOD_COMPLETE)
+        if(dayView && (listing.empty != null || completed || listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().none { !it.row.isDone && !it.row.archived })) item("day-empty") { DayEmptyState(state) }
+        if (listing.empty != null && !dayView) item("empty") {
             Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(emptyText(listing.empty), style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(12.dp))
@@ -52,17 +63,14 @@ import com.codedbydan.momentum.core.*
             }
         }
         listing.sections.forEachIndexed { index, section ->
-            if(dayPeriodSeparatorBefore(listing, index.toUInt(), snapshot.preferences.groupBy)) {
-                item("day-period-separator-$index") {
-                    HorizontalDivider(Modifier.padding(horizontal = 20.dp)
-                        .testTag("day-period-separator-$index").semantics { hideFromAccessibility() },
-                        color = MaterialTheme.colorScheme.outlineVariant)
-                }
-            }
+            val calm = state.view == View.Today && snapshot.preferences.groupBy == GroupBy.MORNING_NIGHT
+            val period = section.group == TaskGroup.Morning || section.group == TaskGroup.Evening
+            if(calm && index > 0 && section.kind != SectionKind.Completed) item("day-period-space-$index") { Spacer(Modifier.height(24.dp)) }
             item("heading-$index") {
                 sectionText(section)?.let {
                     val groupIds = section.rows.filterIsInstance<Row.Task>().filter { row -> !row.row.archived && row.row.occurrence == null }.map { row -> row.row.id }
                     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if(calm && period) Icon(if(section.group == TaskGroup.Morning) morningSymbol else eveningSymbol, null, Modifier.padding(end = 8.dp).size(20.dp))
                         Text(stringResource(R.string.section_count, it, section.count.toInt()), Modifier.weight(1f).padding(vertical = 12.dp).semantics { heading() },
                             style = MaterialTheme.typography.titleSmall, color = nativeLabelInk(when(val group = section.group) {
                                 is TaskGroup.Project -> group.color; is TaskGroup.Tag -> group.color; else -> null
@@ -76,7 +84,7 @@ import com.codedbydan.momentum.core.*
             items(section.rows, key = { row -> when(row) { is Row.Task -> "t-${row.row.id}"; is Row.Project -> "p-${row.item.id}"; is Row.Tag -> "g-${row.item.id}" } }) { row ->
                 when(row) {
                     is Row.Task -> if(row.row.occurrence != null) RecurringPreviewItem(row.row, state, editRepeatSchedule)
-                        else TaskItem(row.row, state, vm, menu)
+                        else Box(Modifier.padding(horizontal = if(calm && period) 12.dp else 0.dp)) { TaskItem(row.row, state, vm, menu) }
                     is Row.Project -> ListItem(headlineContent = { TaskContentText {
                         Text(row.item.title, color = nativeLabelInk(row.item.color), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     } }, modifier = Modifier.clickable { vm.navigate(View.Project(row.item.id)) })
@@ -90,6 +98,7 @@ import com.codedbydan.momentum.core.*
                     note.shown.toInt(), note.total.toInt()), Modifier.padding(20.dp), style = MaterialTheme.typography.bodyMedium)
             } }
         }
+        if(state.view == View.Today) item("hidden-day-footer") { HiddenDayFooter(state, vm) }
         if(listing.moreAvailable > 0u) item("more") {
             TextButton(vm::moreArchive, Modifier.fillMaxWidth()) { Text(stringResource(R.string.show_more)) }
         }
@@ -179,7 +188,7 @@ import com.codedbydan.momentum.core.*
     } else ListItem(modifier = modifier,
         colors = ListItemDefaults.colors(containerColor = container),
         headlineContent = headline, supportingContent = supporting, leadingContent = leading, trailingContent = trailing)
-    HorizontalDivider(Modifier.padding(start = if(row.archived) 16.dp else 72.dp), color = MaterialTheme.colorScheme.outlineVariant)
+    if(!(state.view == View.Today && state.snapshot?.preferences?.groupBy == GroupBy.MORNING_NIGHT && !row.isDone)) HorizontalDivider(Modifier.padding(start = if(row.archived) 16.dp else 72.dp), color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 private data class MetadataLabel(val text: String, val color: String? = null)

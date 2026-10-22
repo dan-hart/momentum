@@ -3,6 +3,10 @@ import MomentumKit
 import SwiftUI
 
 struct FontSettings: SwiftUI.View {
+    var body: some SwiftUI.View { Form { FontSettingsControls() }.formStyle(.grouped) }
+}
+
+struct FontSettingsControls: SwiftUI.View {
     @Environment(\.appTypography) private var typography
     @AppStorage(PrefKey.contentFontSize) private var contentSize = 13.0
     @AppStorage(PrefKey.interfaceFontSize) private var interfaceSize = 13.0
@@ -16,13 +20,13 @@ struct FontSettings: SwiftUI.View {
     }
 
     var body: some SwiftUI.View {
-        Form {
+        Group {
             Section {
                 LabeledContent(String(localized: "App font")) {
                     Text(fontLabel).lineLimit(2).textSelection(.enabled)
                 }
                 .accessibilityValue(fontLabel)
-                Button(String(localized: "Choose Font…")) { AppFontPanel.shared.show() }
+                Button(String(localized: "Choose Font…")) { AppFontPanel.shared.show() }.settingsTarget("appearance.font")
             } header: {
                 Text(String(localized: "Font"))
             } footer: {
@@ -36,13 +40,13 @@ struct FontSettings: SwiftUI.View {
                         Text(String(localized: "\(typography.contentSize.formatted(.number.precision(.fractionLength(0...1)))) pt"))
                             .monospacedDigit()
                     }
-                }
+                }.settingsTarget("appearance.content-size")
                 Stepper(value: $interfaceSize, in: AppTypography.sizeRange, step: 1) {
                     LabeledContent(String(localized: "Interface size")) {
                         Text(String(localized: "\(typography.interfaceSize.formatted(.number.precision(.fractionLength(0...1)))) pt"))
                             .monospacedDigit()
                     }
-                }
+                }.settingsTarget("appearance.interface-size")
             } header: {
                 Text(String(localized: "Text Size"))
             } footer: {
@@ -67,7 +71,7 @@ struct FontSettings: SwiftUI.View {
                 Button(String(localized: "Reset Fonts to Defaults")) {
                     AppTypography.reset()
                     AppFontPanel.shared.refresh()
-                }
+                }.settingsTarget("appearance.reset")
             }
         }
         .formStyle(.grouped)

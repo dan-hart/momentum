@@ -68,7 +68,9 @@ import java.time.format.FormatStyle
         platform.connection()?.let { storedConnection = it; server = it.serverUrl; user = it.userName; password = it.password; folder = it.folder; compress = it.compress; encryption = it.encryptionPassword.orEmpty() }
     }
     DisposableEffect(Unit) { onDispose { platform.pairing(false); platform.cancelFolderMigration() } }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.widthIn(max = 720.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if((state.settingsDestination in listOf("sync.nextcloud", "sync.automatic", "sync.background", "sync.compression", "sync.folder-copy") && settings.provider != SyncProvider.Nextcloud) ||
+            (state.settingsDestination in listOf("sync.libresync", "sync.devices") && settings.provider != SyncProvider.LibreSync)) Text(stringResource(R.string.inactive_provider_hint))
         SettingHeading(R.string.provider)
         SyncProvider.entries.forEach { provider ->
             ChoiceRow(stringResource(when(provider) { SyncProvider.Off -> R.string.off; SyncProvider.Nextcloud -> R.string.nextcloud; SyncProvider.LibreSync -> R.string.libresync }),
@@ -85,6 +87,7 @@ import java.time.format.FormatStyle
             OutlinedButton(platform::retryStatusPersistence) { Text(stringResource(R.string.sync_status_save_retry)) }
         }
         if(settings.provider != SyncProvider.Off) {
+            SettingHeading(R.string.sync_status_heading)
             if(status.syncing) LinearProgressIndicator(Modifier.fillMaxWidth())
             status.error?.let { error ->
                 Text(stringResource(syncRemedy(status.failureKind)), color = MaterialTheme.colorScheme.error)
@@ -102,6 +105,7 @@ import java.time.format.FormatStyle
             Button({ platform.syncNow(); vm.refresh() }, enabled = !status.syncing && !status.migratingFolder, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sync_now)) }
         }
         if(settings.provider == SyncProvider.Nextcloud) {
+            SettingHeading(R.string.nextcloud)
             OutlinedTextField(server, { server = it }, label = { Text(stringResource(R.string.server)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(user, { user = it }, label = { Text(stringResource(R.string.username)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(password, { password = it }, label = { Text(stringResource(R.string.password)) }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), singleLine = true,
@@ -112,6 +116,10 @@ import java.time.format.FormatStyle
             SettingSwitch(R.string.compress, compress) { compress = it }
             OutlinedButton({ scope.launch { platform.saveConnection(NextcloudSettings(server.trim(), user.trim(), password, folder.trim(), compress, encryption.takeIf { it.isNotEmpty() })); storedConnection = platform.connection(); vm.refresh() } },
                 Modifier.fillMaxWidth(), enabled = !status.migratingFolder && server.isNotBlank() && user.isNotBlank() && password.isNotEmpty() && folder.isNotBlank()) { Text(stringResource(R.string.save_connection)) }
+            if(state.settingsDestination == "sync.folder-copy") {
+                SettingHeading(R.string.folder_migration_action)
+                if(storedConnection?.folder == null || storedConnection?.folder == "momentum") Text(stringResource(R.string.folder_copy_unavailable))
+            }
             if(storedConnection?.folder != null && storedConnection?.folder != "momentum") OutlinedButton({ migrationSource = storedConnection },
                 Modifier.fillMaxWidth(), enabled = !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.folder_migration_action)) }
             if(status.migratingFolder) {
@@ -126,9 +134,11 @@ import java.time.format.FormatStyle
             if(Build.VERSION.SDK_INT >= 37) OutlinedButton({ permission.launch("android.permission.ACCESS_LOCAL_NETWORK") }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.allow_local_network)) }
         }
         if(settings.provider == SyncProvider.LibreSync) {
+            SettingHeading(R.string.libresync)
             Text(stringResource(R.string.nearby_foreground), style = MaterialTheme.typography.bodyMedium)
             Button({ discovery = !discovery; platform.pairing(discovery) }, Modifier.fillMaxWidth()) { Text(stringResource(if(discovery) R.string.close else R.string.nearby)) }
             status.pairingCode?.let { Text(stringResource(R.string.pairing_code, it), style = MaterialTheme.typography.titleLarge) }
+            SettingHeading(R.string.nearby)
             status.devices.forEach { device -> ListItem(headlineContent = { Text(device.name) }, trailingContent = {
                 TextButton({ unlink = device.deviceId }) { Text(stringResource(R.string.unlink)) }
             }) }

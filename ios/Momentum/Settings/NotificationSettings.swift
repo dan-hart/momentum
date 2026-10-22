@@ -19,7 +19,7 @@ struct NotificationSettings: View {
         Form {
             Section {
                 LabeledContent { Text(permissionLabel).foregroundStyle(AccentTheme.secondaryText) } label: {
-                    SettingsLabel("Permission", symbol: "bell.badge.fill")
+                    SettingsLabel("Permission", symbol: "bell.badge.fill").settingsTarget("notifications.permission")
                 }
                 if notifications.isolated {
                     Text("System notifications are disabled in preview and test mode.")
@@ -40,14 +40,14 @@ struct NotificationSettings: View {
                 }
             } header: { Text("Delivery").foregroundStyle(AccentTheme.secondaryText) }
             footer: {
-                Text("Reminders work offline. Focus, notification settings, and iOS may delay delivery.")
+                Text("Reminders work offline. Focus, notification settings, and iOS may delay delivery.").settingsTarget("notifications.reminders")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
             Section {
                 Toggle(isOn: $summaryEnabled) {
                     SettingsLabel("Morning Summary", symbol: "sun.max.fill")
-                }.accessibilityIdentifier("notifications-summary")
+                }.accessibilityIdentifier("notifications-summary").settingsTarget("notifications.morning-summary")
                 if summaryEnabled {
                     Button {
                         summaryTimeDraft = summaryTime.wrappedValue
@@ -72,7 +72,7 @@ struct NotificationSettings: View {
                 Picker(selection: $badgeMode) {
                     ForEach(DockBadgeMode.allCases) { mode in Text(mode.label).tag(mode.rawValue) }
                 } label: { SettingsLabel("App Badge", symbol: "app.badge.fill") }
-                .accessibilityIdentifier("notifications-badge-mode")
+                .accessibilityIdentifier("notifications-badge-mode").settingsTarget("notifications.badge")
                 if notifications.badgeStatus == .blockedBySystem {
                     Text("Allow badges in iOS Settings to show the task count on the app icon.")
                         .foregroundStyle(AccentTheme.secondaryText)

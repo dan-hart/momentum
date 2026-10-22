@@ -51,3 +51,12 @@ released under the GNU Affero General Public License v3.0 (`LICENSES/AGPL-3.0-on
 Its source is not vendored here; builds check it out next to the workspace as
 `libresync-src` (see `docs/P2P.md`). Momentum itself remains GPL-3.0-or-later; the
 combination is distributed under the terms of both licenses as GPLv3 section 13 allows.
+
+### Quiet original sounds
+
+The ten additional quiet choices introduced in the native experience overhaul are
+original procedural resonator compositions by Momentum contributors, licensed
+GPL-3.0-or-later. They contain no external recordings. Their reproducible generator
+is `build-aux/generate-quiet-sounds.py`; levels, note arrangements and master hashes
+are recorded in `data/resources/sounds/quiet-provenance.json`. The previous CC0
+catalog remains bundled so saved choices continue to work.

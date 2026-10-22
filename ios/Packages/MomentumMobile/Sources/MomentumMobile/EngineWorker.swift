@@ -4,6 +4,7 @@ import MomentumCore
 
 /// Value snapshots cross the actor boundary; Rust remains the sole owner of task rules.
 public struct TaskSnapshot: Sendable {
+    public let dayStatus: DayStatus
     public let listing: Listing
     public let sidebar: Sidebar
     public let projects: [ProjectRef]
@@ -53,8 +54,8 @@ public actor EngineWorker {
     }
 
     public func snapshot(view: MomentumCore.View, query: String = "", archiveLimit: UInt32 = 100) -> TaskSnapshot {
-        let listing = view == .search ? engine.search(query: query)
-            : engine.listing(view: view, archiveLimit: archiveLimit)
+        let day = engine.listingWithDayStatus(view: view, archiveLimit: archiveLimit)
+        let listing = view == .search ? engine.search(query: query) : day.listing
         let rows = listing.sections.flatMap(\.rows).compactMap { row -> TaskRow? in
             if case .task(let task) = row { return task }
             return nil
@@ -68,7 +69,7 @@ public actor EngineWorker {
         for parentID in parentIDs {
             parentTitles[parentID] = visibleTitles[parentID] ?? hiddenTitles[parentID]
         }
-        return TaskSnapshot(listing: listing,
+        return TaskSnapshot(dayStatus: day.status, listing: listing,
                      sidebar: engine.sidebar(), projects: engine.projects(), tags: engine.tags(),
                      sync: engine.syncStatus(), canUndo: engine.canUndo(),
                      viewExists: engine.viewExists(view: view), parentTitles: parentTitles, tasks: rows)

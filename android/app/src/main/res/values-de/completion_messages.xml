@@ -1,0 +1,104 @@
+<resources>
+    <string-array name="completion_messages">
+        <item>Morgenliste erledigt. Atme durch.</item>
+        <item>Ein wenig mehr Platz am Morgen.</item>
+        <item>Deine Morgenaufgaben sind erledigt.</item>
+        <item>Eine ruhige Pause zwischen Plänen.</item>
+        <item>Das Wichtigste am Morgen ist geschafft.</item>
+        <item>Ein Gedanke weniger im Kopf.</item>
+        <item>Deine Morgenliste darf sich ausruhen.</item>
+        <item>Zeit für einen langsameren Moment.</item>
+        <item>Morgenpläne, alle abgehakt.</item>
+        <item>Dieser Teil des Tages ist erledigt.</item>
+        <item>Eine freie Morgenliste. Raum zum Atmen.</item>
+        <item>Nimm dir einen Moment vor dem Nächsten.</item>
+        <item>Deine Morgenliste braucht gerade nichts mehr.</item>
+        <item>Ein kleiner Abschluss. Eine schöne Pause.</item>
+        <item>Morgenaufgaben ordentlich abgeschlossen.</item>
+        <item>Der nächste Moment darf ruhig sein.</item>
+        <item>Deine Morgenliste ist entspannt.</item>
+        <item>Du kannst diese Liste eine Weile weglegen.</item>
+        <item>Etwas Ruhe nach den Morgenaufgaben.</item>
+        <item>Morgenliste fertig. Komm in deinem Tag an.</item>
+        <item>Heute alles erledigt. Atme durch.</item>
+        <item>Auf der heutigen Liste ist nichts mehr offen.</item>
+        <item>Du kannst die Checkliste weglegen.</item>
+        <item>Die Liste ist ruhig. Genieße den Freiraum.</item>
+        <item>Die losen Enden des Tages sind verbunden.</item>
+        <item>Eine freie Liste und ein ruhiger Kopf.</item>
+        <item>Alles für heute Geplante ist erledigt.</item>
+        <item>Das Nächste darf etwas Schönes sein.</item>
+        <item>Die heutige Checkliste darf ruhen.</item>
+        <item>Ein Moment, um einfach da zu sein.</item>
+        <item>Alles abgehakt. Keine Eile.</item>
+        <item>Deine heutigen Pläne sind erledigt.</item>
+        <item>Ein wenig weniger im Kopf zu tragen.</item>
+        <item>Deine heutige Liste braucht nichts mehr.</item>
+        <item>Freu dich darüber. Dann mach eine Pause.</item>
+        <item>Auch ein ruhiger Abschluss tut gut.</item>
+        <item>Die Aufgaben sind fertig. Die Pause gehört dir.</item>
+        <item>Genieße die leere Checkliste.</item>
+        <item>Die heutige Liste ist fertig. Atme aus.</item>
+        <item>Auch Erholung gehört zum Tag.</item>
+        <item>Die Liste ist frei. Der Nachmittag gehört dir.</item>
+        <item>Ein wenig Raum zum Atmen am Nachmittag.</item>
+        <item>Die Aufgaben sind fertig. Finde dein Tempo.</item>
+        <item>Du kannst die Checkliste erst einmal liegen lassen.</item>
+        <item>Ein freier Nachmittag tut gut.</item>
+        <item>Alles auf der heutigen Liste ist erledigt.</item>
+        <item>Eine Nachmittagspause ohne Aufgabe.</item>
+        <item>Schaffe Platz für etwas Schönes.</item>
+        <item>Die heutige Checkliste macht nachmittags frei.</item>
+        <item>Eine freie Liste. Vielleicht frische Luft?</item>
+        <item>Der Nachmittag darf nun langsamer werden.</item>
+        <item>Die losen Enden des Tages liegen hinter dir.</item>
+        <item>Heute Nachmittag gibt es nichts mehr abzuhaken.</item>
+        <item>Platz für eine richtige Pause.</item>
+        <item>Die Checkliste ist fertig. Lass den Nachmittag kommen.</item>
+        <item>Die Pläne für heute sind erledigt. Mach es dir bequem.</item>
+        <item>Ein ruhigerer Nachmittag mit freier Liste.</item>
+        <item>Lass heute ein wenig Raum für dich.</item>
+        <item>Der Nachmittag hat weniger im Kopf.</item>
+        <item>Heute alles geschafft. Genieße die ruhige Zeit.</item>
+        <item>Die heutige Liste ist fertig. Lass den Abend sanft sein.</item>
+        <item>Nichts mehr auf der heutigen Liste. Komm zur Ruhe.</item>
+        <item>Der Tag darf ruhig ausklingen.</item>
+        <item>Die losen Enden des Tages bleiben verbunden.</item>
+        <item>Die Checkliste ruht. Du darfst es auch.</item>
+        <item>Für heute fertig. Mach es dir bequem.</item>
+        <item>Lass die heutige Liste für die Nacht hier.</item>
+        <item>Der restliche Abend darf leichter sein.</item>
+        <item>Die heutigen Pläne sind erledigt. Atme langsam aus.</item>
+        <item>Eine freie Liste für einen sanften Ausklang.</item>
+        <item>Die heutige Checkliste ist leer.</item>
+        <item>Der Abend braucht keinen weiteren Haken.</item>
+        <item>Die heutigen Aufgaben sind gut aufgehoben.</item>
+        <item>Schließe die Liste und genieße die Ruhe.</item>
+        <item>Der Tag ist geschafft. Jetzt kommt etwas Ruhe.</item>
+        <item>Lass Raum zum Abschalten.</item>
+        <item>Die heutige Checkliste sagt gute Nacht.</item>
+        <item>Ein friedlicher Abschluss der heutigen Pläne.</item>
+        <item>Heute Nacht braucht hier nichts deine Aufmerksamkeit.</item>
+        <item>Alles abgehakt. Lass den Tag zur Ruhe kommen.</item>
+        <item>Abendliste erledigt. Atme durch.</item>
+        <item>Deine Abendaufgaben sind erledigt.</item>
+        <item>Nichts mehr auf der heutigen Abendliste.</item>
+        <item>Etwas Raum zum Atmen um deine Abendpläne.</item>
+        <item>Dieser Abendabschnitt ist erledigt.</item>
+        <item>Deine Abendliste darf ruhen.</item>
+        <item>Abendpläne, alle abgehakt.</item>
+        <item>Eine ruhige Ecke des Tages.</item>
+        <item>Die Abendliste braucht nichts mehr.</item>
+        <item>Eine freie Abendliste tut gut.</item>
+        <item>Die losen Enden des Abends sind verbunden.</item>
+        <item>Mach eine kleine Pause. Diese Liste ist fertig.</item>
+        <item>Das Wichtigste am Abend ist gut aufgehoben.</item>
+        <item>Später gibt es weniger zu bedenken.</item>
+        <item>Die Abendliste kann weggelegt werden.</item>
+        <item>Alles auf dieser Liste ist erledigt.</item>
+        <item>Abendliste fertig. Gönne dir eine Pause.</item>
+        <item>Diese Liste hat einen guten Abschluss gefunden.</item>
+        <item>Etwas willkommene Ruhe um die Abendaufgaben.</item>
+        <item>Deine Abendliste ist frei. Genieße den Freiraum.</item>
+    </string-array>
+</resources>

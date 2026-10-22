@@ -59,7 +59,7 @@ class CompletionSoundNativeTest {
 
     @Test fun settingsPersistTheStableChoiceAcrossOffOnAndRepositoryRecreation() = runBlocking {
         assertFalse(repo.settings().completionSound)
-        assertEquals(CompletionSoundChoice.BRIGHT_FINISH, repo.settings().completionSoundChoice)
+        assertEquals(CompletionSoundChoice.LITTLE_LIFT, repo.settings().completionSoundChoice)
         for(choice in CompletionSoundChoice.entries) {
             repo.updateSettings { it.copy(completionSound = true, completionSoundChoice = choice) }
             repo.updateSettings { it.copy(completionSound = false) }
@@ -78,7 +78,7 @@ class CompletionSoundNativeTest {
         store.edit { it[stringPreferencesKey("completion-sound-choice")] = "future-sound" }
         scope.coroutineContext[Job]!!.cancelAndJoin()
         repo = MomentumRepository(app, directory)
-        assertEquals(CompletionSoundChoice.BRIGHT_FINISH, repo.settings().completionSoundChoice)
+        assertEquals(CompletionSoundChoice.LITTLE_LIFT, repo.settings().completionSoundChoice)
         assertFalse(repo.settings().completionSound)
         suspend fun assertRawChoiceIsRetained() {
             repo.close()
@@ -95,7 +95,7 @@ class CompletionSoundNativeTest {
             writeText("""{"version":1,"values":{"grouping":"project"}}""")
         }
         repo.importAppSettings(partial)
-        assertEquals(CompletionSoundChoice.BRIGHT_FINISH, repo.settings().completionSoundChoice)
+        assertEquals(CompletionSoundChoice.LITTLE_LIFT, repo.settings().completionSoundChoice)
         assertRawChoiceIsRetained()
     }
 
@@ -139,13 +139,13 @@ class CompletionSoundNativeTest {
         action(vm) { addTask("Added task", View.Today) }
         assertTrue(sound.choices.isEmpty())
         action(vm) { setDone(id, true) }
-        assertEquals(listOf(CompletionSoundChoice.BRIGHT_FINISH), sound.choices)
+        assertEquals(listOf(CompletionSoundChoice.LITTLE_LIFT), sound.choices)
         // Shared-core setDone reports a changed completion for an existing task,
         // even when already done. Count that actual successful outcome.
         val repeated = action(vm) { setDone(id, true) }
         assertTrue(repeated.changed)
         assertEquals(Message.TaskCompleted, repeated.message)
-        assertEquals(List(2) { CompletionSoundChoice.BRIGHT_FINISH }, sound.choices)
+        assertEquals(List(2) { CompletionSoundChoice.LITTLE_LIFT }, sound.choices)
         assertNull(action(vm) { toggleDone(id) }.message)
         assertFalse(repo.detail(id)!!.isDone)
         val keyboardUndo = action(vm) { undo() }
@@ -170,16 +170,16 @@ class CompletionSoundNativeTest {
         val sound = RecordingSoundPlayer()
         val vm = model(sound)
         lateinit var preview: Job
-        main { preview = vm.previewCompletionSound() }; preview.join()
-        assertTrue(sound.choices.isEmpty())
+        main { preview = vm.previewCompletionSound(CompletionSoundChoice.QUIET_CHEER) }; preview.join()
+        assertEquals(listOf(CompletionSoundChoice.QUIET_CHEER), sound.choices)
         main {
             vm.settings { it.copy(completionSound = true, completionSoundChoice = CompletionSoundChoice.WARM_SPARK) }
-            preview = vm.previewCompletionSound()
+            preview = vm.previewCompletionSound(CompletionSoundChoice.QUIET_CHEER)
         }
         preview.join()
-        assertEquals(listOf(CompletionSoundChoice.WARM_SPARK), sound.choices)
-        main { vm.completionSoundForeground(false); preview = vm.previewCompletionSound() }; preview.join()
-        assertEquals(1, sound.choices.size)
+        assertEquals(listOf(CompletionSoundChoice.QUIET_CHEER, CompletionSoundChoice.QUIET_CHEER), sound.choices)
+        main { vm.completionSoundForeground(false); preview = vm.previewCompletionSound(CompletionSoundChoice.QUIET_CHEER) }; preview.join()
+        assertEquals(2, sound.choices.size)
         assertTrue(sound.cancellations > 0)
         main { owners.clear() }
         assertTrue(sound.closed)

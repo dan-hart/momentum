@@ -1661,10 +1661,13 @@ fn completion_sound_preferences_bind_choices_preview_and_fallback_without_playin
         let s = settings();
         let prefs = crate::prefs::MomentumPrefs::default();
         let imp = prefs.imp();
-        assert_eq!(imp.completion_sound_choice_row.selected(), 5);
-        assert_eq!(imp.completion_sound_choice_row.model().unwrap().n_items(), 10);
-        assert!(!imp.completion_sound_choice_row.is_sensitive());
-        assert!(!imp.completion_sound_preview_row.is_sensitive());
+        assert_eq!(
+            imp.completion_sound_choice_row.selected(),
+            CompletionSoundChoice::default().index()
+        );
+        assert_eq!(imp.completion_sound_choice_row.model().unwrap().n_items(), 20);
+        assert!(imp.completion_sound_choice_row.is_sensitive());
+        assert!(imp.completion_sound_preview_row.is_sensitive());
         assert!(gtk::test_accessible_has_property(
             imp.completion_sound_choice_row.upcast_ref::<gtk::Widget>(),
             gtk::AccessibleProperty::Label
@@ -1674,9 +1677,10 @@ fn completion_sound_preferences_bind_choices_preview_and_fallback_without_playin
             gtk::AccessibleProperty::Description
         ));
         imp.completion_sound_preview_row.emit_by_name::<()>("activated", &[]);
-        assert!(
-            take_play_requests().is_empty(),
-            "off also gates programmatic activation"
+        assert_eq!(
+            take_play_requests(),
+            vec![CompletionSoundChoice::default()],
+            "explicit preview works while automatic feedback is off"
         );
         imp.completion_sound_row.set_active(true);
         assert!(imp.completion_sound_choice_row.is_sensitive());
@@ -1689,17 +1693,17 @@ fn completion_sound_preferences_bind_choices_preview_and_fallback_without_playin
             assert_eq!(take_play_requests(), vec![choice]);
         }
         imp.completion_sound_row.set_active(false);
-        assert_eq!(s.string("completion-sound-choice"), "warm-spark");
+        assert_eq!(s.string("completion-sound-choice"), "quiet-cheer");
         assert_eq!(
             crate::prefs::MomentumPrefs::default()
                 .imp()
                 .completion_sound_choice_row
                 .selected(),
-            9
+            19
         );
         s.set_string("completion-sound-choice", "future-sound").unwrap();
         pump();
-        assert_eq!(imp.completion_sound_choice_row.selected(), 5);
+        assert_eq!(imp.completion_sound_choice_row.selected(), 20);
         assert_eq!(
             s.string("completion-sound-choice"),
             "future-sound",
@@ -1710,7 +1714,7 @@ fn completion_sound_preferences_bind_choices_preview_and_fallback_without_playin
                 .imp()
                 .completion_sound_choice_row
                 .selected(),
-            5
+            20
         );
         assert_eq!(
             s.string("completion-sound-choice"),
@@ -1772,7 +1776,7 @@ fn completion_sound_uses_current_choice_once_for_single_and_bulk_and_silences_un
         }
         s.set_string("completion-sound-choice", "future-sound").unwrap();
         win.set_done(&single, true);
-        assert_eq!(take_play_requests(), vec![CompletionSoundChoice::BrightFinish]);
+        assert_eq!(take_play_requests(), vec![CompletionSoundChoice::LittleLift]);
         assert_eq!(s.string("completion-sound-choice"), "future-sound");
         reset_settings();
     });

@@ -842,3 +842,29 @@ impl From<std::io::Error> for CoreError {
         CoreError::Io { message: e.to_string() }
     }
 }
+
+/// Eligibility for day/period empty-state wording. Pending also covers hidden work.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
+pub enum DayCompletion {
+    Unplanned,
+    Pending,
+    PeriodComplete,
+    DayComplete,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct DayStatus {
+    pub hidden_morning: u32,
+    pub hidden_evening: u32,
+    pub completion: DayCompletion,
+}
+
+/// An atomic projection for native day destinations; preserves the existing Listing API.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct DayListing {
+    pub listing: Listing,
+    pub status: DayStatus,
+}
