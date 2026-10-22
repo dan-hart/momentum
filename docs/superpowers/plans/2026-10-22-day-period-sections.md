@@ -1,6 +1,6 @@
 # Day-period sections implementation plan
 
-> For agentic workers: use superpowers:subagent-driven-development with spec and code-quality review. Local edits only; do not commit.
+> For agentic workers: use superpowers:subagent-driven-development with spec and code-quality review. The user subsequently authorized commits/pushes to this dedicated branch, adversarial fixes, and unit coverage without platform UI tests.
 
 **Goal:** Implement the approved day-period sections design on all four native platforms.
 

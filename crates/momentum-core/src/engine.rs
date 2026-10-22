@@ -1671,7 +1671,7 @@ impl Engine {
             let Some((context_type, context_id)) = Inner::list_context(&view) else {
                 return Outcome::none();
             };
-            let visible = listing::view_task_ids(&g.store, &view);
+            let visible = listing::visible_view_task_ids(&g.store, &view, &g.prefs);
             let is_top_level = |id: &String| g.task(id).is_some_and(|t| t.parent_id.is_none());
             if !visible.contains(&before) || !is_top_level(&before) {
                 return Outcome::none();
@@ -1772,7 +1772,7 @@ impl Engine {
                 })
             };
             let selected_group = group_for(&id);
-            let list: Vec<String> = listing::view_task_ids(&g.store, &view)
+            let list: Vec<String> = listing::visible_view_task_ids(&g.store, &view, &g.prefs)
                 .into_iter()
                 .filter(|i| g.task(i).is_some_and(|t| !t.is_done))
                 .filter(|i| group_for(i) == selected_group)

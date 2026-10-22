@@ -5,7 +5,8 @@ Status: approved by the user on 2026-10-22; implemented locally; platform verifi
 ## Scope
 
 Add the same capability to Linux, macOS, iOS and Android using the shared Rust
-engine and native controls. Keep changes local; no commit, push or release.
+engine and native controls. The initial local-only scope was extended by the user
+to commit and push the dedicated task branch; no PR, merge or release was requested.
 
 ## Presentation
 
@@ -48,7 +49,11 @@ Core regressions cover all populated-group combinations, grouping-independent
 visibility, completed tasks, parent/subtask families, overdue retention, default
 behavior and unaffected alternative destinations. Native preference tests cover
 persistence and refreshed listings; native presentation checks cover conditional
-dividers, readable headings and scalable text.
+dividers, readable headings and scalable text. In the subsequent adversarial-review
+request, the user chose unit/state/repository coverage without platform UI tests.
+Feature-specific rendered tests were removed; historical inspection evidence remains
+in PROGRESS. Unit regressions additionally cover visible ordering/undo and Android
+device-local preference application during portable native-write failures.
 
 Run applicable Rust workspace/CLI/FFI checks, Apple package and app builds, Android
 checks and GTK compilation/runtime checks where available. Record platform-specific

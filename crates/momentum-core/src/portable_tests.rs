@@ -818,3 +818,46 @@ fn bootstrap_review_is_bound_across_nextcloud_to_nearby_and_peer_changes() {
     callback.receive("peer-b", &envelope("peer-b", "due")).unwrap();
     assert_eq!(values(&local)["sort"], "due");
 }
+
+#[test]
+fn day_period_visibility_setter_is_local_and_portable_updates_preserve_it() {
+    let (e, dir) = engine();
+    let document = json!({"version":1,"values":{"grouping":"project","sort":"due","direction":"descending","upcomingDays":30,"autoArchive":true,"rowDensity":"compact","colorfulLabels":false,"completionSoundEnabled":true,"completionSoundChoice":"warm-spark"}}).to_string();
+    e.stage_portable_settings(document).unwrap();
+    e.add_task("Pending local work".into(), View::Today);
+    e.set_device_summary_preferences(true, ClockTime { hour: 9, minute: 30 })
+        .unwrap();
+    let before = e.preferences();
+    let portable = e.portable_settings_json().unwrap();
+    let status = e.settings_sync_status();
+    let pending = e.with_store(|s| serde_json::to_value(&s.pending).unwrap());
+    let portable_bytes = std::fs::read(dir.path().join("portable-settings.json")).unwrap();
+    for visible in [false, false, true, false] {
+        e.set_day_period_tasks_in_today(visible);
+        let mut expected = before.clone();
+        expected.show_day_period_tasks_in_today = visible;
+        assert_eq!(e.preferences(), expected);
+        assert_eq!(e.portable_settings_json().unwrap(), portable);
+        assert_eq!(e.settings_sync_status(), status);
+        assert_eq!(e.with_store(|s| serde_json::to_value(&s.pending).unwrap()), pending);
+        assert_eq!(
+            std::fs::read(dir.path().join("portable-settings.json")).unwrap(),
+            portable_bytes
+        );
+    }
+    e.stage_portable_settings(json!({"version":1,"values":{"grouping":"estimate"}}).to_string())
+        .unwrap();
+    assert_eq!(e.preferences().group_by, GroupBy::Estimate);
+    assert!(!e.preferences().show_day_period_tasks_in_today);
+    let path = dir.path().join("import-settings.json");
+    std::fs::write(
+        &path,
+        json!({"version":1,"values":{"grouping":"none","showDayPeriodTasksInToday":true}}).to_string(),
+    )
+    .unwrap();
+    e.import_settings(path.to_string_lossy().into_owned()).unwrap();
+    assert_eq!(e.preferences().group_by, GroupBy::None);
+    assert!(!e.preferences().show_day_period_tasks_in_today);
+    assert!(values(&e).get("showDayPeriodTasksInToday").is_none());
+    assert_eq!(e.with_store(|s| serde_json::to_value(&s.pending).unwrap()), pending);
+}

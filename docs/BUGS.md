@@ -16,8 +16,39 @@ F-071 extends F-037 with conditional native separators and optional exclusion of
 today's Morning/Evening families from Today on all four platforms. Source inspection
 at f9637e2 confirms Morning → Today → Evening ordering already exists in Rust; the
 requested separator and visibility controls are new capabilities, not a reproduced
-ordering defect. No new B-ID is assigned. Regression and native verification limits
-are recorded in the dated [PROGRESS.md](PROGRESS.md) handoff.
+ordering defect. That initial assessment assigned no B-ID; the subsequent adversarial
+review found B-165 and B-166 below. Regression and native verification limits are
+recorded in the dated [PROGRESS.md](PROGRESS.md) handoff.
+
+## B-165 — Hidden day-period tasks intercept Today reordering
+
+- **Severity:** Medium. **Impact:** reproduced in the shared engine, affecting every
+  native consumer of Today keyboard/accessibility ordering with day-period tasks hidden.
+- **Reproduction:** in manual order, place a hidden Morning task between visible A
+  and B in the same group. Nudging A down reports a mutation but leaves visible A/B
+  unchanged. Stale drag payloads can also reorder hidden sources or targets.
+- **Cause/fix:** ordering used unfiltered Today membership while rendering used the
+  new preference. Share preference-aware visible root membership between listing and
+  reorder/nudge eligibility; retain unfiltered storage context for correct undo.
+- **Regression/status:** red/green core unit tests cover both display directions,
+  nudge directions, same-group modes, hidden drag inputs and full stored-order undo.
+  Native interaction remains outside the unit-test scope. F-071; final results in PROGRESS.
+
+## B-166 — Android settings-write failure ignores saved local Today visibility
+
+- **Severity:** Medium. **Impact:** source-confirmed Android startup/recovery path;
+  physical-device reproduction unavailable on this host. Other native clients apply
+  device-local preferences outside portable-settings reconciliation.
+- **Reproduction:** persist local visibility off, then reopen while native preferences
+  remain readable but portable reconciliation cannot write the settings file. The
+  engine continues offline with default visibility on, revealing previously hidden rows.
+- **Cause/fix:** the device-local setter ran only after a fallible portable settings
+  edit. Apply readable device-local preferences before portable native writes on
+  startup and bootstrap retries; retain the settings error until successful recovery.
+- **Regression/status:** Implemented. A nonrendering repository regression injects
+  native-write failure, checks startup and repeated retry, then permits recovery.
+  It is compiled but not device-executed on this host. Host Kotlin/Rust boundary
+  tests run separately; final results and limits are in PROGRESS. F-071.
 
 ## 2026-10-12 — native feature and release work
 

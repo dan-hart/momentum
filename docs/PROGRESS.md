@@ -1,5 +1,43 @@
 # Momentum progress and handoff
 
+## 2026-10-22 — F-071 adversarial review and unit-test follow-up
+
+- **Authority/revision:** user requested a dedicated branch commit/push, adversarial
+  review with fixes, and unit coverage without platform UI tests. Initial feature
+  commit `6f2bfb4` is published to `origin/task/day-period-sections`. This follow-up
+  is reviewed against that commit; no PR, merge, tag or release was requested.
+- **Findings/fixes:** B-165 reproduces a hidden day-period neighbor intercepting
+  nudge/reorder operations. Listing and ordering now share visible root membership;
+  undo retains full stored order. B-166 is the Android source-confirmed startup
+  failure path where a portable native-write error prevented a readable local choice
+  from being applied. Device-local preferences now apply before those writes and
+  independently survive their failure. Independent follow-up reviews approve both.
+- **Unit scope:** add table-driven nudge/reorder/undo and separator-boundary Rust
+  regressions; compare full preferences, portable bytes, pending operations and sync
+  status across the narrow setter and portable updates. Swift/Kotlin exercise empty
+  and maximum-index calls through generated bindings. Strengthen Swift selection
+  fixtures against silent success and Android export checks against both key spellings.
+  A nonrendering Android repository fault/retry regression is compiled, with device
+  execution unavailable. Keep existing hostless state/worker and nonrendering model
+  persistence tests. Remove only F-071's rendered GTK, Compose and iOS view tests;
+  unrelated existing UI tests and historical evidence below remain unchanged.
+- **Verification:** final Rust workspace all-features/all-targets excluding GTK:
+  403 passed, zero failures, five existing opt-in ignores; core alone: 212 passed,
+  two ignores. Both ordering regressions failed before the fix. MomentumKit:
+  208 hostless tests; portable MomentumMobile: 170 tests; Android host JVM:
+  102 tests, all passing. GTK consumer/tests compile. Regenerated Apple artifacts
+  and Android host/both ABI libraries include the final core fix. Android debug app,
+  instrumentation APK compilation and lintDebug pass; the latter uses those fresh
+  native artifacts rather than rebuilding them a second time. The new Android
+  fault/retry repository regression is compiled but remains device-unexecuted.
+  No UI tests are run for this follow-up; native interaction and prior device
+  deferrals remain explicit rather than requiring new platform UI suites.
+- **Evidence:** `/private/tmp/momentum-core-review-{red,green,all-unsandboxed}.log`
+  and `/private/tmp/momentum-day-period-review-{workspace,kit-final,mobile-final,gtk-final,android-final}.log`.
+  Formatting, localization/schema checks, changed documentation targets and diff
+  whitespace pass. Follow-up publication readback is recorded in the chat handoff;
+  the prior feature commit remains in history without rewriting the branch.
+
 ## 2026-10-22 — F-071 day-period sections
 
 - **Authority/revision:** user approved the [design](superpowers/specs/2026-10-22-day-period-sections-design.md)
@@ -67,8 +105,9 @@ and defect status live in [FEATURES.md](FEATURES.md) and [BUGS.md](BUGS.md).
 
 ## Current workspace
 
-As of 2026-10-22, the current checkout is local `task/day-period-sections` based on
-`f9637e2`, implementing approved F-071. No publication is authorized for this change.
+As of 2026-10-22, the current checkout is `task/day-period-sections` based on
+`f9637e2`, implementing approved F-071. The user now authorizes commits and pushes
+to this branch; no PR, merge, tag or release is authorized by that request.
 The earlier workspace and release authorizations below retain their historical scope.
 
 Current 2026-10-12 work is isolated on `task/native-features-release`, based on

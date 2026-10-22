@@ -12,8 +12,10 @@ import Testing
         let hidden = morning.rows.compactMap { row -> String? in
             if case .task(let task) = row { return task.id }; return nil
         }
-        let retained = try #require(h.state.listing.sections.first { $0.group == .today }?.rows.first)
-        guard case .task(let task) = retained else { return }
+        try #require(!hidden.isEmpty)
+        let task = try #require(h.state.listing.sections.first { $0.group == .today }?.rows.compactMap { row -> TaskRow? in
+            if case .task(let task) = row { return task }; return nil
+        }.first)
         h.state.selection = Set(hidden + [task.id])
         h.defaults.set(false, forKey: "show-day-period-tasks-in-today")
         h.state.preferencesChanged()
@@ -25,6 +27,16 @@ import Testing
         h.defaults.set(true, forKey: "show-day-period-tasks-in-today")
         h.state.preferencesChanged()
         #expect(Set(hidden).isSubset(of: Set(h.rows)))
+    }
+
+    @Test func dayPeriodBoundaryQueryHandlesEmptyAndOutOfRangeBorrowedListings() {
+        let h = Harness()
+        let listing = h.state.listing
+        #expect(!dayPeriodSeparatorBefore(listing: listing, sectionIndex: UInt32.max, groupBy: .morningNight))
+        var empty = listing
+        empty.sections = []
+        #expect(!dayPeriodSeparatorBefore(listing: empty, sectionIndex: 0, groupBy: .morningNight))
+        #expect(!dayPeriodSeparatorBefore(listing: empty, sectionIndex: UInt32.max, groupBy: .morningNight))
     }
 
     @Test func changingGroupingRefreshesTheListAndPreservesTaskIdentity() {

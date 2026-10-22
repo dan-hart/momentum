@@ -3274,3 +3274,102 @@ fn day_period_separators_cover_every_populated_group_combination() {
         }
     }
 }
+
+fn day_period_order_fixture(group_by: GroupBy, direction: SortDirection) -> (Arc<Engine>, tempfile::TempDir) {
+    let (e, dir) = empty();
+    for text in ["First #Shared", "Hidden #Shared #Morning", "Last #Shared"] {
+        e.add_task(text.into(), View::Today);
+    }
+    e.set_preferences(Preferences {
+        group_by,
+        direction,
+        show_day_period_tasks_in_today: false,
+        ..Default::default()
+    });
+    (e, dir)
+}
+
+#[test]
+fn day_period_hidden_neighbors_do_not_absorb_nudges_and_undo_restores_full_order() {
+    for grouping in [GroupBy::None, GroupBy::Project, GroupBy::Tag, GroupBy::Estimate] {
+        for direction in [SortDirection::Ascending, SortDirection::Descending] {
+            for delta in [-1, 1] {
+                let (e, _dir) = day_period_order_fixture(grouping, direction);
+                let stored = e.with_store(|s| s.state.today_ids());
+                let before = row_ids(&e.listing(View::Today, 100));
+                assert_eq!(before.len(), 2);
+                let selected = before[if delta > 0 { 0 } else { 1 }].clone();
+                let outcome = e.nudge(selected.clone(), delta, View::Today);
+                assert!(outcome.changed);
+                let mut expected = before.clone();
+                expected.reverse();
+                assert_eq!(
+                    row_ids(&e.listing(View::Today, 100)),
+                    expected,
+                    "{grouping:?}/{direction:?}/{delta}"
+                );
+                assert!(
+                    !e.nudge(selected, delta, View::Today).changed,
+                    "visible boundary is a no-op"
+                );
+                assert!(e.undo_batch(outcome.undo.unwrap()).changed);
+                assert_eq!(e.with_store(|s| s.state.today_ids()), stored);
+                assert_eq!(row_ids(&e.listing(View::Today, 100)), before);
+                // The default-on setting restores the hidden neighbor as a normal move target.
+                e.set_day_period_tasks_in_today(true);
+                let before = row_ids(&e.listing(View::Today, 100));
+                let selected = before[if delta > 0 { 0 } else { 2 }].clone();
+                let out = e.nudge(selected, delta, View::Today);
+                assert!(out.changed);
+                let mut expected = before;
+                expected.swap(if delta > 0 { 0 } else { 2 }, 1);
+                assert_eq!(row_ids(&e.listing(View::Today, 100)), expected);
+                e.undo_batch(out.undo.unwrap());
+                assert_eq!(e.with_store(|s| s.state.today_ids()), stored);
+            }
+        }
+    }
+}
+
+#[test]
+fn day_period_reorder_rejects_hidden_sources_and_targets_but_keeps_full_undo_context() {
+    for direction in [SortDirection::Ascending, SortDirection::Descending] {
+        let (e, _dir) = day_period_order_fixture(GroupBy::None, direction);
+        let stored = e.with_store(|s| s.state.today_ids());
+        let hidden = id_of(&e, "Hidden");
+        let visible = row_ids(&e.listing(View::Today, 100));
+        assert!(!e.reorder(hidden.clone(), visible[0].clone(), View::Today).changed);
+        assert!(!e.reorder(visible[1].clone(), hidden.clone(), View::Today).changed);
+        assert_eq!(e.with_store(|s| s.state.today_ids()), stored);
+        let out = e.reorder_tasks(vec![visible[1].clone(), hidden], visible[0].clone(), View::Today);
+        assert!(out.changed);
+        assert_eq!(
+            row_ids(&e.listing(View::Today, 100)),
+            [visible[1].clone(), visible[0].clone()]
+        );
+        assert!(e.undo_batch(out.undo.unwrap()).changed);
+        assert_eq!(e.with_store(|s| s.state.today_ids()), stored);
+    }
+}
+
+#[test]
+fn day_period_separator_ignores_empty_sections_and_out_of_range_indices() {
+    let (e, _dir) = empty();
+    let empty = e.listing(View::Today, 100);
+    for index in [0, 1, u32::MAX] {
+        assert!(!day_period_separator_before(&empty, index, GroupBy::MorningNight));
+    }
+    e.add_task("Morning #Morning".into(), View::Today);
+    e.add_task("Evening #Evening".into(), View::Today);
+    let mut listing = e.listing(View::Today, 100);
+    listing.sections[0].rows.clear();
+    assert!(!day_period_separator_before(&listing, 0, GroupBy::MorningNight));
+    assert!(!day_period_separator_before(&listing, 1, GroupBy::MorningNight));
+    let mut populated = listing.sections[1].clone();
+    populated.group = Some(TaskGroup::Today);
+    listing.sections.insert(1, populated);
+    assert!(day_period_separator_before(&listing, 2, GroupBy::MorningNight));
+    for index in [3, u32::MAX] {
+        assert!(!day_period_separator_before(&listing, index, GroupBy::MorningNight));
+    }
+}

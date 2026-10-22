@@ -159,6 +159,40 @@ class PortableSettingsRepositoryTest {
         } } finally { scope.coroutineContext[Job]!!.cancelAndJoin() }
     }
 
+    @Test fun failedNativePortableWriteKeepsReadableLocalVisibilityDuringStartupAndRecovery() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val directory = File(context.cacheDir, "portable-native-write-${UUID.randomUUID()}").also { assertTrue(it.mkdirs()) }
+        seedEnabledLocalControls(directory)
+        var failWrites = true
+        var writeAttempts = 0
+        val repo = MomentumRepository(context, directory, beforeNativeSettingsWrite = {
+            writeAttempts += 1
+            if(failWrites) throw java.io.IOException("Isolated native settings write failure")
+        }, observeDayChange = { dayChanged() })
+        try {
+            val draft = TaskDraft("Morning survives recovery", "INBOX_PROJECT", java.time.LocalDate.now().toString(), null, null, 0.0, "", emptyList(), emptyList())
+            val id = repo.create(draft, View.Morning).id!!
+            val startup = repo.snapshot(View.Today)
+            assertTrue(writeAttempts >= 2)
+            assertNotNull(startup.appSettingsError)
+            assertFalse(startup.preferences.showDayPeriodTasksInToday)
+            assertFalse(startup.listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+            assertTrue(repo.snapshot(View.Morning).listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+            // Recovery must reapply readable local choices even while native writes fail.
+            repo.read { setDayPeriodTasksInToday(true) }
+            val retry = repo.snapshot(View.Today)
+            assertNotNull(retry.appSettingsError)
+            assertFalse(retry.preferences.showDayPeriodTasksInToday)
+            assertFalse(retry.listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+            failWrites = false
+            repo.refreshAppSettings()
+            val recovered = repo.snapshot(View.Today)
+            assertNull(recovered.appSettingsError)
+            assertFalse(recovered.preferences.showDayPeriodTasksInToday)
+            assertFalse(recovered.listing.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == id })
+        } finally { repo.close(); directory.deleteRecursively() }
+    }
+
     @Test fun failedInitialPortableSeedStillAllowsDurableLocalOptOuts() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val directory = File(context.cacheDir, "portable-local-opt-outs-${UUID.randomUUID()}").also { assertTrue(it.mkdirs()) }
@@ -241,7 +275,9 @@ class PortableSettingsRepositoryTest {
         val exported = File(directory, "day-period-settings.json")
         repo.exportAppSettings(exported)
         assertEquals(9, JSONObject(exported.readText()).getJSONObject("values").length())
-        assertFalse(exported.readText().contains("showDayPeriod"))
+        val exportedValues = JSONObject(exported.readText()).getJSONObject("values")
+        assertFalse(exportedValues.has("show-day-period-tasks-in-today"))
+        assertFalse(exportedValues.has("showDayPeriodTasksInToday"))
         repo.updatePreferences { it.copy(showDayPeriodTasksInToday = true) }
         repo.importAppSettings(exported)
         assertTrue(repo.snapshot(View.Today).preferences.showDayPeriodTasksInToday)

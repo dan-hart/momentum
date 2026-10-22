@@ -91,6 +91,20 @@ class NativeCoreTest {
         } finally { engine.destroy(); directory.deleteRecursively() }
     }
 
+    @Test fun generatedDayPeriodBoundaryPolicyRejectsOutOfRangeIndices() {
+        val directory = Files.createTempDirectory("momentum-day-period-bounds-").toFile()
+        val engine = Engine.openChecked(directory.absolutePath)
+        try {
+            val empty = engine.listing(View.Today, 100u)
+            assertFalse(dayPeriodSeparatorBefore(empty, 0u, GroupBy.MORNING_NIGHT))
+            assertFalse(dayPeriodSeparatorBefore(empty, UInt.MAX_VALUE, GroupBy.MORNING_NIGHT))
+            engine.createTaskWithId(draft("Morning"), View.Morning)
+            val populated = engine.listing(View.Today, 100u)
+            assertFalse(dayPeriodSeparatorBefore(populated, populated.sections.size.toUInt(), GroupBy.MORNING_NIGHT))
+            assertFalse(dayPeriodSeparatorBefore(populated, UInt.MAX_VALUE, GroupBy.MORNING_NIGHT))
+        } finally { engine.destroy(); directory.deleteRecursively() }
+    }
+
     @Test fun generatedLocalVisibilitySetterSurvivesPortableChangesAndPreservesSlotDestinations() {
         val directory = Files.createTempDirectory("momentum-day-period-").toFile()
         val engine = Engine.openChecked(directory.absolutePath)
@@ -110,7 +124,8 @@ class NativeCoreTest {
             }
             assertTrue(engine.listing(View.Morning, 100u).sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == morning })
             assertTrue(engine.listing(View.Tonight, 100u).sections.flatMap { it.rows }.filterIsInstance<Row.Task>().any { it.row.id == evening })
-            assertFalse(engine.portableSettingsJson().contains("showDayPeriod"))
+            assertFalse(engine.portableSettingsJson().contains("show-day-period-tasks-in-today"))
+            assertFalse(engine.portableSettingsJson().contains("showDayPeriodTasksInToday"))
             engine.setDayPeriodTasksInToday(true)
             assertEquals(setOf(morning, plain, evening), engine.listing(View.Today, 100u).sections.flatMap { it.rows }.filterIsInstance<Row.Task>().map { it.row.id }.toSet())
         } finally { engine.destroy(); directory.deleteRecursively() }

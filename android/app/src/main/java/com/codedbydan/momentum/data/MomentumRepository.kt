@@ -60,6 +60,7 @@ class MomentumRepository internal constructor(
     private val context: Context,
     val directory: File,
     private val beforePortableStage: Engine.() -> Unit = {},
+    private val beforeNativeSettingsWrite: () -> Unit = {},
     private val observeDayChange: Engine.() -> Boolean,
 ) {
     constructor(context: Context, directory: File = File(context.noBackupFilesDir, "tasks")) :
@@ -79,11 +80,14 @@ class MomentumRepository internal constructor(
         check(!closed)
         return instance ?: Engine.openChecked(directory.absolutePath).also {
             try {
+                // Device-local choices remain usable if portable reconciliation cannot write.
+                val local = store.data.first().also { lastNativePreferences = it }
+                it.applyDevicePreferences(corePreferences(local))
                 // Restore durable core choices before staging this device's full allowlist.
+                beforeNativeSettingsWrite()
                 store.edit { native -> PortableAppSettings.apply(it.portableSettingsJson(), native) }
                 val prefs = store.data.first().also { lastNativePreferences = it }
-                val local = corePreferences(prefs)
-                it.applyDevicePreferences(local)
+                it.applyDevicePreferences(corePreferences(prefs))
                 it.stagePortableSettings(PortableAppSettings.encode(appSettings(prefs), corePreferences(prefs)))
                 portableRevision = it.settingsSyncStatus().revision
                 needsNativeBootstrap = false
@@ -136,6 +140,11 @@ class MomentumRepository internal constructor(
         val revision = engine.settingsSyncStatus().revision
         if(portableRevision != revision || needsNativeBootstrap) {
             try {
+                if(needsNativeBootstrap) {
+                    val local = store.data.first().also { lastNativePreferences = it }
+                    engine.applyDevicePreferences(corePreferences(local))
+                }
+                beforeNativeSettingsWrite()
                 store.edit { PortableAppSettings.apply(engine.portableSettingsJson(), it) }
                 if(needsNativeBootstrap) {
                     val native = store.data.first()
