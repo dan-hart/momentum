@@ -16,8 +16,51 @@
   architectures, Android GitHub APK/AAB/source artifacts, and iOS internal TestFlight.
   No Google Play/F-Droid/public App Store submission is implied. The iOS archive uses
   the current server-safe build number with verified app/Share App Group signing.
-- Publication, artifact checksums, TestFlight processing/internal access, install
-  channel readback and `main` remote-head verification are recorded after completion.
+- Immutable `v0.4.13` product source is `11b93f3d5e518186f22e12e49ebaa7d1b655fa0d`.
+  [Release workflow](https://github.com/dan-hart/momentum/actions/runs/39971200518)
+  passes every required tag test gate, including all four Linux configurations and
+  the macOS core/bindings/unit/app/localization gate. [Momentum 0.4.13](https://github.com/dan-hart/momentum/releases/tag/v0.4.13)
+  publishes all desktop/CLI/Android artifacts; all **13** public file checksums match
+  both SHA256SUMS.txt and the exact-tag workflow artifacts. Android provenance records
+  commit `11b93f3` and versionCode **4013**; APK/AAB are explicitly unsigned under the
+  existing configuration. No store signing identity or enrollment was created.
+- Homebrew's public formula/cask point to 0.4.13 with matching asset digests. Independent
+  Linux-VM readback pulls both public stable Flatpak refs at **0.4.13** and verifies
+  signatures against `07BA47734E3A0B72D20267940D8E046EFEEF00F0`:
+  x86_64 `ec4e10f8c0eebddf9186b21d6705620da9db9d6326bae5fb41eacf259ad9c31e`,
+  aarch64 `16d1a80b9feaca0238fc4ad0cddb12bc1e68205c0389f795b00336049768261d`.
+  The universal Mac app and bundled mo have both architectures, valid deep signatures,
+  and version 0.4.13; the downloaded ARM Linux mo starts and reports 0.4.13 without
+  creating a task store. Mac signing retains the configured ad-hoc/non-notarized
+  fallback. Physical installation/interaction remains a separate acceptance scope.
+- iOS **0.4.13 (414)** is `VALID`, `INTERNAL_ONLY` and `IN_BETA_TESTING` in the existing
+  Internal Testers group. Exact server-side version, complete group membership and
+  en-US What to Test notes are read back. Apple build
+  `b602c621-47e5-4ecc-8a61-425850bcc6c0`; [TestFlight](https://appstoreconnect.apple.com/apps/6821523171/testflight).
+  The signed Release archive/IPA verifies both bundle identifiers, distribution
+  identity/profiles, App Group entitlements, privacy manifests and sound masters.
+  All 243 native source/resource files and 11 generated core artifacts match the
+  frozen source. IPA SHA-256: `5483943b6833b9cd3f028cc45d5c4c614623b7eb09f4ce56efc908bf7c3cdf3a`.
+- The old private signing keychain did not accept its saved password. Reusing the
+  existing protected distribution backup in a temporary isolated keychain resolved
+  signing without changing the identity, profiles or product source. That temporary
+  keychain/password were removed after verified export; other user keychains remain.
+  Protected IPA/server/provenance receipts are retained under the existing private
+  `Momentum-TestFlight/0.4.13-414/` release directory. Build-level export classification
+  follows the standard-algorithm/internal-only scope; no source-wide exemption flag,
+  explicit tester notification, external beta or public App Store submission added.
+- The complete release workflow succeeds, including required Homebrew publication and
+  hosted Flatpak deployment/readback. Main integration uses a fast-forward of the
+  approved feature branch after these gates; the product tag remains immutable.
+  This final handoff changes documentation only. The isolated readback VM is stopped
+  after verification; no personal task data is accessed by the artifact/channel checks.
+- Supplemental dependency audit found an earlier root `cargo fmt --all` had also
+  reformatted the ignored local LibreSync copy. Every differing file exactly matches
+  pinned v0.6.0 formatted with Momentum's `max_width=120`; no other differences were
+  found. The exact pinned tree is restored and its checksum verified. The iOS private
+  receipt retains the actual compiler-input archive/hash and formatting comparison;
+  hosted release builders use clean pinned inputs. Use the CI package-scoped fmt
+  command to avoid formatting path dependencies.
 
 
 ## 2026-10-23 — F-075 client sync acceleration on the native experience branch
