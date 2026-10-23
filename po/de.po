@@ -4419,3 +4419,18 @@ msgstr "Verhindert unsichere oder irreführende Updates bei unklarer Paketzuordn
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Isolate documented Apple build commands from unrelated shell credentials and disable script-environment logging. Protect generated build logs and update feeds."
 msgstr "Isoliert dokumentierte Apple-Build-Befehle von nicht benötigten Shell-Zugangsdaten und deaktiviert die Protokollierung der Skriptumgebung. Schützt erzeugte Build-Protokolle und Update-Feeds."
+
+#. AppStream release summary
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Fix macOS updater signing and prevent launch crashes."
+msgstr "macOS-Update-Signierung korrigiert und Startabstürze verhindert."
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Fix the macOS launch crash introduced by the updater framework: official releases now require consistent Developer ID signing and notarization while retaining hardened runtime and library validation."
+msgstr "Behebt den durch das Update-Framework eingeführten macOS-Startabsturz: Offizielle Versionen erfordern nun eine einheitliche Developer-ID-Signierung und Notarisierung; Hardened Runtime und Bibliotheksvalidierung bleiben aktiviert."
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Reject invalid nested code signatures and debugging entitlements, exercise the extracted release archive before publication, and clean private signing material even when an operating-system cleanup step fails."
+msgstr "Ungültige Signaturen verschachtelten Codes und Debugging-Berechtigungen werden abgelehnt. Das entpackte Release-Archiv wird vor der Veröffentlichung geprüft; privates Signierungsmaterial wird auch bei Fehlern während der Systembereinigung entfernt."

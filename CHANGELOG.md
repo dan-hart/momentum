@@ -6,6 +6,16 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.15] - 2026-10-23
+
+### Fixed
+- Fix the macOS launch crash introduced by the updater framework: official releases
+  now require consistent Developer ID signing and notarization while retaining
+  hardened runtime and library validation.
+- Reject invalid nested code signatures and debugging entitlements, exercise the
+  extracted release archive before publication, and clean private signing material
+  even when an operating-system cleanup step fails.
+
 ## [0.4.14] - 2026-10-23
 
 ### Added

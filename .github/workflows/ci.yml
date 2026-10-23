@@ -30,6 +30,7 @@ jobs:
         run: |
           python3 -m unittest discover -s build-aux/tests -p 'test_release_channels.py' -v
           python3 -m unittest discover -s build-aux/tests -p 'test_sparkle_release.py' -v
+          python3 -m unittest discover -s macos/scripts/tests -p 'test_release*.py' -v
 
   versions:
     name: Versions aligned

@@ -78,8 +78,8 @@ Before tagging, run on a real Mac what CI cannot: the opt-in nearby-sync test in
 The Release workflow succeeds only after both install-channel jobs pass. A GitHub
 Release can exist while the final channel jobs are still running or have failed;
 check the workflow result before announcing complete delivery. Missing required
-credentials fail preflight. Optional Mac notarization and Android signing retain
-their existing fallback behavior.
+credentials fail preflight. macOS Developer ID signing and notarization are mandatory
+from 0.4.15 (B-180); Android retains its explicit unsigned fallback.
 
 Release runs share one repository-wide concurrency group. Both Flatpak architecture
 exports run serially, and manual/automatic Homebrew publishers share a separate
@@ -127,8 +127,9 @@ one for people who want the app.
 |---|---|---|
 | `FLATPAK_GPG_PRIVATE_KEY`, `FLATPAK_GPG_KEY_ID` | Publish Flatpak repository | required; release preflight fails. Preserve the existing repository signing identity |
 | `HOMEBREW_TAP_SSH_KEY` | Update Homebrew tap | required; release preflight fails. Private half of the dedicated write-enabled deploy key on `dan-hart/homebrew-tap`; stored only as an encrypted Momentum Actions secret |
-| `MACOS_CERTIFICATE_P12`, `MACOS_CERTIFICATE_PASSWORD` | macOS app and mo | the app and `mo` are signed ad hoc, and the cask tells users to install with `--no-quarantine`. The P12 is the *Developer ID Application* certificate with its private key, base64-encoded |
-| `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | macOS app and mo | the app is not notarized. The password is an app-specific password for the Apple ID; the team ID is also needed for Developer ID signing |
+| `MACOS_CERTIFICATE_P12`, `MACOS_CERTIFICATE_PASSWORD` | macOS app and mo | required; preflight fails. Protected base64 PKCS#12 containing the Developer ID Application identity/private key |
+| `APPLE_TEAM_ID` | macOS signing | required; every executable slice must match this team |
+| `APPLE_NOTARY_KEY`, `APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_ISSUER_ID` | macOS notarization | required; existing approved App Store Connect API credential. Raw private key stays in an owner-only temporary file, never in Xcode or Git |
 | `LIBRESYNC_TOKEN` | every LibreSync checkout | falls back to the workflow token, which is enough while LibreSync is public |
 | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Android release build only | all absent: unsigned APK/AAB remain attached with explicit filenames/instructions; partially configured: build fails. The keystore is base64-encoded and temporary on the runner; no development key is used for distribution |
 
@@ -198,9 +199,19 @@ flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream data/io
 The same script CI uses, producing the same files in `dist/`:
 
 ```sh
-macos/scripts/package-app.sh dist            # ad hoc signed unless MACOS_SIGN_IDENTITY is set
-REQUIRE_UNIVERSAL=1 macos/scripts/package-app.sh dist    # fail unless both architectures are in
+# Configure the protected Developer ID identity and API-key notarization inputs first:
+# MACOS_SIGN_IDENTITY="Developer ID Application: Name (TEAMID)"
+# APPLE_TEAM_ID, APPLE_NOTARY_KEY_FILE, APPLE_NOTARY_KEY_ID, APPLE_NOTARY_ISSUER_ID
+REQUIRE_UNIVERSAL=1 macos/scripts/package-app.sh dist
 ```
+
+Public distribution fails closed without complete signing/notary configuration.
+This gate does not add an account or paid dependency to compiling the open-source
+app; source builds remain separate in [macos/README.md](../macos/README.md).
+The packager signs nested code inside out, checks every slice's Team ID/runtime/
+entitlements, notarizes/staples, then extracts and launch-checks the final ZIP.
+An Ed25519 archive signature is additional updater authentication, not a substitute
+for Developer ID, library validation or actual runtime acceptance.
 
 For a universal binary, `rustup target add x86_64-apple-darwin` first. Flatpak bundles
 come from the release manifest, as in the README's *Build from source*.

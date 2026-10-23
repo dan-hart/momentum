@@ -70,6 +70,9 @@ jobs:
       # Run it on real machines before a release; this job covers everything that does not
       # need the network.
 
+      - name: Release signing policy and isolated loader regressions
+        run: python3 macos/scripts/build-env.py python3 -m unittest discover -s macos/scripts/tests -p 'test_release*.py' -v
+
       - name: Build environment credential isolation regressions
         run: python3 -m unittest discover -s macos/scripts/tests -p test_build_environment.py -v
 

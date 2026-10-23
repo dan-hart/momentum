@@ -1,5 +1,41 @@
 # Momentum progress and handoff
 
+## 2026-10-23 — B-180 signing pipeline correction and 0.4.15 preparation
+
+- User authorized the pipeline fix, regression tests, commit/push and next patch.
+  Branch remains task/desktop-updates; main merge is not requested. Canonical
+  versions advance to 0.4.15 (desktop build 415, Android code 4015); internal iOS
+  needs the next remote-safe build because TestFlight already has 415 for 0.4.14.
+- Live installation exposed a release acceptance gap: 0.4.14 signatures and archive
+  authentication pass, but dyld rejects Sparkle under ad-hoc hardened runtime.
+  The user-approved local development-signature repair opens; it is not a public
+  release fix. B-180 supersedes any inference of launch safety from earlier gates.
+- Public packaging now requires Developer ID and notarization, explicitly signs
+  nested code, inspects policy on every universal slice, rejects debug/library-
+  validation exceptions and exercises the extracted final ZIP before publication.
+  The diagnostic exits before user preferences, task stores, workers or permissions.
+  Standalone mo preserves the exact signed payload already included in the app.
+- Fifteen regressions pass locally with actual macOS dyld/codesign fixtures and an
+  explicitly selected existing development identity for the positive loader case.
+  Missing guard, credential, notarization and cleanup behavior produced observed
+  failures before fixes. Review caught optional notary and short-circuit cleanup;
+  both fixed, plus per-slice policy enforcement. Second review has no must-fix issue.
+- User explicitly approved dedicated Developer ID issuance and protected Actions
+  signing/notary setup. Existing momentum-provisioning profile notarization access
+  verified and approved secrets configured without printing values. Apple rejected
+  issuance via administrator API as Account Holder-only; Firefox is at the user
+  sign-in handoff. No existing certificate is revoked; all private material stays
+  outside Git. Actual certificate/notary/archive/channel evidence remains pending.
+- Follow-up local verification: all 34 Mac script tests pass, including the real
+  signing fixture; 17 Sparkle and 23 release-channel tests pass. Optimized Rust
+  artifacts built for both Mac architectures and all installed iOS targets. The
+  arm64 Release app compiles successfully without distribution signing; the real
+  Nearby Swift bridge test pairs and refreshes tasks in both directions. Workflow
+  YAML, shell syntax, version alignment, translation coverage and diff checks pass.
+  No production certificate-signed app or notarized archive is claimed yet.
+
+
+
 ## 2026-10-23 — 0.4.14 tagged delivery evidence (F-076, B-177, B-178)
 
 - Immutable product tag v0.4.14 points to 18d9f8c on task/desktop-updates;

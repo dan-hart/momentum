@@ -11,6 +11,12 @@ struct MomentumApp: App {
     @State private var state: AppState
 
     init() {
+        // Distribution acceptance: dyld has loaded Sparkle, but no preferences,
+        // task stores, background services or permission requests have started.
+        if CommandLine.arguments.contains("--verify-release-launch") {
+            print("Momentum release launch verified")
+            exit(EXIT_SUCCESS)
+        }
         Preferences.migrateLegacyDomain()
         Preferences.register()
         Preferences.migrateSyncMethod()

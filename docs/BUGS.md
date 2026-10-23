@@ -1,5 +1,36 @@
 # Momentum bug ledger
 
+## B-180 — macOS 0.4.14 updater framework crashes under library validation
+
+- **Severity/platforms:** high, shipped macOS regression. Native arm64 launch of
+  the unmodified 0.4.14 public/Homebrew bundle aborts in dyld before the app opens.
+  Intel is affected by the same signing policy; no separate Intel launch reproduced.
+  Linux/iOS/Android do not load this macOS Sparkle framework and are not affected.
+- **Cause:** app and framework are ad-hoc signed with hardened runtime, but neither
+  has a Team ID. Library validation cannot establish the required shared identity.
+  Strict/deep signature verification, archive checksums and Ed25519 authentication
+  all passed; none tests whether dyld permits loading the embedded framework.
+- **Fix/status:** 0.4.15 public packaging requires a real Developer ID Application
+  identity, matching Team ID on every executable slice, hardened runtime, enabled
+  library validation, no debug entitlement, and mandatory notarization/stapling.
+  Nested Sparkle binaries/bundles are signed inside out. The final ZIP is extracted
+  and launched through an early diagnostic exit before preferences, stores, services
+  or permissions initialize. Missing credentials fail closed; no ad-hoc fallback.
+- **Regression evidence:** fifteen signing/keychain tests pass locally, including
+  an actual hardened/ad-hoc dylib failure despite successful strict signatures,
+  then successful loading with a shared existing development identity. Pure policy
+  tests reject development identities for distribution, mismatched/non-native slice
+  entitlements, traversal and escaping links. Cleanup faults still remove private
+  staging. Independent review findings were fixed and reviewed again.
+- **Remaining:** actual Developer ID packaging/notary/Gatekeeper/final-app launch
+  and new public channel readback require the authorized release execution.
+  Account Holder sign-in is needed to issue the approved missing certificate; the
+  administrator API cannot issue Developer ID. Existing local 0.4.14 installation
+  was separately re-signed with user approval and opens; public 0.4.14 bytes remain
+  immutable. No private key or user data belongs in this record.
+
+
+
 ## B-179 — Intermittent nearby snapshot lock assertion in release CI
 
 - **Severity/platforms:** low, test reliability. Reproduced once in the optimized

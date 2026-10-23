@@ -93,3 +93,10 @@ Production publication evidence (2026-10-23): v0.4.14 / 18d9f8c publishes the
 first authenticated updater archive and HTTPS feed. Independent readback verified
 the production public key, archive signature/metadata and exact hosted appcast
 bytes. This does not establish native installation/relaunch interaction acceptance.
+
+B-180 / 0.4.15 correction: 0.4.14 archive authentication did not prove dyld launch
+acceptance. Public macOS releases now require consistent Developer ID signatures,
+hardened runtime/library validation, no debugging exception, mandatory notarization
+and a launch check of the extracted final ZIP. Source compilation remains free and
+separate. Dedicated signing material is protected outside Git; API issuance requires
+the Apple Account Holder. See BUGS/PROGRESS for execution status.

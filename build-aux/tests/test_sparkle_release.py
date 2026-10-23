@@ -156,6 +156,23 @@ class FeedTests(unittest.TestCase):
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_public_macos_requires_developer_id_notary_and_non_skippable_native_fixture(self):
+        workflow = yaml.safe_load((ROOT / '.github/workflows/release.yml').read_text())
+        verify = workflow['jobs']['verify']['steps']
+        credential = next(step for step in verify if 'release-signing.py credentials' in step.get('run', ''))
+        self.assertEqual(set(credential['env']), {'MACOS_CERTIFICATE_P12', 'MACOS_CERTIFICATE_PASSWORD',
+                         'APPLE_TEAM_ID', 'APPLE_NOTARY_KEY', 'APPLE_NOTARY_KEY_ID', 'APPLE_NOTARY_ISSUER_ID'})
+        steps = workflow['jobs']['macos']['steps']
+        importer = next(step for step in steps if 'release-keychain.py create' in step.get('run', ''))
+        self.assertNotIn('if', importer)
+        fixture = next(step for step in steps if 'test_release_signing.py' in step.get('run', ''))
+        self.assertIn('MOMENTUM_REQUIRE_SIGNING_FIXTURE=1', fixture['run'])
+        cleaner = next(step for step in steps if 'release-keychain.py cleanup' in step.get('run', ''))
+        self.assertEqual(cleaner['if'], 'always()')
+        package = next(step for step in steps if 'package-app.sh' in step.get('run', ''))
+        self.assertNotIn('APPLE_NOTARY_KEY', package['env'])
+        self.assertNotIn('MACOS_CERTIFICATE_PASSWORD', package['env'])
+
     def test_existing_asset_guard_precedes_any_release_upload(self):
         workflow = yaml.safe_load((ROOT / '.github/workflows/release.yml').read_text())
         steps = workflow['jobs']['release']['steps']

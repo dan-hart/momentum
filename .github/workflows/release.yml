@@ -53,6 +53,15 @@ jobs:
           FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
           FLATPAK_GPG_FINGERPRINT: ${{ vars.FLATPAK_GPG_FINGERPRINT }}
         run: python3 build-aux/release-channels.py credentials
+      - name: Required macOS distribution signing and notarization
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        run: python3 macos/scripts/release-signing.py credentials
       - name: Required authenticated macOS updater configuration
         env:
           SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
@@ -93,16 +102,10 @@ jobs:
         with:
           name: release-notes
           path: release-notes.md
-      # Job-level `if:` cannot read secrets, so decide here which optional steps run.
       - id: gates
-        env:
-          P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-          NOTARY: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          gate() { echo "$1=$([ -n "$2" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"; }
-          gate sign_macos "$P12"
-          gate notarize_macos "$NOTARY"
-          cat "$GITHUB_OUTPUT"
+          echo "sign_macos=true" >> "$GITHUB_OUTPUT"
+          echo "notarize_macos=true" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------- 2. every test passes
   tests:
@@ -195,22 +198,19 @@ jobs:
           xcode-version: latest-stable
       - run: brew install xcodegen
       - name: Import the Developer ID certificate
-        if: needs.verify.outputs.sign_macos == 'true'
         env:
-          P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+        run: python3 macos/scripts/release-keychain.py create
+      - name: Native signing and dyld launch regressions
+        env:
+          MOMENTUM_REQUIRE_SIGNING_FIXTURE: "1"
         run: |
-          KEYCHAIN="$RUNNER_TEMP/release.keychain-db"
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
-          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security import "$RUNNER_TEMP/certificate.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
-          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
-          rm -f "$RUNNER_TEMP/certificate.p12"
-          echo "MACOS_SIGN_IDENTITY=Developer ID Application" >> "$GITHUB_ENV"
+          python3 macos/scripts/build-env.py env \
+            "MOMENTUM_SIGNING_FIXTURE_IDENTITY=$MACOS_SIGN_IDENTITY" MOMENTUM_REQUIRE_SIGNING_FIXTURE=1 \
+            python3 -m unittest discover -s macos/scripts/tests -p test_release_signing.py -v
       - name: Download pinned Sparkle signing tools
         run: |
           mkdir -p "$RUNNER_TEMP/sparkle"
@@ -235,9 +235,8 @@ jobs:
         env:
           REQUIRE_UNIVERSAL: "1"
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Notarization only when the app password is present; the script checks all three.
-          APPLE_ID: ${{ needs.verify.outputs.notarize_macos == 'true' && secrets.APPLE_ID || '' }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
           SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
         run: macos/scripts/package-app.sh dist
       - name: Sign exact final archive and generate appcast
@@ -255,6 +254,9 @@ jobs:
           name: macos
           path: dist/*
           if-no-files-found: error
+      - name: Remove temporary signing material
+        if: always()
+        run: python3 macos/scripts/release-keychain.py cleanup
 
   cli-linux:
     name: mo for Linux (${{ matrix.arch }})

@@ -8,9 +8,9 @@
 #
 #   macos/scripts/package-app.sh [out-dir]    # default: dist
 #
-# Signing: ad hoc unless MACOS_SIGN_IDENTITY (e.g. "Developer ID Application") and
-# APPLE_TEAM_ID are set. Notarization runs when APPLE_ID, APPLE_TEAM_ID and
-# APPLE_APP_PASSWORD are all set; the ticket is stapled to the app before zipping.
+# Distribution requires a full Developer ID Application identity and APPLE_TEAM_ID.
+# Source compilation remains available independently of this distribution packager.
+# Complete API-key notarization inputs are required; the ticket is stapled before zipping.
 # REQUIRE_UNIVERSAL=1 fails the build unless both Apple architectures are in the binary.
 set -eu
 cd "$(dirname "$0")/../.."
@@ -20,10 +20,11 @@ ROOT=$PWD
 export PATH="$HOME/.cargo/bin:$PATH"
 OUT=$(mkdir -p "${1:-dist}" && cd "${1:-dist}" && pwd)
 VERSION=$(build-aux/release.py version)
-IDENTITY=${MACOS_SIGN_IDENTITY:--}
+IDENTITY=${MACOS_SIGN_IDENTITY:-}
 TEAM=${APPLE_TEAM_ID:-}
 DERIVED="$ROOT/build/macos-release"
 APP="$DERIVED/Build/Products/Release/Momentum.app"
+python3 macos/scripts/release-signing.py preflight
 
 # Xcode resolves the MomentumCore package before any build phase runs, so the
 # xcframework and bindings must exist first: release profile, every installed target.
@@ -43,12 +44,9 @@ echo "== xcodegen"
 echo "== xcodebuild Release (identity: $IDENTITY)"
 # The identity may contain spaces ("Developer ID Application: Name (TEAM)"): pass the
 # settings as separate arguments rather than a word-split string.
-set -- CODE_SIGN_STYLE=Manual "CODE_SIGN_IDENTITY=$IDENTITY" \
+set -- CODE_SIGN_STYLE=Manual "CODE_SIGN_IDENTITY=$IDENTITY" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   MOMENTUM_DISTRIBUTION_CHANNEL=direct "MOMENTUM_UPDATE_PUBLIC_KEY=${SPARKLE_PUBLIC_KEY:-}"
-if [ "$IDENTITY" != "-" ]; then
-  [ -n "$TEAM" ] || { echo "APPLE_TEAM_ID is required with MACOS_SIGN_IDENTITY" >&2; exit 1; }
-  set -- "$@" "DEVELOPMENT_TEAM=$TEAM" OTHER_CODE_SIGN_FLAGS=--timestamp
-fi
+set -- "$@" "DEVELOPMENT_TEAM=$TEAM" OTHER_CODE_SIGN_FLAGS=--timestamp
 mkdir -p "$DERIVED"
 LOG="$DERIVED/xcodebuild.log"
 : > "$LOG"
@@ -60,6 +58,9 @@ if ! /usr/bin/python3 "$ROOT/macos/scripts/build-env.py" xcodebuild -project mac
   exit 1
 fi
 [ -d "$APP" ] || { echo "no app at $APP" >&2; exit 1; }
+
+echo "== sign all nested executable code with the distribution identity"
+python3 macos/scripts/release-signing.py sign --app "$APP"
 
 echo "== verify the bundle"
 BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")
@@ -79,16 +80,14 @@ HELPER="$APP/Contents/MacOS/MomentumRelaunch"
 codesign --verify --strict --verbose=1 "$HELPER"
 codesign --verify --deep --strict --verbose=1 "$APP"
 
-if [ -n "${APPLE_ID:-}" ] && [ -n "$TEAM" ] && [ -n "${APPLE_APP_PASSWORD:-}" ]; then
-  echo "== notarize"
-  [ "$IDENTITY" != "-" ] || { echo "notarization needs a Developer ID signature, not ad hoc" >&2; exit 1; }
-  NOTARY_ZIP="$DERIVED/notarize.zip"
-  ditto -c -k --norsrc --keepParent "$APP" "$NOTARY_ZIP"
-  xcrun notarytool submit "$NOTARY_ZIP" --apple-id "$APPLE_ID" --team-id "$TEAM" \
-    --password "$APPLE_APP_PASSWORD" --wait
-  xcrun stapler staple "$APP"
-  spctl --assess --type execute --verbose=2 "$APP"
-fi
+echo "== notarize"
+NOTARY_ZIP="$DERIVED/notarize.zip"
+ditto -c -k --norsrc --keepParent "$APP" "$NOTARY_ZIP"
+xcrun notarytool submit "$NOTARY_ZIP" --key "$APPLE_NOTARY_KEY_FILE" \
+  --key-id "$APPLE_NOTARY_KEY_ID" --issuer "$APPLE_NOTARY_ISSUER_ID" --wait
+xcrun stapler staple "$APP"
+xcrun stapler validate "$APP"
+spctl --assess --type execute --verbose=2 "$APP"
 
 echo "== package"
 ZIP="$OUT/Momentum-v$VERSION-macos.zip"
@@ -97,15 +96,13 @@ rm -f "$ZIP"
 # Info-ZIP's unzip (which Homebrew uses) extracts as stray ._ files inside the bundle,
 # breaking the code signature's resource seal. The signature seals no xattrs.
 ditto -c -k --norsrc --keepParent "$APP" "$ZIP"
+python3 macos/scripts/release-signing.py archive --archive "$ZIP"
 
 STAGE="$DERIVED/cli"
 rm -rf "$STAGE" && mkdir -p "$STAGE"
-cp "$ROOT/target/xcframework-stage/mo" "$STAGE/mo"
-if [ "$IDENTITY" = "-" ]; then
-  codesign --force --options runtime --sign - "$STAGE/mo"
-else
-  codesign --force --options runtime --timestamp --sign "$IDENTITY" "$STAGE/mo"
-fi
+# Preserve the identical signed CLI payload already included in the notarized app.
+cp "$APP/Contents/MacOS/mo" "$STAGE/mo"
+codesign --verify --strict "$STAGE/mo"
 TAR="$OUT/mo-v$VERSION-macos-universal.tar.gz"
 rm -f "$TAR"
 tar -czf "$TAR" -C "$STAGE" mo
