@@ -35,6 +35,13 @@
   Initial hosted translation check caught nine new AppStream release-note keys after
   the version bump; their gettext template entries and German translations are now
   added, with extraction, catalog format and POTFILES checks passing.
+- Hosted Linux runtime then exposed an obsolete existing regression expectation: after
+  immediate archive it required the old empty page, although completion history now
+  intentionally shows the completed-day panel. An isolated main-thread GTK reproduction
+  fails at that exact assertion before the change and passes afterward. The corrected
+  existing test checks no task rows, the completion title and Celebrate action, and their
+  disappearance when a pending task returns. App/test compilation and formatting pass;
+  hosted Linux rerun remains required. No production behavior or test gate was changed.
 
 ## 2026-10-22 — F-059 internal TestFlight feature build 412
 

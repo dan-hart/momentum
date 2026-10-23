@@ -3373,6 +3373,8 @@ fn completing_the_last_today_task_with_immediate_archive_and_tag_groups_empties_
     on_gtk(|| {
         let (win, _dir) = demo_window();
         let settings = &win.imp().settings;
+        let dynamic_messages = settings.boolean("dynamic-empty-state-messages");
+        settings.set_boolean("dynamic-empty-state-messages", true).unwrap();
         settings.set_boolean("auto-archive", true).unwrap();
         settings.set_string("group-by", "tag").unwrap();
         pump();
@@ -3386,16 +3388,33 @@ fn completing_the_last_today_task_with_immediate_archive_and_tag_groups_empties_
         }
         assert!(row_ids(&win).is_empty(), "immediate archive leaves no rows behind");
         assert!(
-            shown(&*win.imp().empty) && !shown(&*win.imp().task_box),
-            "the empty state takes over"
+            !shown(&*win.imp().empty) && shown(&*win.imp().task_box),
+            "completion history keeps the completed-day panel visible after immediate archive"
         );
+        let completion_widgets = descendants(win.imp().task_box.upcast_ref());
+        assert!(completion_widgets.iter().any(|widget| widget
+            .downcast_ref::<gtk::Label>()
+            .is_some_and(|label| label.text() == "All done for today")));
+        assert!(completion_widgets.iter().any(|widget| widget
+            .downcast_ref::<gtk::Button>()
+            .is_some_and(|button| button.has_css_class("celebrate-contrast"))));
         // Rows can come back after the list emptied, as a sync download would bring them.
         win.add_task("Back again");
         pump();
         assert_eq!(row_ids(&win).len(), 1);
         assert!(shown(&*win.imp().task_box) && !shown(&*win.imp().empty));
+        let pending_widgets = descendants(win.imp().task_box.upcast_ref());
+        assert!(!pending_widgets.iter().any(|widget| widget
+            .downcast_ref::<gtk::Label>()
+            .is_some_and(|label| label.text() == "All done for today")));
+        assert!(!pending_widgets.iter().any(|widget| widget
+            .downcast_ref::<gtk::Button>()
+            .is_some_and(|button| button.has_css_class("celebrate-contrast"))));
         settings.set_boolean("auto-archive", false).unwrap();
         settings.set_string("group-by", "morning-night").unwrap();
+        settings
+            .set_boolean("dynamic-empty-state-messages", dynamic_messages)
+            .unwrap();
     });
 }
 
