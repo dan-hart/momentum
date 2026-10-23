@@ -28,6 +28,9 @@
   acceptance. The required opt-in nearby Swift/core integration passes in 12.744s.
   Compiled app/shared German copy checks and complete catalogs pass. Hosted exact-head
   gates and signed public Flatpak readback remain required for release delivery.
+  Initial hosted translation check caught nine new AppStream release-note keys after
+  the version bump; their gettext template entries and German translations are now
+  added, with extraction, catalog format and POTFILES checks passing.
 
 ## 2026-10-22 — F-059 internal TestFlight feature build 412
 

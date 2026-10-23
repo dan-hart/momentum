@@ -3990,3 +3990,39 @@ msgstr ""
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:277
 msgid "System-wide shortcuts through the GlobalShortcuts portal"
 msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid "A calmer day view, searchable settings, and clearer completion feedback."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
+msgid "A local option to keep Morning/Evening tasks out of Today, with remaining-task counts and links to the appropriate period."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:53
+msgid "Celebrate icon and label contrast follows the actual button fill, including pressed states, across supported native appearances."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:55
+msgid "German Settings/About catalog coverage and Linux backup action-row compatibility."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:54
+msgid "Hidden-period ordering, completion eligibility, archived-period navigation, and stale completed-state claims retain accurate task scope."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:52
+msgid "Morning & Night grouping uses sun/moon headings and spacing only for populated sections. Linux task entry now simply says “Add a task”."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid "Optional encouraging completion messages, 100 English/German choices, and a manual Celebrate button with a colorful confetti/starburst and a reduced-motion alternative."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid "Settings are organized into native categories with search, settings results in task search, and a richer About view on Linux, macOS, iOS and Android."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
+msgid "Ten new short completion sounds, independent previews, and a local volume control."
+msgstr ""

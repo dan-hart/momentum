@@ -4181,3 +4181,39 @@ msgstr ""
 
 #~ msgid "Sync with Nextcloud"
 #~ msgstr "Mit Nextcloud synchronisieren"
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid "A calmer day view, searchable settings, and clearer completion feedback."
+msgstr "Eine ruhigere Tagesansicht, durchsuchbare Einstellungen und klarere Rückmeldungen beim Erledigen."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
+msgid "A local option to keep Morning/Evening tasks out of Today, with remaining-task counts and links to the appropriate period."
+msgstr "Eine lokale Option blendet Morgen- und Abendaufgaben aus Heute aus. Die Anzahl verbleibender Aufgaben und Links zum jeweiligen Tagesabschnitt bleiben sichtbar."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:53
+msgid "Celebrate icon and label contrast follows the actual button fill, including pressed states, across supported native appearances."
+msgstr "Symbol und Beschriftung der Feiern-Schaltfläche erhalten in den unterstützten nativen Darstellungen ausreichenden Kontrast zum tatsächlichen Hintergrund, auch beim Drücken."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:55
+msgid "German Settings/About catalog coverage and Linux backup action-row compatibility."
+msgstr "Vollständige deutsche Einträge für Einstellungen und Info sowie kompatible Sicherungsaktionen unter Linux."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:54
+msgid "Hidden-period ordering, completion eligibility, archived-period navigation, and stale completed-state claims retain accurate task scope."
+msgstr "Die Reihenfolge ausgeblendeter Tagesabschnitte, Abschlussmeldungen, die Navigation zu archivierten Tagesabschnitten und aktualisierte Erledigt-Anzeigen berücksichtigen den richtigen Aufgabenumfang."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:52
+msgid "Morning & Night grouping uses sun/moon headings and spacing only for populated sections. Linux task entry now simply says “Add a task”."
+msgstr "Die Gruppierung nach Morgen und Abend verwendet Sonnen- und Mondüberschriften sowie Abstände nur für Abschnitte mit Aufgaben. Die Linux-Aufgabeneingabe heißt jetzt einfach „Aufgabe hinzufügen“."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid "Optional encouraging completion messages, 100 English/German choices, and a manual Celebrate button with a colorful confetti/starburst and a reduced-motion alternative."
+msgstr "Optionale aufmunternde Abschlussmeldungen mit 100 englischen und deutschen Varianten sowie eine Feiern-Schaltfläche mit bunten Konfetti- und Sterneffekten und einer Alternative mit reduzierter Bewegung."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid "Settings are organized into native categories with search, settings results in task search, and a richer About view on Linux, macOS, iOS and Android."
+msgstr "Die Einstellungen sind auf Linux, macOS, iOS und Android in native Kategorien mit Suche gegliedert. Die Aufgabensuche zeigt auch Einstellungen an, und die Info-Ansicht bietet mehr Details."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
+msgid "Ten new short completion sounds, independent previews, and a local volume control."
+msgstr "Zehn neue kurze Erledigungstöne, unabhängige Hörproben und eine lokale Lautstärkeregelung."
