@@ -264,13 +264,15 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     Adw.PreferencesGroup {
       title: _("Backup");
 
-      Adw.ButtonRow {
+      Adw.ActionRow {
+        activatable: true;
         title: _("Import Backup JSON…");
         subtitle: _("Restore tasks from a backup");
         action-name: "app.import";
       }
 
-      Adw.ButtonRow {
+      Adw.ActionRow {
+        activatable: true;
         title: _("Export Backup JSON…");
         subtitle: _("Save a copy of your tasks");
         action-name: "app.export";

@@ -1196,6 +1196,58 @@ import XCTest
         XCTAssertGreaterThan(try XCTUnwrap(create.image.pngData()).count, 500)
     }
 
+    func testCelebrateRendersReadableSymbolAndLabelOnActualAccentFill() throws {
+        // Inspect the actual shared production control, not an imitation swatch.
+        for scheme in [ColorScheme.light, .dark] {
+            for contrast in [ColorSchemeContrast.standard, .increased] {
+                let rendered = try HostingFixture.render(
+                    CompletionCelebration().accentColor(Color(.sRGB, red: 1, green: 0.4, blue: 0)),
+                    scheme: scheme, contrast: contrast)
+                let image = try XCTUnwrap(rendered.image.cgImage)
+                let width = image.width, height = image.height
+                var bytes = [UInt8](repeating: 0, count: width * height * 4)
+                try bytes.withUnsafeMutableBytes { buffer in
+                    let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: width, height: height,
+                        bitsPerComponent: 8, bytesPerRow: width * 4,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                        bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue))
+                    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+                }
+                var fillPixels: [(Int, Int)] = []
+                for y in 0..<height {
+                    for x in 0..<width {
+                        let i = (y * width + x) * 4
+                        if bytes[i] > 250 && (98...106).contains(bytes[i + 1]) && bytes[i + 2] < 5 {
+                            fillPixels.append((x, y))
+                        }
+                    }
+                }
+                XCTAssertGreaterThan(fillPixels.count, 100, "The selected orange fill must remain exact")
+                let minX = try XCTUnwrap(fillPixels.map(\.0).min())
+                let maxX = try XCTUnwrap(fillPixels.map(\.0).max())
+                let minY = try XCTUnwrap(fillPixels.map(\.1).min())
+                let maxY = try XCTUnwrap(fillPixels.map(\.1).max())
+                var symbolInk = 0, textInk = 0
+                // Ignore the increased-contrast outline and rounded corners.
+                for y in (minY + (maxY - minY) / 4)...(maxY - (maxY - minY) / 4) {
+                    for x in (minX + (maxX - minX) / 8)...(maxX - (maxX - minX) / 8) {
+                        let i = (y * width + x) * 4
+                        if bytes[i] < 20 && bytes[i + 1] < 20 && bytes[i + 2] < 20 {
+                            if x < minX + (maxX - minX) / 3 { symbolInk += 1 }
+                            else { textInk += 1 }
+                        }
+                    }
+                }
+                XCTAssertGreaterThan(symbolInk, 10, "Sparkles must use the readable dark ink")
+                XCTAssertGreaterThan(textInk, 30, "Celebrate must use the same readable dark ink")
+                let attachment = XCTAttachment(image: rendered.image)
+                attachment.name = "Celebrate \(scheme) \(contrast) exact orange with dark ink"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
+    }
+
     func testCommitSymbolRendersWhiteInsideOrangeFill() throws {
         for scheme in [ColorScheme.light, .dark] {
             let rendered = try HostingFixture.render(

@@ -6,6 +6,28 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.12] - 2026-10-22
+
+### Added
+- Settings are organized into native categories with search, settings results in task
+  search, and a richer About view on Linux, macOS, iOS and Android.
+- Optional encouraging completion messages, 100 English/German choices, and a manual
+  Celebrate button with a colorful confetti/starburst and a reduced-motion alternative.
+- A local option to keep Morning/Evening tasks out of Today, with remaining-task counts
+  and links to the appropriate period.
+- Ten new short completion sounds, independent previews, and a local volume control.
+
+### Changed
+- Morning & Night grouping uses sun/moon headings and spacing only for populated
+  sections. Linux task entry now simply says “Add a task”.
+
+### Fixed
+- Celebrate icon and label contrast follows the actual button fill, including pressed
+  states, across supported native appearances.
+- Hidden-period ordering, completion eligibility, archived-period navigation, and stale
+  completed-state claims retain accurate task scope.
+- German Settings/About catalog coverage and Linux backup action-row compatibility.
+
 ## [0.4.11] - 2026-10-13
 
 ### Added

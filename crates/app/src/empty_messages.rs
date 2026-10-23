@@ -240,6 +240,7 @@ pub fn celebrate_button() -> gtk::Box {
         .halign(gtk::Align::Center)
         .height_request(44)
         .build();
+    crate::celebration_colors::apply(&button);
     button.connect_clicked(glib::clone!(
         #[weak]
         drawing,

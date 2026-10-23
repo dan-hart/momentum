@@ -128,6 +128,17 @@ confetti on launch, list navigation, sync or repeated redraws, and no looping.
 No added sound or haptic behavior. Keep it independent of the existing completion
 sound preference and retain that feature's current behavior.
 
+Contrast follow-up (2026-10-22): the enabled Celebrate icon and label must reach at
+least 4.5:1 against the actual opaque button fill in normal and pressed states (and
+Linux hover), preserving native focus and high-contrast treatment. Bright accents
+must choose readable ink rather than assuming white. Inactive controls and purely
+decorative confetti follow the standard contrast exceptions. See B-172/PROGRESS for
+measured scope; the iOS component render covers exact orange, while portable policy
+checks cover resolved system/custom colors separately.
+[WCAG text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+and [non-text contrast](https://www.w3.org/WAI/WCAG22/understanding/non-text-contrast.html)
+set the underlying 4.5:1 text and 3:1 meaningful-icon baselines.
+
 Respect system reduced-motion/disabled-animation preferences. Use a static celebratory
 symbol/state instead of moving particles when motion is reduced. The effect is
 decorative, never blocks input, never announces individual particles, stops when the

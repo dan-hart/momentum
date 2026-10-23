@@ -1,5 +1,34 @@
 # Momentum progress and handoff
 
+## 2026-10-22 — B-172/B-173 contrast and 0.4.12 hosted Flatpak release
+
+- User requested Celebrate icon contrast on all four platforms, especially iOS,
+  and a new Linux version in the personal signed Flatpak repository. The existing
+  unified release pipeline also builds companion artifacts and updates required
+  Homebrew; no Flathub submission or main merge is implied by the tag publication.
+- B-172 corrects Apple and Linux button color pairing, preserving the selected accent,
+  native action/focus semantics and reduced-motion behavior. Target is at least 4.5:1
+  for both the label and icon against enabled normal/pressed (Linux also hover) fills.
+  Android source and five existing tests cover all 20 palette/light-dark pairs with
+  primary/onPrimary at least 4.5:1; debug assembly/lint pass. Wallpaper/device checks
+  remain separate. Independent source review found no actionable defects.
+- B-173 fixes two real release blockers rather than bypassing gates: unsupported
+  Linux Settings ButtonRow subtitles and missing German compiled Settings labels.
+  Before/after Blueprint compilation, 66 compiled localization checks, seven importer
+  tests and 23 release-channel regressions pass. All platform version copies are
+  aligned at **0.4.12**, dated 2026-10-22; no immutable tag has been published yet.
+- Apple evidence so far: full MomentumKit **233 tests/50 suites** pass, new contrast
+  policy regressions pass, final Mac/iOS simulator builds pass at 0.4.12, and an
+  existing in-process iOS component test passes with
+  four light/dark × standard/increased renders. Exact orange is 7.153:1 normal and
+  5.637:1 pressed with black ink. This adds no XCUITest suite. Linux two new pure
+  contrast regressions and app/test compilation pass. The isolated GTK-on-macOS
+  fixture measures 54 native resolved color pairs (nine accents × light/dark × three
+  enabled states), minimum **4.8186:1**, without CSS errors; this is not Linux runtime
+  acceptance. The required opt-in nearby Swift/core integration passes in 12.744s.
+  Compiled app/shared German copy checks and complete catalogs pass. Hosted exact-head
+  gates and signed public Flatpak readback remain required for release delivery.
+
 ## 2026-10-22 — F-059 internal TestFlight feature build 412
 
 - User authorized a new iOS TestFlight build of `task/native-experience-overhaul`.

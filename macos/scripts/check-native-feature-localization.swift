@@ -23,6 +23,10 @@ let settings = [
     "Copy to Momentum folder?": "In Momentum-Ordner kopieren?",
 ]
 var expected = common
+if scope == "app" {
+    expected["Dynamic empty-state messages"] = "Dynamische Nachrichten bei leeren Listen"
+    expected["Settings"] = "Einstellungen"
+}
 if scope != "shared" {
     expected.merge(settings) { _, value in value }
 }

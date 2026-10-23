@@ -15,6 +15,41 @@ Severity: Critical = data loss/security/core unusable; High = major workflow imp
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
 
+## B-172 — Celebrate icon and label lose contrast on bright accents
+
+- **Severity:** Medium. **Impact:** iOS reproduced in the native component and
+  shared Apple source; implicit white on the exact orange `#FF6600` is **2.936:1**,
+  below the 3:1 meaningful-icon threshold and 4.5:1 normal-text threshold. macOS
+  shares the affected implicit-foreground implementation. Linux native white on
+  several default libadwaita accents passes icon contrast but misses normal-text AA.
+  Android is unaffected for its 20 tested palette/appearance pairs; wallpaper-driven
+  dynamic colors retain native role pairing, with device acceptance outstanding.
+- **Cause/fix:** choosing a native prominent style did not guarantee a safe foreground
+  for the actual app/system accent. Apple now resolves the actual accent and paints
+  an opaque fill with measured black/white icon and label ink, including pressed fill.
+  Linux preserves native pill/focus/high-contrast/disabled treatment while calculating
+  enabled normal/hover/pressed fill and ink; accent changes refresh the scoped provider.
+  Android retains its already-tested primary/onPrimary pairing.
+- **Evidence:** failing-before/fixed-after numerical regressions cover native palettes,
+  custom luminance boundaries and interaction states. iOS four light/dark and standard/
+  increased-contrast component renders pass; orange resolves to black at 7.153:1 normal
+  and 5.637:1 pressed. Exact checks and remaining platform acceptance are in PROGRESS.
+  No blanket claim is made for arbitrary third-party themes, wallpapers or physical devices.
+
+## B-173 — Native overhaul release gates reject Settings resources
+
+- **Severity:** High (build/release blocked). **Impact:** reproduced in hosted Linux
+  Flatpak Blueprint compilation and macOS compiled-catalog completeness checks.
+  Android is unaffected; iOS shares the proper-name catalog correction.
+- **Cause/fix:** Adw.ButtonRow has no subtitle property; backup rows now use native
+  activatable Adw.ActionRow with their original subtitles/actions. Two new Mac Settings
+  labels lacked German entries; app entries are translated and shared proper names
+  explicitly marked nontranslatable.
+- **Evidence:** Blueprint reports both unsupported properties before the change and
+  compiles all resources after it. The compiled localization regression fails on both
+  missing labels before the fix, then passes all 66 checks; seven importer tests and
+  source completeness checks pass. Exact-head hosted gates remain required before release.
+
 ## B-170 — Native period completion loses its destination or shows stale claims
 
 - **Severity:** Medium. **Impact:** Android source/unit-reproduced final-period

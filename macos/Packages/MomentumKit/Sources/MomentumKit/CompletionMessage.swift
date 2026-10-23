@@ -55,9 +55,7 @@ public struct CompletionCelebration: SwiftUI.View {
                 .padding(.horizontal, 8)
                 .frame(minHeight: 24)
         }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.roundedRectangle(radius: 14))
-        .controlSize(.large)
+        .buttonStyle(CelebrationButtonStyle())
         .accessibilityAction(named: Text(String(localized: "Celebrate", bundle: .module)), celebrate)
         .overlay {
             if celebrated && feedback == .staticSymbol {

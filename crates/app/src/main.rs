@@ -3,6 +3,7 @@
 
 mod application;
 mod background_status;
+mod celebration_colors;
 mod config;
 mod demo;
 mod empty_messages;

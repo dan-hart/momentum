@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.11/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.11/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.11/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.11/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,21 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.4.12" date="2026-10-22">
+      <description>
+        <p>A calmer day view, searchable settings, and clearer completion feedback.</p>
+        <ul>
+          <li>Settings are organized into native categories with search, settings results in task search, and a richer About view on Linux, macOS, iOS and Android.</li>
+          <li>Optional encouraging completion messages, 100 English/German choices, and a manual Celebrate button with a colorful confetti/starburst and a reduced-motion alternative.</li>
+          <li>A local option to keep Morning/Evening tasks out of Today, with remaining-task counts and links to the appropriate period.</li>
+          <li>Ten new short completion sounds, independent previews, and a local volume control.</li>
+          <li>Morning &amp; Night grouping uses sun/moon headings and spacing only for populated sections. Linux task entry now simply says “Add a task”.</li>
+          <li>Celebrate icon and label contrast follows the actual button fill, including pressed states, across supported native appearances.</li>
+          <li>Hidden-period ordering, completion eligibility, archived-period navigation, and stale completed-state claims retain accurate task scope.</li>
+          <li>German Settings/About catalog coverage and Linux backup action-row compatibility.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.11" date="2026-10-13">
       <description>
         <p>Fix task entry and navigation, add recurring previews and optional settings transfer and sync.</p>
