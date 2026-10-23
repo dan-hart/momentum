@@ -15,6 +15,17 @@ Severity: Critical = data loss/security/core unusable; High = major workflow imp
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
 
+## B-175 — Linux About text is parsed as unintended markup
+
+- **Severity:** Medium. **Impact:** Linux About group heading and legal sections;
+  other native platforms render their own plain text and are unaffected.
+- **Reproduction/cause:** the heading's ampersand and raw GPL angle-bracket URLs are
+  interpreted as Pango markup, producing native parsing warnings and missing text.
+- **Fix/evidence:** escape translated group title and bundled GPL/NOTICE text at their
+  markup boundary, preserving the original text and notices. Existing native About
+  regression passes with no parsing warnings after the correction; hosted Linux
+  verification remains required.
+
 ## B-174 — Linux sound selection reenters native model replacement
 
 - **Severity:** High (native crash). **Impact:** reproduced in hosted Linux GTK tests

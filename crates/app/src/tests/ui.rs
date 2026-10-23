@@ -1375,6 +1375,7 @@ fn preferences_keep_compact_windows_embedded_and_scrollable() {
             pump_ms(1_000);
             let parent_size = (win.width(), win.height());
             let prefs = crate::prefs::MomentumPrefs::default();
+            prefs.set_visible_page_name("appearance");
             prefs.present(Some(&win));
             pump_ms(1_000);
             assert!(prefs.is_mapped());

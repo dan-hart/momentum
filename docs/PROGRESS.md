@@ -50,6 +50,17 @@
   regression (all choices, previews and unknown-value preservation). Hosted Linux
   validation remains required; this is not a test bypass or a four-platform UI suite.
 
+- Direct isolated Ubuntu 26.04/aarch64 GTK 4.22/libadwaita 1.9 contrast measurement
+  now also passes all 54 native palette/appearance/state pairs, minimum **4.8186:1**.
+  Render-node fill and identical icon/label ink are measured using the unchanged
+  production color policy. This is an Xvfb fixture, not physical desktop/AT acceptance.
+- Existing compact-Settings regression now explicitly opens Appearance before
+  measuring its relocated typography controls; scrolling requirements remain intact.
+  B-175 escapes plain About heading/legal text at the native markup boundary; existing
+  About regression passes without parsing warnings. An isolated GTK-on-macOS diagnostic
+  passes 78 existing window regressions across sequences; two platform-specific modifier
+  expectations remain Linux-only. Hosted full Linux matrix remains the release gate.
+
 ## 2026-10-22 — B-172 internal TestFlight contrast build 413
 
 - **0.4.12 (413)** is available to the existing Internal Testers all-builds group:

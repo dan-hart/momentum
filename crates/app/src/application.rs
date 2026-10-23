@@ -433,13 +433,15 @@ impl MomentumApplication {
             &gettext("License"),
             None,
             gtk::License::Custom,
-            Some(include_str!("../../../LICENSES/GPL-3.0-or-later.txt")),
+            Some(&glib::markup_escape_text(include_str!(
+                "../../../LICENSES/GPL-3.0-or-later.txt"
+            ))),
         );
         dialog.add_legal_section(
             &gettext("Acknowledgments"),
             None,
             gtk::License::Custom,
-            Some(include_str!("../../../NOTICE.md")),
+            Some(&glib::markup_escape_text(include_str!("../../../NOTICE.md"))),
         );
         crate::typography::register_interface_root(&dialog);
 
