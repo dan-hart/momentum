@@ -21,6 +21,8 @@ mod shortcuts;
 mod sound;
 mod task_form;
 mod typography;
+mod update_policy;
+mod updates;
 mod window;
 
 #[cfg(test)]

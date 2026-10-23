@@ -23,7 +23,7 @@ Install the Apple targets with rustup:
 rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
 ./ios/scripts/build-core.sh --debug
 xcodegen generate --spec ios/project.yml
-xcodebuild -project ios/Momentum.xcodeproj -scheme Momentum \
+python3 macos/scripts/build-env.py xcodebuild -project ios/Momentum.xcodeproj -scheme Momentum \
   -configuration Debug -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build
 ```
@@ -220,3 +220,11 @@ limits](../docs/APPLE-REMINDERS.md).
 
 See the [Settings and daily-view guide](../docs/SETTINGS.md) for the native Settings
 overhaul, search discovery, About, completion messages and sound auditioning.
+
+### Build environment privacy
+
+Use the guarded command-line examples above. The shared core builder and packaging/
+test scripts drop unrelated shell credentials before invoking build tools. Raw
+`xcodebuild` or Xcode launched from a credential-bearing shell can still log scheme
+pre-action environments; launch Xcode from a clean desktop environment or use the
+CLI launcher. See [Apple build environment isolation](../docs/BUILD-ENVIRONMENT.md).

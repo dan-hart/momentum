@@ -9,7 +9,7 @@ import Testing
         for platform in [SettingsPlatform.macos, .ios] {
             let entries = SettingsDiscovery.entries(platform: platform)
             #expect(Set(entries.map(\.id)).count == entries.count)
-            #expect(Set(entries.map { SettingsDiscovery.category(for: $0.id) }) == Set(SettingsDiscovery.categories.map(\.id)))
+            #expect(Set(entries.map { SettingsDiscovery.category(for: $0.id) }) == Set(SettingsDiscovery.categories(platform: platform).map(\.id)))
             #expect(entries.allSatisfy { entry in settingsDirectory().contains { $0.id == entry.id && $0.platforms.contains(platform) } })
             #expect(!entries.contains { $0.id == "notifications.exact-alarm" })
         }

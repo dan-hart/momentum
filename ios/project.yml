@@ -43,6 +43,7 @@ targets:
           else
             "$SRCROOT/scripts/build-core.sh"
           fi
+        showEnvVars: false
         basedOnDependencyAnalysis: false
     dependencies:
       - package: MomentumCore

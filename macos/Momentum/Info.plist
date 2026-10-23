@@ -37,6 +37,8 @@
 	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>MomentumDistributionChannel</key>
+	<string>$(MOMENTUM_DISTRIBUTION_CHANNEL)</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string></string>
 	<key>NSBonjourServices</key>
@@ -45,12 +47,12 @@
 	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Dan Hart. GPL-3.0-or-later.</string>
-	<key>NSRemindersFullAccessUsageDescription</key>
-	<string>Momentum reads your selected reminders list to import incomplete reminders as independent tasks. Apple Reminders stays unchanged.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Momentum syncs with your other devices on the local network.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Momentum reads your selected reminders list to import incomplete reminders as independent tasks. Apple Reminders stays unchanged.</string>
 	<key>NSServices</key>
 	<array>
 		<dict>
@@ -75,6 +77,20 @@
 	<false/>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Reminders and a morning summary of the day's tasks.</string>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://dan-hart.github.io/momentum/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>$(MOMENTUM_UPDATE_PUBLIC_KEY)</string>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

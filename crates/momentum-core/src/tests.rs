@@ -3639,3 +3639,22 @@ fn settings_search_handles_german_cross_field_tokens_and_order_independent_ties(
         vec![SettingsPlatform::Macos, SettingsPlatform::Ios]
     );
 }
+
+#[test]
+fn settings_updates_are_desktop_only() {
+    let directory = settings_directory();
+    for id in ["updates.check", "updates.automatic", "updates.restart"] {
+        let destination = directory
+            .iter()
+            .find(|d| d.id == id)
+            .expect("desktop update destination");
+        assert_eq!(destination.category, "updates");
+        assert_eq!(
+            destination.platforms,
+            vec![SettingsPlatform::Linux, SettingsPlatform::Macos]
+        );
+    }
+    assert!(directory.iter().filter(|d| d.category == "updates").all(|d| {
+        !d.platforms.contains(&SettingsPlatform::Ios) && !d.platforms.contains(&SettingsPlatform::Android)
+    }));
+}

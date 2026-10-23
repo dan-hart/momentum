@@ -17,7 +17,8 @@ public enum SettingsDiscovery {
                 "sync": "Connections, devices, and recovery",
                 "data": "Import, export, and restore",
                 "integrations": "Shortcuts and Apple Reminders",
-                "about": "Project, version, and licenses"
+                "about": "Project, version, and licenses",
+                "updates": "Version, release notes, and updates"
             ]
             return SettingsDiscovery.localized(subtitles[id] ?? "")
         }
@@ -25,7 +26,8 @@ public enum SettingsDiscovery {
     public static func localized(_ key: String) -> String {
         Bundle.module.localizedString(forKey: key, value: key, table: "Settings")
     }
-    public static var categories: [Category] { [
+    public static var categories: [Category] { categories(platform: .macos) }
+    public static func categories(platform: SettingsPlatform) -> [Category] { [
         .init(id: "tasks", title: localized("Tasks & Planning"), symbol: "checklist"),
         .init(id: "appearance", title: localized("Appearance"), symbol: "paintpalette"),
         .init(id: "sounds", title: localized("Sounds & Feedback"), symbol: "speaker.wave.2"),
@@ -33,8 +35,9 @@ public enum SettingsDiscovery {
         .init(id: "sync", title: localized("Sync & Devices"), symbol: "arrow.triangle.2.circlepath"),
         .init(id: "data", title: localized("Data & Backups"), symbol: "externaldrive"),
         .init(id: "integrations", title: localized("App & Integrations"), symbol: "app.connected.to.app.below.fill"),
+        .init(id: "updates", title: localized("Updates"), symbol: "arrow.down.circle"),
         .init(id: "about", title: localized("About & Help"), symbol: "info.circle")
-    ] }
+    ].filter { platform == .macos || $0.id != "updates" } }
     private static let metadata: [String: (String, String)] = [
         "tasks.grouping": ("Group By", ""),
         "tasks.sort": ("Sort By", ""),
@@ -79,6 +82,9 @@ public enum SettingsDiscovery {
         "integrations.dock": ("Dock badge", ""),
         "integrations.menu-bar": ("Show in the menu bar", ""),
         "integrations.reminders-import": ("Apple Reminders", ""),
+        "updates.check": ("Check for Updates…", "upgrade update Aktualisierung aktualisieren"),
+        "updates.automatic": ("Check automatically", "automatic automatisch"),
+        "updates.restart": ("Restart Momentum…", "restart Neustart"),
         "about.app": ("About Momentum", ""),
         "about.source": ("Source Code", ""),
         "about.issues": ("Report an Issue", ""),

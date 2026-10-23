@@ -60,3 +60,11 @@ GPL-3.0-or-later. They contain no external recordings. Their reproducible genera
 is `build-aux/generate-quiet-sounds.py`; levels, note arrangements and master hashes
 are recorded in `data/resources/sounds/quiet-provenance.json`. The previous CC0
 catalog remains bundled so saved choices continue to work.
+
+## Sparkle (macOS direct-download updates)
+
+The macOS app embeds [Sparkle 2.10.0](https://github.com/sparkle-project/Sparkle),
+an MIT-licensed native update framework. Copyright notices and its bundled external
+licenses are reproduced in `LICENSES/Sparkle.txt` and the Apple resource
+`Sparkle-LICENSE.txt`. Sparkle is not linked into iOS or Android. Updates retain
+Momentum's GPL-3.0-or-later licensing and do not require a paid service.

@@ -11,6 +11,7 @@ struct QuickAddWindow: SwiftUI.View {
     @Environment(AppState.self) private var state
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
+    @State private var updateDraftID = UUID().uuidString
     @FocusState private var focused: Bool
 
     var body: some SwiftUI.View {
@@ -30,6 +31,8 @@ struct QuickAddWindow: SwiftUI.View {
         }
         .padding(16)
         .frame(width: 520)
+        .onChange(of: text) { _, value in DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: !value.isEmpty) }
+        .onDisappear { DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: false) }
         .onAppear { focused = true }
         .onExitCommand { dismiss() }
     }

@@ -70,6 +70,9 @@ jobs:
       # Run it on real machines before a release; this job covers everything that does not
       # need the network.
 
+      - name: Build environment credential isolation regressions
+        run: python3 -m unittest discover -s macos/scripts/tests -p test_build_environment.py -v
+
       - name: Localization tooling and accessibility audit self-test
         run: |
           python3 -m unittest discover -s macos/scripts/tests -p test_localize.py
@@ -81,7 +84,7 @@ jobs:
           brew install xcodegen
           cd macos
           xcodegen generate
-          xcodebuild -project Momentum.xcodeproj -scheme Momentum -configuration Debug \
+          python3 scripts/build-env.py xcodebuild -project Momentum.xcodeproj -scheme Momentum -configuration Debug \
             -derivedDataPath ../build/macos CODE_SIGNING_ALLOWED=NO build
 
       - name: Verify extracted translations and compiled resources

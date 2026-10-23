@@ -63,6 +63,9 @@ public struct MomentumAboutView: View {
             Section(SettingsDiscovery.localized("Acknowledgments")) {
                 notice("Momentum-NOTICE.md", title: SettingsDiscovery.localized("Acknowledgments"))
                 notice("MIT", title: "MIT")
+                #if os(macOS)
+                notice("Sparkle-LICENSE", title: "Sparkle · MIT and bundled licenses")
+                #endif
                 notice("AGPL-3.0-only", title: "LibreSync · AGPL-3.0")
                 notice("CC0-1.0", title: "VCSL · CC0-1.0")
             }.settingsTarget("about.acknowledgments")

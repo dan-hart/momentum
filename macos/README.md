@@ -26,7 +26,7 @@ From the command line:
 ```sh
 macos/scripts/build-core.sh                 # release, every installed Apple target
 macos/scripts/build-core.sh --debug         # faster: this Mac's architecture only
-cd macos && xcodebuild -scheme Momentum build
+cd macos && python3 scripts/build-env.py xcodebuild -scheme Momentum build
 ```
 
 Requirements: Xcode 27 (macOS 26 SDK), a Rust toolchain, and `xcodegen`
@@ -207,7 +207,7 @@ Ad-hoc builds compile the metadata but macOS may refuse to expose or execute it.
 Choose your own team in Xcode, or use explicit local signing overrides:
 
 ```sh
-xcodebuild -project macos/Momentum.xcodeproj -scheme Momentum \
+python3 macos/scripts/build-env.py xcodebuild -project macos/Momentum.xcodeproj -scheme Momentum \
   -configuration Debug CODE_SIGN_STYLE=Manual \
   CODE_SIGN_IDENTITY="Apple Development" DEVELOPMENT_TEAM=YOUR_TEAM_ID build
 ```
@@ -230,3 +230,11 @@ cross-device limits, and [PROGRESS](../docs/PROGRESS.md) for dated verification.
 
 See the [Settings and daily-view guide](../docs/SETTINGS.md) for categories, native search,
 About, quiet sound previews and Morning/Evening presentation.
+
+### Build environment privacy
+
+Use the guarded command-line examples above. The shared core builder and packaging/
+test scripts drop unrelated shell credentials before invoking build tools. Raw
+`xcodebuild` or Xcode launched from a credential-bearing shell can still log scheme
+pre-action environments; launch Xcode from a clean desktop environment or use the
+CLI launcher. See [Apple build environment isolation](../docs/BUILD-ENVIRONMENT.md).

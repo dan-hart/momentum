@@ -20,3 +20,4 @@ crates/app/src/task_form.rs
 crates/app/src/window.rs
 crates/app/src/settings_ui.rs
 crates/app/src/empty_messages.rs
+crates/app/src/updates.rs

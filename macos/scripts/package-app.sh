@@ -43,14 +43,17 @@ echo "== xcodegen"
 echo "== xcodebuild Release (identity: $IDENTITY)"
 # The identity may contain spaces ("Developer ID Application: Name (TEAM)"): pass the
 # settings as separate arguments rather than a word-split string.
-set -- CODE_SIGN_STYLE=Manual "CODE_SIGN_IDENTITY=$IDENTITY"
+set -- CODE_SIGN_STYLE=Manual "CODE_SIGN_IDENTITY=$IDENTITY" \
+  MOMENTUM_DISTRIBUTION_CHANNEL=direct "MOMENTUM_UPDATE_PUBLIC_KEY=${SPARKLE_PUBLIC_KEY:-}"
 if [ "$IDENTITY" != "-" ]; then
   [ -n "$TEAM" ] || { echo "APPLE_TEAM_ID is required with MACOS_SIGN_IDENTITY" >&2; exit 1; }
   set -- "$@" "DEVELOPMENT_TEAM=$TEAM" OTHER_CODE_SIGN_FLAGS=--timestamp
 fi
 mkdir -p "$DERIVED"
 LOG="$DERIVED/xcodebuild.log"
-if ! xcodebuild -project macos/Momentum.xcodeproj -scheme Momentum -configuration Release \
+: > "$LOG"
+chmod 600 "$LOG"
+if ! /usr/bin/python3 "$ROOT/macos/scripts/build-env.py" xcodebuild -project macos/Momentum.xcodeproj -scheme Momentum -configuration Release \
   -derivedDataPath "$DERIVED" ARCHS="$CORE_ARCHS" ONLY_ACTIVE_ARCH=NO "$@" build >"$LOG" 2>&1; then
   echo "xcodebuild failed; full log: $LOG" >&2
   grep -E 'error:|\*\* BUILD' "$LOG" >&2 || tail -n 60 "$LOG" >&2
@@ -68,6 +71,12 @@ if [ "${REQUIRE_UNIVERSAL:-0}" = 1 ]; then
 fi
 CLI_VERSION=$("$APP/Contents/MacOS/mo" --version | awk '{print $2}')
 [ "$CLI_VERSION" = "$VERSION" ] || { echo "mo says $CLI_VERSION, workspace says $VERSION" >&2; exit 1; }
+# The relaunch helper must be shipped and signed with the same architectures; a
+# missing helper must fail packaging rather than breaking Restart after an update.
+HELPER="$APP/Contents/MacOS/MomentumRelaunch"
+[ -x "$HELPER" ] || { echo "missing MomentumRelaunch helper" >&2; exit 1; }
+[ "$(lipo -archs "$HELPER")" = "$ARCHS" ] || { echo "relaunch helper architecture mismatch" >&2; exit 1; }
+codesign --verify --strict --verbose=1 "$HELPER"
 codesign --verify --deep --strict --verbose=1 "$APP"
 
 if [ -n "${APPLE_ID:-}" ] && [ -n "$TEAM" ] && [ -n "${APPLE_APP_PASSWORD:-}" ]; then

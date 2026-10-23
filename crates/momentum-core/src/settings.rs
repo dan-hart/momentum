@@ -69,6 +69,7 @@ pub fn settings_directory() -> Vec<SettingsDestination> {
         ("integrations", "dock menu-bar", &[Macos][..]),
         ("integrations", "system-search", &[Macos, Ios, Android][..]),
         ("integrations", "reminders-import", apple),
+        ("updates", "check automatic restart", desktop),
         ("about", "app source issues license acknowledgments", all),
     ] {
         for name in names.split_whitespace() {

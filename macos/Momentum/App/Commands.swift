@@ -27,6 +27,13 @@ struct MomentumCommands: Commands {
                 openSettings()
             }
         }
+        CommandGroup(after: .appInfo) {
+            Button(updateText("Check for Updates…")) {
+                SettingsNavigation.shared.open("updates.check")
+                openSettings()
+                DesktopUpdateController.shared.check()
+            }.disabled(DesktopUpdateController.shared.busy || (DesktopUpdateController.shared.channel == .direct && !DesktopUpdateController.shared.sparkleCanCheck))
+        }
         CommandGroup(replacing: .newItem) {
             Button(String(localized: "New Task…")) { state.newTask() }
                 .keyboardShortcut(shortcut(.newTask))

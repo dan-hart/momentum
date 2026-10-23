@@ -49,7 +49,7 @@ struct SettingsScreen: View {
     }
     @ViewBuilder private var directoryRows: some View {
         if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            ForEach(SettingsDiscovery.categories) { category in
+            ForEach(SettingsDiscovery.categories(platform: .ios)) { category in
                 NavigationLink(value: category.id + ".") {
                     Label {
                         VStack(alignment: .leading, spacing: 4) {
@@ -79,7 +79,7 @@ struct SettingsScreen: View {
                 .environment(\.settingsDestination, destination)
                 .task(id: destination) { await Task.yield(); proxy.scrollTo(destination, anchor: .center) }
         }
-        .navigationTitle(SettingsDiscovery.categories.first { $0.id == SettingsDiscovery.category(for: destination) }?.title ?? "Settings")
+        .navigationTitle(SettingsDiscovery.categories(platform: .ios).first { $0.id == SettingsDiscovery.category(for: destination) }?.title ?? "Settings")
         .navigationBarTitleDisplayMode(.inline)
     }
     private var entries: [SettingsEntry] {

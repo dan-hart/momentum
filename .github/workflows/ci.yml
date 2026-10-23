@@ -27,7 +27,9 @@ jobs:
       - name: Workflow test parser
         run: python3 -m pip install PyYAML==6.0.2
       - name: Credential and isolated publication regressions
-        run: python3 -m unittest discover -s build-aux/tests -p 'test_release_channels.py' -v
+        run: |
+          python3 -m unittest discover -s build-aux/tests -p 'test_release_channels.py' -v
+          python3 -m unittest discover -s build-aux/tests -p 'test_sparkle_release.py' -v
 
   versions:
     name: Versions aligned

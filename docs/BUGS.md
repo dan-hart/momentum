@@ -1,5 +1,54 @@
 # Momentum bug ledger
 
+## B-178 — Inherited shell credentials exposed by Apple build logging
+
+- **Severity/platform assessment:** high, reproduced in local macOS Xcode build
+  output on 2026-10-23. iOS uses the same script/scheme mechanism and shared builder;
+  its build paths are protected too. Linux/Android native build logging is not
+  implicated by this Xcode-specific reproduction.
+- **Cause/reproduction:** an interactive shell globally exported an unrelated API
+  credential; the build inherited it and Xcode's default script environment dump
+  printed it. A disposable project with harmless sentinels reproduces raw scheme
+  exposure with or without settingsTarget. No provider integration is involved.
+- **Expected/fix:** documented Apple CLI/build-script/CI paths pass only explicit
+  build environment variables, suppress Xcode's script environment logging, and
+  create private text logs. Core sanitation is unconditional before process-scoped
+  locking, including when a legacy lock marker is inherited. iOS runner guards
+  all tool children. No global shell authentication changes were made.
+- **Regression/status:** six build-environment and thirteen iOS runner regressions
+  pass, including observed red/green credential inheritance and lock-marker cases.
+  Real canonical signed Debug build and generated macOS/iOS script flags checked;
+  see PROGRESS for final source evidence. Guarded paths fixed/verified for that scope.
+  Raw unwrapped Xcode from a credential-bearing parent remains an explicit tool
+  boundary; [BUILD-ENVIRONMENT.md](BUILD-ENVIRONMENT.md) records safe entry points.
+  Previous exposure still requires separate credential rotation; redaction is not
+  revocation. No credential was committed or pushed.
+
+
+## B-177 — Desktop updater ownership and lifecycle hazards caught before release
+
+- **Severity/platforms:** high for the new macOS updater installation/restart path;
+  medium for new Linux portal state and release publication. Found in local draft
+  implementation during adversarial review on 2026-10-23; not a shipped regression.
+- **Reproduction/expected:** fail a Homebrew owner probe, cancel a subprocess with
+  descendants, return success without replacing the bundle, restart while old CLI
+  services exist, replay late portal signals, or rerun an already-published release.
+  Unknown ownership must never select direct replacement; cancellation, installation
+  success and restart status must reflect actual outcomes; signed archive URLs must
+  retain their bytes.
+- **Fix:** ambiguous ownership fails closed; owned process groups bound descendant
+  lifetime; receipt and disk version are revalidated; native helper waits for old
+  process exit; editing/sync postpone restart; portal state/generation guards and
+  confirmed cancellation preserve terminal results; default-off monitoring consent
+  is explicit. Release asset immutability gates run before upload and archive/key/
+  version checks gate scoped feed publication. Flatpak immediate-check UI uses native
+  Software because UpdateMonitor cannot force a poll.
+- **Regression evidence/status:** behavioral units, independent reproducer/review,
+  and signing interoperability are recorded in PROGRESS. Fixed in local source;
+  actual Sparkle/Flatpak upgrade, restart and consent acceptance remain unverified.
+  iOS/Android are intentionally outside desktop updater scope.
+
+
 Updated: 2026-10-23. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 
 F-073 celebration visual refinement: the user requested clearer button styling and a

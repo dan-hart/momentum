@@ -195,6 +195,7 @@ impl MomentumApplication {
             return w;
         }
         let window = MomentumWindow::new(self);
+        crate::updates::startup();
         *self.imp().window.borrow_mut() = Some(window.downgrade());
         window
     }

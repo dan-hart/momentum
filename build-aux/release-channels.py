@@ -225,6 +225,7 @@ def main():
     p.add_argument("--repo", type=Path, required=True)
     p.add_argument("--branch", required=True)
     p.add_argument("--message", required=True)
+    p.add_argument("--path", action="append", dest="paths")
     p = sub.add_parser("check-flatpak")
     p.add_argument("--repo", type=Path, required=True)
     p.add_argument("--version", required=True)
@@ -249,7 +250,7 @@ def main():
     elif args.command == "homebrew":
         homebrew(args.tap, args.assets, args.version, args.notarized)
     elif args.command == "publish-git":
-        publish_git(args.repo, args.branch, args.message)
+        publish_git(args.repo, args.branch, args.message, args.paths)
     elif args.command == "check-flatpak":
         check_flatpak(args.repo, args.version, args.arch)
     elif args.command == "check-signing-key":

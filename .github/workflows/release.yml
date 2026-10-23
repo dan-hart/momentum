@@ -53,10 +53,18 @@ jobs:
           FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
           FLATPAK_GPG_FINGERPRINT: ${{ vars.FLATPAK_GPG_FINGERPRINT }}
         run: python3 build-aux/release-channels.py credentials
+      - name: Required authenticated macOS updater configuration
+        env:
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: python3 build-aux/sparkle-release.py credentials --shape-only
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
           persist-credentials: false
+      - name: Require a tag that supports authenticated desktop updates
+        run: |
+          test -f build-aux/sparkle-release.py || { echo "Legacy tags must use their original release workflow; refusing to rebuild them with updater tooling." >&2; exit 1; }
       - name: Every copy of the version equals the tag
         run: build-aux/release.py check --tag "$TAG"
       - id: version
@@ -203,6 +211,26 @@ jobs:
           security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
           rm -f "$RUNNER_TEMP/certificate.p12"
           echo "MACOS_SIGN_IDENTITY=Developer ID Application" >> "$GITHUB_ENV"
+      - name: Download pinned Sparkle signing tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          curl --fail --location --retry 3 https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-2.10.0.tar.xz -o "$RUNNER_TEMP/sparkle.tar.xz"
+          echo "c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c  $RUNNER_TEMP/sparkle.tar.xz" | shasum -a 256 --check
+          tar -xf "$RUNNER_TEMP/sparkle.tar.xz" -C "$RUNNER_TEMP/sparkle"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install workflow-test parser
+        run: python3 -m pip install PyYAML==6.0.2
+      - name: Sparkle signature interoperability regressions
+        env:
+          SPARKLE_SIGN_TOOL: ${{ runner.temp }}/sparkle/bin/sign_update
+        run: python3 -m unittest discover -s build-aux/tests -p test_sparkle_release.py -v
+      - name: Verify updater signing key pair before packaging
+        env:
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: python3 build-aux/sparkle-release.py credentials
       - name: Build, sign, notarize and package
         env:
           REQUIRE_UNIVERSAL: "1"
@@ -210,7 +238,18 @@ jobs:
           # Notarization only when the app password is present; the script checks all three.
           APPLE_ID: ${{ needs.verify.outputs.notarize_macos == 'true' && secrets.APPLE_ID || '' }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
         run: macos/scripts/package-app.sh dist
+      - name: Sign exact final archive and generate appcast
+        env:
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          VERSION=$(build-aux/release.py version)
+          BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' build/macos-release/Build/Products/Release/Momentum.app/Contents/Info.plist)
+          python3 build-aux/sparkle-release.py sign --archive "dist/Momentum-v$VERSION-macos.zip" \
+            --feed dist/appcast.xml --version "$VERSION" --build "$BUILD" --tool "$RUNNER_TEMP/sparkle/bin/sign_update"
+          printf '%s\n' "$SPARKLE_PUBLIC_KEY" > dist/sparkle-public-key.txt
       - uses: actions/upload-artifact@v4
         with:
           name: macos
@@ -356,6 +395,18 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: release-notes
+      - name: Preserve any already-published release bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > existing-release.json 2> existing-release-error.txt; then
+            mkdir -p existing-assets
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir existing-assets
+            python3 build-aux/sparkle-release.py immutable-assets --incoming dist --existing existing-assets
+          else
+            # A network/auth/rate-limit failure is not proof that the release is new.
+            grep -q '(HTTP 404)' existing-release-error.txt || exit 1
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
@@ -371,11 +422,13 @@ jobs:
             dist/*-android-*.txt
             dist/*-android-*.json
             dist/SHA256SUMS.txt
+            dist/appcast.xml
+            dist/sparkle-public-key.txt
 
   # ---------------------------------------------- 6. required install channels
   install-channels:
     name: Publish and verify install channels
-    needs: [verify, release, flatpak-repo]
+    needs: [verify, release, flatpak-repo, sparkle-feed]
     uses: ./.github/workflows/install-channels.yml
     with:
       version: ${{ needs.verify.outputs.version }}
@@ -384,3 +437,48 @@ jobs:
       gpg_fingerprint: ${{ vars.FLATPAK_GPG_FINGERPRINT }}
     secrets:
       HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
+
+  # Publish only after public release assets exist. Flatpak exports have completed,
+  # so this scoped commit preserves their repository without concurrent writes.
+  sparkle-feed:
+    name: Publish authenticated macOS update feed
+    needs: [verify, release, flatpak-repo]
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: hosted-repo
+      - name: Download final public archive and feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --dir public-assets \
+            --pattern "Momentum-v$VERSION-macos.zip" --pattern appcast.xml --pattern sparkle-public-key.txt
+      - name: Validate signature, exact public bytes and trust continuity
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+        run: |
+          python3 build-aux/sparkle-release.py validate --archive "public-assets/Momentum-v$VERSION-macos.zip" \
+            --feed public-assets/appcast.xml --previous hosted-repo/appcast.xml
+          python3 build-aux/sparkle-release.py check-public-key --key-file public-assets/sparkle-public-key.txt \
+            --previous-key-file hosted-repo/sparkle-public-key.txt
+      - name: Publish scoped feed files
+        run: |
+          cp public-assets/appcast.xml public-assets/sparkle-public-key.txt hosted-repo/
+          git -C hosted-repo config user.name "github-actions[bot]"
+          git -C hosted-repo config user.email "github-actions[bot]@users.noreply.github.com"
+          python3 build-aux/release-channels.py publish-git --repo hosted-repo --branch gh-pages \
+            --message "Publish authenticated macOS update feed" --path appcast.xml --path sparkle-public-key.txt
+      - name: Deploy and verify public update feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --jq .status
+          python3 build-aux/sparkle-release.py verify-hosted --feed public-assets/appcast.xml

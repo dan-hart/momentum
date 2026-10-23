@@ -69,3 +69,41 @@
 "Shortcuts and Apple Reminders" = "Shortcuts and Apple Reminders";
 
 "Project, version, and licenses" = "Project, version, and licenses";
+
+"Updates" = "Updates";
+"Version, release notes, and updates" = "Version, release notes, and updates";
+"Check for Updates…" = "Check for Updates…";
+"Check automatically" = "Check automatically";
+"Restart Momentum…" = "Restart Momentum…";
+"Installed version" = "Installed version";
+"Latest version" = "Latest version";
+"Checking for updates…" = "Checking for updates…";
+"An update is available." = "An update is available.";
+"You’re up to date." = "You’re up to date.";
+"Update cancelled. Check again when you’re ready." = "Update cancelled. Check again when you’re ready.";
+"Homebrew couldn’t complete this request. Try again, or update Momentum in Terminal." = "Homebrew couldn’t complete this request. Try again, or update Momentum in Terminal.";
+"Updating Momentum with Homebrew…" = "Updating Momentum with Homebrew…";
+"Update installed. Restart Momentum when you’re ready." = "Update installed. Restart Momentum when you’re ready.";
+"Restart failed. Quit and reopen Momentum to use the update." = "Restart failed. Quit and reopen Momentum to use the update.";
+"Off by default. Checks only while Momentum is running. Updates require your approval." = "Off by default. Checks only while Momentum is running. Updates require your approval.";
+"Update with Homebrew…" = "Update with Homebrew…";
+"Cancel" = "Cancel";
+"Release notes" = "Release notes";
+"Update Momentum with Homebrew?" = "Update Momentum with Homebrew?";
+"Update" = "Update";
+"Only the Momentum cask will be upgraded. You can restart after the update finishes." = "Only the Momentum cask will be upgraded. You can restart after the update finishes.";
+"Restart Momentum now?" = "Restart Momentum now?";
+"Restart" = "Restart";
+"Momentum will close and reopen using the installed update." = "Momentum will close and reopen using the installed update.";
+"Development and source builds are updated by rebuilding. This copy won’t replace itself." = "Development and source builds are updated by rebuilding. This copy won’t replace itself.";
+"Installed with Homebrew. Updates keep your Homebrew installation in sync." = "Installed with Homebrew. Updates keep your Homebrew installation in sync.";
+"Direct download. Momentum verifies signed updates before installing them." = "Direct download. Momentum verifies signed updates before installing them.";
+"Signed updates aren’t configured for this copy. Download the latest release to update." = "Signed updates aren’t configured for this copy. Download the latest release to update.";
+
+"Finish editing tasks and wait for sync before restarting." = "Finish editing tasks and wait for sync before restarting.";
+
+"Momentum is updating" = "Momentum is updating";
+"Wait for the update to finish before quitting. You can cancel an update check in Settings." = "Wait for the update to finish before quitting. You can cancel an update check in Settings.";
+"OK" = "OK";
+
+"Momentum couldn’t verify its Homebrew installation. Repair Homebrew or update the Momentum cask in Terminal." = "Momentum couldn’t verify its Homebrew installation. Repair Homebrew or update the Momentum cask in Terminal.";

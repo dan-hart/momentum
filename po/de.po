@@ -4273,3 +4273,129 @@ msgstr "Offline-Änderungen, wiederhergestellte Daten, Rückgängig-Aktionen, Ko
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Contain Android credential failures and prevent stopped sync providers restarting background listeners. Avoid sensitive dependency logging and persisted secret hashes."
 msgstr "Android behandelt Zugangsdatenfehler zuverlässig und verhindert, dass gestoppte Synchronisierungsdienste Hintergrundverbindungen neu starten. Sensible Protokollausgaben von Abhängigkeiten und gespeicherte Passwortprüfwerte werden vermieden."
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:4
+msgid "Check automatically for app updates"
+msgstr "Automatisch nach App-Aktualisierungen suchen"
+
+#: crates/app/src/settings_ui.rs:20 crates/app/src/updates.rs:362
+msgid "Updates"
+msgstr "Aktualisierungen"
+
+#: crates/app/src/settings_ui.rs:29 crates/app/src/updates.rs:384
+msgid "Check for Updates"
+msgstr "Nach Aktualisierungen suchen"
+
+#: crates/app/src/settings_ui.rs:30
+msgid "update install version release"
+msgstr "Aktualisierung installieren Version Veröffentlichung"
+
+#: crates/app/src/settings_ui.rs:34 crates/app/src/updates.rs:388
+msgid "Check automatically"
+msgstr "Automatisch suchen"
+
+#: crates/app/src/settings_ui.rs:35
+msgid "automatic app updates"
+msgstr "automatische App-Aktualisierungen"
+
+#: crates/app/src/settings_ui.rs:39 crates/app/src/updates.rs:408
+#: crates/app/src/updates.rs:411
+msgid "Restart Momentum"
+msgstr "Momentum neu starten"
+
+#: crates/app/src/settings_ui.rs:40
+msgid "restart reopen installed update"
+msgstr "Neustart erneut öffnen installierte Aktualisierung"
+
+#: crates/app/src/updates.rs:48
+msgid "Updates use your existing signed Flatpak repository."
+msgstr "Aktualisierungen verwenden deine bestehende signierte Flatpak-Paketquelle."
+
+#: crates/app/src/updates.rs:49
+msgid "Monitoring continues until Stop or Momentum quits. Flatpak may take 30 minutes to check. Open Software to check now."
+msgstr "Die Überwachung läuft bis zum Stoppen oder Beenden von Momentum. Die Flatpak-Prüfung kann 30 Minuten dauern. Öffne die Softwareverwaltung, um jetzt zu prüfen."
+
+#: crates/app/src/updates.rs:50
+msgid "An update is available from your Flatpak repository."
+msgstr "Eine Aktualisierung ist in deiner Flatpak-Paketquelle verfügbar."
+
+#: crates/app/src/updates.rs:51
+msgid "Update installed. Close Momentum and reopen it to use the new version."
+msgstr "Aktualisierung installiert. Schließe Momentum und öffne es erneut, um die neue Version zu verwenden."
+
+#: crates/app/src/updates.rs:52
+#, rust-format
+msgid "Installing update… {percent}%"
+msgstr "Aktualisierung wird installiert… {percent}%"
+
+#: crates/app/src/updates.rs:53
+msgid "Your installed Flatpak is up to date."
+msgstr "Dein installiertes Flatpak ist aktuell."
+
+#: crates/app/src/updates.rs:54
+msgid "Cancelling update…"
+msgstr "Aktualisierung wird abgebrochen…"
+
+#: crates/app/src/updates.rs:55
+msgid "Update cancelled. You can check again."
+msgstr "Aktualisierung abgebrochen. Du kannst erneut suchen."
+
+#: crates/app/src/updates.rs:56
+msgid "Update failed or is unavailable. Try again, or use your system software app. New permissions require a system update."
+msgstr "Die Aktualisierung ist fehlgeschlagen oder nicht verfügbar. Versuche es erneut oder verwende die Softwareverwaltung deines Systems. Neue Berechtigungen erfordern eine Aktualisierung über das System."
+
+#: crates/app/src/updates.rs:183 crates/app/src/updates.rs:373
+msgid "Not checked"
+msgstr "Noch nicht geprüft"
+
+#: crates/app/src/updates.rs:365
+msgid "App Updates"
+msgstr "App-Aktualisierungen"
+
+#: crates/app/src/updates.rs:367
+msgid "Installed version"
+msgstr "Installierte Version"
+
+#: crates/app/src/updates.rs:372
+msgid "Latest available Flatpak commit"
+msgstr "Neuester verfügbarer Flatpak-Commit"
+
+#: crates/app/src/updates.rs:382
+msgid "Update status"
+msgstr "Aktualisierungsstatus"
+
+#: crates/app/src/updates.rs:386
+msgid "Monitor for Updates"
+msgstr "Auf Aktualisierungen überwachen"
+
+#: crates/app/src/updates.rs:390
+msgid "Monitor while Momentum runs. Flatpak controls check timing. Installation always needs your approval."
+msgstr "Überwachen, solange Momentum läuft. Flatpak bestimmt den Prüfzeitpunkt. Die Installation erfordert immer deine Zustimmung."
+
+#: crates/app/src/updates.rs:394
+msgid "Install Update…"
+msgstr "Aktualisierung installieren…"
+
+#: crates/app/src/updates.rs:395
+msgid "Release notes"
+msgstr "Versionshinweise"
+
+#: crates/app/src/updates.rs:406
+msgid "Stop checking or cancel update"
+msgstr "Suche stoppen oder Aktualisierung abbrechen"
+
+#: crates/app/src/updates.rs:412
+msgid "After an update, quit Momentum with Ctrl+Q, then reopen it. Closing a window can leave Momentum running in the background. Your saved tasks remain on this device; syncing is not required."
+msgstr "Beende Momentum nach einer Aktualisierung mit Strg+Q und öffne es erneut. Beim Schließen eines Fensters kann Momentum im Hintergrund weiterlaufen. Deine gespeicherten Aufgaben bleiben auf diesem Gerät. Eine Synchronisierung ist nicht erforderlich."
+
+#: crates/app/src/updates.rs:453
+msgid "Updates are disabled in demo mode."
+msgstr "Aktualisierungen sind im Demomodus deaktiviert."
+
+#: crates/app/src/updates.rs:455
+msgid "This is a development or source installation. Update it using the tool that installed it."
+msgstr "Dies ist eine Entwicklungs- oder Quellcodeinstallation. Aktualisiere sie mit dem Werkzeug, mit dem sie installiert wurde."
+
+#: crates/app/src/updates.rs
+msgid "Update installed. Quit Momentum with Ctrl+Q and reopen it to use the new version."
+msgstr "Aktualisierung installiert. Beende Momentum mit Strg+Q und öffne es erneut, um die neue Version zu verwenden."

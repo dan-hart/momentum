@@ -69,3 +69,41 @@
 "Shortcuts and Apple Reminders" = "Kurzbefehle und Apple Erinnerungen";
 
 "Project, version, and licenses" = "Projekt, Version und Lizenzen";
+
+"Updates" = "Updates";
+"Version, release notes, and updates" = "Version, Versionshinweise und Updates";
+"Check for Updates…" = "Nach Updates suchen …";
+"Check automatically" = "Automatisch nach Updates suchen";
+"Restart Momentum…" = "Momentum neu starten …";
+"Installed version" = "Installierte Version";
+"Latest version" = "Neueste Version";
+"Checking for updates…" = "Updates werden gesucht …";
+"An update is available." = "Ein Update ist verfügbar.";
+"You’re up to date." = "Die App ist auf dem neuesten Stand.";
+"Update cancelled. Check again when you’re ready." = "Update abgebrochen. Suche erneut, wenn du bereit bist.";
+"Homebrew couldn’t complete this request. Try again, or update Momentum in Terminal." = "Homebrew konnte die Anfrage nicht abschließen. Versuche es erneut oder aktualisiere Momentum im Terminal.";
+"Updating Momentum with Homebrew…" = "Momentum wird mit Homebrew aktualisiert …";
+"Update installed. Restart Momentum when you’re ready." = "Update installiert. Starte Momentum neu, wenn du bereit bist.";
+"Restart failed. Quit and reopen Momentum to use the update." = "Neustart fehlgeschlagen. Beende und öffne Momentum erneut, um das Update zu verwenden.";
+"Off by default. Checks only while Momentum is running. Updates require your approval." = "Standardmäßig aus. Sucht nur, während Momentum läuft. Updates erfordern deine Zustimmung.";
+"Update with Homebrew…" = "Mit Homebrew aktualisieren …";
+"Cancel" = "Abbrechen";
+"Release notes" = "Versionshinweise";
+"Update Momentum with Homebrew?" = "Momentum mit Homebrew aktualisieren?";
+"Update" = "Aktualisieren";
+"Only the Momentum cask will be upgraded. You can restart after the update finishes." = "Nur das Momentum-Cask wird aktualisiert. Du kannst nach Abschluss des Updates neu starten.";
+"Restart Momentum now?" = "Momentum jetzt neu starten?";
+"Restart" = "Neu starten";
+"Momentum will close and reopen using the installed update." = "Momentum wird geschlossen und mit dem installierten Update erneut geöffnet.";
+"Development and source builds are updated by rebuilding. This copy won’t replace itself." = "Entwicklungs- und Quellcode-Builds werden durch erneutes Kompilieren aktualisiert. Diese Kopie ersetzt sich nicht selbst.";
+"Installed with Homebrew. Updates keep your Homebrew installation in sync." = "Mit Homebrew installiert. Updates halten deine Homebrew-Installation aktuell.";
+"Direct download. Momentum verifies signed updates before installing them." = "Direkt heruntergeladen. Momentum prüft signierte Updates vor der Installation.";
+"Signed updates aren’t configured for this copy. Download the latest release to update." = "Signierte Updates sind für diese Kopie nicht eingerichtet. Lade die neueste Version herunter, um zu aktualisieren.";
+
+"Finish editing tasks and wait for sync before restarting." = "Beende die Aufgabenbearbeitung und warte auf die Synchronisierung, bevor du neu startest.";
+
+"Momentum is updating" = "Momentum wird aktualisiert";
+"Wait for the update to finish before quitting. You can cancel an update check in Settings." = "Warte vor dem Beenden, bis das Update abgeschlossen ist. Eine Update-Suche kannst du in den Einstellungen abbrechen.";
+"OK" = "OK";
+
+"Momentum couldn’t verify its Homebrew installation. Repair Homebrew or update the Momentum cask in Terminal." = "Momentum konnte seine Homebrew-Installation nicht prüfen. Repariere Homebrew oder aktualisiere das Momentum-Cask im Terminal.";

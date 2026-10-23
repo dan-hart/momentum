@@ -302,3 +302,16 @@ SDK/NDK/Rust and Maven/Gradle inputs remain prerequisites in the build guide.
 `build-aux/release.py checksums --assets dist` includes every top-level distribution
 file and excludes `SHA256SUMS.txt` itself. The first remote Android/tagged release
 execution remains unverified until an explicitly requested push/tag/run occurs.
+
+## Authenticated desktop updater (F-076)
+
+See [UPDATES.md](UPDATES.md) for the approved channel policy, native platform
+limitations and signing configuration. Future updater-enabled releases require
+`vars.SPARKLE_PUBLIC_KEY` and `secrets.SPARKLE_PRIVATE_KEY`; the dedicated identity/configuration was provisioned during the authorized
+0.4.14 release. The matching 32-byte Ed25519 seed/public key gate fails closed.
+The exact final Mac ZIP is signed, independently verified, and published with its
+appcast/key. Existing release files cannot be overwritten with rebuilt bytes.
+Feed publication waits for the public release and both Flatpak exports, preserves
+the hosted repository, checks version/key continuity and reads the deployed feed
+back. No production key/feed means direct-download update acceptance remains blocked.
+Legacy pre-updater tags must run their original release workflow.

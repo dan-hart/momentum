@@ -6,6 +6,18 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Desktop Updates settings with optional automatic checks, Homebrew-aware macOS
+  upgrades, signed Sparkle updates for direct downloads, and Flatpak update monitoring.
+- Native Linux Software shortcuts for immediate update checks and clear installation,
+  cancellation, and restart guidance.
+
+### Fixed
+- Prevent ambiguous package ownership, cancelled subprocesses, stale installation
+  receipts, and overlapping restarts from producing unsafe or misleading updates.
+- Isolate documented Apple build commands from unrelated shell credentials and
+  disable script-environment logging. Protect generated build logs and update feeds.
+
 ## [0.4.13] - 2026-10-23
 
 ### Changed

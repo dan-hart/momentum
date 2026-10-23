@@ -117,6 +117,7 @@ mod imp {
     impl ObjectImpl for MomentumPrefs {
         fn constructed(&self) {
             self.parent_constructed();
+            crate::updates::add_page(self.obj().upcast_ref());
             // PreferencesGroup titles accept markup, unlike page titles.
             self.about_group
                 .set_title(&glib::markup_escape_text(&gettext("About & Help")));

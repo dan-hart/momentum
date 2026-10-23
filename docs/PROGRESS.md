@@ -1,6 +1,120 @@
 # Momentum progress and handoff
 
 
+
+## 2026-10-23 — Desktop updater/security publication and 0.4.14 authorization
+
+- Dan explicitly authorized committing/pushing the desktop updater and build-security
+  work, then the next patch release on all existing channels. The source branch is
+  task/desktop-updates; main merge is not requested in this release instruction.
+- Preflight confirms the dedicated production Sparkle identity was missing. The
+  release now has a dedicated scoped Keychain identity and protected off-repository
+  recovery seed; matching public key/Actions secret configured and independently
+  verified. No private key is included in source, Git, app metadata, or documentation.
+  The immutable public archive/feed gates verify actual use during publication.
+- Source publication is gated by an exact staged-tree credential scan, private-key/
+  provider-pattern scan, passing regression checks and remote commit readback.
+  All prior local implementation/review/native evidence remains scoped below.
+- Nearby release validation exposed a missing explicit test opt-in in the new build
+  allowlist. The focused regression failed before adding that single known control
+  and passes afterward; unrelated credentials remain excluded. The opt-in real-node
+  check passed before tagging: one actual two-node test in 12.743 seconds.
+
+
+## 2026-10-23 — B-178 Apple build credential exposure root cause and fix (local)
+
+- User requested investigation and root-cause correction after an unrelated API
+  key appeared in Xcode output. Existing updater changes on task/desktop-updates
+  remain intact; no commit/push or remote authentication changes are authorized.
+- Confirmed the exact inherited key is configured by the interactive shell. A clean
+  interactive shell introduces it, while a clean noninteractive login shell does
+  not. Only booleans/configuration line references were inspected; no key value was
+  echoed during investigation. The API key has no role in Momentum builds.
+- Confirmed Xcode's environment dump as the logging boundary. A disposable native
+  project using fake sentinels reproduces scheme leakage both with/without a
+  settings target. The supported CLI suppression flag and generated target phase
+  flags are distinct; the raw scheme boundary is documented honestly.
+- Added explicit allowlist exec launcher, guarded packaging/shared-core/iOS runner/
+  CI/README commands, generated phase suppression, owner-only text logs. Review
+  caught legacy lock-marker bypass; unconditional clean entry plus locked internal
+  implementation fixes it. The original implementation body is unchanged apart
+  from guarded nested XCFramework packaging. iOS freshness includes new build files.
+- Six environment tests and thirteen iOS runner tests pass. Observed failures before
+  fixes show real credential-variable inheritance (fake values) and lock-marker
+  bypass; fixes turn those tests green. Canonical signed Debug build through the
+  launcher succeeded with a credential-bearing parent; the key and sentinel were
+  both absent from the protected log. Generated Mac/iOS phase logging flags checked.
+  The final canonical signed Debug repeat after unconditional lock-entry refactor
+  also passed: parent credential present=true, credential in log=false, sentinel in
+  log=false, environment dump=false, text log mode=0600. Receipt retained privately.
+  The audit also
+  found credential bytes in generated Xcode caches; three remaining generated logs
+  were scrubbed and two contaminated build-cache directories cleared. These were
+  disposable local build outputs; installed applications and source were preserved.
+- Independent security review finds no blockers to the documented guarded paths.
+  Required signing/toolchain settings are preserved. Raw unwrapped xcodebuild or
+  Xcode launched from a credential-bearing shell still needs a clean parent or the
+  documented launcher; the tool cannot clean its parent environment. Global shell
+  auth remains intact. Private log/cache cleanup and rotation remain distinct from
+  source control; no credential was committed or pushed.
+
+
+## 2026-10-23 — F-076/B-177 channel-aware desktop updates (local)
+
+- **Authority/source:** Dan approved macOS/Linux channel-aware updates including
+  Sparkle, behavioral unit tests and adversarial review. Work starts from clean
+  `e3d2bf0` on local `task/desktop-updates`; no commit, push, release, remote key
+  configuration or personal app replacement is authorized/performed in this change.
+- **Implementation:** searchable desktop Updates settings and global discovery;
+  local default-off automatic checks; exact Homebrew cask ownership and verified
+  installation; pinned app-only Sparkle 2.10.0 for direct packaged Release builds;
+  bounded signed terminate-first relaunch helper and editing/sync guards. Linux
+  native Software check route plus explicitly continuing Flatpak UpdateMonitor,
+  parented consent, operation status/cancel and accurate quit/reopen guidance.
+  No updater in iOS/Android; iOS category enumeration explicitly filters desktop
+  Updates. Shared Rust change is offline directory metadata only; bindings regenerated
+  through canonical tooling. Task/sync/backup formats unchanged.
+- **Release infrastructure:** public/private Ed25519 configuration gates, checksum-
+  pinned tools, exact final archive signing and independent CryptoKit verification,
+  embedded version/build/public-key/channel binding, immutable public files before
+  upload, scoped feed/key publication and trusted-key/version continuity, final Pages
+  readback. Missing keys deliberately fail future releases. Older pre-updater tags
+  require their original workflow. [UPDATES.md](UPDATES.md) records setup and limits.
+- **Review:** independent adversarial review found and re-reviewed fixes for owner-
+  lookup fallthrough, subprocess descendant cancellation, false upgrade success,
+  old/new CLI-service overlap, portal delay/parenting/consent/stale state, immutable
+  archive retries and explicit workflow-test dependencies. Revised review reports no
+  remaining actionable blocker. These draft defects are retained under B-177.
+- **Verified so far (dirty worktree):** shared Rust/CLI workspace 468 passing tests;
+  desktop-only discovery regression red/green; canonical Apple core/bindings build;
+  16 Sparkle/release-policy tests including actual official sign_update + CryptoKit
+  interoperability with RFC fixture keys; existing release-channel 23 tests;
+  entire MomentumKit suite 250 tests in 51 suites, final focused updater/discovery
+  retest 21 tests; canonical signed Debug app/helper build and deep/strict signature
+  verification pass. Helper smoke rejects invalid/exited PIDs and registers READY
+  only while a live fixture PID exists; no fixture launches the real app. Native
+  Linux final full headless harness passes 128 app tests (including seven updater
+  policy cases), plus its workspace consumers. A final copied-source mtime was
+  touched to force Cargo to rebuild and prove the latest lifecycle case ran.
+  Gettext/POTFILES/German checks, version alignment, YAML parsing, package-scoped
+  rustfmt, diff whitespace and Apple feature-localization regressions pass.
+- **Limitations:** production Sparkle keys/feed are not configured or published.
+  Controlled signed upgrade/relaunch and Flatpak portal consent/system Software
+  routing need native acceptance; model tests/builds do not verify those operations.
+  Source/demo self-update is disabled by design. Linux portal polling is host scheduled
+  (normally around 30 minutes), so manual immediate checking opens native Software.
+  No new UI tests added. iOS/Android updater intentionally Not applicable.
+  Opt-in nearby-device and ignored benchmark tests were not newly invoked because
+  this change does not touch synchronization behavior. Accessibility/live portal/
+  actual install-relaunch acceptance is not inferred from the passing builds.
+  The previously stopped isolated Linux VM was started solely for these tests and
+  is stopped again at handoff; no personal Linux installation was updated.
+- **Log hygiene:** Xcode producer echoed an inherited unrelated credential into a
+  private local build log. Sensitive values were redacted and log permissions
+  restricted; subsequent builds use a minimal environment. No credential entered
+  repository files or publication.
+
+
 ## 2026-10-23 — F-075 patch release 0.4.13 and main integration
 
 - User authorized a patch release across all four platforms, followed by merging

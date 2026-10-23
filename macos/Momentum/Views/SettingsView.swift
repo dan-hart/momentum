@@ -64,6 +64,7 @@ struct SettingsView: SwiftUI.View {
         case "data": BackupSettings()
         case "integrations": GeneralSettings(category: "integrations")
         case "about": MomentumAboutView()
+        case "updates": UpdatesSettings()
         default: GeneralSettings(category: "tasks")
         }
     }

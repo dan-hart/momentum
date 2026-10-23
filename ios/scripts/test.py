@@ -49,7 +49,8 @@ def ios_project_shape_violations(root=ROOT):
 def core_fingerprint():
     """Catch edits (including untracked Rust sources) before using generated bindings."""
     paths = [ROOT / "Cargo.toml", ROOT / "Cargo.lock",
-             ROOT / "macos/scripts/build-core.sh", ROOT / "ios/scripts/build-core.sh"]
+             ROOT / "macos/scripts/build-core.sh", ROOT / "macos/scripts/build-core-impl.sh",
+             ROOT / "macos/scripts/build-env.py", ROOT / "ios/scripts/build-core.sh"]
     for folder in (ROOT / "crates", ROOT / "libresync-src", ROOT / ".cargo"):
         paths.extend(p for p in folder.rglob("*") if p.is_file()
                      and p.suffix in (".rs", ".toml", ".lock", ".udl")
@@ -75,7 +76,9 @@ def run(label, command, timings):
     print(f"{label}: running (log: {log})", flush=True)
     started = time.monotonic()
     with log.open("w") as output:
-        result = subprocess.run(command, cwd=ROOT, stdout=output, stderr=subprocess.STDOUT)
+        os.fchmod(output.fileno(), 0o600)
+        guarded = [sys.executable, str(ROOT / "macos/scripts/build-env.py"), *command]
+        result = subprocess.run(guarded, cwd=ROOT, stdout=output, stderr=subprocess.STDOUT)
     timings[label] = {"seconds": round(time.monotonic() - started, 3), "exitCode": result.returncode}
     lines = log.read_text(errors="replace").splitlines()
     if result.returncode:

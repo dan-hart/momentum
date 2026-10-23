@@ -69,6 +69,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         updateLoginItem()
+        DesktopUpdateController.shared.start()
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let updater = DesktopUpdateController.shared
+        guard updater.channel == .homebrew, updater.busy, !updater.restarting else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = updateText("Momentum is updating")
+        alert.informativeText = updateText("Wait for the update to finish before quitting. You can cancel an update check in Settings.")
+        alert.addButton(withTitle: updateText("OK"))
+        alert.runModal()
+        return .terminateCancel
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

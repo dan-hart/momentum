@@ -85,6 +85,14 @@ class TestSelectionTests(unittest.TestCase):
         result = self.run_log("views", "Executed 8 tests, with 0 failures")
         self.assertEqual(result["tests"], 8)
 
+    def test_tools_cannot_receive_shell_credentials_and_logs_are_private(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(runner, "OUTPUT", Path(directory)):
+            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "harmless-fixture-only", "UNRELATED_TOKEN": "future-provider-fixture"}):
+                runner.run("generate", [sys.executable, "-c", "import os; print(any(name in os.environ for name in ['ANTHROPIC_API_KEY', 'UNRELATED_TOKEN']))"], {})
+            log = Path(directory) / "generate.log"
+            self.assertEqual(log.read_text().strip(), "False")
+            self.assertEqual(log.stat().st_mode & 0o777, 0o600)
+
     def test_non_test_commands_do_not_require_test_counts(self):
         self.assertEqual(self.run_log("generate", "Generated project")["exitCode"], 0)
 

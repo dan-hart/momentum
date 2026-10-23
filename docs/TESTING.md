@@ -658,3 +658,38 @@ Run the [iOS transport lane](../ios/TESTING.md) after regenerating the core to p
 conditional HTTP polling, same-cycle transient recovery and real peer convergence
 through Swift/UniFFI. Local fixtures do not replace disposable hosted TLS, Linux runtime,
 separate-device, physical/background, or spoken accessibility acceptance.
+
+## Channel-aware desktop updates (F-076/B-177)
+
+```sh
+cargo test -p momentum-core settings_updates_are_desktop_only
+cargo test -p momentum update_policy::tests
+swift test --package-path macos/Packages/MomentumKit --build-system swiftbuild
+python3 -m unittest discover -s build-aux/tests -p test_sparkle_release.py -v
+python3 -m unittest discover -s build-aux/tests -p test_release_channels.py -v
+```
+
+For real signature interoperability, obtain official Sparkle 2.10.0 tools (archive
+SHA-256 `c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c`),
+then set `SPARKLE_SIGN_TOOL=/absolute/path/bin/sign_update` for the Sparkle suite.
+This uses public RFC 8032 fixture keys and CryptoKit, never production keys or Keychain.
+PyYAML 6.0.2 is the existing workflow-test parser dependency. The suite validates
+public-file immutability, old/new-feed continuity, embedded app metadata and signed
+archive tampering. No test updates an actual installed app. The normal Linux
+headless harness also runs pure portal-state regressions. Controlled native upgrade,
+portal consent/system-app routing and relaunch remain separate acceptance checks;
+see [UPDATES.md](UPDATES.md).
+
+## Apple build credential isolation (B-178)
+
+Run the sentinel-only regressions without providing credentials:
+
+```sh
+python3 -m unittest discover -s macos/scripts/tests -p test_build_environment.py -v
+python3 -m unittest discover -s ios/scripts/tests -p test_runner.py -v
+```
+
+Use `python3 macos/scripts/build-env.py xcodebuild ...` for any CLI build verification.
+See [BUILD-ENVIRONMENT.md](BUILD-ENVIRONMENT.md) for the explicit environment allowlist,
+signing preservation, generated script flags and raw-Xcode boundary. Do not inject
+real credentials into test fixtures or print complete Xcode log headers/environments.

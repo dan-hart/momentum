@@ -17,12 +17,28 @@ pub fn category(id: &str) -> String {
         "sync" => N_("Sync & Devices"),
         "data" => N_("Data & Backups"),
         "integrations" => N_("App & Integrations"),
+        "updates" => N_("Updates"),
         _ => N_("About & Help"),
     })
 }
 
 pub fn entries() -> Vec<SettingsEntry> {
     let labels = [
+        (
+            "updates.check",
+            N_("Check for Updates"),
+            N_("update install version release"),
+        ),
+        (
+            "updates.automatic",
+            N_("Check automatically"),
+            N_("automatic app updates"),
+        ),
+        (
+            "updates.restart",
+            N_("Restart Momentum"),
+            N_("restart reopen installed update"),
+        ),
         ("tasks.grouping", N_("Group By"), N_("morning night evening grouping")),
         ("tasks.sort", N_("Sort By"), N_("order title estimate due")),
         ("tasks.sort-direction", N_("Order"), N_("ascending descending")),
