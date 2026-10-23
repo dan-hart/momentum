@@ -153,8 +153,17 @@ its APK is never included in the release. Actual store submission needs separate
 The user-confirmed Linux shipping channel is the signed Flatpak repository on
 [GitHub Pages](https://dan-hart.github.io/momentum/). The release workflow publishes
 both stable architectures there; it does not require Flathub app admission.
-As verified 2026-10-13, both refs are 0.4.11 with valid GPG signatures. New installs
-use momentum.flatpakref; installed copies update through the existing remote.
+As verified 2026-10-22 (public readback 2026-10-23 UTC), both refs are **0.4.12**
+with valid signatures from the existing trusted primary fingerprint. The full
+[0.4.12 workflow](https://github.com/dan-hart/momentum/actions/runs/39881411888)
+and independent disposable Linux-client readback pass; exact OSTree commits and
+native verification limits are recorded in [PROGRESS.md](PROGRESS.md).
+New installs use momentum.flatpakref; installed copies update through the existing remote:
+
+```sh
+flatpak update --user io.github.dan_hart.Momentum
+```
+
 Static index.html and momentum.flatpakrepo live on gh-pages and must be inspected
 alongside source branding changes; preserve their URLs, public key and signed
 OSTree files when changing descriptive copy. Future Flathub admission is deferred

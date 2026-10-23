@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-## 2026-10-22 — B-172/B-173 contrast and 0.4.12 hosted Flatpak release
+## 2026-10-22 — B-172–B-175 contrast and 0.4.12 personal Flatpak release
 
 - User requested Celebrate icon contrast on all four platforms, especially iOS,
   and a new Linux version in the personal signed Flatpak repository. The existing
@@ -20,7 +20,8 @@
   Linux Settings ButtonRow subtitles and missing German compiled Settings labels.
   Before/after Blueprint compilation, 66 compiled localization checks, seven importer
   tests and 23 release-channel regressions pass. All platform version copies are
-  aligned at **0.4.12**, dated 2026-10-22; no immutable tag has been published yet.
+  aligned at **0.4.12**, dated 2026-10-22. Annotated tag `v0.4.12` points to
+  `fc54da396d90c5ca4f13b41e500a33ab8276d8fe` on the approved feature branch.
 - Apple evidence so far: full MomentumKit **233 tests/50 suites** pass, new contrast
   policy regressions pass, final Mac/iOS simulator builds pass at 0.4.12, and an
   existing in-process iOS component test passes with
@@ -31,7 +32,9 @@
   enabled states), minimum **4.8186:1**, without CSS errors; this is not Linux runtime
   acceptance. The required opt-in nearby Swift/core integration passes in 12.744s.
   Compiled app/shared German copy checks and complete catalogs pass. Hosted exact-head
-  gates and signed public Flatpak readback remain required for release delivery.
+  gates have now passed for the immutable tag: all four Linux build/test configurations,
+  shared core, release-channel regressions, translations and macOS (233 tests, app build
+  and compiled localization). Signed public Flatpak readback also passes, as recorded below.
   Initial hosted translation check caught nine new AppStream release-note keys after
   the version bump; their gettext template entries and German translations are now
   added, with extraction, catalog format and POTFILES checks passing.
@@ -41,14 +44,14 @@
   fails at that exact assertion before the change and passes afterward. The corrected
   existing test checks no task rows, the completion title and Celebrate action, and their
   disappearance when a pending task returns. App/test compilation and formatting pass;
-  hosted Linux rerun remains required. No production behavior or test gate was changed.
+  the tagged Linux rerun now passes. No production behavior or test gate was changed.
 
 - B-174 is a separate native sound-selection crash exposed after the corrected
   completion test passed. A fresh isolated GTK reproduction and LLDB backtrace identify
   synchronous ComboRow model replacement during its own selection notification.
   Deferring settings-to-model refresh to idle fixes the unchanged existing sound
-  regression (all choices, previews and unknown-value preservation). Hosted Linux
-  validation remains required; this is not a test bypass or a four-platform UI suite.
+  regression (all choices, previews and unknown-value preservation). All four tagged Linux
+  build/test configurations now pass; this is not a test bypass or a four-platform UI suite.
 
 - Direct isolated Ubuntu 26.04/aarch64 GTK 4.22/libadwaita 1.9 contrast measurement
   now also passes all 54 native palette/appearance/state pairs, minimum **4.8186:1**.
@@ -59,7 +62,27 @@
   B-175 escapes plain About heading/legal text at the native markup boundary; existing
   About regression passes without parsing warnings. An isolated GTK-on-macOS diagnostic
   passes 78 existing window regressions across sequences; two platform-specific modifier
-  expectations remain Linux-only. Hosted full Linux matrix remains the release gate.
+  expectations remain Linux-only in that diagnostic; the full tagged Linux matrix now passes.
+- Independent late-fix review of `588ff51..fc54da3` found no actionable defects in
+  Android ripple compositing, deferred GTK model refresh, markup boundaries or test
+  navigation. [Release run 39881411888](https://github.com/dan-hart/momentum/actions/runs/39881411888)
+  is **successful**, including both signed exports, GitHub Release, required Homebrew
+  update and explicit Pages deployment/trusted public readback.
+- [Momentum 0.4.12](https://github.com/dan-hart/momentum/releases/tag/v0.4.12) was
+  published at 2026-10-23 01:52 UTC (2026-10-22 locally). All 13 public asset digests
+  match `SHA256SUMS.txt`, including both Flatpak bundles. A separate disposable client
+  in the isolated Linux VM pulls both public stable refs at **0.4.12** and verifies
+  their signatures against the unchanged trusted primary fingerprint
+  `07BA47734E3A0B72D20267940D8E046EFEEF00F0`:
+  x86_64 `fe1e77dbb73da597d0422ecb4b9e8967a0ab8eb124ebb3f1f3a11c697b87b39d`;
+  aarch64 `0505535cf3f2c3257d156f78bea817c55172f99a38eacc2b0c6caa699325a10b`.
+  Existing installations update through their personal remote; new installs use the
+  [unchanged descriptor](https://dan-hart.github.io/momentum/momentum.flatpakref).
+  No real task store, user Flatpak installation, Flathub submission or main merge changed.
+- F-071–F-074 remain Implemented for their broader scope: release delivery and the
+  recorded automated/native fixtures pass, while physical-device, wallpaper, focus,
+  screen-reader and full feature interaction acceptance remain separate. This handoff
+  does not promote every platform to Verified from a shared-core pass.
 
 ## 2026-10-22 — B-172 internal TestFlight contrast build 413
 

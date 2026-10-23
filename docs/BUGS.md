@@ -23,8 +23,8 @@ severity from evidence; do not infer security or data loss from an ordinary sync
   interpreted as Pango markup, producing native parsing warnings and missing text.
 - **Fix/evidence:** escape translated group title and bundled GPL/NOTICE text at their
   markup boundary, preserving the original text and notices. Existing native About
-  regression passes with no parsing warnings after the correction; hosted Linux
-  verification remains required.
+  regression passes with no parsing warnings after the correction; all four tagged
+  Linux build/test configurations pass. Physical assistive-technology QA remains separate.
 
 ## B-174 — Linux sound selection reenters native model replacement
 
@@ -38,7 +38,8 @@ severity from evidence; do not infer security or data loss from an ordinary sync
   read the latest saved value and retain the feedback-write guard. The existing sound
   preferences regression covers every sound, explicit previews and unknown-value
   fallback without rewriting newer values. Native GTK regression fails before and
-  passes after the correction; hosted Linux confirmation remains required.
+  passes after the correction; all four tagged Linux build/test configurations pass.
+  Physical sound listening remains tracked separately in B-168.
 
 ## B-172 — Celebrate icon and label lose contrast on bright accents
 
@@ -79,7 +80,8 @@ severity from evidence; do not infer security or data loss from an ordinary sync
 - **Evidence:** Blueprint reports both unsupported properties before the change and
   compiles all resources after it. The compiled localization regression fails on both
   missing labels before the fix, then passes all 66 checks; seven importer tests and
-  source completeness checks pass. Exact-head hosted gates remain required before release.
+  source completeness checks pass. Tagged Linux and macOS build/test/resource gates
+  now pass at `fc54da3`; remaining native acceptance scope is recorded in PROGRESS.
 
 ## B-170 — Native period completion loses its destination or shows stale claims
 
