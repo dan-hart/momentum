@@ -2,6 +2,22 @@
 
 
 
+## 2026-10-23 — 0.4.14 release preparation
+
+- Implementation commit 6540f80 is pushed to task/desktop-updates and read back from
+  the remote. All 838 indexed files passed known-secret/provider/private-key scans;
+  the committed tree exactly matches the scanned tree. No private signing material
+  or exposed shell credential is present in source control.
+- Canonical versions advance to 0.4.14 (derived desktop build 414, Android code 4014).
+  Internal iOS packaging uses remote-safe build 415 because 414 already exists.
+  Release notes and AppStream English/German descriptions cover desktop updates and
+  Apple build credential isolation. Existing Android artifacts remain unsigned;
+  no Google Play/F-Droid/public App Store submission is requested.
+- Publication will use the exact immutable product tag, required release gates,
+  signed Flatpak repositories, Homebrew, new authenticated Sparkle archive/feed,
+  and separate internal TestFlight delivery. Main remains unchanged.
+
+
 ## 2026-10-23 — Desktop updater/security publication and 0.4.14 authorization
 
 - Dan explicitly authorized committing/pushing the desktop updater and build-security

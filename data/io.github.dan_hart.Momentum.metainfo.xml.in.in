@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.14/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.14/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.14/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.14/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,17 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.4.14" date="2026-10-23">
+      <description>
+        <p>Desktop updates and safer Apple build tooling.</p>
+        <ul>
+          <li>Desktop Updates settings with optional automatic checks, Homebrew-aware macOS upgrades, signed Sparkle updates for direct downloads, and Flatpak update monitoring.</li>
+          <li>Native Linux Software shortcuts for immediate update checks and clear installation, cancellation, and restart guidance.</li>
+          <li>Prevent ambiguous package ownership, cancelled subprocesses, stale installation receipts, and overlapping restarts from producing unsafe or misleading updates.</li>
+          <li>Isolate documented Apple build commands from unrelated shell credentials and disable script-environment logging. Protect generated build logs and update feeds.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.13" date="2026-10-23">
       <description>
         <p>Faster native sync with efficient transfers and optional optimized Nextcloud collections.</p>

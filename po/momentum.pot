@@ -4208,3 +4208,23 @@ msgstr ""
 #: crates/app/src/updates.rs
 msgid "Update installed. Quit Momentum with Ctrl+Q and reopen it to use the new version."
 msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Desktop updates and safer Apple build tooling."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Desktop Updates settings with optional automatic checks, Homebrew-aware macOS upgrades, signed Sparkle updates for direct downloads, and Flatpak update monitoring."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Native Linux Software shortcuts for immediate update checks and clear installation, cancellation, and restart guidance."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Prevent ambiguous package ownership, cancelled subprocesses, stale installation receipts, and overlapping restarts from producing unsafe or misleading updates."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Isolate documented Apple build commands from unrelated shell credentials and disable script-environment logging. Protect generated build logs and update feeds."
+msgstr ""

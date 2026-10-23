@@ -6,6 +6,8 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.14] - 2026-10-23
+
 ### Added
 - Desktop Updates settings with optional automatic checks, Homebrew-aware macOS
   upgrades, signed Sparkle updates for direct downloads, and Flatpak update monitoring.

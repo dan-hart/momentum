@@ -4399,3 +4399,23 @@ msgstr "Dies ist eine Entwicklungs- oder Quellcodeinstallation. Aktualisiere sie
 #: crates/app/src/updates.rs
 msgid "Update installed. Quit Momentum with Ctrl+Q and reopen it to use the new version."
 msgstr "Aktualisierung installiert. Beende Momentum mit Strg+Q und öffne es erneut, um die neue Version zu verwenden."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Desktop updates and safer Apple build tooling."
+msgstr "Desktop-Updates und sicherere Apple-Build-Werkzeuge."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Desktop Updates settings with optional automatic checks, Homebrew-aware macOS upgrades, signed Sparkle updates for direct downloads, and Flatpak update monitoring."
+msgstr "Desktop-Update-Einstellungen mit optionaler automatischer Prüfung, macOS-Updates über Homebrew, signierten Sparkle-Updates für direkte Downloads und Flatpak-Update-Überwachung."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Native Linux Software shortcuts for immediate update checks and clear installation, cancellation, and restart guidance."
+msgstr "Verknüpfungen zur nativen Linux-Softwareverwaltung für sofortige Update-Prüfungen und klare Hinweise zur Installation, zum Abbrechen und zum Neustart."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Prevent ambiguous package ownership, cancelled subprocesses, stale installation receipts, and overlapping restarts from producing unsafe or misleading updates."
+msgstr "Verhindert unsichere oder irreführende Updates bei unklarer Paketzuordnung, abgebrochenen Unterprozessen, veralteten Installationsnachweisen und sich überschneidenden Neustarts."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Isolate documented Apple build commands from unrelated shell credentials and disable script-environment logging. Protect generated build logs and update feeds."
+msgstr "Isoliert dokumentierte Apple-Build-Befehle von nicht benötigten Shell-Zugangsdaten und deaktiviert die Protokollierung der Skriptumgebung. Schützt erzeugte Build-Protokolle und Update-Feeds."
