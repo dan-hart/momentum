@@ -55,6 +55,7 @@ internal fun celebrationFeedback(completion: DayCompletion, dynamic: Boolean, an
     !animationScale.isFinite() || animationScale <= 0f -> CelebrationFeedback.Static
     else -> CelebrationFeedback.Burst
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun DayEmptyState(state: UiState) {
     val snapshot = state.snapshot ?: return
     val status = snapshot.dayStatus ?: return
@@ -93,18 +94,26 @@ internal fun celebrationFeedback(completion: DayCompletion, dynamic: Boolean, an
                 Text(stringResource(if(completed) R.string.list_complete else if(status.completion == DayCompletion.PENDING) R.string.visible_list_clear else R.string.nothing_planned), style = MaterialTheme.typography.headlineSmall)
                 val text = message?.let { context.resources.getStringArray(R.array.completion_messages).getOrNull(it.toInt() - 1) }
                 Text(text ?: stringResource(if(completed) R.string.completed_hint else R.string.empty_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if(completed && message != null) Button(
-                    onClick = {
-                        feedback = celebrationFeedback(status.completion, snapshot.settings.dynamicEmptyMessages,
-                            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
-                        replay++
-                    },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-                ) {
-                    Icon(Icons.Default.Star, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.celebrate), style = MaterialTheme.typography.labelLarge)
+                if(completed && message != null) {
+                    val scheme = MaterialTheme.colorScheme
+                    val rippleAlpha = remember(scheme.primary, scheme.onPrimary) {
+                        celebrationRippleAlpha(scheme.primary, scheme.onPrimary)
+                    }
+                    CompositionLocalProvider(LocalRippleConfiguration provides RippleConfiguration(rippleAlpha = rippleAlpha)) {
+                        Button(
+                            onClick = {
+                                feedback = celebrationFeedback(status.completion, snapshot.settings.dynamicEmptyMessages,
+                                    Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
+                                replay++
+                            },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                        ) {
+                            Icon(Icons.Default.Star, null, Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.celebrate), style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
                 }
             }
             if(feedback != CelebrationFeedback.Hidden) {

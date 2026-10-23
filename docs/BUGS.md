@@ -22,18 +22,24 @@ severity from evidence; do not infer security or data loss from an ordinary sync
   below the 3:1 meaningful-icon threshold and 4.5:1 normal-text threshold. macOS
   shares the affected implicit-foreground implementation. Linux native white on
   several default libadwaita accents passes icon contrast but misses normal-text AA.
-  Android is unaffected for its 20 tested palette/appearance pairs; wallpaper-driven
+  Android normal colors pass for its 20 tested palette/appearance pairs, but overlapping
+  focused/pressed native ripple layers can reduce them below 4.5:1. Wallpaper-driven
   dynamic colors retain native role pairing, with device acceptance outstanding.
 - **Cause/fix:** choosing a native prominent style did not guarantee a safe foreground
   for the actual app/system accent. Apple now resolves the actual accent and paints
   an opaque fill with measured black/white icon and label ink, including pressed fill.
   Linux preserves native pill/focus/high-contrast/disabled treatment while calculating
   enabled normal/hover/pressed fill and ink; accent changes refresh the scoped provider.
-  Android retains its already-tested primary/onPrimary pairing.
+  Android retains primary/onPrimary and native feedback, with Celebrate-only ripple
+  opacity bounded using the resolved theme roles and worst overlapping state, including
+  the API 26/27 pressed-alpha multiplier.
 - **Evidence:** failing-before/fixed-after numerical regressions cover native palettes,
   custom luminance boundaries and interaction states. iOS four light/dark and standard/
   increased-contrast component renders pass; orange resolves to black at 7.153:1 normal
-  and 5.637:1 pressed. Exact checks and remaining platform acceptance are in PROGRESS.
+  and 5.637:1 pressed. Seven Android palette/ripple tests, debug assembly and lint pass;
+  independent continuous compositing measures at least 4.5226:1 across the 20 palette
+  pairs under the conservative overlapping-state bound. Exact checks and remaining
+  platform acceptance are in PROGRESS.
   No blanket claim is made for arbitrary third-party themes, wallpapers or physical devices.
 
 ## B-173 — Native overhaul release gates reject Settings resources

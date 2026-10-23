@@ -9,9 +9,13 @@
 - B-172 corrects Apple and Linux button color pairing, preserving the selected accent,
   native action/focus semantics and reduced-motion behavior. Target is at least 4.5:1
   for both the label and icon against enabled normal/pressed (Linux also hover) fills.
-  Android source and five existing tests cover all 20 palette/light-dark pairs with
-  primary/onPrimary at least 4.5:1; debug assembly/lint pass. Wallpaper/device checks
-  remain separate. Independent source review found no actionable defects.
+  Android review then found overlapping focus/press ripple layers reduced normal
+  safe pairs below 4.5:1. Celebrate now bounds native ripple opacity using resolved
+  primary/onPrimary, including the older API pressed-alpha multiplier. Seven focused
+  palette/ripple regressions, debug assembly and lint pass; independent continuous
+  compositing measures a conservative minimum 4.5226:1 for all 20 palette/light-dark
+  pairs. Wallpaper/device checks remain separate. Root source review found no further
+  actionable defects.
 - B-173 fixes two real release blockers rather than bypassing gates: unsupported
   Linux Settings ButtonRow subtitles and missing German compiled Settings labels.
   Before/after Blueprint compilation, 66 compiled localization checks, seven importer
