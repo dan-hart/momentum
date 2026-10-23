@@ -300,8 +300,8 @@ Its source archive includes committed Momentum, verified LibreSync, original loc
 Rust crates, native sources/licenses and a relocatable Cargo vendor configuration;
 SDK/NDK/Rust and Maven/Gradle inputs remain prerequisites in the build guide.
 `build-aux/release.py checksums --assets dist` includes every top-level distribution
-file and excludes `SHA256SUMS.txt` itself. The first remote Android/tagged release
-execution remains unverified until an explicitly requested push/tag/run occurs.
+file and excludes `SHA256SUMS.txt` itself. Tagged Android 0.4.14 execution and matching
+public source/binary artifacts passed the authorized release checks; see PROGRESS.
 
 ## Authenticated desktop updater (F-076)
 

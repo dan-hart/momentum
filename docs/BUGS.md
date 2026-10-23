@@ -1,5 +1,23 @@
 # Momentum bug ledger
 
+## B-179 — Intermittent nearby snapshot lock assertion in release CI
+
+- **Severity/platforms:** low, test reliability. Reproduced once in the optimized
+  aarch64 Flatpak gate for tag v0.4.14 / 18d9f8c on 2026-10-23 and once in 200
+  concurrent local focused trials; no product failure reproduced. Not ARM-specific.
+- **Actual/expected:** snapshot_save_failure_releases_locks_before_delegate_and_retries
+  received false from the delegate's immediate try_lock probe at p2p.rs:954. The
+  assertion should distinguish a callback retaining its own lock from concurrent
+  scheduler/event-worker contention. The callback path explicitly drops its store
+  guard before invoking the delegate; background contention is suspected, not proven.
+- **Evidence/status:** release run 39992412230 attempt 1 stopped before public
+  publication; the test passed 30 actual focused local repeats with loopback
+  networking allowed, then 199/200 concurrent focused trials (the remaining trial
+  reproduced the same lock-probe assertion). Both optimized Linux release gates
+  passed on the identical immutable tag in attempt 2; no assertion was skipped,
+  weakened, or removed. Deterministic test isolation remains open.
+
+
 ## B-178 — Inherited shell credentials exposed by Apple build logging
 
 - **Severity/platform assessment:** high, reproduced in local macOS Xcode build
@@ -14,7 +32,9 @@
   build environment variables, suppress Xcode's script environment logging, and
   create private text logs. Core sanitation is unconditional before process-scoped
   locking, including when a legacy lock marker is inherited. iOS runner guards
-  all tool children. No global shell authentication changes were made.
+  all tool children. Separately, the user-requested global credential export was
+  removed from .zshrc; fresh shells no longer introduce it. Already-running parent
+  processes may retain the old environment until restarted.
 - **Regression/status:** six build-environment and thirteen iOS runner regressions
   pass, including observed red/green credential inheritance and lock-marker cases.
   Real canonical signed Debug build and generated macOS/iOS script flags checked;
@@ -22,7 +42,9 @@
   Raw unwrapped Xcode from a credential-bearing parent remains an explicit tool
   boundary; [BUILD-ENVIRONMENT.md](BUILD-ENVIRONMENT.md) records safe entry points.
   Previous exposure still requires separate credential rotation; redaction is not
-  revocation. No credential was committed or pushed.
+  revocation. No credential was committed or pushed. The guarded optimized Apple
+  core build and signed iOS 0.4.14 (415) archive/export also passed; actual protected
+  build logs contained no inherited credential values. See the release handoff.
 
 
 ## B-177 — Desktop updater ownership and lifecycle hazards caught before release

@@ -1,5 +1,52 @@
 # Momentum progress and handoff
 
+## 2026-10-23 — 0.4.14 tagged delivery evidence (F-076, B-177, B-178)
+
+- Immutable product tag v0.4.14 points to 18d9f8c on task/desktop-updates;
+  implementation 6540f80 and patch metadata were pushed and read back. Main is
+  unchanged. All 838 indexed files passed exact known-credential/private-seed and
+  provider/private-key-pattern scans; committed trees match their audit receipts.
+- Required release run [39992412230](https://github.com/dan-hart/momentum/actions/runs/39992412230)
+  passed version, translation, formatting, core/CLI, 250 MomentumKit tests and Mac
+  build, plus development/optimized native Linux gates on both architectures.
+  Attempt 1 caught B-179; both optimized gates passed unchanged in attempt 2.
+  Both signed repository exports and all platform packaging jobs also passed.
+  Final workflow outcome is success, including authenticated feed deployment,
+  Homebrew publication and both signed hosted Flatpak checks. Independent live
+  Homebrew formula/cask readback exactly matches 0.4.14 and verified asset digests.
+- Android branch run 39992412716 passed build/JVM tests/release lint after retrying
+  a corrupt NDK download that failed before project compilation. Release packaging
+  separately uses a clean committed-source snapshot and matching source artifacts.
+- Internal TestFlight 0.4.14 (415), build 0a920d33-5339-4bcc-8a19-4bbf4fc65af6,
+  is VALID / INTERNAL_ONLY / IN_BETA_TESTING. Complete server membership readback
+  confirms Internal Testers access and exact English test notes. Exported app/share
+  extension signatures, certificate, profile, App Group entitlements, privacy
+  manifests, version/build and sound assets passed actual IPA verification.
+- Optimized Apple core built all installed macOS/device/simulator targets from the
+  tagged inputs. 248 native source/resource files and eleven generated artifacts
+  matched the frozen packaging copy. Build logs contained no inherited credential
+  values. Temporary signing keychain/password removed; original search list restored.
+  Protected IPA/provenance/server receipts remain outside Git in private storage.
+- Public [v0.4.14 assets](https://github.com/dan-hart/momentum/releases/tag/v0.4.14)
+  independently passed all fifteen SHA-256 entries. Mac app, CLI and relaunch helper
+  are arm64/x86_64 and their actual signatures verify. CryptoKit authenticated the
+  production Ed25519 archive signature, embedded metadata/key and exact live HTTPS
+  appcast bytes. Public Mac/Android files match independently audited candidates.
+- Public asset/archive scans checked 20,863 files/members with zero known inherited
+  credential or private updater-seed matches. Separate retained iOS scan checked
+  118 files/members with zero matches. Android provenance binds version code 4014,
+  both ABIs and fresh source archive to 18d9f8c; existing unsigned channel retained.
+- Independent isolated Linux public readback verifies trusted signatures and 0.4.14
+  for both stable refs: x86_64 6cb0824be5d1e80c3fa58cc9f642c25f7b11b891f0a0fafb0b377b2060db6c3f;
+  aarch64 45c543ab2f5a2fd50d1a754844104c2ea3f9a3260ee4fd1d47e0d51fa6b9c223.
+  Full trusted primary fingerprint matches the configured release identity. The
+  disposable remote never touched installed app data; VM restored to Stopped.
+- Native update installation/relaunch acceptance, physical-device interactions,
+  notarization and Android signing retain their existing verification boundaries;
+  successful publication does not establish these interaction checks.
+
+
+
 
 
 ## 2026-10-23 — 0.4.14 release preparation

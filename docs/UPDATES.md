@@ -88,3 +88,8 @@ They never update a personal installation. Native builds and existing Linux harn
 supplement these tests. Real signed upgrade/relaunch, system software routing and
 portal consent require controlled installation acceptance before a release is
 claimed verified; a build or pure policy test does not establish those interactions.
+
+Production publication evidence (2026-10-23): v0.4.14 / 18d9f8c publishes the
+first authenticated updater archive and HTTPS feed. Independent readback verified
+the production public key, archive signature/metadata and exact hosted appcast
+bytes. This does not establish native installation/relaunch interaction acceptance.
