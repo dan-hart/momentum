@@ -115,6 +115,9 @@ mod imp {
     impl ObjectImpl for MomentumPrefs {
         fn constructed(&self) {
             self.parent_constructed();
+            // PreferencesGroup titles accept markup, unlike page titles.
+            self.about_group
+                .set_title(&glib::markup_escape_text(&gettext("About & Help")));
             let s = gio::Settings::new(*crate::config::APP_ID);
             crate::typography::register_interface_root(&*self.obj());
             for (key, row) in [
@@ -425,9 +428,22 @@ mod imp {
                     #[strong]
                     updating_sound,
                     move |settings, _| {
-                        updating_sound.set(true);
-                        update_sound_choices(&row, settings);
-                        updating_sound.set(false);
+                        // A ComboRow selection writes this setting synchronously.
+                        // Replacing its model inside that notification destroys
+                        // native selection state that set_selected still uses.
+                        glib::idle_add_local_once(glib::clone!(
+                            #[weak]
+                            row,
+                            #[strong]
+                            settings,
+                            #[strong]
+                            updating_sound,
+                            move || {
+                                updating_sound.set(true);
+                                update_sound_choices(&row, &settings);
+                                updating_sound.set(false);
+                            }
+                        ));
                     }
                 ),
             );

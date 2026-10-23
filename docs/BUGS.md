@@ -15,6 +15,20 @@ Severity: Critical = data loss/security/core unusable; High = major workflow imp
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
 
+## B-174 — Linux sound selection reenters native model replacement
+
+- **Severity:** High (native crash). **Impact:** reproduced in hosted Linux GTK tests
+  and an isolated GTK-on-macOS native diagnostic. Other native frontends use separate
+  controls and are unaffected by this GTK callback.
+- **Reproduction/cause:** selecting a completion sound synchronously saves GSettings;
+  its change handler replaces the ComboRow model before the native selection setter
+  finishes. The native backtrace shows invalid selection state during GObject notify.
+- **Fix:** defer settings-to-model refresh until the main-loop idle, keep the row weak,
+  read the latest saved value and retain the feedback-write guard. The existing sound
+  preferences regression covers every sound, explicit previews and unknown-value
+  fallback without rewriting newer values. Native GTK regression fails before and
+  passes after the correction; hosted Linux confirmation remains required.
+
 ## B-172 — Celebrate icon and label lose contrast on bright accents
 
 - **Severity:** Medium. **Impact:** iOS reproduced in the native component and

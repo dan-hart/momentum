@@ -43,6 +43,32 @@
   disappearance when a pending task returns. App/test compilation and formatting pass;
   hosted Linux rerun remains required. No production behavior or test gate was changed.
 
+- B-174 is a separate native sound-selection crash exposed after the corrected
+  completion test passed. A fresh isolated GTK reproduction and LLDB backtrace identify
+  synchronous ComboRow model replacement during its own selection notification.
+  Deferring settings-to-model refresh to idle fixes the unchanged existing sound
+  regression (all choices, previews and unknown-value preservation). Hosted Linux
+  validation remains required; this is not a test bypass or a four-platform UI suite.
+
+## 2026-10-22 — B-172 internal TestFlight contrast build 413
+
+- **0.4.12 (413)** is available to the existing Internal Testers all-builds group:
+  `VALID`, `INTERNAL_ONLY`, `IN_BETA_TESTING`, read back at 2026-10-23 00:45 UTC.
+  Apple build `077ce349-ea0f-4411-b9f0-4785d18a4cd9`; exact What to Test notes match.
+- Frozen product source is `588ff51536e573ae2c316f0a8188c21f15cbf28c`. Subsequent
+  branch changes affect Linux gettext/regression, Android feedback and handoff docs;
+  Apple production sources remain identical. The private packaging copy overrides
+  build number/manual signing and omits redundant core hooks after canonical optimized
+  generation. All 243 checked native files and generated artifacts match their source.
+- Optimized Release archive/export and deep strict IPA verification pass: app and Share
+  identifiers, distribution identity/profiles, App Group entitlements, privacy manifests
+  and bundled sound parity. IPA SHA-256:
+  `16779655f59503fc43f889aeab33ac220245f7c795a1461f37b2a17c0ba291ad`.
+  Private artifacts and final verification receipt are retained under
+  `~/Library/Developer/Momentum-TestFlight/0.4.12-413/`. No explicit notification,
+  external beta distribution or public App Store release was requested by this upload.
+  Physical-device installation and accessibility acceptance remain unverified.
+
 ## 2026-10-22 — F-059 internal TestFlight feature build 412
 
 - User authorized a new iOS TestFlight build of `task/native-experience-overhaul`.
