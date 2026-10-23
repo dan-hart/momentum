@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>Momentum</title>
+    <link>https://github.com/dan-hart/momentum/releases</link>
+    <item>
+      <title>Momentum 0.4.14</title>
+      <link>https://github.com/dan-hart/momentum/releases/tag/v0.4.14</link>
+      <sparkle:version>414</sparkle:version>
+      <sparkle:shortVersionString>0.4.14</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0.0</sparkle:minimumSystemVersion>
+      <description>See the release notes for changes in Momentum 0.4.14.</description>
+      <enclosure url="https://github.com/dan-hart/momentum/releases/download/v0.4.14/Momentum-v0.4.14-macos.zip" sparkle:edSignature="GHEjQKQ9IjBvte7lk62AcBH+bwtQAm7DZsR6cQgW0a4nAwh7r3F7KjYNVL2QKRHvSVJvd7avn1tNgqZcDlLaBw==" length="17282730" type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>
