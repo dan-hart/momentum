@@ -53,6 +53,8 @@ import java.time.format.FormatStyle
     var unlink by remember { mutableStateOf<String?>(null) }
     var discovery by remember { mutableStateOf(false) }
     var replace by remember { mutableStateOf(false) }
+    var upgrade by remember { mutableStateOf(false) }
+    var upgradeIdentity by remember { mutableStateOf("") }
     var storedConnection by remember { mutableStateOf<NextcloudSettings?>(null) }
     var migrationSource by remember { mutableStateOf<NextcloudSettings?>(null) }
     var migrationError by remember { mutableStateOf(false) }
@@ -67,6 +69,11 @@ import java.time.format.FormatStyle
     LaunchedEffect(Unit) {
         platform.connection()?.let { storedConnection = it; server = it.serverUrl; user = it.userName; password = it.password; folder = it.folder; compress = it.compress; encryption = it.encryptionPassword.orEmpty() }
     }
+    val sameSavedTarget = storedConnection?.let {
+        com.codedbydan.momentum.core.nextcloudConnectionIdentity(server, user, folder) ==
+            com.codedbydan.momentum.core.nextcloudConnectionIdentity(it.serverUrl, it.userName, it.folder)
+    } == true
+    val optimized = sameSavedTarget && storedConnection?.optimized == true
     DisposableEffect(Unit) { onDispose { platform.pairing(false); platform.cancelFolderMigration() } }
     Column(Modifier.widthIn(max = 720.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if((state.settingsDestination in listOf("sync.nextcloud", "sync.automatic", "sync.background", "sync.compression", "sync.folder-copy") && settings.provider != SyncProvider.Nextcloud) ||
@@ -114,7 +121,15 @@ import java.time.format.FormatStyle
             OutlinedTextField(encryption, { encryption = it }, label = { Text(stringResource(R.string.encryption_password)) }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false))
             SettingSwitch(R.string.compress, compress) { compress = it }
-            OutlinedButton({ scope.launch { platform.saveConnection(NextcloudSettings(server.trim(), user.trim(), password, folder.trim(), compress, encryption.takeIf { it.isNotEmpty() })); storedConnection = platform.connection(); vm.refresh() } },
+            if (optimized) Text(stringResource(R.string.optimized_sync_enabled))
+            else OutlinedButton({ upgradeIdentity = com.codedbydan.momentum.core.nextcloudConnectionIdentity(server, user, folder); upgrade = true }, enabled = sameSavedTarget && storedConnection != null &&
+                !status.syncing && !status.migratingFolder && storedConnection?.password == password &&
+                storedConnection?.compress == compress && storedConnection?.encryptionPassword.orEmpty() == encryption) {
+                Text(stringResource(R.string.optimized_sync_upgrade))
+            }
+            Text(stringResource(R.string.optimized_sync_hint), style = MaterialTheme.typography.bodySmall)
+
+            OutlinedButton({ scope.launch { platform.saveConnection(NextcloudSettings(server.trim(), user.trim(), password, folder.trim(), compress, encryption.takeIf { it.isNotEmpty() }, optimized)); storedConnection = platform.connection(); vm.refresh() } },
                 Modifier.fillMaxWidth(), enabled = !status.migratingFolder && server.isNotBlank() && user.isNotBlank() && password.isNotEmpty() && folder.isNotBlank()) { Text(stringResource(R.string.save_connection)) }
             if(state.settingsDestination == "sync.folder-copy") {
                 SettingHeading(R.string.folder_migration_action)
@@ -164,6 +179,20 @@ import java.time.format.FormatStyle
     unlink?.let { id -> AlertDialog(onDismissRequest = { unlink = null }, title = { Text(stringResource(R.string.unlink)) },
         text = { Text(stringResource(R.string.unlink_hint)) }, confirmButton = { TextButton({ scope.launch { platform.unlink(id); vm.refresh() }; unlink = null }) { Text(stringResource(R.string.unlink)) } },
         dismissButton = { TextButton({ unlink = null }) { Text(stringResource(R.string.cancel)) } }) }
+    if(upgrade) AlertDialog(onDismissRequest = { upgrade = false },
+        title = { Text(stringResource(R.string.optimized_sync_title)) },
+        text = { Text(stringResource(R.string.optimized_sync_hint)) },
+        confirmButton = { TextButton({
+            upgrade = false
+            val connection = storedConnection
+            if(connection != null && sameSavedTarget && com.codedbydan.momentum.core.nextcloudConnectionIdentity(connection.serverUrl, connection.userName, connection.folder) == upgradeIdentity && !status.syncing && !status.migratingFolder) scope.launch {
+                platform.saveConnection(connection.copy(optimized = true))
+                storedConnection = platform.connection()
+                if(storedConnection?.optimized == true) platform.syncNow()
+                vm.refresh()
+            }
+        }) { Text(stringResource(R.string.upgrade)) } },
+        dismissButton = { TextButton({ upgrade = false }) { Text(stringResource(R.string.cancel)) } })
     if(replace) AlertDialog(onDismissRequest = { replace = false }, title = { Text(stringResource(R.string.replace_server_title)) },
         text = { Text(stringResource(R.string.replace_server_hint)) },
         confirmButton = { TextButton({ platform.replaceServerCopy(); replace = false }, enabled = !status.syncing && status.failureKind == SyncFailureKind.REMOTE_FILE_DAMAGED) { Text(stringResource(R.string.replace_server_confirm)) } },

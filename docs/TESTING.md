@@ -8,6 +8,29 @@ bus or network: every test gets its own directory, settings live in a memory bac
 the session bus address points nowhere, and the Nextcloud tests talk to an in-process
 WebDAV stand-in.
 
+## Nextcloud acceleration (F-075/B-176)
+
+Use disposable loopback fixtures; no real account or task store is needed:
+
+```sh
+cargo test -p momentum-sync transport_tests
+cargo test -p momentum-sync optimized::tests
+cargo test -p momentum-sync push::tests
+cargo test -p momentum-core optimized_
+swift test --package-path macos/Packages/MomentumKit
+swift test --package-path ios/Packages/MomentumMobile
+```
+
+The sync fixtures include an ephemeral trusted HTTPS/WSS server and negative TLS,
+origin, credential logging, restart-cache and slow-frame cancellation checks. The
+optimized tests exercise verified immutable publication, replay, archived data,
+wrong keys, missing manifests, restore receipts and checked folder copying. Native
+suites cover cadence, bounded edit bursts, follow-ups and identity-bound consent.
+Run the existing Linux headless harness, Android JVM/build/lint gates and canonical
+iOS simulator transport lane as well; compiled Android instrumentation cases need
+a separate isolated emulator/device run. See [SYNC-PERFORMANCE.md](SYNC-PERFORMANCE.md)
+and [SYNC-PUSH.md](SYNC-PUSH.md) for recovery, privacy and acceptance boundaries.
+
 ## Completion-sound assets
 
 `python3 build-aux/check-completion-sounds.py` verifies the ten approved WAV hashes,

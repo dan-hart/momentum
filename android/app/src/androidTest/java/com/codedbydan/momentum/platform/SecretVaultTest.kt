@@ -10,6 +10,29 @@ import java.security.KeyStore
 import java.util.UUID
 
 class SecretVaultTest {
+    @Test fun optimizedConsentIsOneWayPerConnectionAndLegacyRecordsDefaultOff() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val directory = File(context.cacheDir, "vault-protocol-test-${UUID.randomUUID()}").also { it.mkdirs() }
+        val vault = SecretVault(directory)
+        try {
+            val legacy = NextcloudSettings("https://fixture.invalid", "fixture", "fixture-password", "momentum", false, null)
+            assertFalse(legacy.optimized)
+            vault.saveConnection(legacy)
+            assertFalse(vault.connection()!!.optimized)
+            vault.saveConnection(legacy.copy(optimized = true))
+            assertTrue(vault.connection()!!.optimized)
+            vault.saveConnection(legacy)
+            assertTrue(vault.connection()!!.optimized)
+            vault.saveConnection(legacy.copy(folder = "other-folder"))
+            assertFalse(vault.connection()!!.optimized)
+            vault.saveConnection(legacy)
+            assertTrue(vault.connection()!!.optimized)
+        } finally {
+            KeyStore.getInstance("AndroidKeyStore").apply { load(null); deleteEntry(vault.keyAlias) }
+            directory.deleteRecursively()
+        }
+    }
+
     @Test fun invalidStoredBase64LatchesFailureAndRefusesReplacementOrDeletion() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = File(context.cacheDir, "vault-test-${UUID.randomUUID()}").also { it.mkdirs() }

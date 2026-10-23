@@ -2213,6 +2213,7 @@ fn sync_refuses_without_settings_and_reports_status() {
     assert!(!s.syncing && s.pending_ops > 0 && s.last_nextcloud_ms == 0 && !s.nearby_running);
     let err = e
         .sync_nextcloud(NextcloudSettings {
+            optimized: false,
             server_url: String::new(),
             user_name: String::new(),
             password: String::new(),
@@ -2224,6 +2225,7 @@ fn sync_refuses_without_settings_and_reports_status() {
     assert!(matches!(err, CoreError::NotConfigured));
     let err = e
         .sync_nextcloud(NextcloudSettings {
+            optimized: false,
             server_url: "http://127.0.0.1:1".into(),
             user_name: "u".into(),
             password: "p".into(),

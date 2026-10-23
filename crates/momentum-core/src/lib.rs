@@ -28,6 +28,8 @@ pub use portable::*;
 #[cfg(feature = "p2p")]
 pub mod p2p;
 mod sync_cancellation;
+mod sync_policy;
+pub use sync_policy::*;
 pub mod text;
 pub mod types;
 

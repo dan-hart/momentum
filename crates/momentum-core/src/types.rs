@@ -734,6 +734,9 @@ pub struct NextcloudSettings {
     pub folder: String,
     pub compress: bool,
     pub encryption_password: Option<String>,
+    /// Explicit device-local consent to the one-way optimized collection upgrade.
+    #[cfg_attr(feature = "ffi", uniffi(default = false))]
+    pub optimized: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

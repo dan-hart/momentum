@@ -21,12 +21,30 @@ public struct NextcloudConnection: Codable, Equatable, Sendable {
     public var encryptionPassword = ""
     public var compress = false
     public var automatic = true
+    // Optional storage keeps records written before optimized sync readable.
+    private var optimizedValue: Bool?
+    public var optimized: Bool {
+        get { optimizedValue ?? false }
+        set { optimizedValue = newValue ? true : nil }
+    }
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.serverURL == rhs.serverURL && lhs.userName == rhs.userName && lhs.password == rhs.password
+            && lhs.folder == rhs.folder && lhs.encryptionPassword == rhs.encryptionPassword
+            && lhs.compress == rhs.compress && lhs.automatic == rhs.automatic && lhs.optimized == rhs.optimized
+    }
+    private enum CodingKeys: String, CodingKey {
+        case serverURL, userName, password, folder, encryptionPassword, compress, automatic
+        case optimizedValue = "optimized"
+    }
+    public var identity: String {
+        nextcloudConnectionIdentity(serverUrl: serverURL, userName: userName, folder: folder)
+    }
     public init() {}
 
     public var settings: NextcloudSettings {
         NextcloudSettings(serverUrl: serverURL, userName: userName, password: password,
                           folder: folder, compress: compress,
-                          encryptionPassword: encryptionPassword.isEmpty ? nil : encryptionPassword)
+                          encryptionPassword: encryptionPassword.isEmpty ? nil : encryptionPassword, optimized: optimized)
     }
 
     public var validationIssue: NextcloudConnectionIssue? {

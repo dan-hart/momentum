@@ -101,6 +101,13 @@ extension EngineWorker {
         NextcloudFolderCopy(engine: engine, settings: settings)
     }
     public func syncStatus() -> SyncStatus { engine.syncStatus() }
+    public func nextcloudPushHint(settings: NextcloudSettings) -> Bool {
+        // A queued actor call must not resurrect a listener after the owner cancelled it.
+        guard !Task.isCancelled else { return false }
+        return engine.nextcloudPushHint(settings: settings)
+    }
+    public func stopNextcloudPush() { engine.stopNextcloudPush() }
+    public func nextcloudOptimizedRequired(settings: NextcloudSettings) -> Bool { engine.nextcloudOptimizedRequired(settings: settings) }
 
     /// What a background wake may spend on one exchange before iOS ends it.
     public static let backgroundExchangeBudgetMs: UInt64 = 25_000

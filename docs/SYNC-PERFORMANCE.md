@@ -2,6 +2,87 @@
 <!-- Copyright (C) 2026 Dan Hart -->
 # Sync performance and recovery
 
+## 2026-10-23 client acceleration (F-075)
+
+F-075 adds nine client improvements across Linux, macOS, iOS and Android. Server
+administration/tuning is deferred at the user's request. No measured speed multiplier
+is claimed; real-server latency and bandwidth depend on the installation and workload.
+
+### Existing connections
+
+Legacy v2 remains the default. Native clients share a 750 ms first-edit coalescing
+window, followed by another exchange if edits arrive while one is running. Foreground
+reconciliation uses 5 seconds during recent activity, then 15 seconds, then 150 seconds
+while idle. Native power, foreground/background and selected-provider rules still apply.
+OS background scheduling is not a guarantee of a particular wake interval.
+
+The shared transport reuses a bounded HTTP connection pool. Conditional downloads
+use an exact validated baseline even with pending edits; an encrypted baseline sidecar
+preserves encryption at rest and never stores credentials. Changed configuration,
+corrupt cache, conflicts and failed validation invalidate cached knowledge. Task and
+optional settings exchanges run independently within one provider lease and deadline;
+settings consent and review remain separate. Unchanged legacy polls validate before
+cloning the full task store. Concurrent local edits remain pending for the next exchange.
+
+If the server already advertises Nextcloud Client Push, foreground clients discover
+its endpoint and listen for best-effort invalidation hints. Only same-origin validated
+HTTPS/WSS is accepted; credentials never follow discovery or websocket redirects.
+Notifications coalesce and trigger ordinary authoritative synchronization. Missing
+capabilities, disconnects and unsupported hosting retain periodic reconciliation.
+Changing providers, backgrounding and power restrictions stop native push work.
+No server installation, APNs, FCM or proprietary Momentum service is required.
+See [Nextcloud's protocol](https://github.com/nextcloud/notify_push/blob/main/DEVELOPING.md).
+
+### Optional optimized collection
+
+Sync settings offer an explicit **Upgrade** action with an explanation on each native
+platform. Consent is specific to the server, account and folder. Upgrade every device
+participating in that collection; older apps continue seeing the retained legacy file,
+which is no longer the authoritative optimized dataset. Do not mix legacy and optimized
+writers expecting them to synchronize with each other.
+
+Upgrade creates a separate `momentum-v3` collection, retaining the original legacy
+file. It is one-way for that connection: a durable local marker is recorded before
+attempting optimized sync, including uncertain failures. Turning sync Off remains
+available. A downgrade requires a future verified migration flow; clearing preferences
+or restoring a task backup does not authorize a silent downgrade.
+
+Optimized sync publishes immutable operation batches and periodically makes checkpoints,
+with historical archives referenced separately. Manifest append order defines replay;
+stable operation IDs prevent duplicate actions. Objects are verified before a
+strong-ETag compare-and-swap manifest publication. Interrupted writes leave unreferenced
+objects and retain local pending edits. No destructive garbage collection is added.
+An initialized collection that loses its manifest fails closed instead of importing a
+stale legacy copy. Independent acknowledged manifest receipts preserve unchanged-poll,
+restore and undo behavior without changing legacy cursors.
+
+Encrypted optimized objects use a versioned Argon2-protected vault-key envelope and
+fresh AES-GCM nonces with collection/type/object context authentication. A one-entry,
+expiring in-memory key cache amortizes password derivation; invalidation and lifecycle
+changes release idle keys. Keys are never persisted in plaintext. Existing legacy
+ciphertexts and password handling remain compatible.
+
+Verified folder copying reconstructs committed optimized data, encrypts it for the
+new collection identity, checks source stability and refuses conflicting destinations.
+Optional settings are copied too. Source data and local pending edits remain intact;
+local preferences change only after verified success. A failed partial copy may need
+a different empty destination; it never authorizes overwriting an existing collection.
+
+### Verification boundaries
+
+Regression tests use disposable stores and mock HTTP/TLS/WebSocket servers. They cover
+pool reuse, conditional/restart caching, pending edits, CAS conflicts, uncertain uploads,
+ordered replay, checkpoints/archives, wrong keys, malformed objects, restore, undo,
+folder copying, native scheduling/consent and push authentication/cancellation/fallback.
+The dated F-075 entry in [PROGRESS.md](PROGRESS.md) records actual platform checks.
+Real Nextcloud installations, suspended-device timing, physical-device acceptance and
+the proposed 10× target require separate measurement.
+
+## Historical 2026-10-10 evidence (F-058)
+
+The following records its original checkout and measured scope. Its cache/scheduling
+and Android availability descriptions are historical; F-075 above describes the current design.
+
 F-058, B-100–B-103. Evidence recorded 2026-10-10 on the dirty
 `task/sync-performance-recovery` checkout based on `200f686`. Local changes only.
 All fixtures use temporary task stores and loopback servers, with synthetic contents.

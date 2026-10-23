@@ -4217,3 +4217,31 @@ msgstr "Die Einstellungen sind auf Linux, macOS, iOS und Android in native Kateg
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
 msgid "Ten new short completion sounds, independent previews, and a local volume control."
 msgstr "Zehn neue kurze Erledigungstöne, unabhängige Hörproben und eine lokale Lautstärkeregelung."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade to optimized sync…"
+msgstr "Auf optimierte Synchronisierung umstellen…"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade to optimized sync?"
+msgstr "Auf optimierte Synchronisierung umstellen?"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Optimized sync enabled"
+msgstr "Optimierte Synchronisierung aktiviert"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade"
+msgstr "Umstellen"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."
+msgstr "Aktualisiere alle beteiligten Geräte und aktiviere auf jedem die optimierte Synchronisierung. Diese Verbindung kann nicht zur bisherigen Synchronisierung zurückkehren. Bestehende Dateien bleiben erhalten. Die Synchronisierung kann weiterhin ausgeschaltet werden."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "At startup, frequently while active, less often while idle, and shortly after changes"
+msgstr "Beim Start, bei aktiver Nutzung häufig, bei Inaktivität seltener und kurz nach Änderungen"
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in
+msgid "Connections explicitly upgraded to optimized sync"
+msgstr "Verbindungen, die ausdrücklich auf optimierte Synchronisierung umgestellt wurden"

@@ -19,6 +19,7 @@
     <key name="nextcloud-folder-default-pinned" type="b"><default>false</default><summary>Existing connection folder has been preserved</summary></key>
     <key name="auto-sync" type="b"><default>true</default><summary>Sync automatically</summary></key>
     <key name="background-sync" type="b"><default>true</default><summary>Keep automatic sync running while the window is hidden</summary></key>
+    <key name="nextcloud-optimized-connections" type="as"><default>[]</default><summary>Connections explicitly upgraded to optimized sync</summary></key>
     <key name="compress" type="b"><default>false</default><summary>Gzip the sync file</summary></key>
     <key name="projects-collapsed" type="b"><default>false</default><summary>Projects section collapsed in the sidebar</summary></key>
     <key name="tags-collapsed" type="b"><default>false</default><summary>Tags section collapsed in the sidebar</summary></key>

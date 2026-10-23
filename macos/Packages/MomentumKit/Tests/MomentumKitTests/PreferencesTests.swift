@@ -18,6 +18,39 @@ import Testing
         return (d, name)
     }
 
+    @Test func optimizedConsentStaysWithItsAccountAndFolderAndCannotBeClearedByLegacyCliConfig() throws {
+        let (d, name) = freshDefaults()
+        defer { d.removePersistentDomain(forName: name) }
+        d.set("https://fixture.invalid", forKey: PrefKey.nextcloudServer)
+        d.set("fixture", forKey: PrefKey.nextcloudUser)
+        let prefs = Preferences(d)
+        #expect(!prefs.nextcloudOptimized)
+        prefs.rememberOptimizedConnection(prefs.nextcloudConnectionIdentity)
+        #expect(prefs.nextcloudOptimized)
+        d.set("other-folder", forKey: PrefKey.nextcloudFolder)
+        #expect(!prefs.nextcloudOptimized, "another target needs its own explicit consent")
+        d.set("momentum", forKey: PrefKey.nextcloudFolder)
+        #expect(prefs.nextcloudOptimized)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data(#"{"optimized":false}"#.utf8).write(to: directory.appendingPathComponent("cli-config.json"))
+        prefs.readCliConfig(from: directory)
+        #expect(prefs.nextcloudOptimized, "a legacy client cannot downgrade a remembered upgrade")
+    }
+
+    @Test func cliConfigurationExplicitlyDefaultsToLegacyProtocol() throws {
+        let (d, name) = freshDefaults()
+        defer { d.removePersistentDomain(forName: name) }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        Preferences(d).writeCliConfig(to: directory)
+        let data = try Data(contentsOf: directory.appendingPathComponent("cli-config.json"))
+        let record = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(record["optimized"] as? Bool == false)
+    }
+
     @Test func dayPeriodVisibilityDefaultsToTrueAndPersistsLocally() {
         let name = "momentum-day-period-\(UUID())"
         let d = UserDefaults(suiteName: name)!

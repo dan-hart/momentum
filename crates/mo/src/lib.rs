@@ -224,6 +224,8 @@ struct CliConfig {
     folder: Option<String>,
     #[serde(default)]
     compress: bool,
+    #[serde(default)]
+    optimized: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -909,7 +911,26 @@ where
                     compress: c.compress,
                     encrypt_key: secret("encryption"),
                 };
-                let r = if replace_remote {
+                let upgraded =
+                    momentum_sync::optimized::require_optimized(&cfg, store.dir()).map_err(|e| e.to_string())?;
+                if upgraded && !c.optimized {
+                    return Err("This connection requires optimized sync; reconnect through Momentum.".into());
+                }
+                if c.optimized && replace_remote {
+                    return Err("Legacy server replacement is unavailable for optimized connections.".into());
+                }
+                let r = if c.optimized {
+                    momentum_sync::optimized::pin_optimized(&cfg, store.dir()).map_err(|e| e.to_string())?;
+                    let r = momentum_sync::optimized::exchange_guarded(
+                        &cfg,
+                        &mut store,
+                        momentum_sync::DEFAULT_EXCHANGE_TIMEOUT,
+                        || true,
+                    )
+                    .map_err(|e| e.to_string())?;
+                    store.save().map_err(|e| e.to_string())?;
+                    r
+                } else if replace_remote {
                     let r = momentum_sync::replace_remote(
                         &cfg,
                         &mut store,

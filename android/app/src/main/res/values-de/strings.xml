@@ -302,4 +302,9 @@
     <string name="notes_copied">Notizen kopiert</string>
     <string name="recurring_preview">Wiederholungsvorschau</string>
     <string name="edit_repeat_schedule">Wiederholungsplan bearbeiten</string>
+    <string name="optimized_sync_upgrade">Auf optimierte Synchronisierung umstellen…</string>
+    <string name="optimized_sync_title">Auf optimierte Synchronisierung umstellen?</string>
+    <string name="optimized_sync_enabled">Optimierte Synchronisierung aktiviert</string>
+    <string name="optimized_sync_hint">Aktualisiere alle beteiligten Geräte und aktiviere auf jedem die optimierte Synchronisierung. Diese Verbindung kann nicht zur bisherigen Synchronisierung zurückkehren. Bestehende Dateien bleiben erhalten. Die Synchronisierung kann weiterhin ausgeschaltet werden.</string>
+    <string name="upgrade">Umstellen</string>
 </resources>

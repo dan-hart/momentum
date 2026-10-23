@@ -28,6 +28,8 @@ mod imp {
         #[template_child]
         pub migrate_folder_row: TemplateChild<adw::ButtonRow>,
         #[template_child]
+        pub optimized_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
         pub method_row: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub nextcloud_group: TemplateChild<adw::PreferencesGroup>,
@@ -718,8 +720,16 @@ impl MomentumPrefs {
         imp.settings_retry_row
             .set_visible(owner.can_retry_app_settings() || (status.enabled && status.error.is_some()));
         let settings = gio::Settings::new(*crate::config::APP_ID);
+        let optimized = nextcloud_optimized(&settings);
         imp.migrate_folder_row
             .set_visible(effective_nextcloud_folder(&settings) != "momentum");
+        imp.optimized_row.set_title(&gettext(if optimized {
+            "Optimized sync enabled"
+        } else {
+            "Upgrade to optimized sync…"
+        }));
+        imp.optimized_row
+            .set_sensitive(!optimized && !owner.imp().syncing.get() && owner.sync_configured());
         let busy = owner.imp().syncing.get();
         imp.method_row.set_sensitive(!busy);
         for row in [
@@ -807,6 +817,35 @@ impl MomentumPrefs {
                 owner.review_app_settings();
             }
         ));
+        self.imp().optimized_row.connect_activated(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            move |_| {
+                let settings = gio::Settings::new(*crate::config::APP_ID);
+                let identity = nextcloud_identity(&settings);
+                let dialog = adw::AlertDialog::builder()
+                    .heading(gettext("Upgrade to optimized sync?"))
+                    .body(gettext("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."))
+                    .build();
+                dialog.add_response("cancel", &gettext("Cancel"));
+                dialog.add_response("upgrade", &gettext("Upgrade"));
+                dialog.set_close_response("cancel");
+                dialog.connect_response(None, glib::clone!(
+                    #[weak]
+                    owner,
+                    move |_, response| {
+                        if response == "upgrade" && !owner.imp().syncing.get() && nextcloud_identity(&settings) == identity {
+                            if let Err(error) = remember_optimized_connection(&settings, &identity) {
+                                owner.toast(&error.to_string());
+                            } else { owner.sync(); }
+                        }
+                    }
+                ));
+                dialog.present(Some(&prefs));
+            }
+        ));
         self.imp().migrate_folder_row.connect_activated(glib::clone!(
             #[weak(rename_to = prefs)]
             self,
@@ -891,6 +930,34 @@ const LEGACY_NEXTCLOUD_FOLDER: &str = "super-productivity";
 
 /// A failed preference write must never redirect an existing connection. This is also
 /// used when displaying or exporting the effective connection while pinning retries.
+pub fn nextcloud_identity(settings: &gio::Settings) -> String {
+    momentum_core::nextcloud_connection_identity(
+        settings.string("nextcloud-server").into(),
+        settings.string("nextcloud-user").into(),
+        effective_nextcloud_folder(settings),
+    )
+}
+
+pub fn nextcloud_optimized(settings: &gio::Settings) -> bool {
+    let identity = nextcloud_identity(settings);
+    settings
+        .strv("nextcloud-optimized-connections")
+        .iter()
+        .any(|value| value.as_str() == identity)
+}
+
+pub fn remember_optimized_connection(settings: &gio::Settings, identity: &str) -> Result<(), glib::BoolError> {
+    let mut identities: Vec<String> = settings
+        .strv("nextcloud-optimized-connections")
+        .iter()
+        .map(|value| value.to_string())
+        .collect();
+    if !identities.iter().any(|value| value == identity) {
+        identities.push(identity.to_owned());
+    }
+    settings.set_strv("nextcloud-optimized-connections", identities.as_slice())
+}
+
 pub fn effective_nextcloud_folder(settings: &gio::Settings) -> String {
     if !settings.boolean("nextcloud-folder-default-pinned")
         && settings.user_value("nextcloud-folder").is_none()
@@ -969,6 +1036,29 @@ mod sync_tests {
         pin_existing_nextcloud_folder(&settings).unwrap();
         assert!(settings.boolean("nextcloud-folder-default-pinned"));
         assert_eq!(settings.string("nextcloud-folder"), LEGACY_NEXTCLOUD_FOLDER);
+    }
+
+    #[test]
+    fn optimized_consent_defaults_off_and_remains_bound_to_the_connection() {
+        let schema = gio::SettingsSchemaSource::default()
+            .unwrap()
+            .lookup(*crate::config::APP_ID, true)
+            .unwrap();
+        let backend = gio::memory_settings_backend_new();
+        let settings = gio::Settings::new_full(&schema, Some(&backend), None);
+        settings
+            .set_string("nextcloud-server", "https://fixture.invalid")
+            .unwrap();
+        settings.set_string("nextcloud-user", "fixture").unwrap();
+        assert!(!nextcloud_optimized(&settings));
+        let original_folder = effective_nextcloud_folder(&settings);
+        remember_optimized_connection(&settings, &nextcloud_identity(&settings)).unwrap();
+        assert!(nextcloud_optimized(&settings));
+        settings.set_string("nextcloud-folder", "other").unwrap();
+        assert!(!nextcloud_optimized(&settings));
+        settings.set_string("nextcloud-folder", &original_folder).unwrap();
+        let reopened = gio::Settings::new_full(&schema, Some(&backend), None);
+        assert!(nextcloud_optimized(&reopened));
     }
 
     #[test]

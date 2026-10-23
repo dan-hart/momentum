@@ -201,7 +201,12 @@ template $MomentumPrefs: Adw.PreferencesDialog {
 
       Adw.SwitchRow auto_row {
         title: _("Sync automatically");
-        subtitle: _("At startup, every few minutes, and shortly after you make changes");
+        subtitle: _("At startup, frequently while active, less often while idle, and shortly after changes");
+      }
+
+      Adw.ButtonRow optimized_row {
+        title: _("Upgrade to optimized sync…");
+        start-icon-name: "view-refresh-symbolic";
       }
 
       Adw.SwitchRow compress_row {

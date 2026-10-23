@@ -344,6 +344,9 @@ impl MockDav {
     pub fn raw(&self, path: &str) -> Option<Vec<u8>> {
         self.files.lock().unwrap().get(path).cloned()
     }
+    pub fn remove(&self, path: &str) {
+        self.files.lock().unwrap().remove(path);
+    }
     /// Overwrite a stored file directly, e.g. to simulate a copy damaged on the server.
     pub fn set_raw(&self, path: &str, body: Vec<u8>) {
         self.files.lock().unwrap().insert(path.to_string(), body);

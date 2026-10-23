@@ -240,6 +240,9 @@ private struct SyncSettings: SwiftUI.View {
     @AppStorage(PrefKey.autoSync) private var autoSync = true
     @AppStorage(PrefKey.backgroundSync) private var backgroundSync = true
     @AppStorage(PrefKey.compress) private var compress = false
+    @AppStorage(PrefKey.nextcloudOptimizedConnections) private var optimizedConnections = "[]"
+    @State private var confirmingOptimizedUpgrade = false
+    @State private var optimizedUpgradeIdentity = ""
     @State private var password = ""
     @State private var encryption = ""
     @State private var confirmingFolderCopy = false
@@ -341,6 +344,18 @@ private struct SyncSettings: SwiftUI.View {
                     Toggle(String(localized: "Sync automatically"), isOn: $autoSync).settingsTarget("sync.automatic")
                     backgroundSyncToggle
                     Toggle(String(localized: "Compress the sync file"), isOn: $compress).settingsTarget("sync.compression")
+                    if state.prefs.nextcloudOptimized {
+                        Label(String(localized: "Optimized sync enabled"), systemImage: "checkmark.circle")
+                    } else {
+                        Button(String(localized: "Upgrade to optimized sync…")) {
+                            optimizedUpgradeIdentity = state.prefs.nextcloudConnectionIdentity
+                            confirmingOptimizedUpgrade = true
+                        }
+                            .disabled(state.isSyncing || !state.prefs.syncConfigured)
+                    }
+                    Text(String(localized: "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."))
+                        .font(.caption).foregroundStyle(.secondary)
+
                 }
             } else if method == SyncMethod.libresync.rawValue {
                 Section("LibreSync") {
@@ -374,6 +389,12 @@ private struct SyncSettings: SwiftUI.View {
         .onChange(of: password) { _, new in state.keychain.set(Keychain.nextcloud, new) }
         .onChange(of: encryption) { _, new in state.keychain.set(Keychain.encryption, new) }
         .onDisappear { state.cancelFolderCopy() }
+        .alert(String(localized: "Upgrade to optimized sync?"), isPresented: $confirmingOptimizedUpgrade) {
+            Button(String(localized: "Cancel"), role: .cancel) {}
+            Button(String(localized: "Upgrade")) { state.upgradeOptimizedSync(expectedIdentity: optimizedUpgradeIdentity) }
+        } message: {
+            Text(String(localized: "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."))
+        }
         .alert(String(localized: "Copy to Momentum folder?"), isPresented: $confirmingFolderCopy) {
             Button(String(localized: "Cancel"), role: .cancel) {}
             Button(String(localized: "Copy and switch")) { Task { await state.copyToMomentumFolder() } }

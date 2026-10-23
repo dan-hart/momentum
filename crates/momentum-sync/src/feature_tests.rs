@@ -152,7 +152,7 @@ fn missing_etag_never_causes_an_unconditional_overwrite() {
 }
 
 #[test]
-fn unchanged_poll_uses_headers_but_edits_and_changed_credentials_use_the_body() {
+fn unchanged_poll_and_pending_edits_use_validation_but_changed_credentials_use_the_body() {
     let dav = MockDav::start();
     let c = cfg(&dav, true);
     let (mut a, _dir) = store(true);
@@ -175,7 +175,8 @@ fn unchanged_poll_uses_headers_but_edits_and_changed_credentials_use_the_body() 
             .unwrap()
             .uploaded
     );
-    assert!(dav.downloaded_bytes.load(Ordering::SeqCst) > 0);
+    assert_eq!(dav.downloaded_bytes.load(Ordering::SeqCst), 0);
+    assert_eq!(dav.not_modified.load(Ordering::SeqCst), 2);
     let wrong_key = NextcloudCfg {
         encrypt_key: Some("wrong".into()),
         ..c.clone()

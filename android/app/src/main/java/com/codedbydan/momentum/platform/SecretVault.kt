@@ -70,16 +70,25 @@ internal class SecretVault(private val directory: File) {
         save(document)
     }
     @Synchronized fun connection(): NextcloudSettings? {
-        val json = load().optJSONObject("nextcloud") ?: return null
+        val document = load()
+        val json = document.optJSONObject("nextcloud") ?: return null
+        val identity = com.codedbydan.momentum.core.nextcloudConnectionIdentity(json.getString("server"), json.getString("user"), json.getString("folder"))
+        val approved = document.optJSONArray("optimizedConnections")
+        val remembered = approved != null && (0 until approved.length()).any { approved.optString(it) == identity }
         return NextcloudSettings(json.getString("server"), json.getString("user"), json.getString("password"),
             json.getString("folder"), json.getBoolean("compress"),
-            if (json.isNull("encryption")) null else json.getString("encryption"))
+            if (json.isNull("encryption")) null else json.getString("encryption"), json.optBoolean("optimized", false) || remembered)
     }
     @Synchronized fun saveConnection(settings: NextcloudSettings) {
         val document = load() // Validate existing ciphertext BEFORE replacing it.
+        val identity = com.codedbydan.momentum.core.nextcloudConnectionIdentity(settings.serverUrl, settings.userName, settings.folder)
+        val approved = document.optJSONArray("optimizedConnections") ?: org.json.JSONArray()
+        val remembered = (0 until approved.length()).any { approved.optString(it) == identity }
+        if (settings.optimized && !remembered) approved.put(identity)
+        document.put("optimizedConnections", approved)
         document.put("nextcloud", JSONObject().put("server", settings.serverUrl).put("user", settings.userName)
             .put("password", settings.password).put("folder", settings.folder).put("compress", settings.compress)
-            .put("encryption", settings.encryptionPassword ?: JSONObject.NULL))
+            .put("encryption", settings.encryptionPassword ?: JSONObject.NULL).put("optimized", settings.optimized || remembered))
         save(document)
     }
 

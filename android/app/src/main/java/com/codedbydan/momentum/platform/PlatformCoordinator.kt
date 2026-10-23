@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.AtomicFile
 import androidx.core.content.ContextCompat
 import androidx.work.*
@@ -102,6 +103,8 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
     private var generation = 0L
     private var automaticJob: Job? = null
     private var debounceJob: Job? = null
+    private var syncActivityAt = SystemClock.elapsedRealtime()
+    private var syncAttemptAt = SystemClock.elapsedRealtime()
     private var multicast: WifiManager.MulticastLock? = null
     private var nearbyEvents: Channel<P2pEvent>? = null
     private var nearbyEventJob: Job? = null
@@ -144,6 +147,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
 
     suspend fun foreground(active: Boolean) {
         foregroundRequested = active
+        if (active) syncActivityAt = SystemClock.elapsedRealtime()
         if(active) taskSearch?.requestReconcile()
         withContext(Dispatchers.IO) {
             guarded { control.withLock {
@@ -186,11 +190,8 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
                     taskSearch?.resume()
                     guarded { configureForeground() }
                     guarded { configureBackground() }
-                    debounceJob?.cancel()
-                    if (foregroundRequested && !savingPower()) debounceJob = scope.launch {
-                        delay(10_000)
-                        if (repository.settings().automaticSync) automaticSync()
-                    }
+                    syncActivityAt = SystemClock.elapsedRealtime()
+                    scheduleEditSync()
                 }
             }
             reconcileReminders()
@@ -205,6 +206,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
         taskCount.cancelAndDrain()
         withContext(Dispatchers.IO) { control.withLock {
             debounceJob?.cancel(); automaticJob?.cancel(); automaticJob = null
+            repository.read { stopNextcloudPush() }
             drainExchange()
             stopNearby()
         } }
@@ -229,6 +231,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
             val old = repository.settings()
             if (old.provider != provider) {
                 debounceJob?.cancel()
+                repository.read { stopNextcloudPush() }
                 drainExchange()
                 stopNearby()
                 repository.updateSettings { it.copy(provider = provider) }
@@ -242,7 +245,12 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
     }
 
     suspend fun connection(): NextcloudSettings? = withContext(Dispatchers.IO) {
-        try { vault.connection() } catch (e: Exception) { if (e is CancellationException) throw e; recordError(e); null }
+        try {
+            val saved = vault.connection()
+            if (saved != null && !saved.optimized && repository.read { nextcloudOptimizedRequired(saved) }) {
+                saved.copy(optimized = true).also { vault.saveConnection(it) }
+            } else saved
+        } catch (e: Exception) { if (e is CancellationException) throw e; recordError(e); null }
     }
 
     suspend fun saveConnection(settings: NextcloudSettings) = withContext(Dispatchers.IO) {
@@ -250,8 +258,10 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
         require(ConnectionPolicy.accepts(settings.serverUrl, isolated)) { "Use an HTTPS server URL without credentials, query or fragment" }
         require(settings.userName.isNotBlank() && settings.password.isNotBlank() && settings.folder.isNotBlank()) { "Complete the server, user, app password and sync folder" }
         control.withLock {
+            repository.read { stopNextcloudPush() }
             drainExchange()
-            val saved = settings.copy(serverUrl = settings.serverUrl.trim())
+            var saved = settings.copy(serverUrl = settings.serverUrl.trim())
+            if (!saved.optimized && repository.read { nextcloudOptimizedRequired(saved) }) saved = saved.copy(optimized = true)
             val previous = vault.connection()
             vault.saveConnection(saved)
             // A new target/configuration invalidates the old recovery dialog. Saving
@@ -275,6 +285,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
             mutable.update { it.copy(migratingFolder = true, information = null) }
             try {
                 debounceJob?.cancel(); automaticJob?.cancel(); automaticJob = null
+                repository.read { stopNextcloudPush() }
                 drainExchange(); stopNearby()
                 val engine = repository.read { this }
                 val report = migrateFolder(engine, expected, token)
@@ -431,6 +442,7 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
         if (!active) {
             automaticJob?.cancel(); automaticJob = null
             debounceJob?.cancel()
+            repository.read { stopNextcloudPush() }
             drainExchange()
             stopNearby()
             if (powerReceiverRegistered) { context.unregisterReceiver(powerReceiver); powerReceiverRegistered = false }
@@ -441,10 +453,54 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
             powerReceiverRegistered = true
         }
         val settings = repository.settings()
+        if (savingPower()) repository.read { stopNextcloudPush() }
         if (settings.provider == SyncProvider.LibreSync && !savingPower()) startNearby() else stopNearby()
         if (automaticJob?.isActive != true) automaticJob = scope.launch {
             automaticSync()
-            while (isActive && foregroundRequested) { delay(150_000); automaticSync(); reconcileReminders() }
+            while (isActive && foregroundRequested) {
+                // Wake at the active cadence; activity during a long idle period must
+                // shorten the next reconciliation rather than wait for an old timer.
+                delay(1_000)
+                guarded {
+                    // Selection, restore, connection saves and foreground transitions
+                    // share this admission lock. A stale tick cannot restart push after Off.
+                    control.withLock {
+                        val current = repository.settings()
+                        if (foregroundRequested && !restorePaused && current.provider == SyncProvider.Nextcloud &&
+                            current.automaticSync && !savingPower()) {
+                            val connection = vault.connection()
+                            if (connection != null && repository.read { nextcloudPushHint(connection) }) scheduleEditSync()
+                        } else repository.read { stopNextcloudPush() }
+                    }
+                }
+                // Push is optional: a native credential/read error above must not
+                // terminate the loop or prevent authoritative polling and reminders.
+                guarded {
+                    val now = SystemClock.elapsedRealtime()
+                    val current = repository.settings()
+                    val interval = if (current.provider == SyncProvider.Nextcloud && current.automaticSync)
+                        syncPollDelayMs((now - syncActivityAt).coerceAtLeast(0).toULong()).toLong() else 150_000L
+                    if (now - syncAttemptAt >= interval) {
+                        syncAttemptAt = now
+                        automaticSync()
+                        reconcileReminders()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun scheduleEditSync() {
+        if (!foregroundRequested || savingPower() || debounceJob?.isActive == true) return
+        debounceJob = scope.launch {
+            delay(syncEditDelayMs().toLong())
+            // Edits made during exchange retain a follow-up deadline until it drains.
+            while (isActive && control.withLock { exchange?.job?.isCompleted == false }) {
+                delay(syncEditDelayMs().toLong())
+            }
+            val current = coroutineContext[Job]
+            control.withLock { if (debounceJob === current) debounceJob = null }
+            automaticSync()
         }
     }
 
@@ -452,7 +508,10 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
         control.withLock {
             val settings = repository.settings()
             if (!foregroundRequested || restorePaused || savingPower() || !settings.automaticSync) return@withLock
-            if (settings.provider == SyncProvider.Nextcloud && vault.connection() != null) startNextcloud(false, 120_000uL)
+            if (settings.provider == SyncProvider.Nextcloud && vault.connection() != null) {
+                syncAttemptAt = SystemClock.elapsedRealtime()
+                startNextcloud(false, 120_000uL)
+            }
             // The Rust LibreSync scheduler owns periodic/exchange debounce while running.
         }
     }
@@ -461,12 +520,16 @@ class PlatformCoordinator internal constructor(context: Context, private val rep
         check(!restorePaused) { "Sync is paused while tasks are being restored" }
         if (exchange?.job?.isCompleted == false) return null
         exchange?.cancellation?.destroy(); exchange = null
-        val connection = vault.connection() ?: error("Save a Nextcloud connection first")
+        var connection = vault.connection() ?: error("Save a Nextcloud connection first")
         require(ConnectionPolicy.accepts(connection.serverUrl, isolated)) { "The saved connection must use HTTPS" }
         check(!ConnectionPolicy.isLocalServer(connection.serverUrl) || hasLocalNetworkAccess()) {
             "Allow local network access in Android settings to reach this Nextcloud server"
         }
         val engine = repository.read { this }
+        if (!connection.optimized && engine.nextcloudOptimizedRequired(connection)) {
+            connection = connection.copy(optimized = true)
+            vault.saveConnection(connection)
+        }
         val token = SyncCancellation()
         val job = scope.async {
             mutable.update { it.copy(syncing = true, information = null) }

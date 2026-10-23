@@ -65,16 +65,52 @@ impl Engine {
         let _lease = Lease(&self.syncing);
         #[cfg(feature = "p2p")]
         drop(nearby);
-        let r = crate::momentum_sync::migrate_folder_guarded(
-            &cfg,
-            &target_folder,
-            std::time::Duration::from_millis(timeout_ms),
-            || !cancellation.is_cancelled() && self.lock().sync_generation == generation,
-        )
-        .map_err(|e| CoreError::Transient {
-            kind: e.kind().into(),
-            message: e.to_string(),
-        })?;
+        let dir = self.lock().store.dir().to_path_buf();
+        let upgraded =
+            crate::momentum_sync::optimized::require_optimized(&cfg, &dir).map_err(|e| CoreError::Transient {
+                kind: e.kind().into(),
+                message: e.to_string(),
+            })?;
+        let timeout = std::time::Duration::from_millis(timeout_ms);
+        let start = std::time::Instant::now();
+        let current = || !cancellation.is_cancelled() && self.lock().sync_generation == generation;
+        if upgraded && !settings.optimized {
+            return Err(CoreError::Transient {
+                kind: SyncFailureKind::Cancelled,
+                message: "Optimized sync is required for this connection".into(),
+            });
+        }
+        let r = if settings.optimized {
+            let mut destination = cfg.clone();
+            destination.folder = target_folder.trim_matches('/').into();
+            // Pin before publication, including a failed or uncertain destination copy.
+            crate::momentum_sync::optimized::pin_optimized(&destination, &dir)
+                .and_then(|_| {
+                    let report = crate::momentum_sync::optimized::copy_collection_guarded(
+                        &cfg,
+                        &target_folder,
+                        timeout,
+                        &current,
+                    )?;
+                    crate::momentum_sync::optimized::mark_initialized(&destination, &dir)?;
+                    Ok(report)
+                })
+                .map_err(|e| CoreError::Transient {
+                    kind: e.kind().into(),
+                    message: e.to_string(),
+                })?
+        } else {
+            crate::momentum_sync::migrate_folder_guarded(
+                &cfg,
+                &target_folder,
+                timeout.saturating_sub(start.elapsed()),
+                current,
+            )
+            .map_err(|e| CoreError::Transient {
+                kind: e.kind().into(),
+                message: e.to_string(),
+            })?
+        };
         let g = self.lock();
         if g.sync_generation != generation || !cancellation.begin_commit() {
             return Err(CoreError::Transient {

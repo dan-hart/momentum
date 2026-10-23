@@ -30,6 +30,22 @@ import kotlin.concurrent.thread
 
 /** Real generated FFI + loopback HTTP, with no WorkManager/notification collection. */
 class CoordinatorTransportTest {
+    @Test fun optionalPushCredentialFailuresStayVisibleAndDoNotTerminateTheForegroundLoop() = runBlocking {
+        val fixture = Fixture()
+        try {
+            fixture.repo.updateSettings(AppSettings(provider = SyncProvider.Nextcloud, automaticSync = true))
+            fixture.platform.foreground(true)
+            val credentialFile = File(fixture.directory, "android-secrets.bin")
+            credentialFile.writeBytes(ByteArray(30))
+            withTimeout(5_000) { fixture.platform.state.first { it.error?.contains("Unsupported encrypted credentials") == true } }
+            // A second distinct fault is observed by a later tick. The first failure
+            // must not escape the supervisor coroutine or permanently stop polling.
+            credentialFile.writeBytes(byteArrayOf(1))
+            withTimeout(5_000) { fixture.platform.state.first { it.error?.contains("Encrypted credentials are invalid") == true } }
+            assertFalse(fixture.platform.state.value.syncing)
+        } finally { fixture.close() }
+    }
+
     @Test fun editsDuringRestoreCannotReleaseAdmissionBeforeExplicitResume() = runBlocking {
         val fixture = Fixture()
         val server = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))

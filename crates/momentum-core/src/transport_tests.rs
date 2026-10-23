@@ -29,6 +29,7 @@ impl PausedDav {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
         let settings = NextcloudSettings {
+            optimized: false,
             server_url: format!("http://{}", listener.local_addr().unwrap()),
             user_name: "fixture".into(),
             password: "fixture".into(),

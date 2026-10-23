@@ -269,6 +269,9 @@ struct FeedbackToast: Identifiable, Equatable {
                          makeReplaceOperation: { await opened.nextcloudReplaceOperation(settings: $0) },
                          makeConnectionTest: { await opened.nextcloudConnectionTestOperation(settings: $0) },
                          makeFolderCopy: { await opened.nextcloudFolderCopy(settings: $0) },
+                         optimizedRequired: { await opened.nextcloudOptimizedRequired(settings: $0) },
+                         pushHint: { await opened.nextcloudPushHint(settings: $0) },
+                         stopPush: { await opened.stopNextcloudPush() },
                          status: { await opened.syncStatus() })
             let nearbyRuntime = await opened.nearbyRuntime(
                 keychain: Keychain(),

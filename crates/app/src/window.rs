@@ -112,6 +112,10 @@ mod imp {
         pub select_count: TemplateChild<gtk::Label>,
         pub search_debounce: RefCell<Option<glib::SourceId>>,
         pub sync_debounce: RefCell<Option<glib::SourceId>>,
+        pub sync_activity_at: Cell<std::time::Instant>,
+        pub push_check_running: Cell<bool>,
+        pub push_sync_pending: Cell<bool>,
+        pub sync_attempt_at: Cell<std::time::Instant>,
         pub store_monitor: RefCell<Option<gio::FileMonitor>>,
         pub background_status: Rc<RefCell<crate::background_status::BackgroundStatusController>>,
         pub p2p_dialog: RefCell<Option<Rc<dyn Fn()>>>,
@@ -182,6 +186,10 @@ mod imp {
                 select_count: Default::default(),
                 search_debounce: Default::default(),
                 sync_debounce: Default::default(),
+                sync_activity_at: Cell::new(std::time::Instant::now()),
+                push_check_running: Cell::new(false),
+                push_sync_pending: Cell::new(false),
+                sync_attempt_at: Cell::new(std::time::Instant::now()),
                 store_monitor: Default::default(),
                 background_status: Default::default(),
                 p2p_dialog: Default::default(),
@@ -209,6 +217,7 @@ mod imp {
     impl ObjectImpl for MomentumWindow {
         /// Widgets parented by hand are given up here, while they are still alive.
         fn dispose(&self) {
+            self.engine.stop_nextcloud_push();
             // A closing native menu can retain GTK's window action group. Remove
             // its settings observers while the window is alive, before GTK's
             // parent disposal clears the group and releases the window.
@@ -252,6 +261,7 @@ mod imp {
             // Only non-GTK teardown belongs here: by the time the Rust value drops, GTK
             // has finalized the widgets, and touching one panics inside finalization,
             // which cannot unwind and aborts the process (B-094).
+            self.engine.stop_nextcloud_push();
             self.engine.p2p_stop();
             self.engine.stop_cli_server();
         }
@@ -1018,7 +1028,18 @@ impl MomentumWindow {
                 self,
                 move |_, key| {
                     w.update_sync_button();
-                    if ["nextcloud-server", "nextcloud-user", "nextcloud-folder", "compress"].contains(&key) {
+                    if key == "sync-method" {
+                        w.engine().stop_nextcloud_push();
+                    }
+                    if [
+                        "nextcloud-server",
+                        "nextcloud-user",
+                        "nextcloud-folder",
+                        "compress",
+                        "nextcloud-optimized-connections",
+                    ]
+                    .contains(&key)
+                    {
                         w.export_cli_config();
                     }
                 }
@@ -1051,15 +1072,20 @@ impl MomentumWindow {
                 }
             ),
         );
-        glib::timeout_add_seconds_local(
-            150,
+        glib::timeout_add_local(
+            std::time::Duration::from_secs(1),
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
                 #[upgrade_or]
                 glib::ControlFlow::Break,
                 move || {
-                    if w.automatic_sync_allowed() && w.sync_configured() {
+                    w.poll_nextcloud_push();
+                    let imp = w.imp();
+                    let idle_ms = imp.sync_activity_at.get().elapsed().as_millis() as u64;
+                    let due = imp.sync_attempt_at.get().elapsed().as_millis()
+                        >= u128::from(momentum_core::sync_poll_delay_ms(idle_ms));
+                    if due && !imp.syncing.get() && w.automatic_sync_allowed() && w.sync_configured() {
                         w.sync();
                     }
                     glib::ControlFlow::Continue
@@ -1073,7 +1099,12 @@ impl MomentumWindow {
         }
         // Automatic sync follows the window: hidden with "Sync in the background" off, it
         // pauses; shown again, it catches up and the LibreSync transport restarts.
-        self.connect_visible_notify(|w| w.sync_availability_changed());
+        self.connect_visible_notify(|w| {
+            if !w.is_visible() {
+                w.engine().stop_nextcloud_push();
+            }
+            w.sync_availability_changed();
+        });
         imp.settings.connect_changed(
             Some("background-sync"),
             glib::clone!(
@@ -1192,7 +1223,7 @@ impl MomentumWindow {
         }
     }
 
-    fn sync_configured(&self) -> bool {
+    pub(crate) fn sync_configured(&self) -> bool {
         // Demo/screenshot runs must never touch a real server.
         if std::env::var_os("MOMENTUM_DEMO").is_some() {
             return false;
@@ -1434,6 +1465,10 @@ impl MomentumWindow {
                 self.imp().settings.set_string(key, text).ok();
             }
         }
+        if value["optimized"].as_bool() == Some(true) {
+            let identity = crate::prefs::nextcloud_identity(&self.imp().settings);
+            crate::prefs::remember_optimized_connection(&self.imp().settings, &identity).ok();
+        }
         if let Some(value) = value["compress"].as_bool() {
             self.imp().settings.set_boolean("compress", value).ok();
         }
@@ -1447,6 +1482,7 @@ impl MomentumWindow {
             "user": settings.string("nextcloud-user").as_str(),
             "folder": crate::prefs::effective_nextcloud_folder(settings),
             "compress": settings.boolean("compress"),
+            "optimized": crate::prefs::nextcloud_optimized(settings),
         });
         let path = PathBuf::from(self.engine().data_dir()).join("cli-config.json");
         let bytes = serde_json::to_vec_pretty(&value).expect("serializable settings");
@@ -2299,6 +2335,7 @@ impl MomentumWindow {
         if !self.is_visible() {
             return;
         }
+        imp.sync_activity_at.set(std::time::Instant::now());
         self.refresh();
         let due = momentum_core::window_return_sync_due(
             imp.settings.boolean("background-sync"),
@@ -2310,18 +2347,18 @@ impl MomentumWindow {
         }
     }
 
-    /// Sync shortly after local changes settle: 10 s after the last change (halved
-    /// 2026-09-29 with the 150 s idle cycle), so a burst of check-offs becomes one upload.
+    /// Preserve the first edit deadline so sustained editing cannot postpone upload.
     fn schedule_sync(&self) {
         let imp = self.imp();
+        imp.sync_activity_at.set(std::time::Instant::now());
         if !imp.settings.boolean("auto-sync") || !self.sync_configured() {
             return;
         }
-        if let Some(id) = imp.sync_debounce.borrow_mut().take() {
-            id.remove();
+        if imp.sync_debounce.borrow().is_some() {
+            return;
         }
-        let id = glib::timeout_add_seconds_local_once(
-            10,
+        let id = glib::timeout_add_local_once(
+            std::time::Duration::from_millis(momentum_core::sync_edit_delay_ms()),
             glib::clone!(
                 #[weak(rename_to = w)]
                 self,
@@ -2333,7 +2370,8 @@ impl MomentumWindow {
                     }
                     if w.imp().syncing.get() {
                         w.schedule_sync(); // a sync is running; try again after it
-                    } else if w.engine().pending_count() > 0 {
+                    } else if w.imp().push_sync_pending.get() || w.engine().pending_count() > 0 {
+                        w.imp().push_sync_pending.set(false);
                         w.sync();
                     }
                 }
@@ -4062,18 +4100,74 @@ impl MomentumWindow {
     /// Nextcloud settings without the secrets (those are read on the sync thread).
     fn nextcloud_settings(&self) -> momentum_core::NextcloudSettings {
         let s = &self.imp().settings;
-        momentum_core::NextcloudSettings {
+        let mut settings = momentum_core::NextcloudSettings {
             server_url: s.string("nextcloud-server").into(),
             user_name: s.string("nextcloud-user").into(),
             folder: crate::prefs::effective_nextcloud_folder(s),
             compress: s.boolean("compress"),
+            optimized: crate::prefs::nextcloud_optimized(s),
             password: String::new(),
             encryption_password: None,
+        };
+        if self.engine().nextcloud_optimized_required(settings.clone()) {
+            settings.optimized = true;
+            let identity = crate::prefs::nextcloud_identity(s);
+            crate::prefs::remember_optimized_connection(s, &identity).ok();
         }
+        settings
+    }
+
+    fn poll_nextcloud_push(&self) {
+        let imp = self.imp();
+        if std::env::var_os("MOMENTUM_DEMO").is_some()
+            || !self.is_visible()
+            || !self.automatic_sync_allowed()
+            || !self.sync_configured()
+        {
+            self.engine().stop_nextcloud_push();
+            return;
+        }
+        if imp.push_check_running.replace(true) {
+            return;
+        }
+        let expected = self.nextcloud_settings();
+        let mut settings = expected.clone();
+        let engine = self.engine();
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            async move {
+                // Credential access stays off GTK's main loop; the Rust call only
+                // starts/drains the optional listener and never waits for network.
+                let settings = gio::spawn_blocking(move || {
+                    settings.password = crate::keyring::get("nextcloud").unwrap_or_default();
+                    settings
+                })
+                .await;
+                w.imp().push_check_running.set(false);
+                if !w.is_visible()
+                    || !w.automatic_sync_allowed()
+                    || !w.sync_configured()
+                    || w.nextcloud_settings() != expected
+                {
+                    w.engine().stop_nextcloud_push();
+                    return;
+                }
+                if let Ok(settings) = settings {
+                    // Recheck on GTK's main loop before nonblocking core admission:
+                    // Off/provider changes cannot race a stale keyring lookup.
+                    if engine.nextcloud_push_hint(settings) {
+                        w.imp().push_sync_pending.set(true);
+                        w.schedule_sync();
+                    }
+                }
+            }
+        ));
     }
 
     pub fn sync(&self) {
         let imp = self.imp();
+        imp.sync_attempt_at.set(std::time::Instant::now());
         if std::env::var_os("MOMENTUM_DEMO").is_some() {
             return;
         }
@@ -4465,6 +4559,10 @@ impl MomentumWindow {
                 .set_string("nextcloud-folder", &report.target_folder)
             {
                 Ok(_) => {
+                    if source.optimized {
+                        let identity = crate::prefs::nextcloud_identity(&self.imp().settings);
+                        crate::prefs::remember_optimized_connection(&self.imp().settings, &identity).ok();
+                    }
                     self.toast(&gettext(
                         "Sync folder copied and verified. This device now uses momentum.",
                     ));

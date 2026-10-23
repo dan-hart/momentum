@@ -1,5 +1,55 @@
 # Momentum progress and handoff
 
+
+## 2026-10-23 — F-075 client sync acceleration on the native experience branch
+
+- Scope: nine client improvements on Linux/macOS/iOS/Android, extending
+  `task/native-experience-overhaul` from `0ab1aac`. The user explicitly deferred
+  server-side changes, will measure the proposed 10× improvement personally, and
+  authorized only commit/push. No PR, merge, tag, release, store upload or remote
+  server administration is part of this change.
+- Shared Rust owns scheduling policy, pooled/conditional transport, settings
+  sessions, guarded engine admission, optional foreground Client Push and explicit
+  optimized protocol. Native adapters own controls, consent, lifecycle, power and
+  credential services. [SYNC-PERFORMANCE.md](SYNC-PERFORMANCE.md) records compatibility,
+  one-way per-connection upgrade, failure recovery and intentional native differences.
+- Tests began failing before implementation for connection reuse, pending/restart
+  conditionals, bounded scheduling, old-record decoding and optimized restore.
+  Independent adversarial reviews found and corrected B-176: unchanged optimized
+  reads replacing restored data; missing copied-collection initialization witnesses;
+  Android push error/provider admission; retained stopped-worker credentials.
+  A misleading settings regression depended on serial request ordering; it now
+  deterministically damages only task data while settings publish independently.
+- Automated evidence (2026-10-23 dirty branch): shared core optimized integration
+  **4 passed** covers upgrade/downgrade, failure/pending, checked copy and restore/undo
+  after reopen. Optimized protocol **17 passed**, transport **18 passed** and push
+  **10 passed** at their targeted gates. Full MomentumKit **235 tests/50 suites** and
+  MomentumMobile **175 tests/25 suites** pass; the existing opt-in nearby package suite
+  stays outside that default run. Final default and all-features/all-targets Rust
+  workspace gates each pass **467 tests**, with five existing ignored checks. The
+  Linux VM's actual headless native suite passes **121 GTK/app tests** plus the
+  workspace checks (harness exit 0); an initial consent fixture incorrectly assumed
+  a new default folder for a legacy connection and now restores its actual effective
+  folder. Android passes **118 JVM tests/21 suites**, app/test APK compilation and
+  lint after final Rust fixes. Its added credential-failure/consent instrumentation
+  cases compile but have not run on a device. Existing iOS 27 simulator transport
+  lane passes **8 tests**, with one explicitly configured hosted-server test skipped;
+  this includes generated FFI, two offline clients, encryption, retry, cancellation,
+  credential recovery and native LibreSync. No new UI automation suite was added.
+- Final review also removed a fast password-derived fingerprint from the persisted
+  baseline (current authenticated decryption/server authentication prove secret
+  validity) and compiled out dependency Debug/Trace logging that could include
+  WebSocket authentication frames. Targeted regressions observed RED then GREEN;
+  independent focused re-review passes. Final macOS Debug app and iOS simulator app
+  builds succeed against the updated native core. Localization extraction, German
+  format, Rust formatting, whitespace and 190 local documentation links pass. The
+  isolated Linux VM and Momentum simulator are back in their initial stopped state.
+- Platform status remains Implemented until the relevant native interaction scope
+  is checked. Disposable mock DAV/HTTPS/WSS tests verify transport behavior, not a
+  user's Nextcloud hosting. Physical-device/suspended-OS wake timing, real-server
+  acceptance, screen-reader interaction and the numerical benchmark remain separate.
+
+
 ## 2026-10-22 — B-172–B-175 contrast and 0.4.12 personal Flatpak release
 
 - User requested Celebrate icon contrast on all four platforms, especially iOS,

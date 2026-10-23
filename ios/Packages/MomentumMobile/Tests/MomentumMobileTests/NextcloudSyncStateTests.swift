@@ -175,6 +175,92 @@ import Testing
         #expect(await fixture.clock.lastDelay == .zero)
     }
 
+    @Test func pushHintTriggersAuthoritativeReadWithoutPendingEditsAndBackgroundStopsIt() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        let probe = PushProbe()
+        fixture.state.connect(makeOperation: { [factory = fixture.factory] _ in await factory.make() },
+                              pushHint: { _ in await probe.hint() }, stopPush: { await probe.stop() }, status: {
+            SyncStatus(syncing: false, pendingOps: 0, lastNextcloudMs: 0, lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0)
+        })
+        await fixture.ready()
+        await fixture.pushClock.waitForCount(1)
+        await fixture.pushClock.advanceLatest()
+        await fixture.operation.waitUntilRunning()
+        #expect(await fixture.factory.count == 1)
+        fixture.operation.finish(.success(SyncReport(downloaded: true, uploaded: false, opsUploaded: 0)))
+        await fixture.state.drain()
+        let before = await probe.stops
+        fixture.state.setForeground(false)
+        await probe.waitForStops(before + 1)
+        #expect(!fixture.state.isSyncing)
+    }
+
+    @Test func unavailablePushKeepsFallbackPollingAndDoesNotInventASyncFailure() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        let probe = PushProbe(hinted: false)
+        fixture.state.connect(makeOperation: { [factory = fixture.factory] _ in await factory.make() },
+                              pushHint: { _ in await probe.hint() }, stopPush: { await probe.stop() }, status: {
+            SyncStatus(syncing: false, pendingOps: 0, lastNextcloudMs: 0, lastNearbyMs: 0, nearbyRunning: false, linkedDevices: 0)
+        })
+        await fixture.ready()
+        await fixture.pushClock.waitForCount(1)
+        await fixture.pushClock.advanceLatest()
+        await probe.waitForHints(1)
+        #expect(await fixture.factory.count == 0)
+        #expect(fixture.state.failure == nil)
+        #expect(await fixture.clock.lastDelay == .zero, "the authoritative foreground read remains scheduled")
+    }
+
+    @Test func foregroundPollingBacksOffAndLocalActivityResetsItsCadence() async {
+        let fixture = SyncFixture(automatic: true)
+        defer { fixture.clean() }
+        await fixture.ready()
+        await fixture.clock.waitForCount(1)
+        await fixture.clock.advanceLatest()
+        await fixture.operation.waitUntilRunning()
+        fixture.uptime = 60
+        fixture.operation.finish(.success(SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)))
+        await fixture.state.drain()
+        await fixture.clock.waitForCount(2)
+        #expect(await fixture.clock.lastDelay == .seconds(15))
+        await fixture.clock.advanceLatest()
+        await fixture.operation.waitForRunCount(2)
+        fixture.uptime = 300
+        fixture.operation.finish(.success(SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)))
+        await fixture.state.drain()
+        await fixture.clock.waitForCount(3)
+        #expect(await fixture.clock.lastDelay == .seconds(150))
+        fixture.state.localChanges()
+        await fixture.clock.waitForCount(4)
+        #expect(await fixture.clock.lastDelay == .milliseconds(750))
+        await fixture.clock.advanceLatest()
+        await fixture.operation.waitForRunCount(3)
+        fixture.operation.finish(.success(SyncReport(downloaded: false, uploaded: true, opsUploaded: 1)))
+        await fixture.state.drain()
+        await fixture.clock.waitForCount(5)
+        #expect(await fixture.clock.lastDelay == .seconds(5))
+    }
+
+    @Test func upgradedConnectionConsentDoesNotFollowAnEditedFolderAndReturnsWithTheOriginal() async throws {
+        let fixture = SyncFixture()
+        defer { fixture.clean() }
+        await fixture.ready()
+        #expect(!fixture.state.draft.optimized)
+        fixture.state.draft.optimized = true
+        #expect(await fixture.state.save())
+        #expect(try await fixture.store.load()?.optimized == true)
+        fixture.state.draft.folder = "different-folder"
+        #expect(!fixture.state.draft.optimized)
+        #expect(await fixture.state.save())
+        #expect(try await fixture.store.load()?.optimized == false, "saving target B cannot inherit A's consent")
+        fixture.state.draft.folder = fixture.connection.folder
+        #expect(fixture.state.draft.optimized)
+        #expect(await fixture.state.save())
+        #expect(fixture.state.optimizedSyncEnabled)
+    }
+
     @Test func automaticEditsCoalesceAndBackgroundCancelsScheduledWork() async {
         let fixture = SyncFixture(automatic: true)
         defer { fixture.clean() }
@@ -184,15 +270,16 @@ import Testing
         fixture.state.localChanges()
         await fixture.clock.waitForCount(2)
         fixture.state.localChanges()
-        await fixture.clock.waitForCount(3)
-        #expect(await fixture.clock.lastDelay == .seconds(10))
+        await Task.yield()
+        #expect(await fixture.clock.delays.count == 2, "the first edit deadline survives continued edits")
+        #expect(await fixture.clock.lastDelay == .milliseconds(750))
         await fixture.clock.advanceLatest()
         await fixture.operation.waitUntilRunning()
         fixture.state.localChanges()
         fixture.operation.finish(.success(SyncReport(downloaded: false, uploaded: true, opsUploaded: 1)))
         await fixture.state.drain()
-        await fixture.clock.waitForCount(4)
-        #expect(await fixture.clock.lastDelay == .seconds(10))
+        await fixture.clock.waitForCount(3)
+        #expect(await fixture.clock.lastDelay == .milliseconds(750))
         fixture.state.setForeground(false)
         await fixture.clock.advanceLatest()
         await fixture.state.drain()
@@ -300,7 +387,7 @@ import Testing
         fixture.operation.finish(.success(SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)))
         await fixture.state.drain()
         await fixture.clock.waitForCount(2)
-        #expect(await fixture.clock.lastDelay == .seconds(150), "and the idle cycle is armed again")
+        #expect(await fixture.clock.lastDelay == .seconds(5), "foreground activity starts with a short reconciliation cycle")
         #expect(await fixture.factory.count == 1)
         #expect(await fixture.backgroundFactory.count == 1)
     }
@@ -668,11 +755,13 @@ private final class ResumeOnce: @unchecked Sendable {
     let connectionTest = ControlledConnectionTestOperation()
     let folderCopy = FixtureFolderCopy()
     let clock = ControlledDelay()
+    let pushClock = ControlledDelay()
     let factory: SyncFactory
     let backgroundFactory: SyncFactory
     let replaceFactory: SyncFactory
     let connectionTestFactory: ConnectionTestFactory
     let connection: NextcloudConnection
+    var uptime: TimeInterval = 0
     lazy var state = makeState()
     init(automatic: Bool = false) {
         defaults = UserDefaults(suiteName: name)!
@@ -689,7 +778,7 @@ private final class ResumeOnce: @unchecked Sendable {
         connectionTestFactory = ConnectionTestFactory(operation: connectionTest)
     }
     func makeState(allowed: Bool = true) -> NextcloudSyncState {
-        let state = NextcloudSyncState(defaults: defaults, persistence: store, allowed: allowed, sleep: { [clock] in try await clock.sleep($0) })
+        let state = NextcloudSyncState(defaults: defaults, persistence: store, allowed: allowed, sleep: { [clock] in try await clock.sleep($0) }, now: { [weak self] in self?.uptime ?? 0 }, pushSleep: { [pushClock] in try await pushClock.sleep(.seconds(1)) })
         state.connect(makeOperation: { [factory] _ in await factory.make() },
                       makeBackgroundOperation: { [backgroundFactory] _ in await backgroundFactory.make() },
                       makeReplaceOperation: { [replaceFactory] _ in await replaceFactory.make() },
@@ -805,6 +894,7 @@ private final class ControlledSyncOperation: NextcloudRunningOperation, @uncheck
     private let lock = NSLock()
     private var result: CheckedContinuation<SyncReport, Error>?
     private var started: CheckedContinuation<Void, Never>?
+    private var requestedRunCount = 1
     private var cancelled: CheckedContinuation<Void, Never>?
     private var runCount = 0
     private var cancelCount = 0
@@ -812,15 +902,22 @@ private final class ControlledSyncOperation: NextcloudRunningOperation, @uncheck
     var cancellations: Int { lock.withLock { cancelCount } }
     func run() async throws -> SyncReport {
         try await withCheckedThrowingContinuation { continuation in
-            lock.withLock { result = continuation; runCount += 1; started?.resume(); started = nil }
+            lock.withLock {
+                result = continuation; runCount += 1
+                if runCount >= requestedRunCount { started?.resume(); started = nil }
+            }
         }
     }
     func cancel() -> Bool {
         lock.withLock { cancelCount += 1; cancelled?.resume(); cancelled = nil; return true }
     }
-    func waitUntilRunning() async {
+    func waitUntilRunning() async { await waitForRunCount(1) }
+    func waitForRunCount(_ count: Int) async {
         await withCheckedContinuation { continuation in
-            lock.withLock { if runCount > 0 { continuation.resume() } else { started = continuation } }
+            lock.withLock {
+                if runCount >= count { continuation.resume() }
+                else { requestedRunCount = count; started = continuation }
+            }
         }
     }
     func waitUntilCancelled() async {
@@ -909,5 +1006,29 @@ private actor SyncNearbyProbe: NearbyRuntime {
     }
     func waitForSyncCount(_ count: Int) async {
         if syncs < count { await withCheckedContinuation { syncWaiter = (count, $0) } }
+    }
+}
+
+private actor PushProbe {
+    var stops = 0
+    var hints = 0
+    let hinted: Bool
+    private var stopWaiter: (Int, CheckedContinuation<Void, Never>)?
+    private var hintWaiter: (Int, CheckedContinuation<Void, Never>)?
+    init(hinted: Bool = true) { self.hinted = hinted }
+    func hint() -> Bool {
+        hints += 1
+        if let (count, waiter) = hintWaiter, hints >= count { hintWaiter = nil; waiter.resume() }
+        return hinted
+    }
+    func stop() {
+        stops += 1
+        if let (count, waiter) = stopWaiter, stops >= count { stopWaiter = nil; waiter.resume() }
+    }
+    func waitForStops(_ count: Int) async {
+        if stops < count { await withCheckedContinuation { stopWaiter = (count, $0) } }
+    }
+    func waitForHints(_ count: Int) async {
+        if hints < count { await withCheckedContinuation { hintWaiter = (count, $0) } }
     }
 }

@@ -7,7 +7,7 @@ import Observation
 /// Owns presentation and scheduling only. Rust owns transport, conflict resolution,
 /// deadlines and the final commit boundary. No polling runs while inactive or Off.
 /// Cadence (2026-09-29, twice the desktop's): edits settle for 10 s before an upload,
-/// and an idle foreground polls every 150 s.
+/// and foreground reconciliation backs off as the app becomes idle.
 @MainActor @Observable public final class NextcloudSyncState {
     public enum Failure: String, Sendable {
         case credentialsRead, credentialsWrite, configuration, connection, network, busy
@@ -24,7 +24,12 @@ import Observation
         canSync && provider == .nextcloud && saved?.folder != "momentum" && makeFolderCopy != nil && !folderCopyInProgress
     }
     public var draft = NextcloudConnection() {
-        didSet { if oldValue != draft { cancelConnectionTest() } }
+        didSet {
+            if oldValue != draft { cancelConnectionTest() }
+            if oldValue.identity != draft.identity {
+                draft.optimized = Preferences(defaults).optimizedConnectionIdentities.contains(draft.identity)
+            }
+        }
     }
     public private(set) var provider: SyncMethod
     public private(set) var loaded = false
@@ -69,6 +74,10 @@ import Observation
     }
 
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let now: @MainActor @Sendable () -> TimeInterval
+    @ObservationIgnored private var lastActivity: TimeInterval
+    @ObservationIgnored private var editScheduled = false
+    @ObservationIgnored private let pushSleep: @Sendable () async throws -> Void
     @ObservationIgnored private let sleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored private let persistence: any NextcloudConnectionPersistence
     @ObservationIgnored private var saved: NextcloudConnection?
@@ -80,6 +89,10 @@ import Observation
     @ObservationIgnored private var scheduled: Task<Void, Never>?
     @ObservationIgnored private var editsDuringSync = false
     @ObservationIgnored private var foregroundRetry = false
+    @ObservationIgnored private var pushTask: Task<Void, Never>?
+    @ObservationIgnored private var pushHint: (@Sendable (NextcloudSettings) async -> Bool)?
+    @ObservationIgnored private var stopPush: (@Sendable () async -> Void)?
+    @ObservationIgnored private var optimizedRequired: (@Sendable (NextcloudSettings) async -> Bool)?
     @ObservationIgnored private var makeOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)?
     @ObservationIgnored private var makeBackgroundOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)?
     @ObservationIgnored private var makeReplaceOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)?
@@ -96,11 +109,16 @@ import Observation
     private static let failureMessageKey = "mobile-nextcloud-failure-message"
 
     public init(defaults: UserDefaults, persistence: any NextcloudConnectionPersistence, allowed: Bool = true,
-                sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
+                sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+                now: @escaping @MainActor @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+                pushSleep: @escaping @Sendable () async throws -> Void = { try await Task.sleep(for: .seconds(1)) }) {
         self.defaults = defaults
         self.persistence = persistence
         self.allowed = allowed
         self.sleep = sleep
+        self.now = now
+        self.pushSleep = pushSleep
+        self.lastActivity = now()
         provider = allowed ? (SyncMethod(rawValue: defaults.string(forKey: PrefKey.syncMethod) ?? "") ?? .off) : .off
         failure = allowed ? defaults.string(forKey: Self.failureKey).flatMap(Failure.init(rawValue:)) : nil
         if failure != nil {
@@ -114,12 +132,18 @@ import Observation
                         makeReplaceOperation: (@Sendable (NextcloudSettings) async -> any NextcloudRunningOperation)? = nil,
                         makeConnectionTest: (@Sendable (NextcloudSettings) async -> any NextcloudConnectionTestOperation)? = nil,
                         makeFolderCopy: (@Sendable (NextcloudSettings) async -> any NextcloudFolderCopying)? = nil,
+                        optimizedRequired: (@Sendable (NextcloudSettings) async -> Bool)? = nil,
+                        pushHint: (@Sendable (NextcloudSettings) async -> Bool)? = nil,
+                        stopPush: (@Sendable () async -> Void)? = nil,
                         status: @escaping @Sendable () async -> SyncStatus) {
         self.makeOperation = makeOperation
         self.makeBackgroundOperation = makeBackgroundOperation
         self.makeReplaceOperation = makeReplaceOperation
         self.makeConnectionTest = makeConnectionTest
         self.makeFolderCopy = makeFolderCopy
+        self.optimizedRequired = optimizedRequired
+        self.pushHint = pushHint
+        self.stopPush = stopPush
         readStatus = status
     }
 
@@ -144,8 +168,14 @@ import Observation
         loading = true
         defer { loading = false }
         do {
-            let connection = try await persistence.load()
+            var connection = try await persistence.load()
+            if var candidate = connection, await optimizedRequired?(candidate.settings) == true {
+                candidate.optimized = true
+                try await persistence.save(candidate)
+                connection = candidate
+            }
             saved = connection
+            if let connection, connection.optimized { Preferences(defaults).rememberOptimizedConnection(connection.identity) }
             draft = connection ?? NextcloudConnection()
             loaded = true
             if connection?.validationIssue != nil {
@@ -160,14 +190,17 @@ import Observation
 
     @discardableResult public func save() async -> Bool {
         guard allowed, loaded, !saving, !folderCopyInProgress else { return false }
-        guard let candidate = try? draft.validated() else {
+        guard var candidate = try? draft.validated() else {
             record(.configuration)
             return false
         }
         saving = true
+        if !candidate.optimized, await optimizedRequired?(candidate.settings) == true { candidate.optimized = true }
+        candidate.optimized = candidate.optimized || Preferences(defaults).optimizedConnectionIdentities.contains(candidate.identity)
         await cancelAndDrain()
         do {
             try await persistence.save(candidate)
+            if candidate.optimized { Preferences(defaults).rememberOptimizedConnection(candidate.identity) }
             saved = candidate
             draft = candidate
             saving = false
@@ -179,6 +212,15 @@ import Observation
             record(.credentialsWrite)
             return false
         }
+    }
+
+    public var optimizedSyncEnabled: Bool { saved?.optimized == true && saved?.identity == draft.identity }
+
+    /// Called only after the person confirms the one-way connection upgrade.
+    public func upgradeOptimizedSync(expectedIdentity: String) async {
+        guard !hasUnsavedChanges, !draft.optimized, !isSyncing, canSync, draft.identity == expectedIdentity else { return }
+        draft.optimized = true
+        if await save() { await syncNow() }
     }
 
     /// Changing the selection disables admission immediately and drains the old
@@ -207,6 +249,7 @@ import Observation
         foreground = active
         nearby?.setForeground(active)
         if active {
+            lastActivity = now()
             if isSyncing { foregroundRetry = true }
             schedule(after: .zero)
         }
@@ -219,20 +262,23 @@ import Observation
         guard lowPowerMode != enabled else { return }
         lowPowerMode = enabled
         if enabled {
+            stopPushMonitoring()
             scheduled?.cancel()
             scheduled = nil
+            editScheduled = false
         } else {
             schedule(after: .zero)
         }
     }
 
     public func localChanges(immediate: Bool = false) {
+        lastActivity = now()
         if provider == .libresync {
             scheduleNearby(after: immediate ? .zero : .seconds(10))
             return
         }
         if isSyncing { editsDuringSync = true }
-        else { schedule(after: immediate ? .zero : .seconds(10)) }
+        else { schedule(after: immediate ? .zero : editDelay, forEdit: !immediate) }
     }
 
     public func refreshStatus() async {
@@ -275,6 +321,7 @@ import Observation
             var destination = source
             destination.folder = report.targetFolder
             try await persistence.save(destination)
+            if destination.optimized { Preferences(defaults).rememberOptimizedConnection(destination.identity) }
             saved = destination
             draft = destination
             folderCopy = .copied
@@ -309,6 +356,7 @@ import Observation
         guard eligible, let saved else { return }
         if let active { await active.value; return }
         scheduled?.cancel(); scheduled = nil
+        editScheduled = false
         isSyncing = true
         editsDuringSync = false
         foregroundRetry = false
@@ -339,7 +387,7 @@ import Observation
             isSyncing = false
             isStopping = false
             active = nil
-            schedule(after: foregroundRetry ? .zero : editsDuringSync ? .seconds(10) : .seconds(150))
+            schedule(after: foregroundRetry ? .zero : editsDuringSync ? editDelay : pollDelay)
         }
         active = task
         await task.value
@@ -416,6 +464,7 @@ import Observation
         if let active { await active.value }
         guard !Task.isCancelled, backgroundSyncPossible, !isSyncing else { return false }
         scheduled?.cancel(); scheduled = nil
+        editScheduled = false
         isSyncing = true
         editsDuringSync = false
         foregroundRetry = false
@@ -456,9 +505,9 @@ import Observation
             isStopping = false
             active = nil
             // Same hand-off as a foreground exchange: a return to the foreground while
-            // the wake ran retries at once, edits made meanwhile upload in 10 s, and
+            // the wake ran retries at once, edits made meanwhile upload promptly, and
             // otherwise the idle cycle is re-armed (no-op while still in the background).
-            schedule(after: foregroundRetry ? .zero : editsDuringSync ? .seconds(10) : .seconds(150))
+            schedule(after: foregroundRetry ? .zero : editsDuringSync ? editDelay : pollDelay)
             return committed
         }
         active = Task { _ = await exchange.value }
@@ -477,7 +526,7 @@ import Observation
     public func resumeAfterRestore() {
         isSuspended = false
         nearby?.resume()
-        schedule(after: .seconds(10))
+        schedule(after: editDelay)
     }
     public func drain() async { await active?.value }
 
@@ -487,8 +536,10 @@ import Observation
             && !saving && transitions == 0 && !isSuspended && makeOperation != nil
     }
     private func cancel() {
+        stopPushMonitoring()
         generation += 1
         scheduled?.cancel(); scheduled = nil
+        editScheduled = false
         if isSyncing { isStopping = true }
         _ = operation?.cancel()
         active?.cancel()
@@ -505,9 +556,42 @@ import Observation
         connectionTestTask = nil
         connectionTest = .idle
     }
-    private func schedule(after delay: Duration) {
+    private func stopPushMonitoring() {
+        pushTask?.cancel(); pushTask = nil
+        if let stopPush { Task { await stopPush() } }
+    }
+    private func updatePushMonitoring() {
+        guard eligible, saved?.automatic == true, !lowPowerMode, let saved, let pushHint else {
+            stopPushMonitoring()
+            return
+        }
+        guard pushTask == nil else { return }
+        pushTask = Task { [weak self, pushSleep] in
+            while !Task.isCancelled {
+                do { try await pushSleep() } catch { return }
+                guard let self, self.eligible, !self.lowPowerMode, self.saved == saved else { return }
+                let hinted = await pushHint(saved.settings)
+                guard !Task.isCancelled, self.eligible, self.saved == saved else { return }
+                if hinted {
+                    if self.isSyncing { self.editsDuringSync = true }
+                    else { await self.syncNow() }
+                }
+            }
+        }
+    }
+
+    private var editDelay: Duration { .milliseconds(Int64(syncEditDelayMs())) }
+    private var pollDelay: Duration {
+        .milliseconds(Int64(syncPollDelayMs(idleMs: UInt64(max(0, now() - lastActivity) * 1_000))))
+    }
+    private func schedule(after delay: Duration, forEdit: Bool = false) {
+        updatePushMonitoring()
+        // Keep the first edit deadline: a continuous burst must not postpone upload.
+        if forEdit && editScheduled { return }
         scheduled?.cancel(); scheduled = nil
+        editScheduled = false
         guard eligible, saved?.automatic == true, !lowPowerMode, !isSyncing else { return }
+        editScheduled = forEdit
         scheduled = Task { [weak self, sleep] in
             do { try await sleep(delay) } catch { return }
             guard !Task.isCancelled else { return }
@@ -516,6 +600,7 @@ import Observation
     }
     private func scheduleNearby(after delay: Duration) {
         scheduled?.cancel(); scheduled = nil
+        editScheduled = false
         guard allowed, foreground, provider == .libresync, transitions == 0,
               !isSuspended, !lowPowerMode, nearby?.phase == .running else { return }
         scheduled = Task { [weak self, sleep] in

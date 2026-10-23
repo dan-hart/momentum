@@ -13,24 +13,49 @@ pub(super) fn read_named(
     name: &str,
     guard: &ExchangeGuard<'_>,
 ) -> Result<Option<(String, String)>, SyncError> {
+    match read_named_validated(cfg, name, guard, None)? {
+        NamedDownload::File(body, tag) => Ok(Some((body, tag))),
+        NamedDownload::Missing => Ok(None),
+        NamedDownload::Unchanged => Err(SyncError::UploadUnverified),
+    }
+}
+enum NamedDownload {
+    File(String, String),
+    Missing,
+    Unchanged,
+}
+fn read_named_validated(
+    cfg: &NextcloudCfg,
+    name: &str,
+    guard: &ExchangeGuard<'_>,
+    known: Option<&str>,
+) -> Result<NamedDownload, SyncError> {
     guard.retry_read(|| {
-        let response = guard
+        let mut request = guard
             .agent()?
             .get(&format!("{}/{}", cfg.folder_url(), name))
-            .header("Authorization", cfg.auth())
-            .call();
+            .header("Authorization", cfg.auth());
+        if let Some(tag) = known {
+            request = request.header("If-None-Match", tag);
+        }
+        let response = request.call();
         guard.check()?;
         match response {
             Ok(mut r) => {
-                let tag = etag(&r)
-                    .filter(|t| t.starts_with('"') && t.ends_with('"'))
-                    .ok_or(SyncError::UploadUnverified)?;
+                if r.status() == 304 {
+                    return if known.is_some() {
+                        Ok(NamedDownload::Unchanged)
+                    } else {
+                        Err(SyncError::UploadUnverified)
+                    };
+                }
+                let tag = etag(&r).filter(|t| strong_etag(t)).ok_or(SyncError::UploadUnverified)?;
                 let limit = if name == SETTINGS_FILE { 16 << 20 } else { 512 << 20 };
                 let text = r.body_mut().with_config().limit(limit).read_to_string()?;
                 guard.check()?;
-                Ok(Some((text, tag)))
+                Ok(NamedDownload::File(text, tag))
             }
-            Err(ureq::Error::StatusCode(404)) => Ok(None),
+            Err(ureq::Error::StatusCode(404)) => Ok(NamedDownload::Missing),
             Err(e) => Err(e.into()),
         }
     })
@@ -94,15 +119,37 @@ pub fn exchange_portable_guarded(
     cfg: &NextcloudCfg,
     timeout: Duration,
     is_current: impl Fn() -> bool,
+    merge: impl FnMut(Option<&str>) -> Result<Option<String>, SyncError>,
+) -> Result<PortableExchange, SyncError> {
+    PortableSession::default().exchange_guarded(cfg, timeout, is_current, merge)
+}
+fn exchange_portable_inner(
+    cfg: &NextcloudCfg,
+    timeout: Duration,
+    is_current: impl Fn() -> bool,
     mut merge: impl FnMut(Option<&str>) -> Result<Option<String>, SyncError>,
+    cached: &mut Option<CachedSettings>,
 ) -> Result<PortableExchange, SyncError> {
     let guard = ExchangeGuard {
         current: &is_current,
         deadline: Instant::now() + timeout,
     };
-    for _ in 0..3 {
-        let raw = read_named(cfg, SETTINGS_FILE, &guard)?;
-        let remote = raw.as_ref().map(|(body, _)| decode_settings(body, cfg)).transpose()?;
+    for attempt in 0..3 {
+        let known = cached.as_ref().filter(|v| &v.cfg == cfg && attempt == 0);
+        let raw = read_named_validated(cfg, SETTINGS_FILE, &guard, known.map(|v| v.tag.as_str()))?;
+        let (remote, tag) = match raw {
+            NamedDownload::Unchanged => {
+                let cached = known.ok_or(SyncError::UploadUnverified)?;
+                (Some(cached.decoded.clone()), Some(cached.tag.clone()))
+            }
+            NamedDownload::File(body, tag) => (Some(decode_settings(&body, cfg)?), Some(tag)),
+            NamedDownload::Missing => (None, None),
+        };
+        *cached = remote.as_ref().zip(tag.as_ref()).map(|(decoded, tag)| CachedSettings {
+            cfg: cfg.clone(),
+            decoded: decoded.clone(),
+            tag: tag.clone(),
+        });
         let published = merge(remote.as_deref())?;
         guard.check()?;
         let Some(text) = published.as_ref() else {
@@ -120,13 +167,7 @@ pub fn exchange_portable_guarded(
             });
         }
         let encoded = encode_settings(text, cfg)?;
-        match upload_named(
-            cfg,
-            SETTINGS_FILE,
-            &encoded,
-            raw.as_ref().map(|(_, tag)| tag.as_str()),
-            &guard,
-        ) {
+        match upload_named(cfg, SETTINGS_FILE, &encoded, tag.as_deref(), &guard) {
             Ok(tag) => {
                 let Some((readback, verified_tag)) = read_named(cfg, SETTINGS_FILE, &guard)? else {
                     return Err(SyncError::UploadUnverified);
@@ -135,6 +176,11 @@ pub fn exchange_portable_guarded(
                     return Err(SyncError::UploadUnverified);
                 };
                 guard.check()?;
+                *cached = Some(CachedSettings {
+                    cfg: cfg.clone(),
+                    decoded: text.clone(),
+                    tag,
+                });
                 return Ok(PortableExchange {
                     remote,
                     published,
@@ -146,4 +192,33 @@ pub fn exchange_portable_guarded(
         }
     }
     Err(SyncError::Conflict)
+}
+
+/// Per-engine validation for the independent settings channel.
+#[derive(Default)]
+pub struct PortableSession {
+    validated: Option<CachedSettings>,
+}
+struct CachedSettings {
+    cfg: NextcloudCfg,
+    decoded: String,
+    tag: String,
+}
+impl PortableSession {
+    pub fn exchange_guarded(
+        &mut self,
+        cfg: &NextcloudCfg,
+        timeout: Duration,
+        is_current: impl Fn() -> bool,
+        merge: impl FnMut(Option<&str>) -> Result<Option<String>, SyncError>,
+    ) -> Result<PortableExchange, SyncError> {
+        if self.validated.as_ref().is_some_and(|v| &v.cfg != cfg) {
+            self.validated = None;
+        }
+        let result = exchange_portable_inner(cfg, timeout, is_current, merge, &mut self.validated);
+        if result.is_err() {
+            self.validated = None;
+        }
+        result
+    }
 }

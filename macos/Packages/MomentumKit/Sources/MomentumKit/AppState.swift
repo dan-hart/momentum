@@ -108,8 +108,11 @@ public final class AppState {
     /// Names for the Edit menu's "Undo …" item, by undo batch id.
     private var undoNames: [UInt64: String] = [:]
     private var syncDebounce: Task<Void, Never>?
+    private var syncHintPending = false
     private var tickTimer: Timer?
     private var periodicSync: Timer?
+    private var syncActivityAt = ProcessInfo.processInfo.systemUptime
+    private var automaticSyncAttemptAt = ProcessInfo.processInfo.systemUptime
     private var fileWatcher: FileWatcher?
     private var defaultsObserver: NSObjectProtocol?
     private var portableRevision: UInt64?
@@ -222,9 +225,25 @@ public final class AppState {
         tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
-        periodicSync = Timer.scheduledTimer(withTimeInterval: 150, repeats: true) { [weak self] _ in
+        periodicSync = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.automaticSyncAllowed, self.prefs.syncConfigured else { return }
+                guard let self else { return }
+                guard self.automaticSyncAllowed, let settings = self.prefs.nextcloud(keychain: self.keychain) else {
+                    self.engine.stopNextcloudPush()
+                    return
+                }
+                let hinted: Bool
+                if self.mainWindowVisible { hinted = self.engine.nextcloudPushHint(settings: settings) }
+                else { self.engine.stopNextcloudPush(); hinted = false }
+                if hinted {
+                    // Retain hints received during exchange as a bounded follow-up.
+                    self.syncHintPending = true
+                    self.scheduleSync()
+                }
+                guard !self.isSyncing else { return }
+                let now = ProcessInfo.processInfo.systemUptime
+                let idleMs = UInt64(max(0, now - self.syncActivityAt) * 1_000)
+                guard (now - self.automaticSyncAttemptAt) * 1_000 >= Double(syncPollDelayMs(idleMs: idleMs)) else { return }
                 self.sync()
             }
         }
@@ -254,6 +273,7 @@ public final class AppState {
     public func setMainWindowVisible(_ visible: Bool) {
         guard visible != mainWindowVisible else { return }
         mainWindowVisible = visible
+        if !visible { engine.stopNextcloudPush() }
         applyP2pSetting()
         updateBackgroundActivity()
         guard visible else { return }
@@ -289,6 +309,7 @@ public final class AppState {
     @discardableResult
     public func setApplicationActive(_ active: Bool) -> Task<Void, Never>? {
         reminders.setForeground(active && !isDemo)
+        if active { syncActivityAt = ProcessInfo.processInfo.systemUptime }
         guard active && !isDemo else { return nil }
         return Task { await reminders.reactivate() }
     }
@@ -297,7 +318,8 @@ public final class AppState {
         reminders.setForeground(false)
         tickTimer?.invalidate()
         periodicSync?.invalidate()
-        syncDebounce?.cancel()
+        engine.stopNextcloudPush()
+        syncDebounce?.cancel(); syncDebounce = nil
         fileWatcher = nil
         if let o = defaultsObserver { NotificationCenter.default.removeObserver(o) }
         defaultsObserver = nil
@@ -320,7 +342,8 @@ public final class AppState {
         let p = prefs
         if selectedSyncMethod != p.syncMethod {
             selectedSyncMethod = p.syncMethod
-            syncDebounce?.cancel()
+            engine.stopNextcloudPush()
+            syncDebounce?.cancel(); syncDebounce = nil
             nearbySyncing = false
             syncError = nil
             syncFailureKind = nil
@@ -551,7 +574,7 @@ public final class AppState {
         folderCopyCancellationRequested = false
         folderCopyInProgress = true
         folderCopyMessage = nil
-        syncDebounce?.cancel()
+        syncDebounce?.cancel(); syncDebounce = nil
         engine.p2pStop()
         let operation = folderCopyFactory(engine, source)
         folderCopyOperation = operation
@@ -571,6 +594,7 @@ public final class AppState {
             guard report.verified, report.sourceFolder == source.folder, report.targetFolder == "momentum",
                   prefs.nextcloud(keychain: keychain) == source else { throw CocoaError(.fileReadCorruptFile) }
             defaults.set(report.targetFolder, forKey: PrefKey.nextcloudFolder)
+            if source.optimized { prefs.rememberOptimizedConnection(prefs.nextcloudConnectionIdentity) }
             prefs.writeCliConfig(to: dataDir)
             folderCopyMessage = String(localized: "Sync folder copied and verified. This device now uses momentum.", bundle: .module)
             return true
@@ -935,24 +959,36 @@ public final class AppState {
 
     // MARK: Sync
 
-    /// A burst of edits becomes one upload: 10 s after the last change (halved 2026-09-29,
-    /// with the idle cycle at 150 s, to match the mobile cadence).
+    /// Keep the first edit deadline so sustained editing cannot postpone an upload.
     private func scheduleSync() {
-        guard !isDemo, prefs.autoSync, prefs.syncConfigured else { return }
-        syncDebounce?.cancel()
+        syncActivityAt = ProcessInfo.processInfo.systemUptime
+        guard !isDemo, prefs.autoSync, prefs.syncConfigured, syncDebounce == nil else { return }
         syncDebounce = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(10))
-            guard let self, !Task.isCancelled else { return }
-            if self.isSyncing {
-                self.scheduleSync()
-            } else if self.engine.pendingCount() > 0, self.automaticSyncAllowed {
-                // Paused in the background: the window's return syncs what is pending.
-                self.sync()
+            let delay = Duration.milliseconds(Int64(syncEditDelayMs()))
+            do { try await Task.sleep(for: delay) } catch { return }
+            guard let self else { return }
+            while self.isSyncing {
+                do { try await Task.sleep(for: delay) } catch { return }
             }
+            self.syncDebounce = nil
+            guard !Task.isCancelled, self.automaticSyncAllowed, self.syncHintPending || self.engine.pendingCount() > 0 else { return }
+            self.syncHintPending = false
+            self.sync()
         }
     }
 
+    /// Called only after confirming the connection's one-way protocol upgrade.
+    public func upgradeOptimizedSync(expectedIdentity: String) {
+        guard !isDemo, !isSyncing, prefs.syncConfigured, !prefs.nextcloudOptimized,
+              prefs.nextcloudConnectionIdentity == expectedIdentity else { return }
+        prefs.rememberOptimizedConnection(prefs.nextcloudConnectionIdentity)
+        prefs.writeCliConfig(to: dataDir)
+        preferencesChanged()
+        sync()
+    }
+
     public func sync() {
+        automaticSyncAttemptAt = ProcessInfo.processInfo.systemUptime
         guard !isDemo else {
             toast(String(localized: "Sync is unavailable in preview mode. Open Momentum normally to sync your tasks.", bundle: .module))
             return
@@ -977,13 +1013,18 @@ public final class AppState {
             }
             return
         }
-        guard let settings = prefs.nextcloud(keychain: keychain) else {
+        guard var settings = prefs.nextcloud(keychain: keychain) else {
             banner = String(localized: "Sync needs attention: Nextcloud sync is not configured", bundle: .module)
             syncError = banner
             return
         }
         guard !isSyncing else { return }
-        runNextcloud(settings) { engine in try engine.syncNextcloud(settings: settings) }
+        if engine.nextcloudOptimizedRequired(settings: settings) {
+            settings.optimized = true
+            prefs.rememberOptimizedConnection(prefs.nextcloudConnectionIdentity)
+        }
+        let connection = settings
+        runNextcloud(connection) { engine in try engine.syncNextcloud(settings: connection) }
     }
 
     /// Publish this Mac's tasks as the server copy, keeping the damaged copy on the

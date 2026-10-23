@@ -1,6 +1,6 @@
 # Momentum bug ledger
 
-Updated: 2026-10-22. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+Updated: 2026-10-23. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
 
 F-073 celebration visual refinement: the user requested clearer button styling and a
 larger effect. Tracked as a feature refinement in FEATURES/PROGRESS; completion
@@ -14,6 +14,13 @@ Keep resolved entries. Verification gaps without a known product defect belong i
 Severity: Critical = data loss/security/core unusable; High = major workflow impaired;
 Medium = meaningful defect with workaround; Low = minor presentation/polish. Assess
 severity from evidence; do not infer security or data loss from an ordinary sync failure.
+
+## B-176 — Sync acceleration regression guards
+
+- **Severity:** High for restore/acknowledgment data integrity; Medium for native scheduling/lifecycle. **Impact:** defects reproduced in new shared optimized code and Android adapter during review; shared fixes apply to every native consumer. No personal stores were used.
+- **Reproduction/cause:** the initial optimized exchange treated every existing manifest as a new download, replacing restored tasks and invalidating unchanged-poll behavior. A copied collection also lacked a durable initialization witness. Review found Android push ticks outside error/provider admission guards and stopped push-owner credentials retained indefinitely.
+- **Fix:** independent acknowledged manifest receipts retained across task restore; durable destination witness; serialized guarded Android hint admission; stopped worker owners retain only an opaque fingerprint. Idle/session invalidation follows cancellation, restore and native lifecycle. Legacy v2 stays default and upgraded identities cannot silently downgrade.
+- **Evidence/limits:** failing-first optimized restore/reopen regression, migration missing-manifest rejection, core restore/undo tests and mock TLS push lifecycle coverage. Exact automated/native platform evidence is recorded under F-075 in PROGRESS. Physical-device/real-server timing and user benchmark remain separate.
 
 ## B-175 — Linux About text is parsed as unintended markup
 

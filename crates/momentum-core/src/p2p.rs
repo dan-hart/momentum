@@ -1222,6 +1222,7 @@ mod tests {
     fn providers_cannot_run_simultaneously() {
         let (engine, dir) = running();
         let result = engine.sync_nextcloud(crate::NextcloudSettings {
+            optimized: false,
             server_url: "http://127.0.0.1:0".into(),
             user_name: "fixture".into(),
             password: "fixture".into(),

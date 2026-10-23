@@ -19,6 +19,10 @@ pub struct Meta {
     pub vector_clock: VectorClock,
     pub last_sync_version: u64,
     pub last_etag: Option<String>,
+    /// Per-collection acknowledged v3 manifest (strong ETag, ciphertext digest).
+    /// Local transport metadata survives task backup import, like the v2 cursor.
+    #[serde(default)]
+    pub nextcloud_optimized_cursors: std::collections::BTreeMap<String, (String, String)>,
     /// A peer snapshot was adopted or judged unnecessary; later peer snapshots are ignored.
     #[serde(default)]
     pub p2p_bootstrapped: bool,

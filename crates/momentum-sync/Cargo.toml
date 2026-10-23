@@ -23,6 +23,12 @@ sha2 = "0.11.0"
 sha1 = "0.10.7"
 hmac = "0.13.0"
 getrandom = "0.4.3"
+tungstenite = { version = "0.30.0", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
+url = "2.5.8"
+# WebSocket debug/trace formats authentication frames; strip these levels in every frontend.
+log = { version = "0.4.34", features = ["max_level_info"] }
 
 [dev-dependencies]
 tempfile = "3"
+rustls = { version = "0.23.44", default-features = false, features = ["ring", "std", "tls12"] }
+rcgen = "0.14.10"

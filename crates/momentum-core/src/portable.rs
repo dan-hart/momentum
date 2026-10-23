@@ -467,6 +467,7 @@ impl Engine {
         self.stop_p2p_locked(&mut nearby);
         let mut g = self.lock();
         g.sync_generation = g.sync_generation.wrapping_add(1);
+        self.clear_nextcloud_caches();
         let mut store = g.store.clone();
         let mut portable = g.portable.clone();
         if let Some(doc) = doc {
@@ -619,28 +620,31 @@ impl Engine {
         let target = format!("nextcloud:{:016x}", hash.finish());
         let mut candidate = None;
         let mut remote_payload = None;
-        momentum_sync::exchange_portable_guarded(
-            cfg,
-            timeout,
-            || current() && self.lock().portable.enabled,
-            |remote| {
-                let parsed = remote
-                    .map(Payload::parse)
-                    .transpose()
-                    .map_err(|e| momentum_sync::SyncError::Parse(e.to_string()))?;
-                remote_payload = parsed.clone();
-                candidate = snapshot
-                    .prepare(&target, parsed.as_ref(), &actor)
-                    .map_err(|e| momentum_sync::SyncError::Parse(e.to_string()))?;
-                Ok(candidate
-                    .as_ref()
-                    .and_then(|s| (!s.payload.cells.is_empty()).then(|| s.payload.json())))
-            },
-        )
-        .map_err(|e| CoreError::Transient {
-            kind: e.kind().into(),
-            message: e.to_string(),
-        })?;
+        self.portable_session
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .exchange_guarded(
+                cfg,
+                timeout,
+                || current() && self.lock().portable.enabled,
+                |remote| {
+                    let parsed = remote
+                        .map(Payload::parse)
+                        .transpose()
+                        .map_err(|e| momentum_sync::SyncError::Parse(e.to_string()))?;
+                    remote_payload = parsed.clone();
+                    candidate = snapshot
+                        .prepare(&target, parsed.as_ref(), &actor)
+                        .map_err(|e| momentum_sync::SyncError::Parse(e.to_string()))?;
+                    Ok(candidate
+                        .as_ref()
+                        .and_then(|s| (!s.payload.cells.is_empty()).then(|| s.payload.json())))
+                },
+            )
+            .map_err(|e| CoreError::Transient {
+                kind: e.kind().into(),
+                message: e.to_string(),
+            })?;
         if !current() {
             return Err(CoreError::Transient {
                 kind: crate::SyncFailureKind::Cancelled,

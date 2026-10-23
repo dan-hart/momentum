@@ -4026,3 +4026,31 @@ msgstr ""
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
 msgid "Ten new short completion sounds, independent previews, and a local volume control."
 msgstr ""
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade to optimized sync…"
+msgstr ""
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade to optimized sync?"
+msgstr ""
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Optimized sync enabled"
+msgstr ""
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade"
+msgstr ""
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."
+msgstr ""
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "At startup, frequently while active, less often while idle, and shortly after changes"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in
+msgid "Connections explicitly upgraded to optimized sync"
+msgstr ""

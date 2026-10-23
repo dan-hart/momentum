@@ -16,6 +16,7 @@ public enum PrefKey {
     /// Automatic sync may run while the app has no window on screen.
     public static let backgroundSync = "background-sync"
     public static let compress = "compress"
+    public static let nextcloudOptimizedConnections = "nextcloud-optimized-connections"
     public static let syncEnabled = "sync-enabled"
     public static let projectsCollapsed = "projects-collapsed"
     public static let tagsCollapsed = "tags-collapsed"
@@ -257,6 +258,30 @@ public struct Preferences {
                                         morningSummaryTime: morningSummaryTime)
     }
 
+    public var nextcloudConnectionIdentity: String {
+        MomentumCore.nextcloudConnectionIdentity(
+            serverUrl: defaults.string(forKey: PrefKey.nextcloudServer) ?? "",
+            userName: defaults.string(forKey: PrefKey.nextcloudUser) ?? "",
+            folder: defaults.string(forKey: PrefKey.nextcloudFolder) ?? "momentum")
+    }
+    public var nextcloudOptimized: Bool {
+        optimizedConnectionIdentities.contains(nextcloudConnectionIdentity)
+    }
+    public var optimizedConnectionIdentities: [String] {
+        guard let data = defaults.string(forKey: PrefKey.nextcloudOptimizedConnections)?.data(using: .utf8),
+              let values = try? JSONDecoder().decode([String].self, from: data) else { return [] }
+        return values
+    }
+    /// Consent is device-local and remembered separately for each account/folder.
+    public func rememberOptimizedConnection(_ identity: String) {
+        var identities = optimizedConnectionIdentities
+        guard !identities.contains(identity) else { return }
+        identities.append(identity)
+        if let data = try? JSONEncoder().encode(identities), let value = String(data: data, encoding: .utf8) {
+            defaults.set(value, forKey: PrefKey.nextcloudOptimizedConnections)
+        }
+    }
+
     /// Nextcloud settings with secrets from the Keychain; nil while the switch is off or
     /// the connection is incomplete.
     public func nextcloud(keychain: Keychain = Keychain()) -> NextcloudSettings? {
@@ -267,7 +292,7 @@ public struct Preferences {
             password: keychain.get(Keychain.nextcloud) ?? "",
             folder: defaults.string(forKey: PrefKey.nextcloudFolder) ?? "momentum",
             compress: defaults.bool(forKey: PrefKey.compress),
-            encryptionPassword: keychain.get(Keychain.encryption))
+            encryptionPassword: keychain.get(Keychain.encryption), optimized: nextcloudOptimized)
         let complete = !s.serverUrl.trimmingCharacters(in: .whitespaces).isEmpty
             && !s.userName.trimmingCharacters(in: .whitespaces).isEmpty
             && !s.password.isEmpty
@@ -297,6 +322,7 @@ public struct Preferences {
                 defaults.set(value, forKey: key)
             }
         }
+        if cfg["optimized"] as? Bool == true { rememberOptimizedConnection(nextcloudConnectionIdentity) }
         if let value = cfg["compress"] as? Bool, defaults.bool(forKey: PrefKey.compress) != value {
             defaults.set(value, forKey: PrefKey.compress)
         }
@@ -310,6 +336,7 @@ public struct Preferences {
             "user": defaults.string(forKey: PrefKey.nextcloudUser) ?? "",
             "folder": defaults.string(forKey: PrefKey.nextcloudFolder) ?? "momentum",
             "compress": defaults.bool(forKey: PrefKey.compress),
+            "optimized": nextcloudOptimized,
         ]
         if let data = try? JSONSerialization.data(withJSONObject: cfg, options: [.prettyPrinted, .sortedKeys]) {
             let file = dir.appendingPathComponent("cli-config.json")

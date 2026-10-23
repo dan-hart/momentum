@@ -302,4 +302,9 @@
     <string name="notes_copied">Notes copied</string>
     <string name="recurring_preview">Recurring preview</string>
     <string name="edit_repeat_schedule">Edit repeat schedule</string>
+    <string name="optimized_sync_upgrade">Upgrade to optimized sync…</string>
+    <string name="optimized_sync_title">Upgrade to optimized sync?</string>
+    <string name="optimized_sync_enabled">Optimized sync enabled</string>
+    <string name="optimized_sync_hint">Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.</string>
+    <string name="upgrade">Upgrade</string>
 </resources>

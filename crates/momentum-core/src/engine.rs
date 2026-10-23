@@ -713,6 +713,9 @@ pub struct Engine {
     pub(crate) inner: Mutex<Inner>,
     pub(crate) syncing: AtomicBool,
     nextcloud_session: Mutex<momentum_sync::SyncSession>,
+    optimized_session: Mutex<momentum_sync::optimized::Session>,
+    nextcloud_push: Mutex<momentum_sync::push::PushSession>,
+    pub(crate) portable_session: Mutex<momentum_sync::PortableSession>,
     pub(crate) settings_error: Mutex<Option<String>>,
     #[cfg(feature = "p2p")]
     pub(crate) p2p: Mutex<Option<Arc<crate::p2p::Runtime>>>,
@@ -786,6 +789,9 @@ impl Engine {
             }),
             syncing: AtomicBool::new(false),
             nextcloud_session: Mutex::new(momentum_sync::SyncSession::default()),
+            optimized_session: Mutex::new(momentum_sync::optimized::Session::default()),
+            nextcloud_push: Mutex::new(momentum_sync::push::PushSession::default()),
+            portable_session: Mutex::new(momentum_sync::PortableSession::default()),
             settings_error: Mutex::new(None),
             #[cfg(feature = "p2p")]
             p2p: Mutex::new(None),
@@ -2204,6 +2210,44 @@ impl Engine {
         self.sync_nextcloud_cancellable(settings, SyncCancellation::new())
     }
 
+    /// Foreground-only optional invalidation hints; all task exchange remains authoritative.
+    pub fn nextcloud_push_hint(&self, settings: NextcloudSettings) -> bool {
+        let cfg = momentum_sync::NextcloudCfg {
+            server_url: settings.server_url,
+            user_name: settings.user_name,
+            password: settings.password,
+            folder: settings.folder,
+            compress: settings.compress,
+            encrypt_key: settings.encryption_password,
+        };
+        self.nextcloud_push
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .poll_hint(&cfg)
+    }
+
+    /// Stop optional foreground work and promptly release idle cached secrets.
+    pub fn stop_nextcloud_push(&self) {
+        self.nextcloud_push
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .invalidate();
+        self.clear_nextcloud_caches();
+    }
+
+    /// A durable pin survives preference reset and task backup restores. Corrupt pins fail closed.
+    pub fn nextcloud_optimized_required(&self, settings: NextcloudSettings) -> bool {
+        let cfg = momentum_sync::NextcloudCfg {
+            server_url: settings.server_url,
+            user_name: settings.user_name,
+            password: String::new(),
+            folder: settings.folder,
+            compress: false,
+            encrypt_key: None,
+        };
+        momentum_sync::optimized::require_optimized(&cfg, self.lock().store.dir()).unwrap_or(true)
+    }
+
     /// One exchange within an explicit budget in milliseconds. A foreground sync passes
     /// a generous budget so a large file over a slow link completes; a system background
     /// wake passes what the OS allows. Stalls are bounded per phase inside the core.
@@ -2213,26 +2257,47 @@ impl Engine {
         cancellation: Arc<SyncCancellation>,
         timeout_ms: u64,
     ) -> Result<SyncReport, CoreError> {
-        self.nextcloud_exchange(settings, cancellation, "Sync", |cfg, snapshot, is_current| {
-            let start = std::time::Instant::now();
-            let budget = std::time::Duration::from_millis(timeout_ms);
-            // Native stores already hold complete task data. Supply the existing
-            // compatibility field only in this detached ordinary-sync candidate;
-            // failed/cancelled exchanges never publish it, and imported opaque
-            // configuration must round-trip exactly as it was supplied.
-            snapshot.state.rest.entry("globalConfig").or_insert_with(|| json!({}));
-            let report = self
-                .nextcloud_session
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .exchange_guarded(cfg, snapshot, budget, is_current);
-            if let Err(error) =
-                self.exchange_nextcloud_settings(cfg, budget.saturating_sub(start.elapsed()), is_current)
-            {
-                self.settings_failed(error.to_string());
-            }
-            report
-        })
+        let optimized = settings.optimized;
+        let start = std::time::Instant::now();
+        let total = std::time::Duration::from_millis(timeout_ms);
+        self.nextcloud_exchange(
+            settings,
+            cancellation,
+            "Sync",
+            Some(total),
+            |cfg, snapshot, is_current| {
+                let budget = total.saturating_sub(start.elapsed());
+                // Native stores already hold complete task data. Supply the existing
+                // compatibility field only in this detached ordinary-sync candidate;
+                // failed/cancelled exchanges never publish it, and imported opaque
+                // configuration must round-trip exactly as it was supplied.
+                snapshot.state.rest.entry("globalConfig").or_insert_with(|| json!({}));
+                // Task data and optional settings have independent remote objects and
+                // commit paths. Both remain inside the same provider lease and deadline.
+                std::thread::scope(|scope| {
+                    let settings = scope.spawn(|| {
+                        self.exchange_nextcloud_settings(cfg, total.saturating_sub(start.elapsed()), is_current)
+                    });
+                    let report = if optimized {
+                        self.optimized_session
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .exchange_guarded(cfg, snapshot, budget, is_current)
+                    } else {
+                        self.nextcloud_session
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .exchange_guarded(cfg, snapshot, budget, is_current)
+                    };
+                    match settings.join() {
+                        Ok(Ok(())) => {}
+                        Ok(Err(error)) => self.settings_failed(error.to_string()),
+                        Err(_) => self.settings_failed("Settings exchange worker failed".into()),
+                    }
+                    report
+                })
+            },
+        )
     }
 
     /// Publish this device's full data set as the server copy, parking the unreadable
@@ -2243,9 +2308,21 @@ impl Engine {
         settings: NextcloudSettings,
         cancellation: Arc<SyncCancellation>,
     ) -> Result<SyncReport, CoreError> {
-        self.nextcloud_exchange(settings, cancellation, "Replacement", |cfg, snapshot, is_current| {
-            momentum_sync::replace_remote(cfg, snapshot, momentum_sync::DEFAULT_EXCHANGE_TIMEOUT, is_current)
-        })
+        if settings.optimized || self.nextcloud_optimized_required(settings.clone()) {
+            return Err(CoreError::Transient {
+                kind: SyncFailureKind::Cancelled,
+                message: "Legacy replacement is unavailable for optimized connections".into(),
+            });
+        }
+        self.nextcloud_exchange(
+            settings,
+            cancellation,
+            "Replacement",
+            None,
+            |cfg, snapshot, is_current| {
+                momentum_sync::replace_remote(cfg, snapshot, momentum_sync::DEFAULT_EXCHANGE_TIMEOUT, is_current)
+            },
+        )
     }
 
     /// Read-only authenticated WebDAV probe. `timeout_ms` is explicit so native tests
@@ -2303,11 +2380,13 @@ impl Engine {
     /// the exchange before admitting another provider. Call off the UI thread.
     pub fn cancel_nextcloud(&self) -> bool {
         let mut g = self.lock();
-        if !self.syncing.load(Ordering::SeqCst) {
-            return false;
+        let active = self.syncing.load(Ordering::SeqCst);
+        if active {
+            g.sync_generation = g.sync_generation.wrapping_add(1);
         }
-        g.sync_generation = g.sync_generation.wrapping_add(1);
-        true
+        drop(g);
+        self.stop_nextcloud_push();
+        active
     }
 
     /// Import a task backup: replaces local state, drops pending ops.
@@ -2324,6 +2403,7 @@ impl Engine {
         let mut g = self.lock();
         g.sync_generation = g.sync_generation.wrapping_add(1);
         g.store.replace_state(d)?;
+        self.clear_nextcloud_caches();
         g.invalidate();
         g.undo.clear();
         Ok(changed_with(Message::BackupImported, None))
@@ -2475,6 +2555,20 @@ impl Engine {
         self.syncing.load(Ordering::SeqCst)
     }
 
+    pub(crate) fn clear_nextcloud_caches(&self) {
+        // Never wait for an in-flight request while holding the store lock. Its
+        // generation/cancellation guard invalidates the session on completion.
+        if let Ok(mut session) = self.optimized_session.try_lock() {
+            session.invalidate();
+        }
+        if let Ok(mut session) = self.nextcloud_session.try_lock() {
+            *session = Default::default();
+        }
+        if let Ok(mut session) = self.portable_session.try_lock() {
+            *session = Default::default();
+        }
+    }
+
     /// Admission, snapshot, guarded network work and commit shared by a sync exchange
     /// and a server-copy replacement. `run` receives the snapshot and a currency check.
     fn nextcloud_exchange(
@@ -2482,10 +2576,11 @@ impl Engine {
         settings: NextcloudSettings,
         cancellation: Arc<SyncCancellation>,
         what: &str,
+        validation_budget: Option<std::time::Duration>,
         run: impl FnOnce(
             &momentum_sync::NextcloudCfg,
             &mut Store,
-            &dyn Fn() -> bool,
+            &(dyn Fn() -> bool + Sync),
         ) -> Result<momentum_sync::Report, momentum_sync::SyncError>,
     ) -> Result<SyncReport, CoreError> {
         if !cancellation.begin() {
@@ -2513,25 +2608,84 @@ impl Engine {
         if nearby.is_some() {
             return Err(CoreError::Busy);
         }
-        let (mut snapshot, generation, original_ops) = {
+        let start = std::time::Instant::now();
+        let (generation, version, etag, idle, dir) = {
             let g = self.lock();
-            // Reserve and capture the generation under one lock: cancellation
-            // must not slip between admission and taking the exchange snapshot.
             if self.syncing.swap(true, Ordering::SeqCst) {
                 return Err(CoreError::Busy);
             }
-            let ids: HashSet<String> = g.store.pending.iter().map(|p| p.op.id.clone()).collect();
-            (g.store.clone(), g.sync_generation, ids)
+            (
+                g.sync_generation,
+                g.store.meta.last_sync_version,
+                g.store.meta.last_etag.clone(),
+                g.store.pending.is_empty(),
+                g.store.dir().to_path_buf(),
+            )
         };
         let _lease = SyncLease(&self.syncing);
         #[cfg(feature = "p2p")]
         drop(nearby);
         let is_current = || !cancellation.is_cancelled() && self.lock().sync_generation == generation;
-        let result = run(&cfg, &mut snapshot, &is_current);
+        if !settings.optimized
+            && idle
+            && validation_budget.is_some()
+            && !momentum_sync::optimized::require_optimized(&cfg, &dir).unwrap_or(true)
+        {
+            let budget = validation_budget.unwrap();
+            let unchanged = self
+                .nextcloud_session
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .validate_unchanged_guarded(&cfg, version, etag.as_deref(), budget, &is_current);
+            if matches!(unchanged, Ok(true)) {
+                if let Err(error) =
+                    self.exchange_nextcloud_settings(&cfg, budget.saturating_sub(start.elapsed()), &is_current)
+                {
+                    self.settings_failed(error.to_string());
+                }
+                let mut g = self.lock();
+                // Concurrent local edits stay durable and pending for the scheduled follow-up.
+                // Only the unchanged remote baseline was acknowledged by this request.
+                if g.sync_generation == generation && cancellation.begin_commit() {
+                    g.store.record_nextcloud_success(now_ms())?;
+                    return Ok(SyncReport {
+                        downloaded: false,
+                        uploaded: false,
+                        ops_uploaded: 0,
+                    });
+                }
+            }
+        }
+        let (mut snapshot, original_ops) = {
+            let g = self.lock();
+            if g.sync_generation != generation || cancellation.is_cancelled() {
+                return Err(CoreError::Transient {
+                    kind: SyncFailureKind::Cancelled,
+                    message: "Sync was superseded".into(),
+                });
+            }
+            let ids: HashSet<String> = g.store.pending.iter().map(|p| p.op.id.clone()).collect();
+            (g.store.clone(), ids)
+        };
+        let mode = if settings.optimized {
+            momentum_sync::optimized::pin_optimized(&cfg, snapshot.dir())
+        } else {
+            momentum_sync::optimized::require_optimized(&cfg, snapshot.dir()).and_then(|required| {
+                if required {
+                    Err(momentum_sync::SyncError::Parse(
+                        "This connection was upgraded; optimized sync is required".into(),
+                    ))
+                } else {
+                    Ok(())
+                }
+            })
+        };
+        let result = mode.and_then(|_| run(&cfg, &mut snapshot, &is_current));
         match result {
             Ok(r) => {
                 let mut g = self.lock();
                 if g.sync_generation != generation || !cancellation.begin_commit() {
+                    self.clear_nextcloud_caches();
                     return Err(CoreError::Transient {
                         kind: SyncFailureKind::Cancelled,
                         message: format!("{what} was cancelled or superseded by a data replacement"),

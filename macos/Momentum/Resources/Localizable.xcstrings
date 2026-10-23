@@ -1,6 +1,86 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+"Optimized sync enabled": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Optimierte Synchronisierung aktiviert"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Optimized sync enabled"
+        }
+      }
+    }
+  },
+  "Upgrade": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Umstellen"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Upgrade"
+        }
+      }
+    }
+  },
+  "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Aktualisiere alle beteiligten Geräte und aktiviere auf jedem die optimierte Synchronisierung. Diese Verbindung kann nicht zur bisherigen Synchronisierung zurückkehren. Bestehende Dateien bleiben erhalten. Die Synchronisierung kann weiterhin ausgeschaltet werden."
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."
+        }
+      }
+    }
+  },
+  "Upgrade to optimized sync?": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Auf optimierte Synchronisierung umstellen?"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Upgrade to optimized sync?"
+        }
+      }
+    }
+  },
+  "Upgrade to optimized sync…": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Auf optimierte Synchronisierung umstellen…"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Upgrade to optimized sync…"
+        }
+      }
+    }
+  },
   "Show Morning and Evening tasks in Today": {
     "localizations": {
       "en": {

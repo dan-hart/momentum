@@ -5,6 +5,18 @@ import Testing
 @testable import MomentumMobile
 
 @Suite struct SyncConnectionTests {
+    @Test func optimizedConnectionSurvivesDecodingAndLegacyRecordsStayLegacy() throws {
+        let legacy = try JSONEncoder().encode(NextcloudConnection())
+        let old = try JSONDecoder().decode(NextcloudConnection.self, from: legacy)
+        var record = try #require(JSONSerialization.jsonObject(with: legacy) as? [String: Any])
+        record["optimized"] = true
+        let upgraded = try JSONDecoder().decode(NextcloudConnection.self, from: JSONSerialization.data(withJSONObject: record))
+        let encoded = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(upgraded)) as? [String: Any])
+        #expect(encoded["optimized"] as? Bool == true)
+        #expect(old.optimized == false)
+        #expect(upgraded.settings.optimized)
+    }
+
     @Test func savedConnectionRoundTripsAsOneKeychainRecord() async throws {
         let keychain = Keychain(service: "momentum-connection-test-\(UUID())")
         defer { try? keychain.deleteChecked(NextcloudConnectionStore.account) }

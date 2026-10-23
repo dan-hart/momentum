@@ -12,6 +12,8 @@ struct SyncSettings: View {
     @AccessibilityFocusState private var failureFocused: Bool
     @AccessibilityFocusState private var savedFocused: Bool
     @State private var confirmingFolderCopy = false
+    @State private var confirmingOptimizedUpgrade = false
+    @State private var optimizedUpgradeIdentity = ""
 
     var body: some View {
         Form {
@@ -119,6 +121,12 @@ struct SyncSettings: View {
         .onChange(of: state.failure) { _, failure in if failure != nil { failureFocused = true } }
         .task { await model.refreshAppSettings() }
         .onDisappear { state.cancelFolderCopy() }
+        .alert("Upgrade to optimized sync?", isPresented: $confirmingOptimizedUpgrade) {
+            Button("Cancel", role: .cancel) {}
+            Button("Upgrade") { Task { await state.upgradeOptimizedSync(expectedIdentity: optimizedUpgradeIdentity) } }
+        } message: {
+            Text("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.")
+        }
         .alert("Copy to Momentum folder?", isPresented: $confirmingFolderCopy) {
             Button("Cancel", role: .cancel) {}
             Button("Copy and switch") { Task { await state.copyToMomentumFolder() } }
@@ -306,6 +314,18 @@ struct SyncSettings: View {
             Section {
                 Toggle("Sync Automatically", isOn: $state.draft.automatic).settingsTarget("sync.automatic")
                 Toggle("Compress Sync File", isOn: $state.draft.compress).settingsTarget("sync.compression")
+                if state.optimizedSyncEnabled {
+                    Label("Optimized sync enabled", systemImage: "checkmark.circle")
+                } else {
+                    Button("Upgrade to optimized sync…") {
+                        optimizedUpgradeIdentity = state.draft.identity
+                        confirmingOptimizedUpgrade = true
+                    }
+                        .disabled(state.hasUnsavedChanges || !state.canSync || state.isSyncing)
+                }
+                Text("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.")
+                    .font(.caption).foregroundStyle(AccentTheme.secondaryText)
+
                 field("Encryption Password (Optional)") {
                     SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()

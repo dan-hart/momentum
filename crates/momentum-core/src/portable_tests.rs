@@ -272,6 +272,7 @@ fn invalid_included_settings_never_replace_tasks_or_opaque_legacy_config() {
 mod mock_dav;
 fn nextcloud(d: &mock_dav::MockDav) -> NextcloudSettings {
     NextcloudSettings {
+        optimized: false,
         server_url: d.url.clone(),
         user_name: "u".into(),
         password: "p".into(),
@@ -610,15 +611,18 @@ fn settings_exchange_keeps_edits_made_while_uploading_and_cancellation_keeps_pen
     assert_eq!(e.sync_status().pending_ops, 1);
 }
 #[test]
-fn settings_can_seed_independently_when_task_transport_cannot_download_its_snapshot() {
+fn settings_can_seed_independently_when_task_payload_is_unreadable() {
     let d = mock_dav::MockDav::start();
     let (e, _ed) = engine();
     e.stage_portable_settings(json!({"version":1,"values":{"sort":"title"}}).to_string())
         .unwrap();
     e.set_settings_sync_enabled(true).unwrap();
-    // Exhaust the task GET's bounded reads; the separate settings exchange can
-    // then proceed. Native task bootstrapping itself is now supported.
-    d.fail_gets.store(3, std::sync::atomic::Ordering::SeqCst);
+    // Target only task data: independently scheduled requests may arrive in any
+    // order, and a failed task payload must not prevent settings publication.
+    d.set_raw(
+        "/remote.php/dav/files/u/legacy/sync-data.json",
+        b"damaged task payload".to_vec(),
+    );
     assert!(e.sync_nextcloud(nextcloud(&d)).is_err());
     assert!(d.raw("/remote.php/dav/files/u/legacy/momentum-settings.json").is_some());
     assert_eq!(e.settings_sync_status().pending_keys, 0);
@@ -884,4 +888,89 @@ fn quiet_sound_choices_round_trip_without_changing_local_only_preferences() {
     }
     assert!(values(&e).get("completionSoundVolume").is_none());
     assert!(values(&e).get("dynamicEmptyStateMessages").is_none());
+}
+
+#[test]
+fn optimized_upgrade_routes_to_separate_collection_and_rejects_downgrade_after_reopen() {
+    let dav = mock_dav::MockDav::start();
+    let (e, dir) = engine();
+    e.add_task("Offline work".into(), View::Today);
+    let mut settings = nextcloud(&dav);
+    settings.optimized = true;
+    assert!(!e.nextcloud_optimized_required(settings.clone()));
+    e.sync_nextcloud(settings.clone()).unwrap();
+    assert!(e.nextcloud_optimized_required(settings.clone()));
+    let reopened = Engine::open_checked(dir.path().to_string_lossy().into_owned()).unwrap();
+    settings.optimized = false;
+    assert!(reopened.sync_nextcloud(settings.clone()).is_err());
+    assert!(reopened.nextcloud_optimized_required(settings));
+    assert!(
+        reopened
+            .add_task("Local work remains available".into(), View::Today)
+            .changed
+    );
+}
+
+#[test]
+fn failed_optimized_exchange_pins_connection_without_discarding_pending_work() {
+    let dav = mock_dav::MockDav::start();
+    let (e, _dir) = engine();
+    e.add_task("Retain on failure".into(), View::Today);
+    let mut settings = nextcloud(&dav);
+    settings.optimized = true;
+    let _ = e.sync_nextcloud_with_budget(settings.clone(), SyncCancellation::new(), 0);
+    assert!(e.nextcloud_optimized_required(settings.clone()));
+    assert!(e.sync_status().pending_ops > 0);
+    settings.optimized = false;
+    assert!(e.sync_nextcloud(settings).is_err());
+}
+
+#[test]
+fn optimized_folder_copy_preserves_local_pending_work_and_requires_optimized_destination() {
+    let dav = mock_dav::MockDav::start();
+    let (e, _dir) = engine();
+    let mut settings = nextcloud(&dav);
+    settings.optimized = true;
+    e.add_task("Committed source work".into(), View::Today);
+    e.sync_nextcloud(settings.clone()).unwrap();
+    e.add_task("Pending local work".into(), View::Today);
+    let pending = e.sync_status().pending_ops;
+    let result = e
+        .migrate_nextcloud_folder(
+            settings.clone(),
+            "optimized-copy".into(),
+            SyncCancellation::new(),
+            20_000,
+        )
+        .unwrap();
+    assert!(result.verified);
+    assert_eq!(e.sync_status().pending_ops, pending);
+    settings.folder = "optimized-copy".into();
+    assert!(e.nextcloud_optimized_required(settings.clone()));
+    e.sync_nextcloud(settings).unwrap();
+    assert_eq!(e.sync_status().pending_ops, 0);
+}
+
+#[test]
+fn optimized_idle_keeps_undo_and_restored_state_across_reopen() {
+    let dav = mock_dav::MockDav::start();
+    let (e, dir) = engine();
+    let mut settings = nextcloud(&dav);
+    settings.optimized = true;
+    e.add_task("Remote original".into(), View::Today);
+    e.sync_nextcloud(settings.clone()).unwrap();
+    e.add_task("Undo this".into(), View::Today);
+    e.complete_by_title("Undo this".into());
+    e.sync_nextcloud(settings.clone()).unwrap();
+    e.sync_nextcloud(settings.clone()).unwrap();
+    assert!(e.undo().changed, "unchanged polling must preserve undo");
+    let replacement = momentum_model::AppData::fresh();
+    let backup = dir.path().join("restore.json");
+    std::fs::write(&backup, serde_json::to_vec(&replacement).unwrap()).unwrap();
+    e.import_backup(backup.to_string_lossy().into_owned()).unwrap();
+    drop(e);
+    let reopened = Engine::open_checked(dir.path().to_string_lossy().into_owned()).unwrap();
+    let report = reopened.sync_nextcloud(settings).unwrap();
+    assert!(!report.downloaded && !report.uploaded);
+    assert!(reopened.with_store(|s| s.state.task.entities.is_empty()));
 }

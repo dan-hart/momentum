@@ -5,6 +5,8 @@
 //! snapshot + ops with an ETag compare-and-swap. Remote ops are never replayed
 //! here because the remote `state` already contains their effect.
 pub mod crypto;
+pub mod optimized;
+pub mod push;
 use base64::Engine;
 use momentum_model::{now_ms, AppData, SCHEMA_VERSION};
 use momentum_oplog::{apply, merge_clocks, Op, VectorClock};
@@ -292,6 +294,59 @@ fn etag(r: &ureq::http::Response<ureq::Body>) -> Option<String> {
         .find_map(|h| r.headers().get(*h)?.to_str().ok().map(|s| s.trim().to_string()))
 }
 
+/// Connections contain no default credentials or cookies: authentication remains
+/// request-local. Pool size and idle lifetime are bounded across all sync channels.
+fn transport_pool() -> ureq::Agent {
+    static POOL: std::sync::OnceLock<ureq::Agent> = std::sync::OnceLock::new();
+    POOL.get_or_init(|| {
+        ureq::Agent::config_builder()
+            .allow_non_standard_methods(true)
+            .max_idle_connections(4)
+            .max_idle_connections_per_host(2)
+            .max_idle_age(Duration::from_secs(15))
+            .build()
+            .into()
+    })
+    .clone()
+}
+struct BudgetAgent {
+    agent: ureq::Agent,
+    remaining: Duration,
+}
+impl BudgetAgent {
+    fn get(&self, url: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+        self.agent
+            .get(url)
+            .config()
+            .timeout_global(Some(self.remaining))
+            .timeout_connect(Some(CONNECT_TIMEOUT.min(self.remaining)))
+            .timeout_recv_response(Some(RESPONSE_TIMEOUT.min(self.remaining)))
+            .build()
+    }
+    fn put(&self, url: &str) -> ureq::RequestBuilder<ureq::typestate::WithBody> {
+        self.agent
+            .put(url)
+            .config()
+            .timeout_global(Some(self.remaining))
+            .timeout_connect(Some(CONNECT_TIMEOUT.min(self.remaining)))
+            .timeout_recv_response(Some(RESPONSE_TIMEOUT.min(self.remaining)))
+            .build()
+    }
+    fn run<B: ureq::AsSendBody>(
+        &self,
+        request: ureq::http::Request<B>,
+    ) -> Result<ureq::http::Response<ureq::Body>, ureq::Error> {
+        let request = self
+            .agent
+            .configure_request(request)
+            .timeout_global(Some(self.remaining))
+            .timeout_connect(Some(CONNECT_TIMEOUT.min(self.remaining)))
+            .timeout_recv_response(Some(RESPONSE_TIMEOUT.min(self.remaining)))
+            .build();
+        self.agent.run(request)
+    }
+}
+
 struct ExchangeGuard<'a> {
     current: &'a dyn Fn() -> bool,
     deadline: Instant,
@@ -306,20 +361,13 @@ impl ExchangeGuard<'_> {
         }
         Ok(())
     }
-    fn agent(&self) -> Result<ureq::Agent, SyncError> {
+    fn agent(&self) -> Result<BudgetAgent, SyncError> {
         self.check()?;
         let remaining = self.deadline.saturating_duration_since(Instant::now());
-        Ok(ureq::Agent::config_builder()
-            // WebDAV collection creation uses MKCOL, an HTTP extension method.
-            .allow_non_standard_methods(true)
-            // The whole exchange stays within its budget, and a dead connection still
-            // fails fast: connecting and the first response byte have their own limits,
-            // while a body transfer may use everything that is left.
-            .timeout_global(Some(remaining))
-            .timeout_connect(Some(CONNECT_TIMEOUT.min(remaining)))
-            .timeout_recv_response(Some(RESPONSE_TIMEOUT.min(remaining)))
-            .build()
-            .into())
+        Ok(BudgetAgent {
+            agent: transport_pool(),
+            remaining,
+        })
     }
     /// Only read requests are retried. A lost PUT response must not replay edits
     /// that may already have reached the server. Every wait shares the same budget.
@@ -372,13 +420,13 @@ fn download(cfg: &NextcloudCfg) -> Result<Option<(SyncFile, String)>, SyncError>
 #[cfg(test)]
 fn download_guarded(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>) -> Result<Option<(SyncFile, String)>, SyncError> {
     match download_validated(cfg, guard, None)? {
-        Download::File(file, tag) => Ok(Some((file, tag))),
+        Download::File(file, tag, _) => Ok(Some((file, tag))),
         Download::Missing => Ok(None),
         Download::Unchanged => unreachable!("an unconditional GET cannot validate a cached copy"),
     }
 }
 enum Download {
-    File(SyncFile, String),
+    File(SyncFile, String, String),
     Missing,
     Unchanged,
 }
@@ -406,7 +454,7 @@ fn download_once(cfg: &NextcloudCfg, guard: &ExchangeGuard<'_>, known: Option<&s
             guard.check()?;
             let decoded = decode(&body, cfg.encrypt_key.as_deref())?;
             guard.check()?;
-            Ok(Download::File(decoded, tag))
+            Ok(Download::File(decoded, tag, body))
         }
         Err(ureq::Error::StatusCode(404)) => Ok(Download::Missing),
         Err(e) => Err(e.into()),
@@ -615,12 +663,173 @@ pub struct Report {
     pub ops_uploaded: usize,
 }
 
-/// Process-local validation for one engine. Nothing is persisted in the task sync format.
+/// Exact validated server image, never inferred from the local task snapshot.
+struct ValidatedBaseline {
+    cfg: NextcloudCfg,
+    file: SyncFile,
+    tag: String,
+    body: String,
+}
+const BASELINE_FILE: &str = ".nextcloud-validated-baseline.json";
+const MAX_BASELINE_BYTES: u64 = 64 << 20;
+#[derive(Serialize, Deserialize)]
+struct PersistedBaseline {
+    configuration: String,
+    tag: String,
+    sync_version: u64,
+    digest: String,
+    body: String,
+}
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    sha2::Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+}
+// Persist only nonsecret configuration. Hashing a password here would create a
+// fast offline oracle that bypasses the encrypted payload's strong KDF. Current
+// HTTP credentials are checked by the server; encryption keys by payload decode.
+fn configuration_fingerprint(cfg: &NextcloudCfg) -> String {
+    sha256_hex(
+        &serde_json::to_vec(&(
+            &cfg.server_url,
+            &cfg.user_name,
+            &cfg.folder,
+            cfg.compress,
+            cfg.encrypt_key.as_ref().is_some_and(|key| !key.is_empty()),
+        ))
+        .expect("configuration strings serialize"),
+    )
+}
+fn strong_etag(tag: &str) -> bool {
+    tag.len() >= 2 && tag.starts_with('"') && tag.ends_with('"') && !tag[1..tag.len() - 1].contains(['"', '\r', '\n'])
+}
+impl ValidatedBaseline {
+    fn matches(&self, cfg: &NextcloudCfg, store: &Store) -> bool {
+        &self.cfg == cfg
+            && self.file.sync_version == store.meta.last_sync_version
+            && store.meta.last_etag.as_ref() == Some(&self.tag)
+            && strong_etag(&self.tag)
+    }
+    fn load(cfg: &NextcloudCfg, store: &Store) -> Option<Self> {
+        let path = store.dir().join(BASELINE_FILE);
+        let input = std::fs::File::open(path).ok()?;
+        if input.metadata().ok()?.len() > MAX_BASELINE_BYTES {
+            return None;
+        }
+        let cached: PersistedBaseline = serde_json::from_reader(input.take(MAX_BASELINE_BYTES)).ok()?;
+        if cached.configuration != configuration_fingerprint(cfg)
+            || !strong_etag(&cached.tag)
+            || cached.digest != sha256_hex(cached.body.as_bytes())
+        {
+            return None;
+        }
+        let file = decode(&cached.body, cfg.encrypt_key.as_deref()).ok()?;
+        if file.sync_version != cached.sync_version {
+            return None;
+        }
+        let baseline = Self {
+            cfg: cfg.clone(),
+            file,
+            tag: cached.tag,
+            body: cached.body,
+        };
+        baseline.matches(cfg, store).then_some(baseline)
+    }
+    fn persist(&self, store: &Store) {
+        // This is only an acceleration hint. An interrupted/unwritable sidecar
+        // must never fail a successful exchange or acknowledge queued operations.
+        let cached = PersistedBaseline {
+            configuration: configuration_fingerprint(&self.cfg),
+            tag: self.tag.clone(),
+            sync_version: self.file.sync_version,
+            digest: sha256_hex(self.body.as_bytes()),
+            body: self.body.clone(),
+        };
+        let Ok(bytes) = serde_json::to_vec(&cached) else {
+            return;
+        };
+        if bytes.len() as u64 > MAX_BASELINE_BYTES {
+            return;
+        }
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let temporary = store.dir().join(format!(
+            "{BASELINE_FILE}.{}.{}.tmp",
+            std::process::id(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        if let Ok(mut output) = options.open(&temporary) {
+            if output.write_all(&bytes).and_then(|_| output.sync_all()).is_ok() {
+                let _ = std::fs::rename(&temporary, store.dir().join(BASELINE_FILE));
+            }
+            let _ = std::fs::remove_file(temporary);
+        }
+    }
+}
+/// Validated remote baselines survive restart in an optional bounded sidecar;
+/// task, backup and sync formats remain unchanged.
 #[derive(Default)]
 pub struct SyncSession {
-    validated: Option<(NextcloudCfg, u64, String)>,
+    validated: Option<std::sync::Arc<ValidatedBaseline>>,
+    cache_path: Option<std::path::PathBuf>,
 }
 impl SyncSession {
+    /// Validate an idle engine before cloning its task store. The owner must
+    /// still recheck generation, configuration and pending edits under its lock.
+    /// A false result requires the ordinary exchange; it never adopts remote data.
+    pub fn validate_unchanged_guarded(
+        &mut self,
+        cfg: &NextcloudCfg,
+        last_sync_version: u64,
+        last_etag: Option<&str>,
+        timeout: Duration,
+        is_current: impl Fn() -> bool,
+    ) -> Result<bool, SyncError> {
+        let guard = ExchangeGuard {
+            current: &is_current,
+            deadline: Instant::now() + timeout,
+        };
+        let result = (|| {
+            guard.check()?;
+            let Some(baseline) = self.validated.as_ref().filter(|baseline| {
+                &baseline.cfg == cfg
+                    && baseline.file.sync_version == last_sync_version
+                    && Some(baseline.tag.as_str()) == last_etag
+                    && strong_etag(&baseline.tag)
+            }) else {
+                return Ok(false);
+            };
+            guard.retry_read(|| {
+                let response = guard
+                    .agent()?
+                    .get(&cfg.file_url())
+                    .header("Authorization", cfg.auth())
+                    .header("If-None-Match", &baseline.tag)
+                    .call();
+                guard.check()?;
+                match response {
+                    Ok(response) => {
+                        Ok(response.status() == 304 && etag(&response).is_none_or(|tag| tag == baseline.tag))
+                    }
+                    Err(ureq::Error::StatusCode(404)) => Ok(false),
+                    Err(error) => Err(error.into()),
+                }
+            })
+        })();
+        if !matches!(result, Ok(true)) {
+            self.validated = None;
+            if let Some(path) = self.cache_path.as_ref() {
+                let _ = std::fs::remove_file(path);
+            }
+        }
+        result
+    }
+
     pub fn exchange_guarded(
         &mut self,
         cfg: &NextcloudCfg,
@@ -628,27 +837,43 @@ impl SyncSession {
         timeout: Duration,
         is_current: impl Fn() -> bool,
     ) -> Result<Report, SyncError> {
-        let known = self
-            .validated
-            .as_ref()
-            .filter(|(settings, version, tag)| {
-                settings == cfg
-                    && store.pending.is_empty()
-                    && *version == store.meta.last_sync_version
-                    && store.meta.last_etag.as_ref() == Some(tag)
-            })
-            .map(|(_, _, tag)| tag.as_str());
-        let result = exchange_inner(cfg, store, timeout, is_current, known);
-        self.validated = if result.is_ok() {
-            store
-                .meta
-                .last_etag
-                .as_ref()
-                .filter(|tag| tag.starts_with('"') && tag.ends_with('"'))
-                .map(|tag| (cfg.clone(), store.meta.last_sync_version, tag.clone()))
-        } else {
-            None
+        let guard = ExchangeGuard {
+            current: &is_current,
+            deadline: Instant::now() + timeout,
         };
+        self.cache_path = Some(store.dir().join(BASELINE_FILE));
+        let mut validated = None;
+        let result = (|| {
+            guard.check()?;
+            if self.validated.as_ref().is_some_and(|v| !v.matches(cfg, store)) {
+                self.validated = None;
+            }
+            if self.validated.is_none() {
+                self.validated = ValidatedBaseline::load(cfg, store).map(std::sync::Arc::new);
+            }
+            guard.check()?;
+            let had_validated = self.validated.is_some();
+            let report = exchange_inner(
+                cfg,
+                store,
+                guard.deadline.saturating_duration_since(Instant::now()),
+                &is_current,
+                self.validated.as_ref(),
+                &mut validated,
+            )?;
+            guard.check()?;
+            if let Some(baseline) = validated.as_ref() {
+                if !had_validated || report.downloaded || report.uploaded {
+                    baseline.persist(store);
+                }
+            }
+            guard.check()?;
+            Ok(report)
+        })();
+        self.validated = if result.is_ok() { validated } else { None };
+        if self.validated.is_none() {
+            let _ = std::fs::remove_file(store.dir().join(BASELINE_FILE));
+        }
         result
     }
 }
@@ -676,14 +901,15 @@ pub fn exchange_guarded(
     timeout: Duration,
     is_current: impl Fn() -> bool,
 ) -> Result<Report, SyncError> {
-    exchange_inner(cfg, store, timeout, is_current, None)
+    exchange_inner(cfg, store, timeout, is_current, None, &mut None)
 }
 fn exchange_inner(
     cfg: &NextcloudCfg,
     store: &mut Store,
     timeout: Duration,
     is_current: impl Fn() -> bool,
-    known: Option<&str>,
+    known: Option<&std::sync::Arc<ValidatedBaseline>>,
+    validated: &mut Option<std::sync::Arc<ValidatedBaseline>>,
 ) -> Result<Report, SyncError> {
     let guard = ExchangeGuard {
         current: &is_current,
@@ -691,15 +917,28 @@ fn exchange_inner(
     };
     guard.check()?;
     let mut report = Report::default();
-    for _attempt in 0..3 {
-        let remote = download_validated(cfg, &guard, known)?;
-        let (mut file, tag) = match remote {
+    for attempt in 0..3 {
+        let conditional = known.filter(|_| attempt == 0);
+        let remote = download_validated(cfg, &guard, conditional.map(|v| v.tag.as_str()))?;
+        let remote = match remote {
             Download::Unchanged => {
-                guard.check()?;
-                return Ok(report);
+                let baseline = conditional.ok_or(SyncError::UploadUnverified)?;
+                if store.pending.is_empty() {
+                    *validated = Some(baseline.clone());
+                    guard.check()?;
+                    return Ok(report);
+                }
+                Download::File(baseline.file.clone(), baseline.tag.clone(), baseline.body.clone())
             }
-            Download::File(f, tag) => {
-                if f.sync_version != store.meta.last_sync_version || store.meta.last_etag.as_ref() != Some(&tag) {
+            other => other,
+        };
+        let (mut file, tag, original_body) = match remote {
+            Download::Unchanged => unreachable!("conditional response resolved above"),
+            Download::File(f, tag, body) => {
+                if !store.pending.is_empty()
+                    || f.sync_version != store.meta.last_sync_version
+                    || store.meta.last_etag.as_ref() != Some(&tag)
+                {
                     let mut state = f.state.clone();
                     // Archives live beside `state` in the file; keep them in `rest` locally so
                     // archiving ops can update them and they round-trip on upload.
@@ -713,9 +952,9 @@ fn exchange_inner(
                     }
                     store.state = state;
                     store.meta.vector_clock = merge_clocks(&store.meta.vector_clock, &f.vector_clock);
-                    report.downloaded = true;
+                    report.downloaded = conditional.is_none_or(|v| v.tag != tag);
                 }
-                (f, Some(tag))
+                (f, Some(tag), body)
             }
             Download::Missing if store.state.rest.get("globalConfig").is_none() => return Err(SyncError::FreshState),
             Download::Missing => (
@@ -733,11 +972,20 @@ fn exchange_inner(
                     oldest_op_sync_version: None,
                 },
                 None,
+                String::new(),
             ),
         };
         if store.pending.is_empty() && tag.is_some() {
             store.meta.last_sync_version = file.sync_version;
-            store.meta.last_etag = tag;
+            store.meta.last_etag = tag.clone();
+            if let Some(tag) = tag.filter(|tag| strong_etag(tag)) {
+                *validated = Some(std::sync::Arc::new(ValidatedBaseline {
+                    cfg: cfg.clone(),
+                    file,
+                    tag,
+                    body: original_body,
+                }));
+            }
             guard.check()?;
             return Ok(report);
         }
@@ -764,18 +1012,20 @@ fn exchange_inner(
         file.state = store.state.clone();
         file.archive_young = file.state.rest.remove("archiveYoung").or(file.archive_young);
         file.archive_old = file.state.rest.remove("archiveOld").or(file.archive_old);
-        match upload(
-            cfg,
-            &encode(&file, cfg.compress, cfg.encrypt_key.as_deref())?,
-            tag.as_deref(),
-            &guard,
-        ) {
+        let body = encode(&file, cfg.compress, cfg.encrypt_key.as_deref())?;
+        match upload(cfg, &body, tag.as_deref(), &guard) {
             Ok(new_tag) => {
                 report.uploaded = true;
                 report.ops_uploaded = store.pending.len();
                 store.pending.clear();
                 store.meta.last_sync_version = sv;
-                store.meta.last_etag = Some(new_tag);
+                store.meta.last_etag = Some(new_tag.clone());
+                *validated = Some(std::sync::Arc::new(ValidatedBaseline {
+                    cfg: cfg.clone(),
+                    file,
+                    tag: new_tag,
+                    body,
+                }));
                 guard.check()?;
                 return Ok(report);
             }
@@ -829,9 +1079,12 @@ mod tests {
 mod portable_tests;
 
 mod portable;
-pub use portable::{exchange_portable_guarded, PortableExchange, SETTINGS_FILE};
+pub use portable::{exchange_portable_guarded, PortableExchange, PortableSession, SETTINGS_FILE};
 #[cfg(test)]
 mod migration_tests;
 
 mod migration;
 pub use migration::{migrate_folder_guarded, FolderMigrationReport};
+
+#[cfg(test)]
+mod transport_tests;
