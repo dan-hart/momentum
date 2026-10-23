@@ -1,5 +1,32 @@
 # Momentum progress and handoff
 
+## 2026-10-22 — F-073 celebration refinement
+
+- User requested a clearer Celebrate button and a larger, more playful effect on
+  all four platforms. Native filled, rounded buttons gain a decorative sparkle/star
+  icon; colorful confetti, star particles and a halo play only after activation.
+  Effects remain brief, decorative and independent of completion sounds. Overlay
+  drawing avoids layout jumps; reduced motion keeps a static flourish.
+- **Review:** independent source review caught an unavailable Android extended icon;
+  the implementation now uses the existing core Star. Apple burst geometry was
+  moved above the CTA to fit native list rows. Apple effects reset when switching
+  completion contexts, and a named accessibility action supplements the native button.
+  No eligibility or task-data changes.
+- **Evidence:** follow-up dirty worktree from `94bd8d2`: GTK app/test sources compile,
+  app builds, and the existing empty-message regression passes. Full MomentumKit
+  **230 tests/49 suites** pass, followed by **9 affected tests/4 suites** after
+  native accessibility/lifecycle adjustments. Android **116 JVM tests**, debug APK, lintDebug (zero
+  errors), and existing instrumentation source compilation pass. Final Mac and generic
+  iOS Simulator (arm64/x86_64) builds pass with accessibility/lifecycle adjustments.
+  In an isolated Mac demo (sync off), the filled button and full star/confetti/halo
+  burst are visible inside the completion row without shifting surrounding content.
+  Native Linux/mobile visual/device checks and all-platform reduced-motion and
+  screen-reader acceptance remain outstanding. Mac AX inspection still presents a
+  combined completion row; the named action needs actual VoiceOver verification.
+  No new rendered UI tests were added. The final Mac app was restarted from
+  `/private/tmp/momentum-macos-overhaul/Build/Products/Debug/Momentum.app`; the new
+  process and existing-task Today view were checked without changing user tasks.
+
 ## 2026-10-22 — F-071–F-074 native experience overhaul
 
 - **Authority/revision:** user approved the combined designs and implementation on

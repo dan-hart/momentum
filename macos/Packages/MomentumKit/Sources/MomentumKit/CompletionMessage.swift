@@ -44,43 +44,92 @@ public struct CompletionCelebration: SwiftUI.View {
     @State private var celebrated = false
     @State private var burstStart: Date?
     @State private var cleanup: Task<Void, Never>?
+    private static let duration = 1.2
+    private static let colors: [Color] = [.accentColor, .orange, .pink, .purple, .cyan, .yellow]
     private var feedback: CelebrationFeedback { .presentation(dynamic: true, completion: .dayComplete, reduceMotion: reduceMotion) }
     public init() {}
     public var body: some SwiftUI.View {
-        VStack {
-            if celebrated && feedback == .staticSymbol {
-                Image(systemName: "sparkles").foregroundStyle(.tint).accessibilityHidden(true)
-            }
-            Button(String(localized: "Celebrate", bundle: .module)) {
-                cleanup?.cancel()
-                celebrated = true
-                guard feedback == .burst else { burstStart = nil; return }
-                burstStart = .now
-                cleanup = Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(900))
-                    guard !Task.isCancelled else { return }
-                    burstStart = nil
-                }
-            }.buttonStyle(.borderless)
+        Button(action: celebrate) {
+            Label(String(localized: "Celebrate", bundle: .module), systemImage: "sparkles")
+                .fontWeight(.semibold)
+                .padding(.horizontal, 8)
+                .frame(minHeight: 24)
         }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.roundedRectangle(radius: 14))
+        .controlSize(.large)
+        .accessibilityAction(named: Text(String(localized: "Celebrate", bundle: .module)), celebrate)
         .overlay {
-            if let start = burstStart, feedback == .burst {
+            if celebrated && feedback == .staticSymbol {
+                // Overlay decorations never change the button's layout or hit region.
+                ZStack {
+                    Image(systemName: "sparkle").font(.title).foregroundStyle(.orange).offset(x: -94, y: -28)
+                    Image(systemName: "star.fill").font(.title2).foregroundStyle(.pink).offset(x: 90, y: -34)
+                    Image(systemName: "sparkles").font(.title).foregroundStyle(.tint).offset(x: 78, y: 32)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            } else if let start = burstStart, feedback == .burst {
                 TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
                     Canvas { context, size in
-                        let progress = min(1, max(0, timeline.date.timeIntervalSince(start) / 0.9))
-                        for index in 0..<24 {
-                            let angle = Double(index) * .pi * 2 / 24
-                            let radius = progress * (45 + Double(index % 5) * 9)
-                            let x = size.width / 2 + cos(angle) * radius
-                            let y = size.height / 2 + sin(angle) * radius + progress * progress * 35
-                            let rect = CGRect(x: x, y: y, width: 4, height: 6)
-                            context.opacity = 1 - progress
-                            context.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(index.isMultiple(of: 2) ? .accentColor : .secondary))
+                        let progress = min(1, max(0, timeline.date.timeIntervalSince(start) / Self.duration))
+                        let spread = 1 - pow(1 - progress, 3)
+                        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                        // A quick expanding halo anchors the larger, colorful shower.
+                        let ringRadius = 12 + spread * 96
+                        var ring = context
+                        ring.opacity = max(0, 1 - progress * 2)
+                        ring.stroke(Path(ellipseIn: CGRect(x: center.x - ringRadius, y: center.y - ringRadius * 0.65,
+                                                          width: ringRadius * 2, height: ringRadius * 1.3)),
+                                    with: .color(.accentColor), lineWidth: 3 * (1 - progress) + 1)
+                        for index in 0..<48 {
+                            let angle = Double(index) * .pi * 2 / 48
+                            let radius = spread * (80 + Double(index % 7) * 7)
+                            let x = center.x + cos(angle) * radius
+                            let y = center.y + sin(angle) * radius * 0.65 + progress * progress * 18
+                            var particle = context
+                            particle.opacity = min(1, (1 - progress) * 2.5)
+                            particle.translateBy(x: x, y: y)
+                            particle.rotate(by: .degrees(Double(index * 37) + progress * 240))
+                            let shape = index.isMultiple(of: 4)
+                                ? Self.star(radius: 8)
+                                : Path(roundedRect: CGRect(x: -3, y: -5, width: 6, height: 10), cornerRadius: 2)
+                            particle.fill(shape, with: .color(Self.colors[index % Self.colors.count]))
                         }
                     }
-                }.frame(width: 220, height: 160).allowsHitTesting(false).accessibilityHidden(true)
+                }
+                .frame(width: 300, height: 220)
+                .offset(y: -60)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
             }
         }
-        .onDisappear { cleanup?.cancel(); burstStart = nil }
+        .onChange(of: reduceMotion) { _, _ in cleanup?.cancel(); cleanup = nil; burstStart = nil }
+        .onDisappear { cleanup?.cancel(); cleanup = nil; burstStart = nil; celebrated = false }
+    }
+
+    private func celebrate() {
+        cleanup?.cancel()
+        celebrated = true
+        guard feedback == .burst else { burstStart = nil; return }
+        burstStart = .now
+        cleanup = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.duration))
+            guard !Task.isCancelled else { return }
+            burstStart = nil
+            cleanup = nil
+        }
+    }
+
+    private static func star(radius: Double) -> Path {
+        Path { path in
+            for point in 0..<10 {
+                let angle = Double(point) * .pi / 5 - .pi / 2
+                let length = point.isMultiple(of: 2) ? radius : radius * 0.45
+                let position = CGPoint(x: cos(angle) * length, y: sin(angle) * length)
+                if point == 0 { path.move(to: position) } else { path.addLine(to: position) }
+            }
+            path.closeSubpath()
+        }
     }
 }

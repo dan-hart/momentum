@@ -1,6 +1,11 @@
 # Momentum bug ledger
 
 Updated: 2026-10-22. Use the platform status vocabulary in [AGENTS.md](../AGENTS.md).
+
+F-073 celebration visual refinement: the user requested clearer button styling and a
+larger effect. Tracked as a feature refinement in FEATURES/PROGRESS; completion
+eligibility and task data rules remain unchanged.
+
 For each bug, also state impact: reproduced, reported, suspected, not reproduced,
 unaffected, or unknown. A status alone must not imply that a bug reproduced on that OS.
 Keep resolved entries. Verification gaps without a known product defect belong in

@@ -169,9 +169,15 @@ pub fn celebrate_button() -> gtk::Box {
         .orientation(gtk::Orientation::Vertical)
         .halign(gtk::Align::Center)
         .build();
+    // The overlay does not participate in measurement: replaying the burst never
+    // shifts the completion copy or neighboring task rows.
+    let overlay = gtk::Overlay::new();
     let drawing = gtk::DrawingArea::builder()
-        .content_width(240)
-        .content_height(64)
+        .content_width(440)
+        .content_height(280)
+        .halign(gtk::Align::Center)
+        .valign(gtk::Align::Center)
+        .can_target(false)
         .visible(false)
         .build();
     drawing.set_accessible_role(gtk::AccessibleRole::Presentation);
@@ -179,20 +185,60 @@ pub fn celebrate_button() -> gtk::Box {
     let frame = progress.clone();
     drawing.set_draw_func(move |_, cr, width, height| {
         let p = frame.get();
-        for i in 0..24 {
-            let angle = (i as f64 * 2.39996).sin();
-            let x = width as f64 / 2.0 + angle * (20.0 + p * 95.0);
-            let y = height as f64 * (0.3 + 0.7 * p * p) - (i % 6) as f64 * 4.0;
-            let (r, g, b) = [(1.0, 0.45, 0.10), (0.24, 0.62, 0.80), (0.56, 0.42, 0.78)][i % 3];
-            cr.set_source_rgba(r, g, b, 1.0 - p);
-            cr.rectangle(x, y, 3.0, 5.0);
+        let spread = 1.0 - (1.0 - p).powi(3);
+        let fade = (1.0 - p).min(0.65) / 0.65;
+        let center = (width as f64 / 2.0, height as f64 / 2.0);
+        let colors = [
+            (1.0, 0.64, 0.12),
+            (0.20, 0.68, 0.85),
+            (0.70, 0.46, 0.88),
+            (0.95, 0.40, 0.57),
+            (0.28, 0.74, 0.55),
+        ];
+        // A soft expanding halo accompanies the outward confetti shower.
+        cr.set_source_rgba(1.0, 0.64, 0.12, fade * 0.35);
+        cr.set_line_width(2.0);
+        cr.arc(center.0, center.1, 24.0 + spread * 100.0, 0.0, std::f64::consts::TAU);
+        cr.stroke().ok();
+        for i in 0..52 {
+            let angle = i as f64 * 2.39996;
+            let radius = spread * (70.0 + (i % 7) as f64 * 17.0);
+            let x = center.0 + angle.cos() * radius;
+            let y = center.1 + angle.sin() * radius * 0.65 + p * p * 45.0;
+            let (r, g, b) = colors[i % colors.len()];
+            cr.set_source_rgba(r, g, b, fade);
+            cr.save().ok();
+            cr.translate(x, y);
+            cr.rotate(angle + p * 3.0);
+            if i % 5 == 0 {
+                for point in 0..10 {
+                    let theta = point as f64 * std::f64::consts::PI / 5.0;
+                    let radius = if point % 2 == 0 { 7.0 } else { 3.0 };
+                    let (x, y) = (theta.cos() * radius, theta.sin() * radius);
+                    if point == 0 {
+                        cr.move_to(x, y);
+                    } else {
+                        cr.line_to(x, y);
+                    }
+                }
+                cr.close_path();
+            } else {
+                cr.rectangle(-3.0, -5.0, 6.0, 10.0);
+            }
             cr.fill().ok();
+            cr.restore().ok();
         }
     });
+    let label = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let icon = gtk::Image::from_icon_name("starred-symbolic");
+    icon.set_accessible_role(gtk::AccessibleRole::Presentation);
+    label.append(&icon);
+    label.append(&gtk::Label::new(Some(&gettext("Celebrate"))));
     let button = gtk::Button::builder()
-        .label(gettext("Celebrate"))
-        .css_classes(["flat"])
+        .child(&label)
+        .css_classes(["suggested-action", "pill"])
         .halign(gtk::Align::Center)
+        .height_request(44)
         .build();
     button.connect_clicked(glib::clone!(
         #[weak]
@@ -200,14 +246,16 @@ pub fn celebrate_button() -> gtk::Box {
         #[weak]
         button,
         move |_| {
-            button.set_sensitive(false);
             drawing.set_visible(true);
             let animate = gtk::Settings::default().is_some_and(|s| s.is_gtk_enable_animations());
             if !animate {
-                progress.set(0.0);
+                progress.set(0.32);
                 drawing.queue_draw();
                 return;
             }
+            button.set_sensitive(false);
+            progress.set(0.0);
+            drawing.queue_draw();
             let started = std::time::Instant::now();
             let progress = progress.clone();
             glib::timeout_add_local(
@@ -215,12 +263,21 @@ pub fn celebrate_button() -> gtk::Box {
                 glib::clone!(
                     #[weak]
                     drawing,
+                    #[weak]
+                    button,
                     #[upgrade_or]
                     glib::ControlFlow::Break,
                     move || {
-                        let p = started.elapsed().as_secs_f64() / 0.8;
+                        if !gtk::Settings::default().is_some_and(|s| s.is_gtk_enable_animations()) {
+                            progress.set(0.32);
+                            drawing.queue_draw();
+                            button.set_sensitive(true);
+                            return glib::ControlFlow::Break;
+                        }
+                        let p = started.elapsed().as_secs_f64() / 1.2;
                         if p >= 1.0 || drawing.root().is_none() {
                             drawing.set_visible(false);
+                            button.set_sensitive(true);
                             return glib::ControlFlow::Break;
                         }
                         progress.set(p);
@@ -231,8 +288,11 @@ pub fn celebrate_button() -> gtk::Box {
             );
         }
     ));
-    content.append(&drawing);
-    content.append(&button);
+    overlay.set_child(Some(&button));
+    overlay.add_overlay(&drawing);
+    overlay.set_measure_overlay(&drawing, false);
+    overlay.set_clip_overlay(&drawing, false);
+    content.append(&overlay);
     content
 }
 

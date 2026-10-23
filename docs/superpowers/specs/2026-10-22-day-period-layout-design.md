@@ -120,8 +120,10 @@ Do not silently add this setting to the existing portable-transfer/sync allowlis
 
 ### Optional celebration
 
-Recommend a small **Celebrate** text/button action on eligible completed-state
-screens. One activation runs one brief, bounded native confetti burst; no automatic
+Refinement requested 2026-10-22: show **Celebrate** as a clearly filled, rounded
+native button with a decorative sparkle/star icon on eligible completed-state
+screens. One activation runs one larger, colorful native confetti burst with star
+particles and an expanding halo (about 1.2 seconds), without shifting the layout; no automatic
 confetti on launch, list navigation, sync or repeated redraws, and no looping.
 No added sound or haptic behavior. Keep it independent of the existing completion
 sound preference and retain that feature's current behavior.
@@ -133,6 +135,9 @@ view disappears, and is not essential to understanding completion. Use native dr
 and controls rather than a new animation dependency or shared web surface.
 
 Official guidance/resources to consult during implementation:
+[Apple prominent buttons](https://developer.apple.com/documentation/swiftui/primitivebuttonstyle/borderedprominent),
+[Compose filled buttons](https://developer.android.com/develop/ui/compose/quick-guides/content/create-button),
+[GNOME buttons](https://developer.gnome.org/hig/patterns/controls/buttons.html),
 [Apple motion](https://developer.apple.com/design/human-interface-guidelines/motion),
 [Android Compose animation](https://developer.android.com/develop/ui/compose/animation/quick-guide),
 [GNOME accessibility](https://developer.gnome.org/hig/guidelines/accessibility.html),

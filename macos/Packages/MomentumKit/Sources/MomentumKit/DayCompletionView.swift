@@ -28,6 +28,7 @@ public struct DayCompletionView: SwiftUI.View {
             }
             if CelebrationFeedback.presentation(dynamic: dynamic, completion: completion, reduceMotion: reduceMotion) != .hidden {
                 CompletionCelebration()
+                    .id("\(view)-\(completion)")
             }
         }
         .frame(maxWidth: .infinity).padding(24)

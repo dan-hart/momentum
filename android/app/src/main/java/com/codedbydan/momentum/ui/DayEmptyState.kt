@@ -4,15 +4,23 @@ package com.codedbydan.momentum.ui
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -21,9 +29,15 @@ import com.codedbydan.momentum.R
 import com.codedbydan.momentum.*
 import com.codedbydan.momentum.core.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.time.LocalDateTime
 import kotlin.random.Random
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.min
 
 /** A visible state is stable; returning to it avoids the immediately previous message. */
 internal class CompletionMessageSelection(private val random: (Int) -> Int = { Random.nextInt(it) }) {
@@ -53,32 +67,100 @@ internal fun celebrationFeedback(completion: DayCompletion, dynamic: Boolean, an
     val context = LocalContext.current
     val completed = status.completion == DayCompletion.DAY_COMPLETE || status.completion == DayCompletion.PERIOD_COMPLETE
     val symbol = when(state.view) { View.Morning -> morningSymbol; View.Tonight -> eveningSymbol; else -> Icons.Default.CheckCircle }
-    val scope = rememberCoroutineScope()
-    val progress = remember(state.view, status.completion, snapshot.settings.dynamicEmptyMessages) { Animatable(1f) }
-    var staticCelebration by remember(state.view, status.completion, snapshot.settings.dynamicEmptyMessages) { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(symbol, null, Modifier.size(if(staticCelebration) 56.dp else 40.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(stringResource(if(completed) R.string.list_complete else if(status.completion == DayCompletion.PENDING) R.string.visible_list_clear else R.string.nothing_planned), style = MaterialTheme.typography.headlineSmall)
-        val text = message?.let { context.resources.getStringArray(R.array.completion_messages).getOrNull(it.toInt() - 1) }
-        Text(text ?: stringResource(if(completed) R.string.completed_hint else R.string.empty_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if(completed && message != null) TextButton({
-            when(celebrationFeedback(status.completion, snapshot.settings.dynamicEmptyMessages,
-                Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))) {
-                CelebrationFeedback.Static -> staticCelebration = true
-                CelebrationFeedback.Burst -> scope.launch { progress.snapTo(0f); progress.animateTo(1f, tween(850)) }
-                CelebrationFeedback.Hidden -> Unit
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // Leaving the completion context disposes the effect; taps restart one animation.
+    key(state.view, status.completion, snapshot.settings.dynamicEmptyMessages) {
+        val progress = remember { Animatable(1f) }
+        var feedback by remember { mutableStateOf(CelebrationFeedback.Hidden) }
+        var replay by remember { mutableIntStateOf(0) }
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if(event == Lifecycle.Event.ON_STOP) feedback = CelebrationFeedback.Hidden
             }
-        }) { Text(stringResource(R.string.celebrate)) }
-        val color = MaterialTheme.colorScheme.primary
-        if(progress.value < 1f) Canvas(Modifier.fillMaxWidth().height(64.dp).clearAndSetSemantics {}) {
-            repeat(18) { i ->
-                val x = size.width * ((i * 37 % 101) / 101f)
-                val y = size.height * progress.value
-                drawCircle(color.copy(alpha = 1f - progress.value), 3.dp.toPx(), Offset(x, y))
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+        LaunchedEffect(replay, feedback) {
+            if(feedback == CelebrationFeedback.Burst) {
+                progress.snapTo(0f)
+                progress.animateTo(1f, tween(1_200, easing = LinearEasing))
+                feedback = CelebrationFeedback.Hidden
+            }
+        }
+        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(symbol, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+                Text(stringResource(if(completed) R.string.list_complete else if(status.completion == DayCompletion.PENDING) R.string.visible_list_clear else R.string.nothing_planned), style = MaterialTheme.typography.headlineSmall)
+                val text = message?.let { context.resources.getStringArray(R.array.completion_messages).getOrNull(it.toInt() - 1) }
+                Text(text ?: stringResource(if(completed) R.string.completed_hint else R.string.empty_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if(completed && message != null) Button(
+                    onClick = {
+                        feedback = celebrationFeedback(status.completion, snapshot.settings.dynamicEmptyMessages,
+                            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
+                        replay++
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                ) {
+                    Icon(Icons.Default.Star, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.celebrate), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            if(feedback != CelebrationFeedback.Hidden) {
+                CelebrationFlourish(progress.value, feedback == CelebrationFeedback.Static, Modifier.matchParentSize())
             }
         }
     }
 }
+
+/** Decoration only: the overlay never changes layout or intercepts the button. */
+@Composable private fun CelebrationFlourish(progress: Float, reducedMotion: Boolean, modifier: Modifier) {
+    val colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary,
+        Color(0xFFFFB300), Color(0xFFFF6F61), Color(0xFF42A5F5), Color(0xFFAB47BC))
+    Canvas(modifier.clearAndSetSemantics {}) {
+        val origin = Offset(size.width / 2f, 20.dp.toPx())
+        val radius = (size.width / 2f - 8.dp.toPx()).coerceAtLeast(0f)
+        if(reducedMotion) {
+            repeat(10) { i ->
+                val angle = i * 2.0 * PI / 10
+                val point = origin + Offset(cos(angle).toFloat() * min(radius, 58.dp.toPx()), sin(angle).toFloat() * 38.dp.toPx())
+                drawSparkle(point, 5.dp.toPx(), colors[i % colors.size])
+            }
+        } else {
+            val expansion = 1f - (1f - progress) * (1f - progress)
+            val alpha = ((1f - progress) * 1.5f).coerceIn(0f, 1f)
+            drawCircle(colors[0].copy(alpha = alpha * 0.55f),
+                14.dp.toPx() + expansion * min(radius * 0.6f, 90.dp.toPx()), origin, style = Stroke(3.dp.toPx()))
+            repeat(64) { i ->
+                val angle = i * 2.0 * PI / 64 + (i % 3) * 0.07
+                val distance = min(radius, 188.dp.toPx()) * (0.45f + (i * 37 % 112) / 112f * 0.55f) * expansion
+                val point = origin + Offset(cos(angle).toFloat() * distance,
+                    sin(angle).toFloat() * distance * 0.75f + 72.dp.toPx() * progress * progress)
+                val color = colors[i % colors.size].copy(alpha = alpha)
+                if(i % 4 == 0) drawSparkle(point, (6 + i % 3).dp.toPx(), color)
+                else rotate(i * 29f + progress * 210f, point) {
+                    drawRect(color, point - Offset(3.dp.toPx(), 6.dp.toPx()), Size(6.dp.toPx(), 12.dp.toPx()))
+                }
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawSparkle(center: Offset, radius: Float, color: Color) {
+    val path = Path().apply {
+        repeat(8) { i ->
+            val angle = i * PI / 4 - PI / 2
+            val length = if(i % 2 == 0) radius else radius * 0.3f
+            val x = center.x + cos(angle).toFloat() * length
+            val y = center.y + sin(angle).toFloat() * length
+            if(i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
+    }
+    drawPath(path, color)
+}
+
 @Composable internal fun HiddenDayFooter(state: UiState, vm: MomentumViewModel) {
     val snapshot = state.snapshot ?: return
     val status = snapshot.dayStatus ?: return
