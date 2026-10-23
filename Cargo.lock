@@ -2021,7 +2021,7 @@ dependencies = [
 
 [[package]]
 name = "mo"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "clap",
  "dirs",
@@ -2040,7 +2040,7 @@ dependencies = [
 
 [[package]]
 name = "momentum"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "ashpd",
  "async-io",
@@ -2061,7 +2061,7 @@ dependencies = [
 
 [[package]]
 name = "momentum-core"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "log",
  "momentum-model",
@@ -2078,7 +2078,7 @@ dependencies = [
 
 [[package]]
 name = "momentum-ffi"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "momentum-core",
  "uniffi",
@@ -2086,7 +2086,7 @@ dependencies = [
 
 [[package]]
 name = "momentum-model"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "serde",
  "serde_json",
@@ -2096,7 +2096,7 @@ dependencies = [
 
 [[package]]
 name = "momentum-oplog"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "momentum-model",
  "serde",
@@ -2107,7 +2107,7 @@ dependencies = [
 
 [[package]]
 name = "momentum-p2p"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "base64",
  "flate2",
@@ -2122,7 +2122,7 @@ dependencies = [
 
 [[package]]
 name = "momentum-store"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "momentum-model",
  "momentum-oplog",
@@ -2134,7 +2134,7 @@ dependencies = [
 
 [[package]]
 name = "momentum-sync"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -3558,7 +3558,7 @@ dependencies = [
 
 [[package]]
 name = "uniffi-bindgen"
-version = "0.4.12"
+version = "0.4.13"
 dependencies = [
  "uniffi",
 ]

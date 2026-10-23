@@ -1,6 +1,25 @@
 # Momentum progress and handoff
 
 
+## 2026-10-23 — F-075 patch release 0.4.13 and main integration
+
+- User authorized a patch release across all four platforms, followed by merging
+  `task/native-experience-overhaul` into `main`. This supersedes the preceding
+  commit/push-only boundary for release and integration work.
+- Versions advance together to **0.4.13**. The release notes describe the nine client
+  improvements and explicit optimized-collection upgrade; server administration and
+  the proposed speed multiplier remain outside the verified scope.
+- Required real-Mac `NearbySyncTests` passed before tagging (one isolated native
+  bridge test). Existing branch source gates and current release/version/localization
+  checks are retained. The immutable tag workflow will run its own exact-source gates.
+- Delivery uses existing channels: macOS/Homebrew, both signed personal Flatpak
+  architectures, Android GitHub APK/AAB/source artifacts, and iOS internal TestFlight.
+  No Google Play/F-Droid/public App Store submission is implied. The iOS archive uses
+  the current server-safe build number with verified app/Share App Group signing.
+- Publication, artifact checksums, TestFlight processing/internal access, install
+  channel readback and `main` remote-head verification are recorded after completion.
+
+
 ## 2026-10-23 — F-075 client sync acceleration on the native experience branch
 
 - Scope: nine client improvements on Linux/macOS/iOS/Android, extending

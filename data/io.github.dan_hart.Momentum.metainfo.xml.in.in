@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.12/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.13/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,19 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.4.13" date="2026-10-23">
+      <description>
+        <p>Faster native sync with efficient transfers and optional optimized Nextcloud collections.</p>
+        <ul>
+          <li>Faster sync scheduling on Linux, macOS, iOS and Android: bounded 750 ms edit coalescing, prompt follow-ups, and adaptive foreground reconciliation.</li>
+          <li>Reused HTTP connections, validated conditional downloads across restarts, parallel optional settings exchanges, and less processing during unchanged idle polls.</li>
+          <li>An explicit per-connection optimized Nextcloud upgrade with smaller operation uploads, periodic checkpoints, separate archives and an encrypted key envelope. Upgrade every participating device; legacy sync remains the default and the original files are retained. Downgrade requires a verified migration flow.</li>
+          <li>Optional foreground Nextcloud Client Push with secure discovery and polling fallback.</li>
+          <li>Preserve offline edits, restore/undo state, conflict handling and copied collections through optimized exchanges and interrupted publication.</li>
+          <li>Contain Android credential failures and prevent stopped sync providers restarting background listeners. Avoid sensitive dependency logging and persisted secret hashes.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.12" date="2026-10-22">
       <description>
         <p>A calmer day view, searchable settings, and clearer completion feedback.</p>

@@ -6,6 +6,27 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.13] - 2026-10-23
+
+### Changed
+- Faster sync scheduling on Linux, macOS, iOS and Android: bounded 750 ms edit
+  coalescing, prompt follow-ups, and adaptive foreground reconciliation.
+- Reused HTTP connections, validated conditional downloads across restarts, parallel
+  optional settings exchanges, and less processing during unchanged idle polls.
+
+### Added
+- An explicit per-connection optimized Nextcloud upgrade with smaller operation
+  uploads, periodic checkpoints, separate archives and an encrypted key envelope.
+  Upgrade every participating device; legacy sync remains the default and the
+  original files are retained. Downgrade requires a verified migration flow.
+- Optional foreground Nextcloud Client Push with secure discovery and polling fallback.
+
+### Fixed
+- Preserve offline edits, restore/undo state, conflict handling and copied collections
+  through optimized exchanges and interrupted publication.
+- Contain Android credential failures and prevent stopped sync providers restarting
+  background listeners. Avoid sensitive dependency logging and persisted secret hashes.
+
 ## [0.4.12] - 2026-10-22
 
 ### Added
