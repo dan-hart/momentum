@@ -1,5 +1,39 @@
 # Momentum progress and handoff
 
+## 2026-10-22 — F-059 internal TestFlight feature build 412
+
+- User authorized a new iOS TestFlight build of `task/native-experience-overhaul`.
+  Uploaded **0.4.11 (412)** from product source `3b7d44bf5758566ddb69efc8d643683740f4b6ed`,
+  including F-071–F-074 and the larger Celebrate button/effect refinement.
+  No main merge, tag, public App Store release, or other-platform release occurred.
+- An isolated committed-source packaging copy overrides only the build number and
+  existing manual signing settings. The canonical optimized core producer succeeds
+  for both Mac architectures, iOS device and both simulator architectures; generated
+  FFI source/artifacts are copied unchanged with matching hashes. Redundant producer
+  hooks are omitted only in the private packaging project. All 189 checked native
+  source/resource files match the source commit. The development version remains unchanged.
+- Signed Release archive and internal-only IPA export pass. Deep/strict signature,
+  actual distribution certificate, both exact bundle IDs, Momentum display names,
+  0.4.11/412, App Store profiles, signed App Group entitlements, privacy manifests,
+  and the new Little Lift resource parity pass for app and share extension. The
+  original existing signing keychain unlocked with its matching protected password;
+  no certificates, profiles or access permissions changed.
+- Apple build `d78962f8-1137-43b1-a1a9-052189290530` is **VALID**, **INTERNAL_ONLY** and
+  **IN_BETA_TESTING**. Complete server-side group lookup confirms **Internal Testers**
+  with existing all-build access; its existing tester has installed-test access.
+  Exact en-US What to Test notes are read back. Build-only export compliance matches
+  build 411 and the unchanged sync/encryption implementation; no source-wide flag added.
+  Existing automatic notifications remain enabled; no explicit notification sent.
+- Private IPA and sanitized provenance/server receipts are retained under
+  `~/Library/Developer/Momentum-TestFlight/0.4.11-412/`. IPA SHA-256:
+  `78a8b620404dbaf36a424a5d4a308c0033ad5c26547f043033db19986357e151`.
+  [TestFlight app record](https://appstoreconnect.apple.com/apps/6821523171/testflight).
+  Notes were drafted locally after automatic review blocked external drafting.
+- This verifies internal delivery, not physical-device acceptance of the new UI.
+  Install/update through TestFlight and check iPhone/iPad layout, settings discovery,
+  hidden-period hints, sounds, Reduce Motion, larger text, German, VoiceOver and sharing.
+  F-071–F-074 retain their independently documented implementation/acceptance limits.
+
 ## 2026-10-22 — F-073 celebration refinement
 
 - User requested a clearer Celebrate button and a larger, more playful effect on

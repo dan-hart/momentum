@@ -70,10 +70,10 @@ The shipping bundles include privacy manifests for their private preferences and
 private/group file access; the app also declares user-selected backup file access.
 Sync implements standard encryption in Rust libraries, so answer the beta encryption
 questions from that implementation rather than assuming encryption is OS-only.
-The 0.4.9 (409) build is available in the personal-account
+The 2026-10-22 feature-branch build **0.4.11 (412)** is available in the personal-account
 [Internal TestFlight app](https://appstoreconnect.apple.com/apps/6821523171/testflight).
 The dated [F-059/B-104 progress record](../docs/PROGRESS.md) records server acceptance
-and the remaining invitation-acceptance/device QA. This manual iOS flow is separate
+and the remaining device QA. This manual iOS flow is separate
 from the desktop Release workflow.
 
 ## Isolated verification
