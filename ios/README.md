@@ -129,6 +129,18 @@ and periodically checks for changes while the app is active. Exchanges stop when
 the app leaves the foreground; local edits remain available offline. Selecting
 **Off** retains both local tasks and the saved connection.
 
+If sync reports `failed to lookup address information` or `nodename nor servname
+provided, or not known`, check the saved server URL and open that server's
+`/status.php` page in Safari on the same iPhone. If Safari also cannot find the
+server, restore the phone's DNS/network connection before retrying Momentum.
+Private Tailscale server names require working Tailscale DNS; a Connected label
+alone does not prove name resolution works. Disconnecting and reconnecting the
+existing Tailscale connection can recover a stalled resolver. See
+[Tailscale's DNS troubleshooting](https://tailscale.com/docs/reference/troubleshooting/resolve-domain-names-failure).
+Then use **Test Connection** and **Sync Now**, and confirm a new **Last Successful
+Sync**, cleared errors, and the expected **Pending Changes** count. Keep the saved
+credentials, encryption password and sync folder intact during this diagnosis.
+
 ## LibreSync
 
 1. Open **Settings → Sync → Sync Provider** and select **LibreSync**.

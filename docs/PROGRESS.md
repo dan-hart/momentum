@@ -1,5 +1,51 @@
 # Momentum progress and handoff
 
+## 2026-10-26 — Mac app-settings sync enabled and verified
+
+- Follow-up live inspection of `/Applications/Momentum.app` found working
+  Nextcloud task sync and HTTP 200 from the saved server's status endpoint;
+  no Mac DNS/VPN reconnect was needed. App-settings sync was Off.
+- User explicitly requested enabling app-settings sync and selected Use synced
+  settings at the first-exchange review. Applied that choice through native
+  Settings. Live readback showed App settings are up to date, Last settings sync
+  0 sec and Nextcloud Last synced just now, with the initial review cleared.
+- Tasks & Planning independently confirmed Group By Tag and Sort By Created
+  after adoption. This records installed-app configuration and live exchange
+  evidence, not a new app implementation or a broader platform acceptance pass.
+  Repository changes are documentation-only; the user subsequently requested
+  commit/push of this handoff and the iOS troubleshooting guidance.
+
+## 2026-10-26 — iOS Nextcloud DNS incident recovered (F-025/F-075)
+
+- Physical iPhone 17 Pro Max, iOS 27.2 (24B119), installed Momentum 0.4.14
+  build 415: task sync and the independent app-settings channel failed with
+  `failed to lookup address information: nodename nor servname provided, or not
+  known`. Four task changes remained pending; the previous successful sync was
+  October 25. The production read-only connection probe reproduced the error.
+- The same saved server's `/status.php` failed in Safari on the phone, while an
+  unauthenticated request from the Mac returned HTTP 200. Tailscale 1.104.2 showed
+  Connected and Use Tailscale DNS enabled. This isolated the observed failure to
+  the phone's DNS/VPN path; the underlying reason for the stalled resolver is
+  unproven. No Momentum-specific transport defect was reproduced.
+- With explicit user approval, disconnected and reconnected the existing phone
+  Tailscale VPN. Safari then loaded the Nextcloud status response. Reopened
+  Momentum and retried its connection probe; live Sync-screen readback at 18:40
+  America/Chicago showed Last Successful Sync October 26 at 18:39, Pending
+  Changes 0, and App settings are up to date with a fresh settings-sync timestamp
+  and no settings error. This verifies recovery of this installed-device incident,
+  not every F-025/F-075 acceptance criterion or a permanent Tailscale fix.
+- App source at checkout d06a561 remained unchanged; repository edits contain only
+  this handoff and the iOS README troubleshooting guidance. Before recovery,
+  `cargo test -p momentum-sync --lib` passed 81 tests with two ignored benchmarks
+  outside the sandbox (loopback listeners are blocked inside it). The iOS fast
+  lane refused stale/unprepared artifacts; native builds/simulator tests were
+  unavailable because full Xcode was absent. No app code, credentials, server
+  address, encryption, sync folder, format, or provider selection was changed.
+- Private screenshots/device inventories remain outside Git. No build distribution
+  or release was requested.
+  If the DNS failure returns, compare Safari and the connection probe again before
+  treating it as a Momentum regression. See [iOS guidance](../ios/README.md#nextcloud-sync).
+
 ## 2026-10-23 — B-180 signing pipeline correction and 0.4.15 preparation
 
 - User authorized the pipeline fix, regression tests, commit/push and next patch.
