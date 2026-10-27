@@ -9,8 +9,10 @@ remain Implemented pending the remaining native acceptance; see PROGRESS.
 Release follow-up (2026-10-27, F-076/B-180): public 0.4.16 Developer ID signing,
 notarization, extracted Mac launch, authenticated updater feed, Homebrew and both
 signed hosted Flatpak refs pass verification. Android unsigned APK/AAB/source are
-published. iOS 0.4.16 (416) is processed but requires explicit export-compliance
-approval before internal testing; no public App Store/Play Store release is claimed.
+published. iOS 0.4.16 (416) is VALID / IN_BETA_TESTING with confirmed Internal Testers
+access after the user authorized completing TestFlight distribution and the prior
+exempt-encryption declaration was applied. No public App Store/Play Store release
+is claimed.
 
 Linux task-entry copy follow-up (2026-10-22): B-167 simplifies main and floating
 quick-add prompts to “Add a task”, including tooltips and accessible labels. EN/DE

@@ -1,5 +1,22 @@
 # Momentum progress and handoff
 
+## 2026-10-27 — iOS 0.4.16 (416) available in internal TestFlight
+
+- User requested completing TestFlight distribution in direct response to the
+  pending export-compliance approval. Applied the previous release's
+  `usesNonExemptEncryption=false` answer to exact existing build
+  `0fa7e481-41b1-4291-a9fe-018f8540f383`; sync/encryption implementation is unchanged.
+- Fresh App Store Connect readback: processing VALID, non-exempt encryption false,
+  internal state IN_BETA_TESTING, external state NOT_APPLICABLE. Complete group
+  lookup confirms Internal Testers access through explicit and all-builds membership.
+  The intermediate READY_FOR_BETA_TESTING state transitioned to IN_BETA_TESTING on
+  readback; no second upload, external review or extra tester notification was needed.
+- This resolves the iOS blocker in the delivery handoff below. The existing signed
+  0.4.16 (416) IPA and its source/profile/entitlement/privacy checks remain unchanged.
+  Protected receipts now record the applied declaration and active testing state.
+  Desktop/Android 0.4.16 publication remains verified; no public App Store release
+  or fresh physical-device acceptance is claimed.
+
 ## 2026-10-27 — 0.4.16 desktop/Android delivery; iOS compliance approval pending
 
 - **Source/publication:** immutable v0.4.16 is `9f5df12` on
