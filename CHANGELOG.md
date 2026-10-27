@@ -6,6 +6,15 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.16] - 2026-10-27
+
+### Fixed
+- Restore native task backgrounds on iOS and Linux while retaining the new
+  Morning/Evening section spacing, headings and indentation.
+- Fix the macOS updater launch crash with Developer ID signing, notarization,
+  nested-code verification and an extracted-archive launch check.
+- Include updated Linux release notes in the English/German translation catalogs.
+
 ## [0.4.15] - 2026-10-27
 
 ### Fixed

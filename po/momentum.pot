@@ -4243,3 +4243,23 @@ msgstr ""
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Reject invalid nested code signatures and debugging entitlements, exercise the extracted release archive before publication, and clean private signing material even when an operating-system cleanup step fails."
 msgstr ""
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Restore task backgrounds and fix macOS updater signing."
+msgstr ""
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Restore native task backgrounds on iOS and Linux while retaining the new Morning/Evening section spacing, headings and indentation."
+msgstr ""
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Fix the macOS updater launch crash with Developer ID signing, notarization, nested-code verification and an extracted-archive launch check."
+msgstr ""
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Include updated Linux release notes in the English/German translation catalogs."
+msgstr ""

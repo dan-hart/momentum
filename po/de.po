@@ -4434,3 +4434,23 @@ msgstr "Behebt den durch das Update-Framework eingeführten macOS-Startabsturz: 
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Reject invalid nested code signatures and debugging entitlements, exercise the extracted release archive before publication, and clean private signing material even when an operating-system cleanup step fails."
 msgstr "Ungültige Signaturen verschachtelten Codes und Debugging-Berechtigungen werden abgelehnt. Das entpackte Release-Archiv wird vor der Veröffentlichung geprüft; privates Signierungsmaterial wird auch bei Fehlern während der Systembereinigung entfernt."
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Restore task backgrounds and fix macOS updater signing."
+msgstr "Aufgabenhintergründe wiederhergestellt und macOS-Update-Signierung korrigiert."
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Restore native task backgrounds on iOS and Linux while retaining the new Morning/Evening section spacing, headings and indentation."
+msgstr "Stellt native Aufgabenhintergründe unter iOS und Linux wieder her; die neuen Abstände, Überschriften und Einrückungen der Morgen- und Abendabschnitte bleiben erhalten."
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Fix the macOS updater launch crash with Developer ID signing, notarization, nested-code verification and an extracted-archive launch check."
+msgstr "Behebt den macOS-Startabsturz durch das Update-Framework mit Developer-ID-Signierung, Notarisierung, Prüfung verschachtelten Codes und einem Starttest des entpackten Archivs."
+
+#. AppStream release note
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Include updated Linux release notes in the English/German translation catalogs."
+msgstr "Nimmt die aktualisierten Linux-Versionshinweise in die englischen und deutschen Übersetzungskataloge auf."

@@ -1,5 +1,31 @@
 # Momentum progress and handoff
 
+## 2026-10-27 — 0.4.16 corrects the unpublished 0.4.15 localization gate
+
+- The v0.4.15 release attempt (40533012285) correctly stopped publication when its
+  translation gate found two new AppStream strings missing from the POT catalog.
+  The tag is preserved. The successor 0.4.16 includes the task-background/macOS
+  signing fixes and English/German release-note catalog entries; all source versions
+  align at 0.4.16, Apple build 416 and Android code 4016.
+- Fresh translation extraction coverage, POTFILES coverage, four translation-tool
+  regressions, German `msgfmt --check`, version alignment and whitespace checks pass.
+  Existing catalog formatting/wording is preserved outside the new release strings.
+- Actual new Developer ID identity passes all twelve signing/loader tests in an
+  isolated temporary keychain, including the positive native launch; original
+  keychain search order restored. Production packaging/notarization still requires
+  the exact-tag hosted workflow.
+- Isolated iOS 26.5 Debug demo visual inspection shows native row fills in light
+  and dark appearance with the sun/moon headings, section spacing and indentation
+  retained. Screenshots: local `/tmp/momentum-rows-light.png` and
+  `/tmp/momentum-rows-dark.png`. This does not establish physical-device, Linux,
+  drag/selection or full accessibility acceptance. Native source matches the
+  background-restoration source in the release; the shared version changes next.
+- iOS archive preparation exposed inherited automatic/developer signing on the
+  Swift package resource bundle. Frozen packaging now explicitly supplies manual
+  distribution signing/team for all targets; an existing-keychain private-key
+  access failure requires an isolated signing keychain from the protected backup.
+  No new iOS certificate, profile or entitlement is requested.
+
 ## 2026-10-27 — 0.4.15 release execution preparation
 
 - User authorized a new release on all platforms, including Developer ID issuance
