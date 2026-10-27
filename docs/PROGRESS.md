@@ -1,5 +1,51 @@
 # Momentum progress and handoff
 
+## 2026-10-27 — 0.4.16 desktop/Android delivery; iOS compliance approval pending
+
+- **Source/publication:** immutable v0.4.16 is `9f5df12` on
+  `task/desktop-updates`; no main merge was performed. The
+  [full release workflow](https://github.com/dan-hart/momentum/actions/runs/40533945542)
+  succeeds, including core/CLI, macOS, both development/optimized native Linux gates,
+  Android packaging, notarization, authenticated updater publication, Homebrew and
+  both signed hosted Flatpak checks. The failed/unpublished v0.4.15 tag is preserved.
+  [Public release](https://github.com/dan-hart/momentum/releases/tag/v0.4.16).
+- **Public bytes:** all fifteen entries in the downloaded SHA256SUMS manifest match.
+  The actual public Mac ZIP passes updater Ed25519 authentication and embedded
+  version/build/channel/key checks, Developer ID/team/runtime/entitlement policy on
+  every executable slice, extracted native diagnostic launch before user stores,
+  stapled-ticket validation and Gatekeeper (`Notarized Developer ID`). Apple accepted
+  notarization submission `4469beb8-c9f2-4b9d-9038-d4b7216f4f7d`. Live hosted appcast
+  bytes match the authenticated public feed. Controlled installer/update/relaunch UI
+  and separate Intel hardware remain outside this acceptance scope (F-076/B-180).
+- **Channels/Android:** independent public Homebrew cask readback matches 0.4.16 and
+  the Mac ZIP digest; all three CLI formula URLs and digests match the public bytes.
+  Hosted disposable Flatpak client readback reports version 0.4.16 and a trusted
+  signature for both architectures. Public APK metadata is
+  `com.codedbydan.momentum`, version 0.4.16, code 4016, API 37. APK/AAB remain
+  explicitly unsigned as in the established channel; no store submission or new
+  Android signing identity was requested. Matching source/notices/provenance are
+  attached to the release. No Linux visual claim follows from the GTK test gates.
+- **iOS prepared/uploaded:** optimized canonical Apple artifacts and frozen tagged
+  native source produce a signed 0.4.16 (416) archive and internal-only IPA. Actual
+  app/share signatures, existing distribution profiles, App Groups, privacy manifests,
+  version/build and unchanged source/core hashes pass. App Store Connect build
+  `0fa7e481-41b1-4291-a9fe-018f8540f383` is VALID / INTERNAL_ONLY; complete server
+  membership lookup confirms the existing Internal Testers all-builds access.
+- **iOS blocker/action:** internal state is MISSING_EXPORT_COMPLIANCE. Prior 0.4.14
+  (415) declares `usesNonExemptEncryption=false`; sync/encryption source is unchanged.
+  Automatic approval review rejected making that consequential declaration without
+  explicit authorization for this build. The user has been asked to approve the same
+  answer or complete it in App Store Connect; no answer was applied. Next: on explicit
+  approval, set the exact build's declaration, then read back IN_BETA_TESTING and
+  group access before claiming iOS availability. No public App Store release.
+- **Evidence/cleanup:** protected local TestFlight storage retains the IPA and source/
+  core/signature/server receipts. Temporary iOS/Developer ID test keychains are removed
+  and the original search list restored. The owned demo simulator was removed after
+  light/dark inspection; screenshots remain in ignored
+  `ios/DerivedData/RowBackground0416`. Public downloads/logs are local
+  `/tmp/momentum-0416-public-assets` and `/tmp/momentum-0416-*.log`.
+  No production task data, installed app or existing simulator was modified.
+
 ## 2026-10-27 — 0.4.16 corrects the unpublished 0.4.15 localization gate
 
 - The v0.4.15 release attempt (40533012285) correctly stopped publication when its

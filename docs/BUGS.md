@@ -12,9 +12,11 @@
 - **Cause/fix:** remove the iOS conditional clear background modifier and Linux
   transparent background override. Keep row/section separator suppression, row
   margins, section spacing, headings and family indentation unchanged.
-- **Status:** Implemented on iOS/Linux in dirty `c8f0e73`; native visual acceptance
-  remains outstanding. macOS/Android were assessed through source inspection.
-  Verification results and limitations are recorded in PROGRESS.
+- **Status:** Implemented on iOS/Linux in v0.4.16 / `9f5df12`. Isolated iOS 26.5
+  light/dark demo inspection passes for restored fills and retained section layout.
+  Tagged Linux tests/builds pass; Linux visual acceptance and full native interaction/
+  accessibility acceptance remain outstanding. macOS/Android were assessed through
+  source inspection. Verification results and limitations are recorded in PROGRESS.
 
 ## B-180 — macOS 0.4.14 updater framework crashes under library validation
 
@@ -22,8 +24,9 @@
 and protected Actions signing secrets are configured. The native loader fixture
 explicitly opts into library validation to avoid relying on hosted ad-hoc runtime
 defaults; all 15 local release-script tests pass with a real certificate-signed
-positive launch. Production Developer ID/notary/archive checks remain pending in
-the authorized 0.4.15 release; see PROGRESS.
+positive launch. The published 0.4.16 ZIP now passes actual Developer ID policy on
+every executable slice, stapled notarization, Gatekeeper and isolated native launch.
+Its authenticated feed, Homebrew and public checksums also pass; see PROGRESS.
 
 - **Severity/platforms:** high, shipped macOS regression. Native arm64 launch of
   the unmodified 0.4.14 public/Homebrew bundle aborts in dyld before the app opens.
@@ -45,12 +48,13 @@ the authorized 0.4.15 release; see PROGRESS.
   tests reject development identities for distribution, mismatched/non-native slice
   entitlements, traversal and escaping links. Cleanup faults still remove private
   staging. Independent review findings were fixed and reviewed again.
-- **Remaining:** actual Developer ID packaging/notary/Gatekeeper/final-app launch
-  and new public channel readback require the authorized release execution.
-  Account Holder sign-in is needed to issue the approved missing certificate; the
-  administrator API cannot issue Developer ID. Existing local 0.4.14 installation
-  was separately re-signed with user approval and opens; public 0.4.14 bytes remain
-  immutable. No private key or user data belongs in this record.
+- **Verification/remaining:** Verified for the recorded 0.4.16 public Mac archive
+  and native host launch scope. Both universal slices pass signing policy; separate
+  Intel hardware launch and controlled update/install/relaunch interaction acceptance
+  remain outside this check. The user completed Account Holder sign-in and approved
+  certificate issuance/configuration. Existing local 0.4.14 installation was separately
+  re-signed with user approval and opens; public 0.4.14 bytes remain immutable.
+  No private key or user data belongs in this record.
 
 
 

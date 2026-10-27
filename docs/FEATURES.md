@@ -2,8 +2,15 @@
 
 F-071 follow-up (2026-10-27, B-181): restore native iOS task-row and Linux boxed-list
 backgrounds while preserving the revised section spacing, headings, indentation
-and hidden separators. macOS/Android already retain native fills. iOS/Linux remain
-Implemented pending native visual acceptance; see PROGRESS for scoped checks.
+and hidden separators. macOS/Android already retain native fills. iOS 26.5 light/dark
+demo inspection and tagged platform builds pass at v0.4.16 / `9f5df12`. iOS/Linux
+remain Implemented pending the remaining native acceptance; see PROGRESS.
+
+Release follow-up (2026-10-27, F-076/B-180): public 0.4.16 Developer ID signing,
+notarization, extracted Mac launch, authenticated updater feed, Homebrew and both
+signed hosted Flatpak refs pass verification. Android unsigned APK/AAB/source are
+published. iOS 0.4.16 (416) is processed but requires explicit export-compliance
+approval before internal testing; no public App Store/Play Store release is claimed.
 
 Linux task-entry copy follow-up (2026-10-22): B-167 simplifies main and floating
 quick-add prompts to “Add a task”, including tooltips and accessible labels. EN/DE
@@ -15,7 +22,7 @@ processes from unrelated shell credentials and disables target-phase environment
 logging. This is build infrastructure, not a new app/network capability. The raw
 Xcode scheme boundary and evidence are recorded in [BUILD-ENVIRONMENT.md](BUILD-ENVIRONMENT.md).
 
-Updated: 2026-10-23. See [AGENTS.md](../AGENTS.md) for policy and status definitions.
+Updated: 2026-10-27. See [AGENTS.md](../AGENTS.md) for policy and status definitions.
 Every row has an independent Linux, macOS, iOS, and Android status. `Implemented`
 is deliberately not a claim of complete native verification. Baseline entries below
 are seeded from the existing source/specifications and recorded acceptance, not a
@@ -44,7 +51,7 @@ platform interaction. It does not mean a mobile app or binding already exists.
 
 | ID | Capability / acceptance scope | Linux | macOS | iOS | Android | Evidence, differences, and remaining work |
 |---|---|---|---|---|---|---|
-| F-076 | Channel-aware desktop update settings | Implemented | Implemented | Not applicable | Not applicable | Searchable native Updates, default-off local checks, exact Homebrew ownership, signed Sparkle direct updates and native Flatpak monitoring/install consent. Linux immediate checking opens Software; portal polling is host scheduled and finish uses explicit quit/reopen guidance. Source/demo replacement disabled. Authenticated archive/release immutability gates and unit coverage; production archive/feed publication and public signature/byte readback passed for 0.4.14, but B-180 identifies a macOS launch crash missed by those checks. 0.4.15 adds mandatory Developer ID/notary and extracted-archive runtime gates; public execution and controlled installation/relaunch acceptance remain outstanding. Mobile intentionally retains its existing channels. See [UPDATES.md](UPDATES.md) and dated PROGRESS. |
+| F-076 | Channel-aware desktop update settings | Implemented | Implemented | Not applicable | Not applicable | Searchable native Updates, default-off local checks, exact Homebrew ownership, signed Sparkle direct updates and native Flatpak monitoring/install consent. Linux immediate checking opens Software; portal polling is host scheduled and finish uses explicit quit/reopen guidance. Source/demo replacement disabled. Authenticated archive/release immutability gates and unit coverage; production archive/feed publication and public signature/byte readback passed for 0.4.14, but B-180 identifies a macOS launch crash missed by those checks. 0.4.16 passes mandatory Developer ID/notary and extracted-archive runtime gates on the public bytes, plus authenticated feed and install-channel readback; controlled installation/update/relaunch interaction acceptance remains outstanding. Mobile intentionally retains its existing channels. See [UPDATES.md](UPDATES.md) and dated PROGRESS. |
 | F-072 | Organized, searchable Settings and richer About | Implemented | Implemented | Implemented | Implemented | Eight conceptual categories with native navigation/search, localized offline discovery metadata and exact destinations from in-app global search; settings stay separate from task actions/counts. Existing controls, values, consent and recovery flows preserved. About adds identity, values, actual app details, sanitized copy, project/help and offline legal/acknowledgments. Native differences: libadwaita built-in Settings search/AboutDialog, Apple searchable forms/sidebar, Compose category/detail routes. B-173/B-175 cover Linux resource and legal-markup corrections. Builds/units and remaining native checks in PROGRESS. |
 | F-073 | Encouraging, scoped empty/completed states | Implemented | Implemented | Implemented | Implemented | Shared period/day completion eligibility includes archived relevant completions and protects hidden/overdue work. 100 EN/DE messages with stable selection, time-scoped pools, date rollover and no immediate repeat; default-on local toggle restores static accurate copy. Filled native Celebrate buttons trigger a larger colorful confetti/starburst and halo without shifting layout; reduced motion uses a static flourish. No autoplay/audio coupling. B-172 adds measured icon/label contrast against actual enabled button fills, with native interaction-state coverage; Android bounds overlapping native ripple opacity while preserving its tested role pairing. Unit coverage and native verification limits in PROGRESS. |
 | F-074 | Quiet completion sounds with audition before selection | Implemented | Implemented | Implemented | Implemented | Ten original short quiet masters plus retained ten legacy choices; explicit candidate Preview independent of saving/automatic feedback, device-local bounded volume (35% default) shared with completion playback, replacement/cancellation and native mute policy. Unknown identifiers round-trip without false selection; fresh default Little Lift. Original generator/provenance and master parity checks included. B-174 fixes native Linux sound-selection reentrancy. Native listening remains outstanding; see B-168 and PROGRESS. |
