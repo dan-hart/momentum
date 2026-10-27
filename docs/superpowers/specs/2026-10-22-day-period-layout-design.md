@@ -2,6 +2,11 @@
 
 Status: approved by the user on 2026-10-22, superseding F-071's separator presentation.
 
+2026-10-27 amendment: restore native task-row/list backgrounds while retaining the
+new section spacing, headings, indentation and separator suppression. Ordinary
+system row fills are part of the requested presentation; do not clear them as an
+interpretation of the guidance against extra tinted cards. See B-181.
+
 Related proposal: [Settings discovery and About overhaul](2026-10-22-settings-discovery-about-design.md)
 provides the canonical home and search destinations for these preferences on all
 four platforms. The user approved the combined proposals on 2026-10-22.

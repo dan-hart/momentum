@@ -157,7 +157,10 @@ class ReleaseSigningTests(unittest.TestCase):
             run('xcrun', 'clang', str(folder / 'main.c'), '-o', str(binary), '-L' + str(folder),
                 '-lprobe', '-Wl,-rpath,@executable_path')
             for path in [library, binary]:
-                run('codesign', '--force', '--options', 'runtime', '--timestamp=none', '--sign', '-', str(path))
+                # Explicitly require library validation for this loader fixture;
+                # hosted Macs do not all apply the same implicit ad-hoc runtime policy.
+                # https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/Procedures/Procedures.html
+                run('codesign', '--force', '--options', 'runtime,library', '--timestamp=none', '--sign', '-', str(path))
             # Both strict signature checks pass in the shipped failure case.
             for path in [library, binary]:
                 run('codesign', '--verify', '--strict', str(path))
@@ -169,7 +172,7 @@ class ReleaseSigningTests(unittest.TestCase):
                     self.fail('Distribution CI must exercise a real certificate-signed launch')
                 self.skipTest('Negative dyld case passed; certificate-signed half needs an explicit test identity')
             for path in [library, binary]:
-                run('codesign', '--force', '--options', 'runtime', '--timestamp=none', '--sign', identity, str(path))
+                run('codesign', '--force', '--options', 'runtime,library', '--timestamp=none', '--sign', identity, str(path))
             m.verify_launch(binary)
 
     def test_launch_probe_has_private_state_and_no_inherited_credentials(self):

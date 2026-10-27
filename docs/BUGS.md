@@ -1,6 +1,29 @@
 # Momentum bug ledger
 
+## B-181 — Day-period redesign removes native task row backgrounds
+
+- **Severity/platforms:** low, visual regression identified by source inspection.
+  iOS explicitly cleared open-task row fills in Today/Morning & Night grouping;
+  Linux made both the day-period boxed list and its rows transparent. macOS and
+  Android retain their native background behavior and need no code change.
+- **Expected/actual:** retain native task backgrounds alongside the new spacing,
+  sun/moon headings and indentation; the redesign instead removed the iOS/Linux
+  fills. The user requested restoration on 2026-10-27 (F-071).
+- **Cause/fix:** remove the iOS conditional clear background modifier and Linux
+  transparent background override. Keep row/section separator suppression, row
+  margins, section spacing, headings and family indentation unchanged.
+- **Status:** Implemented on iOS/Linux in dirty `c8f0e73`; native visual acceptance
+  remains outstanding. macOS/Android were assessed through source inspection.
+  Verification results and limitations are recorded in PROGRESS.
+
 ## B-180 — macOS 0.4.14 updater framework crashes under library validation
+
+2026-10-27 release follow-up: the approved Developer ID certificate is now issued
+and protected Actions signing secrets are configured. The native loader fixture
+explicitly opts into library validation to avoid relying on hosted ad-hoc runtime
+defaults; all 15 local release-script tests pass with a real certificate-signed
+positive launch. Production Developer ID/notary/archive checks remain pending in
+the authorized 0.4.15 release; see PROGRESS.
 
 - **Severity/platforms:** high, shipped macOS regression. Native arm64 launch of
   the unmodified 0.4.14 public/Homebrew bundle aborts in dyld before the app opens.

@@ -20,9 +20,8 @@ row.compact-row .subtitle {
   font-size: 0.9em;
 }
 
-/* A quiet day-period hierarchy uses whitespace instead of repeated rules. */
+/* Keep native boxed-list backgrounds; day-period hierarchy uses whitespace, not rules. */
 list.day-period-list, list.day-period-list > row {
-  background: transparent;
   border: none;
   box-shadow: none;
 }

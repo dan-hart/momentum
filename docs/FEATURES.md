@@ -1,5 +1,10 @@
 # Momentum feature ledger
 
+F-071 follow-up (2026-10-27, B-181): restore native iOS task-row and Linux boxed-list
+backgrounds while preserving the revised section spacing, headings, indentation
+and hidden separators. macOS/Android already retain native fills. iOS/Linux remain
+Implemented pending native visual acceptance; see PROGRESS for scoped checks.
+
 Linux task-entry copy follow-up (2026-10-22): B-167 simplifies main and floating
 quick-add prompts to “Add a task”, including tooltips and accessible labels. EN/DE
 copy is implemented; native Linux interaction remains unverified. Task parsing and

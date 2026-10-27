@@ -1,5 +1,50 @@
 # Momentum progress and handoff
 
+## 2026-10-27 — 0.4.15 release execution preparation
+
+- User authorized a new release on all platforms, including Developer ID issuance
+  and protected GitHub Actions signing configuration. Apple issued the certificate
+  through the Account Holder session; its public key matches the existing protected
+  Momentum private key. The encrypted PKCS#12 and password are configured as Actions
+  secrets. No private material is committed and no existing certificate was revoked.
+- The unpublished 0.4.15 patch now includes F-071/B-181 background restoration and
+  the pending B-180 macOS signing correction. The release date is October 27.
+  iOS uses the existing internal TestFlight channel with a build-only override of
+  416; canonical source build 415 remains aligned with the shared 0.4.15 formula.
+  Android uses the existing explicitly unsigned GitHub artifact channel.
+- Previous macOS branch CI 40007881745 failed the loader fixture's implicit ad-hoc
+  runtime assumption. The fixture now explicitly enables Apple's library-validation
+  signing flag for both negative and positive cases; production signing policy is
+  unchanged. Fresh native release-script tests: 15 pass, including rejected ad-hoc
+  and successful existing certificate-signed launch. Release-channel tests: 23 pass;
+  Sparkle tests: 16 pass, one native CryptoKit case skipped in that Python invocation.
+  Required real Nearby Swift bridge pairing/bidirectional refresh: one pass.
+  Version alignment and whitespace checks pass. Hosted exact-revision gates,
+  Developer ID packaging/notarization and published channel readback remain required.
+
+## 2026-10-27 — Restore native task row backgrounds (F-071 / B-181)
+
+- User requested backgrounds back with the new spacing and section layout retained.
+  Removed only the conditional iOS task-row clear fill and the Linux day-period
+  transparent background override. Existing section spacing, row margins, sun/moon
+  headings, period/subtask indentation and separator suppression are retained.
+- macOS and Android source already retains native backgrounds; no change required.
+  No shared core, FFI, strings, settings or task behavior changed. The F-071 design
+  now explicitly distinguishes native fills from additional tinted cards.
+- Evidence: automated GTK 4.24.1 stylesheet parsing passes without errors and
+  `git diff --check` passes in dirty `c8f0e73`. Review of the two presentation edits
+  confirms that only fill suppression was removed. Cosmetic-only change: no new
+  logic tests. The production iOS Debug simulator build passes with signing off
+  using the documented `build-env.py xcodebuild` wrapper and fresh DerivedData at
+  `/tmp/momentum-row-background-build`; log: `/tmp/momentum-row-background-build.log`.
+  Initial sandboxed package resolution failed on inaccessible Xcode caches; the
+  authorized retry outside the sandbox passed. Relative Markdown file targets in
+  all four changed documents resolve.
+- Status: iOS/Linux Implemented. Native light/dark appearance, selection/drag,
+  accessibility and supported Linux runtime acceptance remain outstanding; a Mac
+  stylesheet parse does not establish Linux native verification. No installation,
+  commit, push or release requested.
+
 ## 2026-10-26 — Mac app-settings sync enabled and verified
 
 - Follow-up live inspection of `/Applications/Momentum.app` found working

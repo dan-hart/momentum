@@ -219,7 +219,6 @@ struct TaskScreen: SwiftUI.View {
                                     taskRow(task, snapshot: snapshot)
                                         .listRowInsets(TaskRowDensity.from(rowDensity).rowInsets)
                                         .listRowSeparator(calmLayout && section.kind != .completed ? .hidden : .automatic)
-                                        .listRowBackground(calmLayout && section.kind != .completed ? Color.clear : nil)
                                         .padding(.leading, calmLayout && (section.group == .morning || section.group == .evening) ? 8 : 0)
                                         .tag(task.id)
                                         .selectionDisabled(task.archived || task.occurrence != nil)
