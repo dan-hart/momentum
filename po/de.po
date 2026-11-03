@@ -4470,3 +4470,30 @@ msgstr "System"
 #: crates/app/src/prefs.rs
 msgid "Custom"
 msgstr "Benutzerdefiniert"
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid ""
+"Choose accessible fonts across every native app without losing your text-"
+"size settings."
+msgstr "Wähle gut lesbare Schriften in jeder nativen App, ohne deine Einstellungen zur Textgröße zu verlieren."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid ""
+"Choose System Font, Atkinson Hyperlegible Mono, or OpenDyslexic across "
+"Linux, macOS, iOS, and Android. Bundled fonts work offline and preserve "
+"separate task and interface text sizes, system text scaling, existing font "
+"pickers, and reset."
+msgstr "Wähle die Systemschrift, Atkinson Hyperlegible Mono oder OpenDyslexic unter Linux, macOS, iOS und Android. Die mitgelieferten Schriften funktionieren offline. Separate Textgrößen für Aufgaben und Oberfläche, die Textskalierung des Systems, vorhandene Schriftauswahl und das Zurücksetzen bleiben erhalten."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid ""
+"Apply selected fonts and text sizes to app-owned headings and captions on "
+"Apple platforms while retaining native symbol and system-control styling."
+msgstr "Ausgewählte Schriften und Textgrößen gelten auch für app-eigene Überschriften und Untertitel auf Apple-Plattformen. Symbole und Systemsteuerelemente behalten ihre native Darstellung."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
+msgid ""
+"Prevent a Linux crash when changing app fonts, including returning from a "
+"custom installed font to System, and retain keyboard access at large text "
+"sizes."
+msgstr "Verhindert einen Linux-Absturz beim Wechseln der App-Schrift, auch beim Zurückwechseln von einer installierten Schrift zur Systemschrift. Die Tastaturbedienung bleibt bei großen Textgrößen erhalten."

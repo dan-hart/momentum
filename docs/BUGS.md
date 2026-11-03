@@ -1,5 +1,9 @@
 # Momentum bug ledger
 
+0.4.17 preparation (2026-11-03) integrates B-182–B-185 into main. Previously verified
+regression scopes remain valid; release publication requires the new main/tagged
+checks recorded in PROGRESS. Broader manual/device acceptance remains separate.
+
 ## B-185 — Linux large-text keyboard test omits the new font dropdown
 
 - **Severity/platforms:** low, Linux test-only failure. Apple/Android native navigation

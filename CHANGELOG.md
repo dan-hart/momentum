@@ -6,6 +6,19 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.17] - 2026-11-03
+
+### Added
+- Choose System Font, Atkinson Hyperlegible Mono, or OpenDyslexic across Linux,
+  macOS, iOS, and Android. Bundled fonts work offline and preserve separate task
+  and interface text sizes, system text scaling, existing font pickers, and reset.
+
+### Fixed
+- Apply selected fonts and text sizes to app-owned headings and captions on Apple
+  platforms while retaining native symbol and system-control styling.
+- Prevent a Linux crash when changing app fonts, including returning from a custom
+  installed font to System, and retain keyboard access at large text sizes.
+
 ## [0.4.16] - 2026-10-27
 
 ### Fixed

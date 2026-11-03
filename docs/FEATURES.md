@@ -1,5 +1,10 @@
 # Momentum feature ledger
 
+0.4.17 preparation (2026-11-03): F-022 and B-182–B-185 are merged into main with
+aligned version metadata and EN/DE release notes. Publication remains pending its
+required main/tagged workflow and install-channel gates; see PROGRESS. Native/manual
+acceptance limits in the feature rows remain unchanged.
+
 F-071 follow-up (2026-10-27, B-181): restore native iOS task-row and Linux boxed-list
 backgrounds while preserving the revised section spacing, headings, indentation
 and hidden separators. macOS/Android already retain native fills. iOS 26.5 light/dark

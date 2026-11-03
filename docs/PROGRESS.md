@@ -1,5 +1,39 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — Merge to main and prepare 0.4.17 (F-022/B-182–B-185)
+
+- **Authority/integration:** Dan requested merging `task/app-wide-fonts` into `main`,
+  pushing it and releasing a new patch. Remote main `e3d2bf0` is an ancestor of feature
+  head `5d9c32a`; the clean fast-forward preserves the intervening already-released
+  desktop/update work and all font/CI repairs. No unrelated checkout changes existed.
+- **Version/notes:** `build-aux/release.py` advances 0.4.16 to 0.4.17 across Rust/lock,
+  GTK/AppStream, macOS and iOS (Apple build 417); Android derives version 0.4.17/code4017
+  from Cargo. Changelog/AppStream describe bundled offline fonts, retained sizing,
+  Apple semantic typography and the GTK selection-crash fix. All four new release
+  messages have German translations; existing catalog entries are preserved.
+- **Local release checks:** version/tag alignment, canonical font/license integrity,
+  gettext extraction/completeness and `msgfmt --check`, documentation targets and
+  whitespace pass. Three release-tooling suites run 55 cases with two existing
+  environment/opt-in skips and no failures. The required opt-in real Swift/UniFFI
+  nearby-sync test passes on this Mac with temporary stores/loopback peers (one test,
+  7.953 s) against the unchanged merged core. No real task store or sync account is used.
+- **Hosted baseline/configuration:** font code `7fce273` has green complete CI/macOS/
+  Android workflows. Documentation successor `5d9c32a` has green CI; its macOS run has
+  no test steps/logs and a canceled job, so it is not treated as a source regression
+  or a successful gate. New release-commit main checks and tagged checks remain
+  required. All required publication/signing secret names and public-key variables
+  are present; values were not read or printed. Android distribution remains explicitly
+  unsigned under the existing absent-key policy.
+- **Next/publication:** push the release commit to main, require its native CI gates,
+  then push immutable `v0.4.17`. The established workflow must finish signed/notarized
+  Mac assets, Linux/CLI/Android assets, authenticated updater, Homebrew and both trusted
+  Flatpak refs before delivery is called complete. iOS source version advances; the
+  documented GitHub release workflow does not upload to App Store Connect.
+- **Evidence:** `/tmp/momentum-0417-{nearby,release-tests,translations-check}.log`.
+  Existing physical-device, picker and spoken-accessibility limits remain recorded;
+  this merge/release does not silently promote the complete F-022 feature to Verified.
+
+
 ## 2026-11-03 — Font-branch CI repairs verified (F-022/F-073, B-183–B-185)
 
 - **Verified code revision:** `7fce2730f03d5eb9b3a60e8aad66375059c4f215` on
