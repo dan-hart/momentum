@@ -1,5 +1,44 @@
 # Momentum bug ledger
 
+## B-183 — Linux font selection replaces GTK's active dropdown model
+
+- **Severity/platforms:** high, reproduced Linux settings crash. macOS, iOS and Android
+  use different native pickers and are unaffected by this GTK callback sequence.
+- **Reproduction:** on `bd44b45`, choose a bundled font in Appearance → App font, or
+  change a saved Custom font back to System. Both development Flatpak architectures
+  crash in the new font interaction test, after compilation/resource checks succeed:
+  [original CI](https://github.com/dan-hart/momentum/actions/runs/41658526474).
+- **Cause:** GSettings changed notifications run synchronously inside the ComboRow's
+  selected notification; rebuilding its model there invalidates GTK's active selection
+  dispatch. An isolated native GTK/GSettings reproduction exits SIGSEGV (139), with
+  `g_object_notify_by_pspec` on the stack; font bytes/Pango registration are not the cause.
+- **Fix:** defer settings-to-row refresh to GLib idle, read the latest persisted choice,
+  retain the update guard, and retain the model while its entry list is unchanged.
+  Regression coverage includes System/bundled choices, Custom removal and queued updates.
+- **Evidence/status (2026-11-03, dirty task/app-wide-fonts based on bd44b45):** locked
+  GTK check including tests and 12 typography/selection unit tests pass. The corrected
+  native reproduction passes 100 cycles (399 notifications). Implemented pending the
+  exact-head hosted Linux GTK interaction gates; see PROGRESS for final CI follow-up.
+
+## B-184 — iOS empty-list regression expects obsolete unplanned-day copy
+
+- **Severity/platforms:** low, iOS test-only failure; production completion behavior is
+  correct. Linux/macOS/Android behavior is unchanged and needs no matching patch.
+- **Reproduction:** `ViewRenderingTests.testEmptyingTodayWithImmediateArchiveAndTagGroupsKeepsTheListAlive`
+  completes three tagged Today tasks with immediate archiving, then times out waiting
+  for “Nothing planned for today.” Reproduced before the font feature and again on
+  `bd44b45` in a disposable simulator.
+- **Cause/fix:** F-073 includes relevant archived completions in day-completion eligibility,
+  so the correct heading is “Today's list is complete.” Update the regression to assert
+  the core's completed-day state, exact archived task IDs/completion flags, the visible
+  completed heading, and return to a pending visible task after adding new work. Keep
+  animations enabled and the same mounted list throughout; do not weaken the assertion
+  to accepting any empty screen or alter production copy/rules.
+- **Evidence/status (2026-11-03, dirty task/app-wide-fonts based on bd44b45):** focused
+  hosted regression observed failing before correction and passing afterwards on isolated
+  iOS 27. Full view-suite evidence is recorded in PROGRESS. No physical-device claim.
+
+
 ## B-182 — Explicit Apple text styles bypass app font and size preferences
 
 - **Severity/platforms:** low, source-confirmed presentation gap on iOS/macOS.

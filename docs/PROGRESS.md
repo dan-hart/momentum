@@ -1,5 +1,46 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — Font branch CI and iOS regression repairs (F-022/F-073, B-183/B-184)
+
+- **Scope/source:** user requested checking `task/app-wide-fonts` CI and repairing all
+  failures, explicitly including the previously recorded iOS empty-state test. Local
+  dirty work based on `bd44b45`; commit/push to the same branch, no merge or release.
+- **Original hosted state:** [CI 41658526474](https://github.com/dan-hart/momentum/actions/runs/41658526474)
+  passes core/CLI, formatting, versions/font integrity, translations and release tooling.
+  Both development Flatpaks compile fresh Blueprint/resources but crash in GTK tests
+  with SIGSEGV; fail-fast cancels the two optimized counterparts. Original-head
+  [macOS](https://github.com/dan-hart/momentum/actions/runs/41658526490) and
+  [Android source build](https://github.com/dan-hart/momentum/actions/runs/41658526303)
+  pass. No unrelated failed platform gate is hidden by calling those cancellations passes.
+- **Linux B-183:** isolated native GTK/GSettings reproduction confirms the synchronous
+  selection-notify → preference write → model replacement invalidates GTK dispatch;
+  stack reaches `g_object_notify_by_pspec`. Defer row refresh to GLib idle, reread the
+  latest preference, and retain the existing model when Custom presence is unchanged.
+  Tests cover bundled transitions, Custom → System, queued updates and reset without
+  changing either scale. Original native reproduction exits 139; fixed reproduction
+  passes 100 cycles/399 notifications. Locked GTK check including tests, 12 typography/
+  selection units, Rust formatting and whitespace checks pass. The complete Linux Rust
+  interaction suite still requires the new exact-head hosted CI run after pushing.
+- **iOS B-184:** product correctly shows the F-073 completed-day state for archived
+  relevant completions. Replace the stale unplanned-day expectation with core state,
+  exact archived task IDs/flags, the visible completion heading, and pending task/refill
+  checks. No production iOS task behavior/copy changes. The existing assertion fails
+  before correction; the corrected focused test passes. Full isolated iOS 27 view suite
+  now passes: 118 executed, three expected opt-in skips, zero failures (25.031 s).
+  Report `ios/DerivedData/TestReports/views-1793720319858548000.xcresult`; focused report
+  `views-1793720269510302000.xcresult`. This resolves the prior broader iOS failure
+  recorded in the font implementation handoff below.
+- **Review/limits:** independent review found no concrete remaining findings. Font
+  integrity and docs links pass. Linux native source/resource/UI and all existing branch
+  workflows must pass on the pushed correction; inspect live runs for final results.
+  This change touches Linux production UI and iOS tests only. macOS/Android production,
+  task rules, FFI, formats and data migration are unchanged. F-022/F-073 remain Implemented
+  for broader unperformed device, native picker and spoken accessibility acceptance.
+- **Local evidence:** `/tmp/momentum-fonts-ci-ios-{empty-red,empty-green,full}.log`,
+  `/tmp/momentum-combo-{repro-stack,fixed}.log`. Only disposable settings/stores and the
+  new owned simulator were used; existing user apps/data and VMs were preserved.
+
+
 ## 2026-11-03 — App-wide bundled fonts (F-022 / B-182)
 
 - **Authority/source:** Dan requested implementation on all four platforms, a separate

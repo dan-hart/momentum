@@ -1917,6 +1917,7 @@ fn bundled_font_selection_preserves_scales_custom_picker_and_reset() {
         pump();
         let imp = prefs.imp();
         let row = &imp.font_choice_row;
+        let curated_model = row.model().unwrap();
         assert_eq!(row.selected(), 0);
         assert_eq!(row.model().unwrap().n_items(), 3);
         imp.content_scale_row.set_value(75.0);
@@ -1926,7 +1927,11 @@ fn bundled_font_selection_preserves_scales_custom_picker_and_reset() {
             (2, crate::font_choice::DYSLEXIC_FAMILY),
         ] {
             row.set_selected(index);
+            // Selection notification must finish before any model replacement;
+            // replacing it synchronously invalidates GTK's active selection.
+            assert_eq!(row.model().unwrap(), curated_model);
             pump();
+            assert_eq!(row.model().unwrap(), curated_model);
             assert_eq!(settings().string("typography-font"), family);
             assert_eq!(settings().int("typography-content-scale"), 75);
             assert_eq!(settings().int("typography-interface-scale"), 250);
@@ -1950,11 +1955,23 @@ fn bundled_font_selection_preserves_scales_custom_picker_and_reset() {
         assert_eq!(row.selected(), 3);
         assert_eq!(row.model().unwrap().n_items(), 4);
         assert!(settings().string("typography-font").contains("Bold"));
+        let custom_model = row.model().unwrap();
         row.set_selected(0);
+        assert_eq!(row.model().unwrap(), custom_model);
         pump();
         assert!(settings().string("typography-font").is_empty());
         assert_eq!(row.model().unwrap().n_items(), 3);
         assert_eq!(settings().int("typography-content-scale"), 75);
+        // Queued updates resolve the latest persisted choice rather than
+        // replaying a stale selection captured by an earlier notification.
+        settings()
+            .set_string("typography-font", crate::font_choice::MONO_FAMILY)
+            .unwrap();
+        settings()
+            .set_string("typography-font", crate::font_choice::DYSLEXIC_FAMILY)
+            .unwrap();
+        pump();
+        assert_eq!(row.selected(), 2);
         row.set_selected(1);
         imp.reset_typography_row.emit_by_name::<()>("activated", &[]);
         pump();

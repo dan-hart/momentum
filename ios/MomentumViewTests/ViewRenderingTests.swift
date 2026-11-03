@@ -257,9 +257,9 @@ import XCTest
             .frame.isEmpty)
     }
 
-    /// B-093 on macOS: emptying Today with immediate archiving and tag grouping must
-    /// not crash the list. The iOS list keeps its empty state inside the List, and this
-    /// drives the same transition, then refills the list as a sync download would.
+    /// B-093/B-184: completing Today with immediate archiving and tag grouping must
+    /// keep the List alive. Archived completions still qualify for F-073's completed
+    /// day state; adding another task returns the same mounted list to pending work.
     func testEmptyingTodayWithImmediateArchiveAndTagGroupsKeepsTheListAlive() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let defaultsName = "momentum-empty-today-tests-\(UUID())"
@@ -292,14 +292,28 @@ import XCTest
             await model.perform(.complete([id], true))
             await mounted.settle()
         }
-        try await mounted.wait(until: "the empty state replaces the last row") {
-            mounted.accessibilityLabels().contains { $0.hasPrefix("Nothing planned for today") }
+        let worker = try XCTUnwrap(model.worker)
+        let completed = await worker.snapshot(view: .today)
+        XCTAssertEqual(completed.dayStatus.completion, .dayComplete)
+        let archive = await worker.snapshot(view: .archive)
+        let archivedRows = archive.listing.sections.flatMap { $0.rows }.compactMap { row -> TaskRow? in
+            if case .task(let task) = row { return task }
+            return nil
+        }
+        XCTAssertEqual(Set(archivedRows.map(\.id)), Set(ids))
+        XCTAssertTrue(archivedRows.allSatisfy { $0.isDone && $0.archived })
+        let completionTitle = "Today's list is complete"
+        try await mounted.wait(until: "the completed day state replaces the last row") {
+            mounted.hasAccessibilityElement(label: completionTitle)
         }
         XCTAssertFalse(mounted.hasAccessibilityElement(label: "Plain task"))
         await model.perform(.add("Back again", .today))
-        try await mounted.wait(until: "a new row arrives after the list emptied") {
+        try await mounted.wait(until: "a new row replaces the completed day state") {
             mounted.hasAccessibilityElement(label: "Back again")
+                && !mounted.hasAccessibilityElement(label: completionTitle)
         }
+        let refilled = await worker.snapshot(view: .today)
+        XCTAssertEqual(refilled.dayStatus.completion, .pending)
     }
 
     func testInitialTaskSnapshotDoesNotAnimate() async throws {

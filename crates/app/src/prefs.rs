@@ -495,8 +495,10 @@ mod imp {
                 if selected == 3 {
                     labels.push(gettext("Custom"));
                 }
-                let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
-                row.set_model(Some(&gtk::StringList::new(&labels)));
+                if row.model().is_none_or(|model| model.n_items() != labels.len() as u32) {
+                    let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
+                    row.set_model(Some(&gtk::StringList::new(&labels)));
+                }
                 row.set_selected(selected);
             };
             sync_choice(&self.font_choice_row, &s.string("typography-font"));
@@ -521,9 +523,23 @@ mod imp {
                     #[strong]
                     updating_choice,
                     move |settings, _| {
-                        updating_choice.set(true);
-                        sync_choice(&row, &settings.string("typography-font"));
-                        updating_choice.set(false);
+                        // GSettings changed is synchronous inside selected-notify.
+                        // Replacing the active ComboRow selection model there can
+                        // invalidate GTK's notification dispatch. Wait until it has
+                        // unwound, including when removing the Custom entry.
+                        glib::idle_add_local_once(glib::clone!(
+                            #[weak]
+                            row,
+                            #[strong]
+                            settings,
+                            #[strong]
+                            updating_choice,
+                            move || {
+                                updating_choice.set(true);
+                                sync_choice(&row, &settings.string("typography-font"));
+                                updating_choice.set(false);
+                            }
+                        ));
                     }
                 ),
             );
