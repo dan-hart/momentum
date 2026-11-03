@@ -1,5 +1,21 @@
 # Momentum bug ledger
 
+## B-185 — Linux large-text keyboard test omits the new font dropdown
+
+- **Severity/platforms:** low, Linux test-only failure. Apple/Android native navigation
+  and tests use other controls and are unaffected.
+- **Reproduction/cause:** after B-183 is fixed, [CI at 60135be](https://github.com/dan-hart/momentum/actions/runs/41666257468)
+  runs all 131 GTK tests: 130 pass; the 250% text/360×720 window test expects the
+  installed-font ActionRow to receive initial keyboard focus. The new curated font
+  ComboRow correctly precedes it, so that expectation is stale.
+- **Fix:** include the curated font row as the first expected target. Keep strict
+  row-by-row traversal and every on-screen visibility assertion, covering all five
+  typography controls at large text instead of skipping the new one. No product change.
+- **Evidence/status (2026-11-03, dirty task/app-wide-fonts based on 60135be):** locked
+  GTK check including tests, formatting and whitespace checks pass. Native runtime
+  verification remains the next exact-head hosted run; see PROGRESS.
+
+
 ## B-183 — Linux font selection replaces GTK's active dropdown model
 
 - **Severity/platforms:** high, reproduced Linux settings crash. macOS, iOS and Android
@@ -17,8 +33,9 @@
   Regression coverage includes System/bundled choices, Custom removal and queued updates.
 - **Evidence/status (2026-11-03, dirty task/app-wide-fonts based on bd44b45):** locked
   GTK check including tests and 12 typography/selection unit tests pass. The corrected
-  native reproduction passes 100 cycles (399 notifications). Implemented pending the
-  exact-head hosted Linux GTK interaction gates; see PROGRESS for final CI follow-up.
+  native reproduction passes 100 cycles (399 notifications). The hosted GTK interaction suite at `60135be` passes the font-selection regression
+  and all other tests except the unrelated stale B-185 expectation. See PROGRESS for
+  final all-platform CI follow-up.
 
 ## B-184 — iOS empty-list regression expects obsolete unplanned-day copy
 

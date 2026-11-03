@@ -1,5 +1,22 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — Large-text GTK traversal follow-up (F-022/B-185)
+
+- [Correction CI at 60135be](https://github.com/dan-hart/momentum/actions/runs/41666257468)
+  confirms B-183's font-selection crash is resolved: the ARM development GTK suite
+  executes all 131 tests, with 130 passes and one B-185 failure. Matrix siblings were
+  canceled by fail-fast and are not counted as passes.
+- B-185 is a stale test target list: the new curated font ComboRow correctly receives
+  initial keyboard focus, before the installed-font ActionRow that the 250% text /
+  compact-window regression still expected first. Add the new control to that array;
+  retain strict next-row traversal and all five controls' on-screen assertions. No
+  production UI, task behavior or size preference changes in this follow-up.
+- Locked GTK test compilation, Rust formatting and whitespace checks pass on the dirty
+  `task/app-wide-fonts` successor to `60135be`. iOS's unchanged corrected regression and
+  full 118-test/three-skip/zero-failure result remain applicable. Push and inspect the
+  next exact-head native matrix before claiming complete hosted verification.
+
+
 ## 2026-11-03 — Font branch CI and iOS regression repairs (F-022/F-073, B-183/B-184)
 
 - **Scope/source:** user requested checking `task/app-wide-fonts` CI and repairing all

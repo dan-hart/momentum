@@ -2873,6 +2873,7 @@ fn typography_at_250_percent_survives_a_360_by_720_window() {
             .and_downcast::<gtk::ListBox>()
             .expect("typography rows list box");
         let controls = [
+            prefs_imp.font_choice_row.upcast_ref::<gtk::Widget>(),
             font_row.upcast_ref::<gtk::Widget>(),
             prefs_imp.content_scale_row.upcast_ref(),
             prefs_imp.interface_scale_row.upcast_ref(),
