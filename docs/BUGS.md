@@ -12,8 +12,8 @@
   row-by-row traversal and every on-screen visibility assertion, covering all five
   typography controls at large text instead of skipping the new one. No product change.
 - **Evidence/status (2026-11-03, dirty task/app-wide-fonts based on 60135be):** locked
-  GTK check including tests, formatting and whitespace checks pass. Native runtime
-  verification remains the next exact-head hosted run; see PROGRESS.
+  GTK check including tests, formatting and whitespace checks pass. **Verified** for native keyboard/visibility regression scope: all four Flatpak
+  build/test gates pass at `7fce273`; see the final PROGRESS handoff.
 
 
 ## B-183 — Linux font selection replaces GTK's active dropdown model
@@ -35,7 +35,8 @@
   GTK check including tests and 12 typography/selection unit tests pass. The corrected
   native reproduction passes 100 cycles (399 notifications). The hosted GTK interaction suite at `60135be` passes the font-selection regression
   and all other tests except the unrelated stale B-185 expectation. See PROGRESS for
-  final all-platform CI follow-up.
+  final all-platform CI follow-up. **Verified** for the native Linux regression
+  scope at `7fce273`: both architectures and both profiles pass.
 
 ## B-184 — iOS empty-list regression expects obsolete unplanned-day copy
 
@@ -53,7 +54,9 @@
   to accepting any empty screen or alter production copy/rules.
 - **Evidence/status (2026-11-03, dirty task/app-wide-fonts based on bd44b45):** focused
   hosted regression observed failing before correction and passing afterwards on isolated
-  iOS 27. Full view-suite evidence is recorded in PROGRESS. No physical-device claim.
+  iOS 27. **Verified** for the isolated view-test scope: the full suite runs 118 tests with
+  three expected skips and zero failures; evidence is recorded in PROGRESS. No
+  physical-device claim.
 
 
 ## B-182 — Explicit Apple text styles bypass app font and size preferences

@@ -1,5 +1,31 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — Font-branch CI repairs verified (F-022/F-073, B-183–B-185)
+
+- **Verified code revision:** `7fce2730f03d5eb9b3a60e8aad66375059c4f215` on
+  `task/app-wide-fonts`, including the GTK callback repair in `60135be` and the
+  strict large-text keyboard target correction in `7fce273`. The final successor
+  only records these results; it changes no app, test, resource or workflow behavior.
+- **Hosted checks:** [CI 41667782338](https://github.com/dan-hart/momentum/actions/runs/41667782338)
+  passes all nine jobs: core/CLI, formatting, translations, versions/font integrity,
+  release tooling and native Flatpak build/test gates on x86_64/aarch64 in both
+  development and optimized profiles. All four GTK suites pass, including bundled
+  selection, Custom → System, reset and 250%/compact keyboard/visibility regressions.
+  [macOS 41667782461](https://github.com/dan-hart/momentum/actions/runs/41667782461)
+  and [Android 41667782435](https://github.com/dan-hart/momentum/actions/runs/41667782435)
+  also pass their complete existing workflows on the same code revision.
+- **iOS:** the corrected completion/archive/refill regression and unchanged font
+  tests pass in the complete isolated iOS 27 hosted view suite: 118 tests executed,
+  three expected opt-in skips, zero failures. Report and red/green evidence are in
+  the repair handoff below. No production completion rule or wording was changed.
+- **Status/remaining:** B-183 and B-185 are Verified for the supported native Linux
+  CI regression scope; B-184 is Verified for the isolated iOS view-test scope. This
+  supersedes their earlier pending checks below. F-022/F-073 remain Implemented for
+  their broader native/manual scope: physical Android interaction, native picker,
+  long localized full-screen and spoken accessibility acceptance are not inferred
+  from successful CI. No merge, tag, release or existing personal data modification.
+
+
 ## 2026-11-03 — Large-text GTK traversal follow-up (F-022/B-185)
 
 - [Correction CI at 60135be](https://github.com/dan-hart/momentum/actions/runs/41666257468)
