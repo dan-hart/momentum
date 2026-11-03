@@ -29,6 +29,8 @@ import kotlin.math.roundToInt
             NativeFont.Sans -> R.string.font_sans
             NativeFont.Serif -> R.string.font_serif
             NativeFont.Monospace -> R.string.font_monospace
+            NativeFont.AtkinsonHyperlegibleMono -> R.string.font_atkinson_hyperlegible_mono
+            NativeFont.OpenDyslexic -> R.string.font_opendyslexic
         })
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .selectable(settings.font == choice, role = Role.RadioButton) { change { it.copy(font = choice) } },

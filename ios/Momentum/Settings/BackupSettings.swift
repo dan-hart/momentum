@@ -72,7 +72,7 @@ struct BackupSettings: View {
                 .disabled(!available)
                 if let selected = state.selection {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Selected Backup").font(.caption).foregroundStyle(AccentTheme.secondaryText)
+                        Text("Selected Backup").mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
                         Text(verbatim: selected.name).fixedSize(horizontal: false, vertical: true)
                     }
                     .accessibilityElement(children: .combine)
@@ -126,7 +126,7 @@ struct BackupSettings: View {
             if let error = state.error {
                 Section {
                     Label("Backup Couldn’t Be Completed", systemImage: "exclamationmark.circle")
-                        .font(.headline)
+                        .mobileFont(.headline)
                     Text(error).textSelection(.enabled)
                         .accessibilityIdentifier("backup-error")
                         .accessibilityFocused($statusFocused)

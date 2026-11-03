@@ -68,3 +68,14 @@ an MIT-licensed native update framework. Copyright notices and its bundled exter
 licenses are reproduced in `LICENSES/Sparkle.txt` and the Apple resource
 `Sparkle-LICENSE.txt`. Sparkle is not linked into iOS or Android. Updates retain
 Momentum's GPL-3.0-or-later licensing and do not require a paid service.
+
+## Bundled accessibility fonts
+
+Atkinson Hyperlegible Mono © 2020–2024 The Atkinson Hyperlegible Mono Project
+Authors and OpenDyslexic © Abbie/Abelardo Gonzalez are distributed under the
+SIL Open Font License 1.1. Original regular, bold, italic and bold-italic faces are
+bundled for offline use on all native platforms; the fonts are not relicensed as
+GPL. Full copyright and license text accompanies each native resource bundle.
+See [font provenance](data/resources/fonts/provenance.json),
+[Atkinson license](data/resources/fonts/AtkinsonHyperlegibleMono-OFL.txt) and
+[OpenDyslexic license](data/resources/fonts/OpenDyslexic-OFL.txt).

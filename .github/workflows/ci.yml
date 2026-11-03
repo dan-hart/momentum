@@ -44,6 +44,8 @@ jobs:
       - run: build-aux/release.py check
       - name: Completion sound resources and provenance
         run: python3 build-aux/check-completion-sounds.py
+      - name: Bundled font resources and licenses
+        run: python3 build-aux/check-fonts.py
 
   rustfmt:
     name: Rustfmt

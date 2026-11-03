@@ -6,6 +6,18 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/window.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/prefs.ui</file>
     <file compressed="true">style.css</file>
+    <!-- Bundled app-private fonts, SIL OFL 1.1 (see NOTICE.md) -->
+    <file>fonts/AtkinsonHyperlegibleMono-Bold.ttf</file>
+    <file>fonts/AtkinsonHyperlegibleMono-BoldItalic.ttf</file>
+    <file>fonts/AtkinsonHyperlegibleMono-Italic.ttf</file>
+    <file>fonts/AtkinsonHyperlegibleMono-OFL.txt</file>
+    <file>fonts/AtkinsonHyperlegibleMono-Regular.ttf</file>
+    <file>fonts/OpenDyslexic-Bold.otf</file>
+    <file>fonts/OpenDyslexic-BoldItalic.otf</file>
+    <file>fonts/OpenDyslexic-Italic.otf</file>
+    <file>fonts/OpenDyslexic-OFL.txt</file>
+    <file>fonts/OpenDyslexic-Regular.otf</file>
+
     <file preprocess="xml-stripblanks">icons/scalable/actions/tag-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/archive-symbolic.svg</file>
     <!-- Approved VCSL completion sound arrangements, CC0-1.0 (see NOTICE.md) -->

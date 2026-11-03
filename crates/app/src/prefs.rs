@@ -96,6 +96,8 @@ mod imp {
         #[template_child]
         pub font_button: TemplateChild<gtk::FontDialogButton>,
         #[template_child]
+        pub font_choice_row: TemplateChild<adw::ComboRow>,
+        #[template_child]
         pub content_scale_row: TemplateChild<adw::SpinRow>,
         #[template_child]
         pub interface_scale_row: TemplateChild<adw::SpinRow>,
@@ -482,6 +484,49 @@ mod imp {
             ] {
                 s.bind(key, row, "value").build();
             }
+            let updating_choice = std::rc::Rc::new(std::cell::Cell::new(false));
+            let sync_choice = |row: &adw::ComboRow, saved: &str| {
+                let selected = crate::font_choice::selected_index(saved);
+                let mut labels = vec![
+                    gettext("System"),
+                    crate::font_choice::MONO_FAMILY.to_string(),
+                    crate::font_choice::DYSLEXIC_FAMILY.to_string(),
+                ];
+                if selected == 3 {
+                    labels.push(gettext("Custom"));
+                }
+                let labels: Vec<&str> = labels.iter().map(String::as_str).collect();
+                row.set_model(Some(&gtk::StringList::new(&labels)));
+                row.set_selected(selected);
+            };
+            sync_choice(&self.font_choice_row, &s.string("typography-font"));
+            self.font_choice_row.connect_selected_notify(glib::clone!(
+                #[strong]
+                s,
+                #[strong]
+                updating_choice,
+                move |row| {
+                    if !updating_choice.get() {
+                        if let Some(font) = crate::font_choice::font_for_index(row.selected()) {
+                            s.set_string("typography-font", font).ok();
+                        }
+                    }
+                }
+            ));
+            s.connect_changed(
+                Some("typography-font"),
+                glib::clone!(
+                    #[weak(rename_to = row)]
+                    self.font_choice_row,
+                    #[strong]
+                    updating_choice,
+                    move |settings, _| {
+                        updating_choice.set(true);
+                        sync_choice(&row, &settings.string("typography-font"));
+                        updating_choice.set(false);
+                    }
+                ),
+            );
             let updating_font = std::rc::Rc::new(std::cell::Cell::new(false));
             if let Some(font) = crate::typography::strip_font_size(&s.string("typography-font")) {
                 self.font_button

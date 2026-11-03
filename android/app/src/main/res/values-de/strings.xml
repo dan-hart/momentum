@@ -250,6 +250,8 @@
     <string name="font_system">Systemschrift</string>
     <string name="font_sans">Serifenlos</string>
     <string name="font_serif">Mit Serifen</string>
+    <string name="font_atkinson_hyperlegible_mono">Atkinson Hyperlegible Mono</string>
+    <string name="font_opendyslexic">OpenDyslexic</string>
     <string name="font_monospace">Nichtproportional</string>
     <string name="content_text_size">Textgröße der Aufgaben</string>
     <string name="interface_text_size">Textgröße der Oberfläche</string>

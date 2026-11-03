@@ -54,7 +54,7 @@ struct SettingsScreen: View {
                     Label {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(category.title)
-                            Text(category.subtitle).font(.caption).foregroundStyle(AccentTheme.secondaryText)
+                            Text(category.subtitle).mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     } icon: { Image(systemName: category.symbol) }
@@ -64,7 +64,7 @@ struct SettingsScreen: View {
             let results = entries
             ForEach(results, id: \.id) { entry in
                 NavigationLink(value: entry.id) {
-                    VStack(alignment: .leading) { Text(entry.title); Text(entry.category).font(.caption).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading) { Text(entry.title); Text(entry.category).mobileFont(.caption).foregroundStyle(.secondary) }
                 }.tag(entry.id)
             }
             if results.isEmpty {
@@ -139,7 +139,7 @@ struct SettingsSearchResults: View {
             Section("Settings") {
                 ForEach(Array(results.prefix(5)), id: \.id) { entry in
                     Button { destination = entry.id; showingSettings = true } label: {
-                        VStack(alignment: .leading) { Text(entry.title); Text(entry.category).font(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading) { Text(entry.title); Text(entry.category).mobileFont(.caption).foregroundStyle(.secondary) }
                     }
                 }
                 if results.count > 5 {

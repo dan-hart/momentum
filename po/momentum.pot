@@ -4263,3 +4263,19 @@ msgstr ""
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Include updated Linux release notes in the English/German translation catalogs."
 msgstr ""
+
+#: data/resources/ui/prefs.blp
+msgid "App font"
+msgstr ""
+
+#: data/resources/ui/prefs.blp
+msgid "Bundled fonts are available offline and apply only to Momentum"
+msgstr ""
+
+#: crates/app/src/prefs.rs
+msgid "System"
+msgstr ""
+
+#: crates/app/src/prefs.rs
+msgid "Custom"
+msgstr ""

@@ -8,6 +8,7 @@ struct FontSettings: SwiftUI.View {
 
 struct FontSettingsControls: SwiftUI.View {
     @Environment(\.appTypography) private var typography
+    @AppStorage(PrefKey.appFontName) private var fontName = ""
     @AppStorage(PrefKey.contentFontSize) private var contentSize = 13.0
     @AppStorage(PrefKey.interfaceFontSize) private var interfaceSize = 13.0
 
@@ -22,7 +23,15 @@ struct FontSettingsControls: SwiftUI.View {
     var body: some SwiftUI.View {
         Group {
             Section {
-                LabeledContent(String(localized: "App font")) {
+                Picker(String(localized: "App font"), selection: $fontName) {
+                    ForEach(BundledAppFont.allCases) { choice in
+                        Text(choice.label).tag(choice.rawValue)
+                    }
+                    if BundledAppFont(rawValue: fontName) == nil {
+                        Text(fontLabel).tag(fontName)
+                    }
+                }
+                LabeledContent(String(localized: "Font")) {
                     Text(fontLabel).lineLimit(2).textSelection(.enabled)
                 }
                 .accessibilityValue(fontLabel)
@@ -75,6 +84,7 @@ struct FontSettingsControls: SwiftUI.View {
             }
         }
         .formStyle(.grouped)
+        .onChange(of: fontName) { _, _ in AppFontPanel.shared.refresh() }
         .onChange(of: contentSize) { _, _ in AppFontPanel.shared.refresh() }
         .onDisappear { AppFontPanel.shared.close() }
     }

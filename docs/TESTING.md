@@ -721,3 +721,12 @@ APPLE_TEAM_ID=YOURTEAMID python3 macos/scripts/release-signing.py archive --arch
 
 Developer ID identity, notary ticket/staple and actual final ZIP launch evidence must
 all pass before publication. Fixture success alone does not prove the new release.
+
+## Bundled fonts (F-022)
+
+`python3 build-aux/check-fonts.py` checks the original face hashes and complete OFL
+license text across GTK, the shared Apple package and Android resources. Swift
+`TypographyTests`, iOS hosted `TypographyIntegrationTests`, GTK typography tests
+and Android `NativeTypographyTest`/`TypographySettingsTest` cover native resolution,
+local selection, fallback, independent scales and reset. Font changes must retain
+OS text scaling; a build does not substitute for native rendering/accessibility QA.

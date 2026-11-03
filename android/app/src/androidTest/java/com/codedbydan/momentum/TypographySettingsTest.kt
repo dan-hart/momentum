@@ -34,13 +34,15 @@ class TypographySettingsTest {
         val directory = File(app.cacheDir, "typography-${UUID.randomUUID()}")
         var repository = MomentumRepository(app, directory)
         try {
-            repository.updateSettings { it.copy(font = NativeFont.Monospace,
-                contentTextScale = 1.5f, interfaceTextScale = 0.85f, compact = true) }
-            repository.close()
-            repository = MomentumRepository(app, directory)
-            assertEquals(NativeFont.Monospace, repository.settings().font)
-            assertEquals(1.5f, repository.settings().contentTextScale, 0f)
-            assertEquals(0.85f, repository.settings().interfaceTextScale, 0f)
+            for (choice in NativeFont.entries) {
+                repository.updateSettings { it.copy(font = choice,
+                    contentTextScale = 1.5f, interfaceTextScale = 0.85f, compact = true) }
+                repository.close()
+                repository = MomentumRepository(app, directory)
+                assertEquals(choice, repository.settings().font)
+                assertEquals(1.5f, repository.settings().contentTextScale, 0f)
+                assertEquals(0.85f, repository.settings().interfaceTextScale, 0f)
+            }
             repository.updateSettings { resetNativeTypography(it) }
             repository.close()
             repository = MomentumRepository(app, directory)
@@ -70,7 +72,8 @@ class TypographySettingsTest {
     @Test fun themeKeepsSystemDensityAndContentDoesNotCompoundInterfaceScale() {
         // On API 34+ this Density retains Android's non-linear font-size conversion.
         val system = Density(density = 2f, fontScale = 2f)
-        var settings by mutableStateOf(AppSettings(contentTextScale = 1.5f, interfaceTextScale = 0.8f))
+        var settings by mutableStateOf(AppSettings(font = NativeFont.AtkinsonHyperlegibleMono,
+            contentTextScale = 1.5f, interfaceTextScale = 0.8f))
         var observed: Density? = null
         var interfaceSize = 0f
         var contentSize = 0f
@@ -122,6 +125,15 @@ class TypographySettingsTest {
         }
         compose.onNodeWithText(app.getString(R.string.font_monospace)).performScrollTo().performClick()
         compose.runOnIdle { assertEquals(NativeFont.Monospace, settings.font) }
+        for ((label, choice) in listOf(R.string.font_atkinson_hyperlegible_mono to NativeFont.AtkinsonHyperlegibleMono,
+            R.string.font_opendyslexic to NativeFont.OpenDyslexic)) {
+            compose.onNodeWithText(app.getString(label)).performScrollTo().performClick()
+            compose.runOnIdle {
+                assertEquals(choice, settings.font)
+                assertEquals(1.5f, settings.contentTextScale, 0.001f)
+                assertEquals(0.8f, settings.interfaceTextScale, 0.001f)
+            }
+        }
         compose.onNodeWithText(app.getString(R.string.typography_reset)).performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(NativeFont.System, settings.font)

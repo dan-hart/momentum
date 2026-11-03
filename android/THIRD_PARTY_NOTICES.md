@@ -14,6 +14,8 @@ Keep existing copyright/license headers and supply corresponding source with bui
 | kotlinx.coroutines 1.11.0 | Apache-2.0 | [Source and license](https://github.com/Kotlin/kotlinx.coroutines) |
 | JNA 5.19.1 | Apache-2.0 or LGPL-2.1-or-later; Apache option used | [Source](https://github.com/java-native-access/jna/tree/5.19.1), [license](https://github.com/java-native-access/jna/blob/5.19.1/LICENSE) |
 | Desugared JDK libraries | GPL-2.0 with Classpath exception and Apache-2.0 portions | [Source and notices](https://github.com/google/desugar_jdk_libs) |
+| Atkinson Hyperlegible Mono | SIL Open Font License 1.1 | [Canonical font resources](../data/resources/fonts/), [license](app/src/main/assets/font-licenses/AtkinsonHyperlegibleMono-OFL.txt) |
+| OpenDyslexic | SIL Open Font License 1.1 | [Canonical font resources](../data/resources/fonts/), [license](app/src/main/assets/font-licenses/OpenDyslexic-OFL.txt) |
 | JUnit 4 (tests only) | EPL-1.0 | [Source and license](https://github.com/junit-team/junit4) |
 
 Rust transitive dependencies and checksums are recorded by the workspace
@@ -23,6 +25,8 @@ transitive copyright/license notices alongside the complete matching source tree
 `package_notices.py` generates a full license/notice asset from resolved runtime
 JAR/AARs and the Android Rust dependency graph. Checked-in upstream notices have
 their original bytes and provenance hashes in [licenses/provenance.json](licenses/provenance.json).
+Bundled font files retain their original bytes in `res/font`; their full copyright
+and license texts ship separately in `assets/font-licenses/` in every APK/AAB.
 The APK/AAB includes `assets/THIRD_PARTY_NOTICES.txt`; source documents are not the
 only delivered notices. This inventory is not a completed distribution license audit.
 

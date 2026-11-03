@@ -18,8 +18,16 @@ struct AppearanceSettingsControls: View {
     var body: some View {
         Group {
             Section {
+                Picker("Font", selection: $fontName) {
+                    ForEach(BundledAppFont.allCases) { choice in
+                        Text(choice.label).tag(choice.rawValue)
+                    }
+                    if BundledAppFont(rawValue: fontName) == nil {
+                        Text(BundledAppFont.customLabel).tag(fontName)
+                    }
+                }.settingsTarget("appearance.font")
                 Button { pickingFont = true } label: {
-                    LabeledContent("Font", value: fontName.isEmpty ? String(localized: "System") : fontName).settingsTarget("appearance.font")
+                    LabeledContent("Choose Font…", value: BundledAppFont(rawValue: fontName)?.label ?? fontName)
                 }
                 Stepper(value: $contentScale, in: MobileAppearance.scaleRange, step: 0.1) {
                     LabeledContent("Task text", value: contentScale.formatted(.percent.precision(.fractionLength(0))))
@@ -35,7 +43,7 @@ struct AppearanceSettingsControls: View {
                     Text("Your tasks, at your pace.").mobileFont(content: true, caption: true).foregroundStyle(AccentTheme.secondaryText)
                 }.padding(.vertical, 8)
             } header: { Text("Preview").foregroundStyle(AccentTheme.secondaryText) } footer: {
-                Text("Text also follows your device's Dynamic Type size. Navigation and system controls keep their native styles.")
+                Text("Text follows your device's Dynamic Type size. System navigation and controls keep their native styles.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 

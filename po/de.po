@@ -4454,3 +4454,19 @@ msgstr "Behebt den macOS-Startabsturz durch das Update-Framework mit Developer-I
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Include updated Linux release notes in the English/German translation catalogs."
 msgstr "Nimmt die aktualisierten Linux-Versionshinweise in die englischen und deutschen Übersetzungskataloge auf."
+
+#: data/resources/ui/prefs.blp
+msgid "App font"
+msgstr "App-Schrift"
+
+#: data/resources/ui/prefs.blp
+msgid "Bundled fonts are available offline and apply only to Momentum"
+msgstr "Mitgelieferte Schriften sind offline verfügbar und gelten nur für Momentum"
+
+#: crates/app/src/prefs.rs
+msgid "System"
+msgstr "System"
+
+#: crates/app/src/prefs.rs
+msgid "Custom"
+msgstr "Benutzerdefiniert"

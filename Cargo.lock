@@ -2108,6 +2108,7 @@ dependencies = [
  "momentum-oplog",
  "momentum-store",
  "oo7",
+ "pango",
  "serde_json",
  "tempfile",
  "tracing",

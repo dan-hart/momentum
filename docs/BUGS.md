@@ -1,5 +1,27 @@
 # Momentum bug ledger
 
+## B-182 — Explicit Apple text styles bypass app font and size preferences
+
+- **Severity/platforms:** low, source-confirmed presentation gap on iOS/macOS.
+  Task content using the typography adapter already followed preferences; some
+  app-owned settings/search/sync headings and captions used explicit system fonts.
+  Linux CSS and Android theme paths already cover their text styles; no equivalent
+  reproduced defect was identified there.
+- **Expected/actual:** after selecting an app font or changing interface size,
+  app-owned headings/captions should follow those choices. Explicit `.font(.caption)`
+  and similar modifiers bypassed the root font and app size scale.
+- **Fix:** use the native semantic typography adapters for app-owned text, preserving
+  role sizes, emphasis, independent content/interface sizes and iOS Dynamic Type.
+  Symbol-only styling and OS-owned navigation/chrome retain native typography.
+- **Evidence (2026-11-03, dirty task/app-wide-fonts based on 00e85f4):** shared Apple
+  typography regressions pass; three hosted iOS tests render all families, independent
+  scales and Dynamic Type, with custom heading/caption image attachments. macOS and
+  iOS shipping Debug builds pass. See F-022 and PROGRESS for logs and exact scope.
+- **Status/remaining:** Implemented on both Apple clients, with the automated
+  regression/rendering scope verified. Complete native settings/picker interaction,
+  full-screen long German/large-text and spoken screen-reader acceptance remain open.
+
+
 ## B-181 — Day-period redesign removes native task row backgrounds
 
 - **Severity/platforms:** low, visual regression identified by source inspection.

@@ -249,7 +249,7 @@ struct SyncSettings: View {
 
     private func field<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.caption).foregroundStyle(AccentTheme.secondaryText)
+            Text(title).mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
             content()
         }.padding(.vertical, 4)
@@ -324,7 +324,7 @@ struct SyncSettings: View {
                         .disabled(state.hasUnsavedChanges || !state.canSync || state.isSyncing)
                 }
                 Text("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.")
-                    .font(.caption).foregroundStyle(AccentTheme.secondaryText)
+                    .mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
 
                 field("Encryption Password (Optional)") {
                     SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
@@ -403,7 +403,7 @@ struct SyncFailureSection: View {
                 ProgressView("Trying again…").accessibilityIdentifier("sync-retry-progress")
             } else if let at = state.lastAttemptAt {
                 Text("Last tried \(at, format: .relative(presentation: .named))")
-                    .font(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                    .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
                     .accessibilityIdentifier("sync-last-attempt")
             }
             Button {
@@ -434,7 +434,7 @@ struct SyncFailureSection: View {
             }
             if let message = state.failureMessage {
                 DisclosureGroup("Details", isExpanded: $showFailureDetails) {
-                    Text(message).font(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                    Text(message).mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("sync-failure-details")
@@ -450,7 +450,7 @@ struct SyncFailureSection: View {
     @ViewBuilder private var headline: some View {
         let label = Label(state.failureKind.map(Strings.syncFailureHeadline) ?? String(localized: "Sync Needs Attention"),
                           systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90")
-            .font(.headline)
+            .mobileFont(.headline)
             .accessibilityIdentifier("sync-error")
         if let focus {
             label.accessibilityFocused(focus)
@@ -571,7 +571,7 @@ struct SyncStatusLink: View {
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .font(.footnote)
+                    .mobileFont(.footnote)
                     .foregroundStyle(presentation.needsAttention ? Color.primary : AccentTheme.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
@@ -660,7 +660,7 @@ struct LibreSyncDeviceList: View {
                 if let code = state.pairingCode {
                     LabeledContent("Pairing Code") {
                         Text(formatted(code))
-                            .font(.title2.monospacedDigit())
+                            .mobileFont(.title2).monospacedDigit()
                             .textSelection(.enabled)
                             .accessibilityLabel("Pairing code \(code.map(String.init).joined(separator: " "))")
                     }
@@ -686,7 +686,7 @@ struct LibreSyncDeviceList: View {
                                 Text(verbatim: device.name).foregroundStyle(Color.primary)
                                 if let address = device.address {
                                     Text(verbatim: address)
-                                        .font(.footnote)
+                                        .mobileFont(.footnote)
                                         .foregroundStyle(AccentTheme.secondaryText)
                                 }
                             }
@@ -714,11 +714,11 @@ struct LibreSyncDeviceList: View {
                             if let lastSeen = device.lastSeenMs {
                                 Text(Date(timeIntervalSince1970: Double(lastSeen) / 1000),
                                      format: .dateTime.month().day().hour().minute())
-                                    .font(.caption)
+                                    .mobileFont(.caption)
                                     .foregroundStyle(AccentTheme.secondaryText)
                             } else {
                                 Text("Not synced yet")
-                                    .font(.caption)
+                                    .mobileFont(.caption)
                                     .foregroundStyle(AccentTheme.secondaryText)
                             }
                         }
@@ -760,7 +760,7 @@ private struct LibreSyncLinkSheet: View {
                         .keyboardType(.numberPad)
                         .textContentType(.oneTimeCode)
                         .multilineTextAlignment(.center)
-                        .font(.title2.monospacedDigit())
+                        .mobileFont(.title2).monospacedDigit()
                         .accessibilityIdentifier("libresync-pairing-code")
                     if failed {
                         AccessibleErrorMessage("Pairing failed. Check the code and try again.")

@@ -4,6 +4,40 @@ import Testing
 @testable import MomentumKit
 
 @Suite struct TypographyTests {
+    @Test func bundledFontsResolveInBothAreasWithoutChangingSizes() {
+        for name in ["AtkinsonHyperlegibleMono-Regular", "OpenDyslexic-Regular"] {
+            let typography = AppTypography(fontName: name, contentSize: 23, interfaceSize: 16)
+            #expect(typography.resolvedFont(in: .content).fontName == name)
+            #expect(typography.resolvedFont(in: .interface).fontName == name)
+            #expect(typography.resolvedFont(in: .content).pointSize == 23)
+            #expect(typography.resolvedFont(in: .interface).pointSize == 16)
+        }
+    }
+
+    @Test func allBundledFacesArePackagedAndRegistered() throws {
+        BundledAppFont.register()
+        for file in BundledAppFont.resourceNames {
+            #expect(BundledAppFont.resourceURL(file) != nil)
+            let name = String(file.dropLast(4))
+            #expect(NSFont(name: name, size: 17)?.fontName == name)
+        }
+    }
+
+    @Test func switchingCuratedFontsPreservesPersistedSizesAndCustomSelection() throws {
+        let suite = "momentum-bundled-font-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(24.0, forKey: PrefKey.contentFontSize)
+        defaults.set(18.0, forKey: PrefKey.interfaceFontSize)
+        for name in BundledAppFont.allCases.map(\.rawValue) + ["Helvetica-Bold"] {
+            defaults.set(name, forKey: PrefKey.appFontName)
+            let restored = AppTypography(defaults: defaults)
+            #expect(restored.fontName == name)
+            #expect(restored.contentSize == 24)
+            #expect(restored.interfaceSize == 18)
+        }
+    }
+
     @Test func systemDefaultsAndIndependentSizes() {
         let typography = AppTypography()
         #expect(typography.fontName.isEmpty)

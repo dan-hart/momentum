@@ -7,6 +7,7 @@ mod celebration_colors;
 mod config;
 mod demo;
 mod empty_messages;
+mod font_choice;
 mod keyring;
 mod messages;
 mod modifier;

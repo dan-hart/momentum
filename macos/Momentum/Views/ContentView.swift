@@ -347,7 +347,7 @@ struct SyncFailurePopover: SwiftUI.View {
     var body: some SwiftUI.View {
         VStack(alignment: .leading, spacing: 12) {
             if let kind = state.syncFailureKind {
-                Text(Strings.syncFailureHeadline(kind)).font(.headline)
+                Text(Strings.syncFailureHeadline(kind)).appFont(.headline)
                     .accessibilityIdentifier("sync-failure-headline")
                 Text(Strings.syncFailureRemedy(kind))
                     .fixedSize(horizontal: false, vertical: true)
@@ -357,11 +357,11 @@ struct SyncFailurePopover: SwiftUI.View {
                 }
                 DisclosureGroup(String(localized: "Details"), isExpanded: $showRaw) {
                     Text(state.syncError ?? "").textSelection(.enabled)
-                        .font(.callout).foregroundStyle(.secondary)
+                        .appFont().foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
-                Text(String(localized: "Sync needs attention")).font(.headline)
+                Text(String(localized: "Sync needs attention")).appFont(.headline)
                 Text(state.syncError ?? "").textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }

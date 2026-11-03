@@ -15,7 +15,7 @@ import java.io.File
 
 enum class SyncProvider { Off, Nextcloud, LibreSync }
 enum class Appearance { System, Light, Dark }
-enum class NativeFont { System, Sans, Serif, Monospace }
+enum class NativeFont { System, Sans, Serif, Monospace, AtkinsonHyperlegibleMono, OpenDyslexic }
 enum class NativeAccent { Momentum, Alizarin, Carrot, Orange, Emerald, Turquoise, PeterRiver, Amethyst, Pomegranate, GreenSea }
 enum class KeyboardModifier { Ctrl, Alt, Meta }
 

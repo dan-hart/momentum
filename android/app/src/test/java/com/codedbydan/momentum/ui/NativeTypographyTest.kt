@@ -4,6 +4,9 @@ package com.codedbydan.momentum.ui
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontListFontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.codedbydan.momentum.data.AppSettings
@@ -43,6 +46,31 @@ class NativeTypographyTest {
             assertEquals(family, changed.interfaceStyles.bodyLarge.fontFamily)
             assertEquals(family, changed.contentStyles.titleMedium.fontFamily)
             assertEquals(baseline.contentStyles.bodyLarge.fontSize, changed.contentStyles.bodyLarge.fontSize)
+        }
+    }
+
+    @Test fun bundledChoicesUseFourRealFacesThroughoutBothTypographyAreas() {
+        val bundledNames = setOf("AtkinsonHyperlegibleMono", "OpenDyslexic")
+        assertTrue("Bundled choices must be selectable", NativeFont.entries.map { it.name }.containsAll(bundledNames))
+        val base = Typography()
+        for (choice in NativeFont.entries.filter { it.name in bundledNames }) {
+            val changed = nativeTypography(AppSettings(font = choice, contentTextScale = 1.5f, interfaceTextScale = 0.8f))
+            val family = changed.interfaceStyles.bodyLarge.fontFamily
+            assertTrue("Bundled choices must use packaged faces", family is FontListFontFamily)
+            val faces = (family as FontListFontFamily).fonts
+            assertEquals(setOf(FontWeight.Normal to FontStyle.Normal, FontWeight.Bold to FontStyle.Normal,
+                FontWeight.Normal to FontStyle.Italic, FontWeight.Bold to FontStyle.Italic),
+                faces.map { it.weight to it.style }.toSet())
+            assertEquals(4, faces.size)
+            val styles = listOf(changed.interfaceStyles.displayLarge, changed.interfaceStyles.headlineSmall,
+                changed.interfaceStyles.titleMedium, changed.interfaceStyles.labelSmall,
+                changed.contentStyles.displaySmall, changed.contentStyles.headlineLarge,
+                changed.contentStyles.bodySmall, changed.contentStyles.labelLarge)
+            assertTrue(styles.all { it.fontFamily == family })
+            assertEquals(base.bodyLarge.fontSize.value * 0.8f, changed.interfaceStyles.bodyLarge.fontSize.value, 0.001f)
+            assertEquals(base.bodyLarge.fontSize.value * 1.5f, changed.contentStyles.bodyLarge.fontSize.value, 0.001f)
+            assertEquals(AppSettings(compact = true), resetNativeTypography(AppSettings(font = choice,
+                contentTextScale = 1.5f, interfaceTextScale = 0.8f, compact = true)))
         }
     }
 

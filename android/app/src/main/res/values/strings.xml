@@ -250,6 +250,8 @@
     <string name="font_system">System font</string>
     <string name="font_sans">Sans serif</string>
     <string name="font_serif">Serif</string>
+    <string name="font_atkinson_hyperlegible_mono">Atkinson Hyperlegible Mono</string>
+    <string name="font_opendyslexic">OpenDyslexic</string>
     <string name="font_monospace">Monospace</string>
     <string name="content_text_size">Task text size</string>
     <string name="interface_text_size">Interface text size</string>

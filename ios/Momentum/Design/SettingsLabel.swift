@@ -18,7 +18,7 @@ struct SettingsLabel: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).foregroundStyle(Color.primary)
                 if let subtitle {
-                    Text(subtitle).font(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                    Text(subtitle).mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
                 }
             }.fixedSize(horizontal: false, vertical: true)
                 .padding(.vertical, subtitle == nil ? 0 : 4)

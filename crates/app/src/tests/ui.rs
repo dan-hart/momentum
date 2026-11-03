@@ -1908,6 +1908,64 @@ fn background_status_mode_changes_refresh_the_window_immediately_without_a_porta
 }
 
 #[test]
+fn bundled_font_selection_preserves_scales_custom_picker_and_reset() {
+    on_gtk(|| {
+        reset_typography_settings();
+        let (win, _) = demo_window();
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        pump();
+        let imp = prefs.imp();
+        let row = &imp.font_choice_row;
+        assert_eq!(row.selected(), 0);
+        assert_eq!(row.model().unwrap().n_items(), 3);
+        imp.content_scale_row.set_value(75.0);
+        imp.interface_scale_row.set_value(250.0);
+        for (index, family) in [
+            (1, crate::font_choice::MONO_FAMILY),
+            (2, crate::font_choice::DYSLEXIC_FAMILY),
+        ] {
+            row.set_selected(index);
+            pump();
+            assert_eq!(settings().string("typography-font"), family);
+            assert_eq!(settings().int("typography-content-scale"), 75);
+            assert_eq!(settings().int("typography-interface-scale"), 250);
+            assert!(
+                crate::typography::system_has_font(family),
+                "packaged family missing: {family}"
+            );
+            let resolved = crate::typography::TypographyPreferences::from_persisted(
+                family,
+                75,
+                250,
+                crate::typography::system_has_font,
+            );
+            assert!(resolved.css().contains(&format!("font-family: \"{family}\";")));
+            assert!(resolved.css().contains("font-size: 0.3000em;"));
+            assert_eq!(imp.font_button.font_desc().unwrap().family().as_deref(), Some(family));
+        }
+        imp.font_button
+            .set_font_desc(&gtk::pango::FontDescription::from_string("Cantarell Bold 18"));
+        pump();
+        assert_eq!(row.selected(), 3);
+        assert_eq!(row.model().unwrap().n_items(), 4);
+        assert!(settings().string("typography-font").contains("Bold"));
+        row.set_selected(0);
+        pump();
+        assert!(settings().string("typography-font").is_empty());
+        assert_eq!(row.model().unwrap().n_items(), 3);
+        assert_eq!(settings().int("typography-content-scale"), 75);
+        row.set_selected(1);
+        imp.reset_typography_row.emit_by_name::<()>("activated", &[]);
+        pump();
+        assert_eq!(row.selected(), 0);
+        assert_eq!(settings().int("typography-content-scale"), 100);
+        assert_eq!(settings().int("typography-interface-scale"), 100);
+        reset_typography_settings();
+    });
+}
+
+#[test]
 fn typography_preferences_bind_native_controls_and_reset_in_focus_order() {
     on_gtk(|| {
         reset_settings();
@@ -1951,6 +2009,7 @@ fn typography_preferences_bind_native_controls_and_reset_in_focus_order() {
             .and_downcast::<adw::ActionRow>()
             .expect("font action row");
         let focus_targets = [
+            imp.font_choice_row.upcast_ref::<gtk::Widget>(),
             font_row.upcast_ref::<gtk::Widget>(),
             imp.content_scale_row.upcast_ref::<gtk::Widget>(),
             imp.interface_scale_row.upcast_ref(),

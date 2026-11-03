@@ -713,3 +713,13 @@ another platform should have an equivalent for each.
   devices, and a Unix socket for `mo` — with its own test suite; the GTK app renders it
   instead of holding the logic itself, and `macos/` is a SwiftUI app driving the same
   engine through UniFFI, with unit tests that need no running app.
+
+### Bundled font choices (F-022)
+
+Every native typography page offers System Font, Atkinson Hyperlegible Mono and
+OpenDyslexic, bundled with licenses for offline use. Existing installed-font
+pickers (Apple/GTK) and Android built-in families remain available. Changing
+family preserves separate content/interface sizes and OS text scaling. Existing
+reset behavior still restores system family and default sizes. Font preferences
+stay local and are excluded from portable settings/sync. Native OS-owned chrome
+uses platform typography; app-owned semantic text follows the selected family.

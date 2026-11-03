@@ -1,0 +1,57 @@
+{
+  "license": "OFL-1.1",
+  "fonts": [
+    {
+      "file": "AtkinsonHyperlegibleMono-Bold.ttf",
+      "sha256": "51ad68fafd7ec68051f64983c9c23182a7084268b5cdb0a154dbd53ade079da6",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next-mono/154d50362016cc3e873eb21d242cd0772384c8f9/fonts/ttf/AtkinsonHyperlegibleMono-Bold.ttf",
+      "android": "atkinson_hyperlegible_mono_bold.ttf"
+    },
+    {
+      "file": "AtkinsonHyperlegibleMono-BoldItalic.ttf",
+      "sha256": "1286feda7848b1078576f2293201dff9428dad309c63220ed0825b771994a9a6",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next-mono/154d50362016cc3e873eb21d242cd0772384c8f9/fonts/ttf/AtkinsonHyperlegibleMono-BoldItalic.ttf",
+      "android": "atkinson_hyperlegible_mono_bold_italic.ttf"
+    },
+    {
+      "file": "AtkinsonHyperlegibleMono-Italic.ttf",
+      "sha256": "356060ab70ae62e4460dd824ec1b734af24e5c3355a8302700151d35d1382dd4",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next-mono/154d50362016cc3e873eb21d242cd0772384c8f9/fonts/ttf/AtkinsonHyperlegibleMono-Italic.ttf",
+      "android": "atkinson_hyperlegible_mono_italic.ttf"
+    },
+    {
+      "file": "AtkinsonHyperlegibleMono-Regular.ttf",
+      "sha256": "2c9a7b9fabebd5c746a808d8a1ef2f52e618850caad6ec4fd9f5c48f56e1c1af",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next-mono/154d50362016cc3e873eb21d242cd0772384c8f9/fonts/ttf/AtkinsonHyperlegibleMono-Regular.ttf",
+      "android": "atkinson_hyperlegible_mono_regular.ttf"
+    },
+    {
+      "file": "OpenDyslexic-Bold.otf",
+      "sha256": "5d690ea4c87ccb0d5d5d81487826a395e9b20a6c1d606f1f262c060d2bef4f03",
+      "source": "https://raw.githubusercontent.com/antijingoist/opendyslexic/1824da5c0e41dc3e13ffc7f3a636dcaf695d61b7/compiled/OpenDyslexic-Bold.otf",
+      "android": "opendyslexic_bold.otf"
+    },
+    {
+      "file": "OpenDyslexic-BoldItalic.otf",
+      "sha256": "95894a308f534d152ce96fb764caddded0d56a82d67d4686eb1fb900368228ee",
+      "source": "https://raw.githubusercontent.com/antijingoist/opendyslexic/1824da5c0e41dc3e13ffc7f3a636dcaf695d61b7/compiled/OpenDyslexic-BoldItalic.otf",
+      "android": "opendyslexic_bold_italic.otf"
+    },
+    {
+      "file": "OpenDyslexic-Italic.otf",
+      "sha256": "dfa0185bb0d47cb76cb5d082531822d0dca03152f5b6ec6c9f6e3f8d00b71782",
+      "source": "https://raw.githubusercontent.com/antijingoist/opendyslexic/1824da5c0e41dc3e13ffc7f3a636dcaf695d61b7/compiled/OpenDyslexic-Italic.otf",
+      "android": "opendyslexic_italic.otf"
+    },
+    {
+      "file": "OpenDyslexic-Regular.otf",
+      "sha256": "32f5840fb2bf844bdabafe372591ddfb9286e98117f5b21950aaf54ea856919a",
+      "source": "https://raw.githubusercontent.com/antijingoist/opendyslexic/1824da5c0e41dc3e13ffc7f3a636dcaf695d61b7/compiled/OpenDyslexic-Regular.otf",
+      "android": "opendyslexic_regular.otf"
+    }
+  ],
+  "licenses": {
+    "OpenDyslexic-OFL.txt": "caafcccfb70fc72458fcbda812ec8f0a06cb300cbabb87eabbb30b946124394b",
+    "AtkinsonHyperlegibleMono-OFL.txt": "1ebb31cf7393164f20d10c1d48406cddb5314feff8465531cf1e4ba37e9dd740"
+  }
+}

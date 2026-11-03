@@ -2,3 +2,7 @@
 android/licenses/** -whitespace
 android/vendor/graphics-path/** -whitespace
 android/gradlew.bat whitespace=cr-at-eol
+# Keep original OFL license text byte-identical across native font bundles.
+data/resources/fonts/*-OFL.txt -whitespace
+macos/Packages/MomentumKit/Sources/MomentumKit/Resources/Fonts/*-OFL.txt -whitespace
+android/app/src/main/assets/font-licenses/*-OFL.txt -whitespace

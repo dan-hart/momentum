@@ -95,7 +95,9 @@ Regular and Compact rows.
 
 ## Fonts
 
-Open **Settings → Appearance → Choose Font…** to use the macOS Fonts panel. The chosen
+Open **Settings → Appearance → App font** to choose System Font, bundled Atkinson
+Hyperlegible Mono, or OpenDyslexic. Choosing a family keeps both current sizes.
+**Choose Font…** still opens the macOS Fonts panel for any installed family/face. The chosen
 family and face apply to app text. **Content size** controls task titles, subtitles,
 notes and task entry; **Interface size** controls navigation, settings and app controls.
 Both range from 10–32 pt and default to 13 pt. The Fonts panel's size also changes the

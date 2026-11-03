@@ -165,6 +165,65 @@ pub fn css_string(value: &str) -> String {
     escaped
 }
 
+// Pango needs file paths. Keep the private directory alive for the font map's
+// lifetime: a backend may read a face lazily after registration. Nothing is
+// installed into the user's font directories or desktop settings.
+struct BundledFontFiles(std::path::PathBuf);
+
+impl Drop for BundledFontFiles {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+thread_local! {
+    static BUNDLED_FONTS: RefCell<Option<BundledFontFiles>> = const { RefCell::new(None) };
+}
+
+pub const BUNDLED_FONT_FILES: [&str; 8] = [
+    "AtkinsonHyperlegibleMono-Regular.ttf",
+    "AtkinsonHyperlegibleMono-Bold.ttf",
+    "AtkinsonHyperlegibleMono-Italic.ttf",
+    "AtkinsonHyperlegibleMono-BoldItalic.ttf",
+    "OpenDyslexic-Regular.otf",
+    "OpenDyslexic-Bold.otf",
+    "OpenDyslexic-Italic.otf",
+    "OpenDyslexic-BoldItalic.otf",
+];
+
+pub fn load_bundled_fonts() {
+    BUNDLED_FONTS.with_borrow_mut(|state| {
+        if state.is_some() {
+            return;
+        }
+        let Some(font_map) = gtk::Label::new(None).pango_context().font_map() else {
+            tracing::warn!("No Pango font map; bundled fonts will use the system fallback");
+            return;
+        };
+        let Some(directory) = gtk::glib::mkdtemp(gtk::glib::tmp_dir().join("momentum-fonts-XXXXXX")) else {
+            tracing::warn!("Could not create private font directory; using the system fallback");
+            return;
+        };
+        let files = BundledFontFiles(directory);
+        for name in BUNDLED_FONT_FILES {
+            let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                let data = gtk::gio::resources_lookup_data(
+                    &format!("/io/github/dan_hart/Momentum/fonts/{name}"),
+                    gtk::gio::ResourceLookupFlags::NONE,
+                )?;
+                let path = files.0.join(name);
+                std::fs::write(&path, data.as_ref())?;
+                font_map.add_font_file(&path)?;
+                Ok(())
+            })();
+            if let Err(error) = result {
+                tracing::warn!(font = name, %error, "Could not load bundled font; using available fallback");
+            }
+        }
+        *state = Some(files);
+    });
+}
+
 pub fn system_has_font(family: &str) -> bool {
     let context = gtk::Label::new(None).pango_context();
     context

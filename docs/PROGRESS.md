@@ -1,5 +1,59 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — App-wide bundled fonts (F-022 / B-182)
+
+- **Authority/source:** Dan requested implementation on all four platforms, a separate
+  branch, and commit/push; he approved the design before implementation. Dirty
+  `task/app-wide-fonts` based on `00e85f4`; evidence below is automated local execution
+  and inspection of isolated iOS rendered image attachments. No merge/tag/release.
+- **Behavior:** each native typography page offers System, Atkinson Hyperlegible Mono
+  and OpenDyslexic. Existing GTK/Apple installed-font pickers, saved custom selections,
+  Android built-in families, independent content/interface sizes, OS scaling, fallback
+  and reset remain. Font family selection never changes the two size preferences.
+  Settings remain device-local; Rust task rules/formats, FFI and sync scope are unchanged.
+- **Resources/native boundaries:** pinned original regular/bold/italic/bold-italic faces
+  and OFL text; private Pango font registration on Linux, shared MomentumKit CoreText
+  resources on Apple, and native Compose weight/style mappings on Android. The existing
+  Pango dependency is explicitly enabled at 1.56 for its application-font API (within
+  the GNOME 50 distribution baseline). AsNeeded informed iOS registration/Dynamic Type;
+  the requested Mono family is used rather than its proportional Atkinson family.
+  App-owned Apple semantic text follows the preference; symbol-only and OS-owned
+  chrome retain native typography. CI now runs `build-aux/check-fonts.py`.
+
+| Platform/check | Actual result | Limits |
+|---|---|---|
+| Rust workspace excluding GTK, all features/all targets | 468 passed, 5 existing opt-in ignores, zero failures; includes CLI/FFI consumers | Initial sandbox run denied isolated CLI sockets; rerun with sockets permitted passed |
+| Linux | Locked GTK check including tests; 10 typography + 2 selection unit tests pass; German gettext/completeness pass | New GTK interaction test compiles, unrun on macOS. Existing generated UI resource bundle extracts all fonts/licenses byte-identically, but fresh Blueprint compilation is unavailable (no compiler). Supported Linux UI/resource CI remains required |
+| macOS | 253 MomentumKit tests pass; shipping arm64 Debug app build passes; actual app bundle has eight matching faces and two licenses | New full settings/font-panel interaction, long German/large-text and spoken VoiceOver acceptance unperformed |
+| iOS | Three focused hosted UIKit/SwiftUI tests pass on disposable iOS 27 simulator; actual custom font heading/caption images inspected; shipping simulator app/share-extension build passes with matching resources | Physical-device and spoken VoiceOver/full-screen settings acceptance unperformed; broader suite has a baseline failure detailed below |
+| Android | Normal Gradle Rust/FFI rebuild, 119 JVM tests, debug app/test APK builds and release lint pass (0 errors, 16 existing warnings); actual APK contains byte-identical fonts/licenses | Instrumentation compiled; isolated API37 emulator could not run even with escalation (HVF unavailable and mprotect denied), so touch/native rendering/persistence instrumentation remains unrun |
+| Resource/docs/style | Font integrity, original OFL text, JSON, Rust formatting, translations, version alignment, changed Markdown targets and whitespace checks pass; workflow syntax passes with shellcheck disabled | Full actionlint still reports pre-existing SC2011 in the unchanged Android source-build step |
+
+- **Broader iOS baseline:** all-view execution ran 118 tests with three expected
+  skips; one method, `testEmptyingTodayWithImmediateArchiveAndTagGroupsKeepsTheListAlive`,
+  timed out looking for “Nothing planned for today” and recorded two failure issues.
+  It repeats on a focused run and with all changed iOS production sources plus the
+  hosting helper temporarily restored to `00e85f4` (new font tests excluded), using
+  the same disposable simulator. Feature sources were restored and the three font
+  tests pass again. No unrelated empty-state code/test was changed or waived.
+  Broad report: `ios/DerivedData/TestReports/views-1793717459181175000.xcresult`;
+  baseline log `/tmp/momentum-fonts-ios-empty-baseline.log`; final focused report
+  `ios/DerivedData/TestReports/views-1793717598264695000.xcresult`.
+- **Logs/reports:** `/tmp/momentum-fonts-{rust,kit-tests,mac-build,ios-app-build}.log`,
+  `/tmp/momentum-android-fonts-{red,green,normal}.log`,
+  `/tmp/momentum-fonts-emulator.log`; iOS focused report
+  `ios/DerivedData/TestReports/views-1793717257933677000.xcresult` and attachments.
+  Typography regressions were observed red before the new registration/families and
+  green after; all native tests use disposable stores/defaults. No personal task data
+  or existing installed apps were changed for validation.
+- **Status/next:** F-022 remains Implemented on every platform for the expanded scope;
+  the automated/rendered scopes above are verified individually. Finish supported
+  Linux fresh Blueprint/GTK interaction, Android device/emulator instrumentation,
+  native settings/picker and full-screen localized large-text/screen-reader acceptance
+  before marking the whole four-platform feature Verified. Prior unrelated deferrals
+  remain untouched. Commit/push only the requested branch.
+
+
 ## 2026-10-27 — iOS 0.4.16 (416) available in internal TestFlight
 
 - User requested completing TestFlight distribution in direct response to the

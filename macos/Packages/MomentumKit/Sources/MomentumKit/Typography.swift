@@ -44,6 +44,7 @@ public struct AppTypography: Equatable, Sendable {
     }
 
     public func resolvedFont(in area: FontArea, role: FontRole = .body) -> NSFont {
+        BundledAppFont.register()
         let size = max(10, (area == .content ? contentSize : interfaceSize) * role.scale)
         return NSFont(name: fontName, size: size) ?? NSFont.systemFont(ofSize: size)
     }

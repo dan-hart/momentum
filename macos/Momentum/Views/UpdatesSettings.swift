@@ -18,7 +18,7 @@ struct UpdatesSettings: View {
                 Toggle(updateText("Check automatically"), isOn: Binding(get: { updater.automatic }, set: { updater.automatic = $0 }))
                     .disabled(!updater.supportsUpdates || updater.busy).settingsTarget("updates.automatic")
                 Text(updateText("Off by default. Checks only while Momentum is running. Updates require your approval."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .appFont(.caption).foregroundStyle(.secondary)
                 if updater.channel == .homebrew, updater.updateAvailable, !updater.restartAvailable {
                     Button(updateText("Update with Homebrew…")) { confirmingUpdate = true }.disabled(updater.busy)
                 }

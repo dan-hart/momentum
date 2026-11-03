@@ -32,7 +32,7 @@ struct SettingsView: SwiftUI.View {
                     let results = SettingsDiscovery.results(navigation.query, platform: .macos)
                     ForEach(results, id: \.id) { entry in
                         Button { navigation.open(entry.id) } label: {
-                            VStack(alignment: .leading) { Text(entry.title); Text(entry.category).font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading) { Text(entry.title); Text(entry.category).appFont(.caption).foregroundStyle(.secondary) }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                         }.buttonStyle(.borderless)
@@ -94,7 +94,7 @@ struct SettingsSearchResults: SwiftUI.View {
             Section(String(localized: "Settings")) {
                 ForEach(Array(results.prefix(5)), id: \.id) { entry in
                     Button { SettingsNavigation.shared.open(entry.id); openSettings() } label: {
-                        VStack(alignment: .leading) { Text(entry.title); Text(entry.category).font(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading) { Text(entry.title); Text(entry.category).appFont(.caption).foregroundStyle(.secondary) }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                     }.buttonStyle(.borderless)
@@ -265,7 +265,7 @@ private struct SyncSettings: SwiftUI.View {
                     get: { state.appSettingsSync.enabled }, set: { state.setAppSettingsSync($0) })).settingsTarget("sync.settings")
                     .disabled(state.isDemo)
                 Text(String(localized: "Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .appFont(.caption).foregroundStyle(.secondary)
                 if state.appSettingsSync.enabled, !state.appSettingsSync.bootstrapRequired {
                     if state.appSettingsSync.pendingKeys > 0 {
                         Label(String(localized: "App settings waiting to sync"), systemImage: "clock")
@@ -337,7 +337,7 @@ private struct SyncSettings: SwiftUI.View {
                         }
                         if let message = state.folderCopyMessage { Text(message).textSelection(.enabled) }
                         Text(String(localized: "The original folder stays intact. The saved folder changes only after every copied file is verified."))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .appFont(.caption).foregroundStyle(.secondary)
                     }
                 }
 
@@ -355,7 +355,7 @@ private struct SyncSettings: SwiftUI.View {
                             .disabled(state.isSyncing || !state.prefs.syncConfigured)
                     }
                     Text(String(localized: "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .appFont(.caption).foregroundStyle(.secondary)
 
                 }
             } else if method == SyncMethod.libresync.rawValue {

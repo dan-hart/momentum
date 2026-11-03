@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import MomentumKit
 import MomentumMobile
 import SwiftUI
 import UIKit
@@ -314,11 +315,13 @@ import XCTest
                                 scheme: ColorScheme = .light,
                                 contrast: ColorSchemeContrast = .standard,
                                 locale: String = "en",
-                                contentScale: Double = 1) throws -> Render {
+                                contentScale: Double = 1, interfaceScale: Double = 1, fontName: String = "") throws -> Render {
         let name = "momentum-view-test-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         defaults.set(contentScale, forKey: MobileAppearance.contentScaleKey)
+        defaults.set(interfaceScale, forKey: MobileAppearance.interfaceScaleKey)
+        defaults.set(fontName, forKey: PrefKey.appFontName)
         let root = content
             .environment(\.dynamicTypeSize, size)
             .environment(\.colorScheme, scheme)

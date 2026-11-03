@@ -107,3 +107,6 @@
 "OK" = "OK";
 
 "Momentum couldn’t verify its Homebrew installation. Repair Homebrew or update the Momentum cask in Terminal." = "Momentum konnte seine Homebrew-Installation nicht prüfen. Repariere Homebrew oder aktualisiere das Momentum-Cask im Terminal.";
+
+"System Font" = "Systemschrift";
+"Custom Font" = "Eigene Schrift";

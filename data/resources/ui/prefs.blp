@@ -55,6 +55,11 @@ template $MomentumPrefs: Adw.PreferencesDialog {
       title: _("Typography");
       description: _("Use the system font by default, or choose an app font and independent relative sizes.");
 
+      Adw.ComboRow font_choice_row {
+        title: _("App font");
+        subtitle: _("Bundled fonts are available offline and apply only to Momentum");
+      }
+
       Adw.ActionRow {
         title: _("Font");
         subtitle: _("Applies to Momentum only; Reset Typography restores the system font");

@@ -218,7 +218,7 @@ struct FeedbackToastView: SwiftUI.View {
                 .foregroundStyle(toast.kind == .error ? Color.red : Color.accentColor)
                 .accessibilityHidden(true)
             Text(toast.message)
-                .font(.callout.weight(.medium))
+                .mobileFont(.callout).fontWeight(.medium)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             if toast.undoBatchID != nil {
@@ -340,7 +340,7 @@ struct StoreUnavailableView: SwiftUI.View {
                 Text("Momentum couldn’t safely open its data. Existing files have been preserved.")
             }
             DisclosureGroup("Details") {
-                Text(details).font(.footnote).textSelection(.enabled)
+                Text(details).mobileFont(.footnote).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal)

@@ -204,7 +204,7 @@ struct TaskScreen: SwiftUI.View {
                             VStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.largeTitle).foregroundStyle(.tint).accessibilityHidden(true)
-                                Text(copy.title).font(.title2.bold())
+                                Text(copy.title).mobileFont(.title2).bold()
                                 Text(copy.description).foregroundStyle(AccentTheme.secondaryText)
                                 Button("Archive Completed") { act(.archive) }
                             }
@@ -229,7 +229,7 @@ struct TaskScreen: SwiftUI.View {
                                 }
                             }
                             if let note = section.note {
-                                Text(Strings.sectionNote(note)).font(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                                Text(Strings.sectionNote(note)).mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
                             }
                         } header: {
                             VStack(alignment: .leading, spacing: 8) {
@@ -506,7 +506,7 @@ struct TaskScreen: SwiftUI.View {
                             })
         } label: {
             Label("Actions (\(selection.count))", systemImage: "ellipsis.circle")
-                .font(.headline)
+                .mobileFont(.headline)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: 32)

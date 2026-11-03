@@ -388,6 +388,7 @@ impl MomentumApplication {
     }
 
     fn setup_typography(&self, settings: &gio::Settings) {
+        crate::typography::load_bundled_fonts();
         let apply = |settings: &gio::Settings| {
             let preferences = crate::typography::TypographyPreferences::from_persisted(
                 &settings.string("typography-font"),

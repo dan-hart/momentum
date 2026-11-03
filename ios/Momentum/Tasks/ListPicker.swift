@@ -131,7 +131,7 @@ struct ListPicker: SwiftUI.View {
             Text(title)
             Spacer(minLength: 8)
             Text(count.formatted())
-                .font(.callout)
+                .mobileFont(.callout)
                 .foregroundStyle(AccentTheme.secondaryText)
                 .monospacedDigit()
         }

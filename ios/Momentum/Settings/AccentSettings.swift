@@ -59,7 +59,7 @@ struct AccentChoiceRow: View {
                     .frame(width: 36, height: 36).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: choice.name.localizedCapitalized).foregroundStyle(Color.primary)
-                    Text(verbatim: choice.hex).font(.caption.monospaced()).foregroundStyle(AccentTheme.secondaryText)
+                    Text(verbatim: choice.hex).mobileFont(.caption).monospacedDigit().foregroundStyle(AccentTheme.secondaryText)
                 }.fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 if isSelected {

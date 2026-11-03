@@ -1,6 +1,38 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Choose Font…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Font…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schrift auswählen …"
+          }
+        }
+      }
+    },
+    "Text follows your device's Dynamic Type size. System navigation and controls keep their native styles." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text follows your device's Dynamic Type size. System navigation and controls keep their native styles."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text folgt der dynamischen Textgröße deines Geräts. Systemnavigation und Steuerelemente behalten ihren nativen Stil."
+          }
+        }
+      }
+    },
 "Optimized sync enabled": {
     "localizations": {
       "de": {

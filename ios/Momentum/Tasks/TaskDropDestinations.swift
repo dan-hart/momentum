@@ -15,7 +15,7 @@ struct TaskDropDestinations: SwiftUI.View {
     var body: some SwiftUI.View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Move selected tasks", systemImage: "arrowshape.turn.up.right")
-                .font(.caption.weight(.semibold))
+                .mobileFont(.caption).fontWeight(.semibold)
                 .foregroundStyle(AccentTheme.secondaryText)
                 .accessibilityHidden(true)
             ScrollView(.horizontal) {

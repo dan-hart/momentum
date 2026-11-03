@@ -14,6 +14,7 @@ base_id = 'io.github.dan_hart.Momentum'
 dependency('glib-2.0', version: '>= 2.66')
 dependency('gio-2.0', version: '>= 2.66')
 dependency('gtk4', version: '>= 4.18')
+dependency('pango', version: '>= 1.56')
 dependency('libadwaita-1', version: '>= 1.6')
 
 find_program('glib-compile-resources')
