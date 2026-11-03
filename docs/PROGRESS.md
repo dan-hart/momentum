@@ -1,5 +1,47 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — Momentum 0.4.17 released (F-022/B-182–B-185)
+
+- **Merged/published source:** `task/app-wide-fonts` was fast-forwarded into `main`,
+  preserving its complete history and the prior desktop releases. Immutable tag
+  `v0.4.17` points to `3f669c1c961629168a37f9efb6c99e5799b61941`.
+  [Public release](https://github.com/dan-hart/momentum/releases/tag/v0.4.17).
+  This final successor records evidence only; app/test/workflow source is unchanged.
+- **Main gates:** [CI](https://github.com/dan-hart/momentum/actions/runs/41716346789),
+  [macOS](https://github.com/dan-hart/momentum/actions/runs/41716346756) and
+  [Android](https://github.com/dan-hart/momentum/actions/runs/41716346826) pass at the
+  exact release commit. The pre-tag local nearby-sync and release-tooling checks
+  are recorded below; font rendering and native regression limits retain their scope.
+- **Complete release workflow:** [41719771385](https://github.com/dan-hart/momentum/actions/runs/41719771385)
+  succeeds on attempt 2, all 23 jobs green. Attempt 1 failed while updating the GNOME
+  SDK with “Invalid cross-device link” before Momentum compiled, canceling its matrix
+  siblings. Failed/canceled jobs and their dependents were retried on fresh runners; successful
+  checks were retained, source/tag were not rewritten, and every required gate passed.
+- **Published bytes:** all 15 checksum-listed public asset digests reported by GitHub
+  match the downloaded `SHA256SUMS.txt`; the manifest's own hosted digest also matches.
+  Latest non-draft/non-prerelease is v0.4.17. Evidence is retained under
+  `/tmp/momentum-0417-public/` (release metadata, manifest and public feed).
+- **macOS/updater:** universal app and bundled CLI pass required Developer ID signing,
+  Apple notarization (Accepted), stapling and Gatekeeper (`Notarized Developer ID`).
+  The exact final archive is authenticated by the retained updater key. Public feed
+  readback matches 0.4.17/build417 and the released Mac ZIP URL/length. Public cask
+  digest is `a5332333ef4510061beda8787e84caa317c99d6de3c815809fa4ab5c149f44f0`.
+- **Android:** actual APK/AAB metadata is 0.4.17/code4017; 16 KiB LOAD,
+  RELRO and ZIP checks plus matching source/notices/mapping/provenance packaging pass.
+  APK/AAB remain explicitly unsigned under the existing absent-distribution-key policy.
+  No device installation or Play Store upload was performed or inferred.
+- **Install channels:** public Homebrew cask and all three CLI formula URLs/digests
+  match released assets. Both hosted Flatpak stable refs report 0.4.17 with trusted
+  signatures from the retained repository key. The updater continuity/public readback,
+  Homebrew publication and hosted signed-ref verification are all successful workflow
+  gates; a release page alone was not treated as completed delivery.
+- **Scope/remaining:** iOS source is 0.4.17/build417; this GitHub workflow does not upload
+  an iOS build to App Store Connect. No App Store/Play Store submission occurred.
+  Existing physical-device, native picker, long localized full-screen and spoken
+  accessibility checks remain open; publication does not promote all of F-022 to
+  Verified. Existing task/backup/sync formats and user stores were not migrated.
+
+
 ## 2026-11-03 — Merge to main and prepare 0.4.17 (F-022/B-182–B-185)
 
 - **Authority/integration:** Dan requested merging `task/app-wide-fonts` into `main`,

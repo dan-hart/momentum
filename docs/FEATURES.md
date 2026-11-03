@@ -1,9 +1,11 @@
 # Momentum feature ledger
 
-0.4.17 preparation (2026-11-03): F-022 and B-182–B-185 are merged into main with
-aligned version metadata and EN/DE release notes. Publication remains pending its
-required main/tagged workflow and install-channel gates; see PROGRESS. Native/manual
-acceptance limits in the feature rows remain unchanged.
+0.4.17 delivery (2026-11-03): F-022 and B-182–B-185 are merged into main and released
+at `3f669c1`. Main CI and the complete tagged release pass, including signed/notarized
+macOS assets, Android packaging, authenticated updater, Homebrew and both trusted
+Flatpak refs. Public asset digests and channels are verified in PROGRESS. iOS source
+is bumped to 0.4.17/build417; no App Store Connect upload is part of this workflow.
+Native/manual acceptance limits in the feature rows remain unchanged.
 
 F-071 follow-up (2026-10-27, B-181): restore native iOS task-row and Linux boxed-list
 backgrounds while preserving the revised section spacing, headings, indentation

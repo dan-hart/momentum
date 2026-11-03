@@ -1,8 +1,8 @@
 # Momentum bug ledger
 
-0.4.17 preparation (2026-11-03) integrates B-182–B-185 into main. Previously verified
-regression scopes remain valid; release publication requires the new main/tagged
-checks recorded in PROGRESS. Broader manual/device acceptance remains separate.
+0.4.17 delivery (2026-11-03) includes B-182–B-185 on main at `3f669c1`. Exact-source
+main checks and all tagged release/install-channel gates pass; public artifacts and
+channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
 ## B-185 — Linux large-text keyboard test omits the new font dropdown
 
