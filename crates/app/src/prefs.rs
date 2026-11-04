@@ -249,11 +249,12 @@ mod imp {
                     imp.nearby_group.set_visible(method == "libresync");
                     imp.timing_group.set_visible(method != "off");
                     imp.auto_row.set_visible(method == "nextcloud");
-                    imp.method_row.set_subtitle(&gettext(match method.as_str() {
-                        "nextcloud" => "Nextcloud syncs through your personal server.",
-                        "libresync" => "LibreSync connects nearby linked devices without a server.",
-                        _ => "Tasks stay on this device. Saved connections are preserved.",
-                    }));
+                    let description = match method.as_str() {
+                        "nextcloud" => N_("Nextcloud syncs through your personal server."),
+                        "libresync" => N_("LibreSync connects nearby linked devices without a server."),
+                        _ => N_("Tasks stay on this device. Saved connections are preserved."),
+                    };
+                    imp.method_row.set_subtitle(&gettext(description));
                     for row in [
                         imp.server_row.upcast_ref::<gtk::Widget>(),
                         imp.user_row.upcast_ref(),
@@ -924,7 +925,7 @@ impl MomentumPrefs {
         imp.sync_now_row.set_visible(method != "off");
         imp.sync_now_row.set_sensitive(!busy && !preview);
         imp.sync_now_row
-            .set_title(&gettext(if error { "Retry" } else { "Sync Now" }));
+            .set_title(&gettext(if error { N_("Retry") } else { N_("Sync Now") }));
         let saving = imp.password_save.borrow().busy() || imp.encryption_save.borrow().busy();
         let credential_error = imp.password_save.borrow().failed || imp.encryption_save.borrow().failed;
         imp.connection_test_row.set_sensitive(
@@ -947,9 +948,9 @@ impl MomentumPrefs {
         }
         if saving || credential_error {
             imp.connection_test_status_row.set_subtitle(&gettext(if saving {
-                "Saving credentials… Wait before testing the saved connection."
+                N_("Saving credentials… Wait before testing the saved connection.")
             } else {
-                "Credentials could not be saved. Check your system keyring and enter them again."
+                N_("Credentials could not be saved. Check your system keyring and enter them again.")
             }));
         }
     }
@@ -1048,9 +1049,9 @@ impl MomentumPrefs {
                     }
                     prefs.imp().connection_test.borrow_mut().take();
                     prefs.imp().connection_test_status_row.set_subtitle(&gettext(if matches!(result, Ok(Ok(()))) {
-                        "Connection succeeded. No tasks were synced."
+                        N_("Connection succeeded. No tasks were synced.")
                     } else {
-                        "Connection failed. Check the server URL, username, app password and network, then try again."
+                        N_("Connection failed. Check the server URL, username, app password and network, then try again.")
                     }));
                     prefs.refresh_sync_overview(&owner);
                 });
@@ -1484,14 +1485,14 @@ mod sync_tests {
             prefs.imp().server_row.set_text("https://example.test/nextcloud");
             assert_eq!(settings.string("nextcloud-server"), "https://example.test/nextcloud");
             prefs.refresh_sync_overview(&owner);
-            assert!(!prefs.imp().sync_error_row.is_visible());
+            assert!(!shown(&*prefs.imp().sync_error_row));
             owner.set_sync_failure(
                 Some("fixture detail".into()),
                 Some(momentum_core::SyncFailureKind::Unauthorized),
             );
             prefs.refresh_sync_overview(&owner);
-            assert!(prefs.imp().sync_error_row.is_visible());
-            assert!(prefs.imp().sync_details_row.is_visible());
+            assert!(shown(&*prefs.imp().sync_error_row));
+            assert!(shown(&*prefs.imp().sync_details_row));
             assert!(
                 !prefs
                     .imp()
@@ -1503,8 +1504,8 @@ mod sync_tests {
             );
             settings.set_string("sync-method", "off").unwrap();
             prefs.refresh_sync_overview(&owner);
-            assert!(!prefs.imp().sync_now_row.is_visible());
-            assert!(!prefs.imp().sync_error_row.is_visible());
+            assert!(!shown(&*prefs.imp().sync_now_row));
+            assert!(!shown(&*prefs.imp().sync_error_row));
             assert_eq!(settings.string("nextcloud-server"), "https://example.test/nextcloud");
             prefs.close();
             assert!(

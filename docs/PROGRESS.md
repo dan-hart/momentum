@@ -1,5 +1,34 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — Sync redesign CI corrections (F-077 / B-186)
+
+- **Initial hosted result:** [CI 41751835810](https://github.com/dan-hart/momentum/actions/runs/41751835810)
+  at `a14dade` failed translation-template completeness and the new GTK sync-settings
+  regression. [macOS](https://github.com/dan-hart/momentum/actions/runs/41751835698)
+  and [Android](https://github.com/dan-hart/momentum/actions/runs/41751835705) passed.
+  Core, Rustfmt, version/resource and release-tooling checks also passed. The ARM
+  development GTK suite ran 134 tests with one failure; sibling matrix jobs were
+  canceled after that failure.
+- **Causes/fixes:** new strings were absent from `po/momentum.pot`; conditional
+  gettext calls also failed to expose both provider/error branches to extraction.
+  Mark each branch with existing `N_`, translate the provider description after
+  selection, and add the 24 missing entries from the canonical generator without
+  reformatting existing German translations. Extend the real extraction regression
+  to require every new dynamic provider/credential/test result. The GTK fixture used
+  effective `is_visible()` inside an unshown owner window; use the harness's existing
+  `shown()` helper to assert the row's own `visible` property, retaining all positive
+  error/details and negative Off checks. Product visibility behavior is unchanged.
+- **Local evidence:** extraction regression reproduced the missing four branch strings
+  before correction and passes afterwards (four tests). Template completeness,
+  POTFILES, German gettext format validation, scoped Rust formatting and app/test
+  compilation pass. No task rules, transport, FFI, platform UI layout or data changed.
+- **Hosted follow-up:** push this correction to `main` and follow every new required
+  workflow to completion. Full Linux hosted runtime evidence remains pending until
+  the corrected Flatpak jobs pass; earlier native/device/accessibility acceptance
+  limits in F-077 remain unchanged.
+
+
+
 ## 2026-11-03 — Sync settings redesigned locally (F-077 / B-186)
 
 - **Direction:** the user requested a complete simplification and delegated design

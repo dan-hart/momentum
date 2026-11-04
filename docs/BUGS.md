@@ -28,6 +28,12 @@ channels are verified in PROGRESS. Broader manual/device acceptance remains sepa
   checkout based on 4555a80. Automated, resource and build results plus explicit native,
   accessibility and hosted-server gaps are recorded in the F-077 PROGRESS handoff.
   No real account or personal task store was used. No release is claimed.
+- **CI follow-up (2026-11-03):** initial `a14dade` macOS/Android builds pass;
+  Linux fails missing gettext-template keys and an incorrect effective-visibility
+  assertion on an unshown test owner. Mark dynamic branches for extraction, add
+  generated template entries and use the existing own-visibility test helper.
+  Real extraction regression fails before the fix and passes afterwards; hosted
+  verification of corrected Linux jobs is pending. See the CI PROGRESS handoff.
 
 ## B-185 — Linux large-text keyboard test omits the new font dropdown
 

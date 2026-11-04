@@ -26,6 +26,13 @@ CALLBACK_KEYS = {
     "Sync folder copied and verified. This device now uses momentum.",
     "The saved connection changed. The folder was not switched.",
     "Folder copy could not finish.",
+    "Nextcloud syncs through your personal server.",
+    "LibreSync connects nearby linked devices without a server.",
+    "Tasks stay on this device. Saved connections are preserved.",
+    "Saving credentials… Wait before testing the saved connection.",
+    "Credentials could not be saved. Check your system keyring and enter them again.",
+    "Connection succeeded. No tasks were synced.",
+    "Connection failed. Check the server URL, username, app password and network, then try again.",
 }
 
 

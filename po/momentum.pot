@@ -4306,3 +4306,111 @@ msgid ""
 "custom installed font to System, and retain keyboard access at large text "
 "sizes."
 msgstr ""
+
+#: data/resources/ui/prefs.blp:164
+msgid "Sync overview"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:177
+msgid "Show error details…"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:192
+msgid "Connect to Nextcloud"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:193
+msgid ""
+"Enter your server base URL, for example https://cloud.example.com or https://"
+"example.com/nextcloud. Include an installation subfolder, but no WebDAV "
+"path. Connection fields save automatically."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:198
+msgid "Create an app password"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:199
+msgid ""
+"In Nextcloud, open Personal settings → Security → Devices &amp; sessions. "
+"Create an app password for Momentum and enter it above."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:203
+msgid "Connection test"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:204 crates/app/src/prefs.rs:946
+#: crates/app/src/prefs.rs:962 crates/app/src/prefs.rs:982
+msgid "Tests the saved connection without syncing or changing tasks."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:208
+msgid "Test saved connection"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:212
+msgid "Advanced Nextcloud options"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:213
+msgid "Shared folder, encryption, compression and upgrades"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:215
+msgid "Use the same folder on every device"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:216
+msgid ""
+"The folder is inside your Nextcloud files. Keep the folder and encryption "
+"password the same on every device."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:244
+msgid "Automatic and background sync"
+msgstr ""
+
+#: crates/app/src/prefs.rs:901 crates/app/src/prefs.rs:255
+msgid "Tasks stay on this device. Saved connections are preserved."
+msgstr ""
+
+#: crates/app/src/prefs.rs:910
+msgid "Pending changes"
+msgstr ""
+
+#: crates/app/src/prefs.rs:922
+msgid "Check your connection settings, then retry."
+msgstr ""
+
+#: crates/app/src/prefs.rs:943 crates/app/src/prefs.rs:951
+msgid "Saving credentials… Wait before testing the saved connection."
+msgstr ""
+
+#: crates/app/src/prefs.rs:953
+msgid ""
+"Credentials could not be saved. Check your system keyring and enter them "
+"again."
+msgstr ""
+
+#: crates/app/src/prefs.rs:253
+msgid "Nextcloud syncs through your personal server."
+msgstr ""
+
+#: crates/app/src/prefs.rs:254
+msgid "LibreSync connects nearby linked devices without a server."
+msgstr ""
+
+#: crates/app/src/prefs.rs:1032
+msgid "Testing saved connection…"
+msgstr ""
+
+#: crates/app/src/prefs.rs:1052
+msgid "Connection succeeded. No tasks were synced."
+msgstr ""
+
+#: crates/app/src/prefs.rs:1054
+msgid ""
+"Connection failed. Check the server URL, username, app password and network, "
+"then try again."
+msgstr ""
