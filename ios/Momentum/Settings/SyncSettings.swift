@@ -4,6 +4,35 @@ import MomentumKit
 import MomentumMobile
 import SwiftUI
 
+/// Decorative symbols give way to text at accessibility sizes so labels keep
+/// the available line width in compact settings forms.
+private struct SyncSettingsLabel: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let title: LocalizedStringKey
+    let symbol: String
+    var subtitle: LocalizedStringKey?
+
+    init(_ title: LocalizedStringKey, symbol: String, subtitle: LocalizedStringKey? = nil) {
+        self.title = title
+        self.symbol = symbol
+        self.subtitle = subtitle
+    }
+
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).foregroundStyle(Color.primary)
+                if let subtitle {
+                    Text(subtitle).mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } else {
+            SettingsLabel(title, symbol: symbol, subtitle: subtitle)
+        }
+    }
+}
+
 struct SyncSettings: View {
     @Environment(MobileAppModel.self) private var model
     @Environment(\.settingsDestination) private var settingsDestination
@@ -14,6 +43,7 @@ struct SyncSettings: View {
     @State private var confirmingFolderCopy = false
     @State private var confirmingOptimizedUpgrade = false
     @State private var optimizedUpgradeIdentity = ""
+    @State private var advancedExpanded = false
 
     var body: some View {
         Form {
@@ -30,7 +60,7 @@ struct SyncSettings: View {
             Section {
                 if state.allowed {
                     NavigationLink { SyncProviderSettings(state: state) } label: {
-                        SettingsLabel("Sync Provider", symbol: "network", subtitle: LocalizedStringKey(state.provider.label))
+                        SyncSettingsLabel("Sync Provider", symbol: "network", subtitle: LocalizedStringKey(state.provider.label))
                     }
                     .accessibilityIdentifier("sync-provider").settingsTarget("sync.provider")
                 } else {
@@ -38,87 +68,48 @@ struct SyncSettings: View {
                         .accessibilityIdentifier("sync-provider-readonly")
                 }
             } footer: {
-                Text("Sync is optional. Turning it off keeps your tasks and saved connection on this device.")
+                Text(state.provider.setupExplanation)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
-            Section {
-                Toggle("Sync app settings", isOn: Binding(
-                    get: { model.appSettingsSync?.enabled == true },
-                    set: { value in Task { await model.setAppSettingsSync(value) } })).settingsTarget("sync.settings")
-                    .disabled(!state.allowed || model.worker == nil)
-                if let status = model.appSettingsSync, status.enabled, !status.bootstrapRequired {
-                    if status.pendingKeys > 0 {
-                        Label("App settings waiting to sync", systemImage: "clock")
-                    } else if status.lastSuccessMs > 0, status.error == nil {
-                        Label("App settings are up to date", systemImage: "checkmark.circle")
-                    }
-                    if status.lastSuccessMs > 0 {
-                        LabeledContent("Last settings sync") {
-                            Text(Date(timeIntervalSince1970: Double(status.lastSuccessMs) / 1_000), style: .relative)
-                        }
-                    }
-                }
-                if model.appSettingsSync?.bootstrapRequired == true, let reviewID = model.appSettingsSync?.reviewId,
-                   let remote = model.appSettingsSync?.remoteSettingsJson {
-                    Text("This device and your other devices have saved settings. Choose which settings to start with.")
-                    DisclosureGroup("This device") {
-                        ForEach(PortableAppSettings.summary((try? PortableAppSettings.encode(model.defaults)) ?? "")) { item in
-                            LabeledContent(item.label, value: item.value)
-                        }
-                    }
-                    DisclosureGroup("Synced settings") {
-                        ForEach(PortableAppSettings.summary(remote)) { item in LabeledContent(item.label, value: item.value) }
-                    }
-                    Button("Use this device’s settings") { Task { await model.chooseAppSettingsBootstrap(.useLocal, reviewID: reviewID) } }
-                        .disabled(model.canRetryAppSettings)
-                    Button("Use synced settings") { Task { await model.chooseAppSettingsBootstrap(.useRemote, reviewID: reviewID) } }
-                        .disabled(model.canRetryAppSettings)
-                }
-                if let error = model.appSettingsError {
-                    Text(error).foregroundStyle(.red).textSelection(.enabled)
-                    if model.canRetryAppSettings {
-                        Button("Retry") { Task { await model.retryAppSettings() } }
-                    }
-                }
-                if let error = model.appSettingsSync?.error {
-                    Text(error).foregroundStyle(.red).textSelection(.enabled)
-                    Button("Retry") { Task { await state.syncNow(); await model.refreshAppSettings() } }
-                }
-            } header: { Text("App settings") } footer: {
-                Text("Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local.")
-                    .foregroundStyle(AccentTheme.secondaryText)
-            }
-            if state.provider != .off, state.allowed {
-                Section {
-                    Toggle("Sync in the background", isOn: $backgroundSync).settingsTarget("sync.background")
-                        .disabled(state.provider != .nextcloud)
-                        .accessibilityIdentifier("sync-background")
-                } header: { Text("Background").foregroundStyle(Color.primary) }
-                footer: {
-                    Text(state.provider == .nextcloud
-                         ? "iOS may wake Momentum now and then for one exchange while it is closed. Requires Sync Automatically; Low Power Mode pauses it."
-                         : "LibreSync talks directly to nearby devices, so it syncs only while Momentum is open.")
-                        .foregroundStyle(AccentTheme.secondaryText)
-                }
+            if state.provider != .nextcloud, let failure = state.failure {
+                SyncFailureSection(state: state, failure: failure, focus: $failureFocused)
             }
             if state.provider == .nextcloud {
                 status
+                if let failure = state.failure {
+                    SyncFailureSection(state: state, failure: failure, focus: $failureFocused)
+                }
+                if state.loaded { connectionTest }
                 if state.loading { ProgressView("Loading Connection…") }
-                if state.loaded { connection }
+                if state.loaded { connection; timing }
             } else if state.provider == .libresync {
                 libreSync.settingsTarget("sync.libresync")
+                if state.loaded { connectionTest }
             }
-            if state.provider != .off, state.loaded {
-                connectionTest
-            }
-            if let failure = state.failure {
-                SyncFailureSection(state: state, failure: failure, focus: $failureFocused)
-            }
+            appSettings
         }
         .navigationTitle("Sync")
         .navigationBarTitleDisplayMode(.inline)
         .momentumNavigationCanvas()
-        .onChange(of: state.failure) { _, failure in if failure != nil { failureFocused = true } }
+        .toolbar {
+            if state.provider == .nextcloud, state.loaded, state.hasUnsavedChanges {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save Connection", systemImage: "checkmark") {
+                        Task { if await state.save() { savedFocused = true } }
+                    }
+                    .disabled(!state.allowed || state.saving || state.folderCopyInProgress)
+                    .accessibilityIdentifier("sync-save-toolbar")
+                }
+            }
+        }
+        .onChange(of: state.failure) { _, failure in
+            if failure != nil { failureFocused = true }
+            revealAdvancedIfNeeded()
+        }
+        .onChange(of: state.failureKind) { _, _ in revealAdvancedIfNeeded() }
+        .onChange(of: state.folderCopy) { _, _ in revealAdvancedIfNeeded() }
+        .onChange(of: settingsDestination) { _, _ in revealAdvancedIfNeeded() }
+        .onAppear { revealAdvancedIfNeeded() }
         .task { await model.refreshAppSettings() }
         .onDisappear { state.cancelFolderCopy() }
         .alert("Upgrade to optimized sync?", isPresented: $confirmingOptimizedUpgrade) {
@@ -135,15 +126,96 @@ struct SyncSettings: View {
         }
     }
 
+    private var folderCopyNeedsAttention: Bool {
+        if case .failure = state.folderCopy { return true }
+        return false
+    }
+
+    private func revealAdvancedIfNeeded() {
+        if ["sync.compression", "sync.folder-copy"].contains(settingsDestination ?? "") ||
+            state.configurationIssue == .folderRequired && state.failure == .configuration ||
+            state.failureKind == .encryptionPasswordMissing || state.failureKind == .encryptionPasswordWrong ||
+            state.folderCopy != .idle {
+            advancedExpanded = true
+        }
+    }
+
+    private var appSettings: some View {
+        Section {
+            Toggle("Sync app settings", isOn: Binding(
+                get: { model.appSettingsSync?.enabled == true },
+                set: { value in Task { await model.setAppSettingsSync(value) } })).settingsTarget("sync.settings")
+                .disabled(!state.allowed || model.worker == nil)
+            if let status = model.appSettingsSync, status.enabled, !status.bootstrapRequired {
+                if status.pendingKeys > 0 {
+                    Label("App settings waiting to sync", systemImage: "clock")
+                } else if status.lastSuccessMs > 0, status.error == nil {
+                    Label("App settings are up to date", systemImage: "checkmark.circle")
+                }
+                if status.lastSuccessMs > 0 {
+                    LabeledContent("Last settings sync") {
+                        Text(Date(timeIntervalSince1970: Double(status.lastSuccessMs) / 1_000), style: .relative)
+                    }
+                }
+            }
+            if model.appSettingsSync?.bootstrapRequired == true, let reviewID = model.appSettingsSync?.reviewId,
+               let remote = model.appSettingsSync?.remoteSettingsJson {
+                Text("This device and your other devices have saved settings. Choose which settings to start with.")
+                DisclosureGroup("This device") {
+                    ForEach(PortableAppSettings.summary((try? PortableAppSettings.encode(model.defaults)) ?? "")) { item in
+                        LabeledContent(item.label, value: item.value)
+                    }
+                }
+                DisclosureGroup("Synced settings") {
+                    ForEach(PortableAppSettings.summary(remote)) { item in LabeledContent(item.label, value: item.value) }
+                }
+                Button("Use this device’s settings") { Task { await model.chooseAppSettingsBootstrap(.useLocal, reviewID: reviewID) } }
+                    .disabled(model.canRetryAppSettings)
+                Button("Use synced settings") { Task { await model.chooseAppSettingsBootstrap(.useRemote, reviewID: reviewID) } }
+                    .disabled(model.canRetryAppSettings)
+            }
+            if let error = model.appSettingsError {
+                Text(error).foregroundStyle(.red).textSelection(.enabled)
+                if model.canRetryAppSettings {
+                    Button("Retry") { Task { await model.retryAppSettings() } }
+                }
+            }
+            if let error = model.appSettingsSync?.error {
+                Text(error).foregroundStyle(.red).textSelection(.enabled)
+                Button("Retry") { Task { await state.syncNow(); await model.refreshAppSettings() } }
+            }
+        } header: { Text("App settings") } footer: {
+            Text("Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local.")
+                .foregroundStyle(AccentTheme.secondaryText)
+        }
+    }
+
+    private var timing: some View {
+        Section {
+            Toggle("Sync Automatically", isOn: $state.draft.automatic).settingsTarget("sync.automatic")
+            Toggle("Sync in the background", isOn: $backgroundSync).settingsTarget("sync.background")
+                .accessibilityIdentifier("sync-background")
+            if state.hasUnsavedChanges {
+                Text("Save your changes before syncing.")
+                    .foregroundStyle(AccentTheme.secondaryText)
+            }
+        } header: { Text("When to sync").foregroundStyle(Color.primary) }
+        footer: {
+            Text("iOS may wake Momentum now and then for one exchange while it is closed. Requires Sync Automatically; Low Power Mode pauses it.")
+                .foregroundStyle(AccentTheme.secondaryText)
+        }
+        .disabled(state.folderCopyInProgress || state.saving)
+    }
+
     private var connectionTest: some View {
         Section {
             Button {
                 Task { await state.testConnection() }
             } label: {
-                SettingsLabel("Test Connection", symbol: "network.badge.shield.half.filled")
+                SyncSettingsLabel("Test Connection", symbol: "network.badge.shield.half.filled")
                     .frame(minHeight: 44)
             }
-            .disabled(!state.canTestConnection)
+            .disabled(!state.canTestConnection || state.folderCopyInProgress)
             .accessibilityIdentifier("sync-test-connection")
 
             switch state.connectionTest {
@@ -160,7 +232,8 @@ struct SyncSettings: View {
                 AccessibleErrorMessage(String(localized: "Connection test failed: \(message)"))
                     .accessibilityIdentifier("sync-test-failure")
             }
-        } footer: {
+        } header: { Text("Check connection").foregroundStyle(Color.primary) }
+        footer: {
             Text(state.provider == .libresync
                  ? "Checks the link to a paired device without changing your tasks."
                  : "Checks the saved server and credentials without uploading or downloading tasks.")
@@ -185,13 +258,13 @@ struct SyncSettings: View {
                     LabeledContent("Pending Changes", value: status.pendingOps.formatted())
                 }
                 Button { Task { await state.syncNow() } } label: {
-                    SettingsLabel("Sync Now", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
+                    SyncSettingsLabel("Sync Now", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
                         .frame(minHeight: 44)
                 }
-                .disabled(!state.canSync)
+                .disabled(!state.canSync || state.folderCopyInProgress)
                 .accessibilityIdentifier("sync-now").settingsTarget("sync.status")
                 NavigationLink { LibreSyncSettings(state: nearby) } label: {
-                    SettingsLabel("Nearby Devices", symbol: "antenna.radiowaves.left.and.right")
+                    SyncSettingsLabel("Nearby Devices", symbol: "antenna.radiowaves.left.and.right")
                         .frame(minHeight: 44)
                 }
                 .disabled(nearby.phase != .running)
@@ -214,6 +287,16 @@ struct SyncSettings: View {
 
     private var status: some View {
         Section {
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                Label(SyncStatusPresentation(state: state).text(now: context.date),
+                      systemImage: SyncStatusPresentation(state: state).symbol)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("sync-overview-status")
+            }
+            if state.hasUnsavedChanges {
+                Label("Save your changes before syncing.", systemImage: "pencil.circle")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if state.lowPowerMode {
                 Label("Automatic sync is paused in Low Power Mode.", systemImage: "battery.25percent")
                     .fixedSize(horizontal: false, vertical: true)
@@ -232,12 +315,13 @@ struct SyncSettings: View {
                 LabeledContent("Pending Changes", value: status.pendingOps.formatted())
             }
             Button { Task { await state.syncNow() } } label: {
-                SettingsLabel("Sync Now", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
+                SyncSettingsLabel("Sync Now", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
                     .frame(minHeight: 44)
             }
-            .disabled(!state.canSync)
+            .disabled(!state.canSync || state.folderCopyInProgress)
             .accessibilityIdentifier("sync-now").settingsTarget("sync.status")
-        } footer: {
+        } header: { Text("Sync status").foregroundStyle(Color.primary) }
+        footer: {
             Text(state.lowPowerMode
                  ? "Sync Now remains available. Automatic sync resumes when Low Power Mode turns off."
                  : backgroundSync
@@ -259,91 +343,78 @@ struct SyncSettings: View {
         Group {
             Section {
                 field("Server URL") {
-                    TextField("Server URL", text: $state.draft.serverURL)
+                    TextField("Server URL", text: $state.draft.serverURL, prompt: Text(verbatim: "https://cloud.example.com"))
                         .keyboardType(.URL).textContentType(.URL)
+                        .accessibilityLabel("Server URL")
                         .accessibilityIdentifier("sync-server").settingsTarget("sync.nextcloud")
                 }
+                Text("Use your Nextcloud website address, including its installation folder if it has one.")
+                    .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
                 field("Username") {
                     TextField("Username", text: $state.draft.userName)
-                        .textContentType(.username).accessibilityIdentifier("sync-username")
+                        .textContentType(.username).accessibilityLabel("Username")
+                        .accessibilityIdentifier("sync-username")
                 }
                 field("App Password") {
                     SecureField("App Password", text: $state.draft.password)
-                        .textContentType(.password).accessibilityIdentifier("sync-password")
+                        .textContentType(.password).accessibilityLabel("App Password")
+                        .accessibilityIdentifier("sync-password")
                 }
-                field("Sync Folder") {
-                    TextField("Sync Folder", text: $state.draft.folder)
-                        .accessibilityIdentifier("sync-folder")
+                DisclosureGroup("Where do I get an app password?") {
+                    Text("Open Nextcloud in your browser. Go to Personal settings → Security, create an app password for Momentum, then paste it here.")
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            } header: { Text("Connection").foregroundStyle(Color.primary) }
+                if !state.hasUnsavedChanges {
+                    Label("Connection Saved", systemImage: "checkmark.circle")
+                        .accessibilityIdentifier("sync-saved")
+                        .accessibilityFocused($savedFocused)
+                }
+            } header: { Text("Nextcloud account").foregroundStyle(Color.primary) }
             footer: {
-                Text("Use an app password from your Nextcloud security settings. Connection details are saved securely on this device.")
+                Text("Connection details are saved securely on this device. Saving does not test the server or sync your tasks.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .disabled(state.folderCopyInProgress)
 
-            if state.draft.folder == "momentum", settingsDestination == "sync.folder-copy" {
-                Text("The Momentum folder is already selected.").settingsTarget("sync.folder-copy")
-            }
-            if state.draft.folder != "momentum" || state.folderCopy != .idle {
-                Section {
-                    switch state.folderCopy {
-                    case .copying:
-                        ProgressView("Copying and verifying files…")
-                        Button("Cancel") { state.cancelFolderCopy() }
-                    case .saving:
-                        ProgressView("Saving connection…")
-                    case .copied:
-                        Label("Sync folder copied and verified. This device now uses momentum.", systemImage: "checkmark.circle")
-                    case .failure(let message):
-                        AccessibleErrorMessage(message)
-                    case .idle: EmptyView()
-                    }
-                    if !state.folderCopyInProgress, state.draft.folder != "momentum" {
-                        Button("Copy to Momentum folder…") { confirmingFolderCopy = true }
-                            .disabled(!state.canCopyFolder || model.isRestoringBackup)
-                            .accessibilityIdentifier("sync-copy-folder").settingsTarget("sync.folder-copy")
-                    }
-                } footer: {
-                    Text("The original folder stays intact. The saved folder changes only after every copied file is verified.")
-                }
-            }
-
             Section {
-                Toggle("Sync Automatically", isOn: $state.draft.automatic).settingsTarget("sync.automatic")
-                Toggle("Compress Sync File", isOn: $state.draft.compress).settingsTarget("sync.compression")
-                if state.optimizedSyncEnabled {
-                    Label("Optimized sync enabled", systemImage: "checkmark.circle")
-                } else {
-                    Button("Upgrade to optimized sync…") {
-                        optimizedUpgradeIdentity = state.draft.identity
-                        confirmingOptimizedUpgrade = true
+                DisclosureGroup("Advanced Nextcloud options", isExpanded: Binding(
+                    get: { advancedExpanded || state.folderCopyInProgress || folderCopyNeedsAttention },
+                    set: { advancedExpanded = $0 })) {
+                    field("Sync Folder") {
+                        TextField("Sync Folder", text: $state.draft.folder)
+                            .accessibilityLabel("Sync Folder")
+                            .accessibilityIdentifier("sync-folder")
+                    }.disabled(state.folderCopyInProgress)
+                    Text("Use the same folder on every device. New connections use momentum; keep your existing folder when connecting to existing tasks.")
+                        .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                    field("Encryption Password (Optional)") {
+                        SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
+                            .accessibilityLabel("Encryption Password (Optional)")
+                            .accessibilityIdentifier("sync-encryption-password")
+                    }.disabled(state.folderCopyInProgress)
+                    Text("Use the same encryption password on every device. This is separate from your Nextcloud app password.")
+                        .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                    Toggle("Compress Sync File", isOn: $state.draft.compress).settingsTarget("sync.compression")
+                        .disabled(state.folderCopyInProgress)
+                    if state.optimizedSyncEnabled {
+                        Label("Optimized sync enabled", systemImage: "checkmark.circle")
+                    } else {
+                        Button("Upgrade to optimized sync…") {
+                            optimizedUpgradeIdentity = state.draft.identity
+                            confirmingOptimizedUpgrade = true
+                        }
+                            .disabled(state.hasUnsavedChanges || !state.canSync || state.isSyncing || state.folderCopyInProgress)
                     }
-                        .disabled(state.hasUnsavedChanges || !state.canSync || state.isSyncing)
-                }
-                Text("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.")
-                    .mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
+                    Text("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.")
+                        .mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
 
-                field("Encryption Password (Optional)") {
-                    SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
-                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    folderCopyControls
                 }
-            } header: { Text("Options").foregroundStyle(Color.primary) }
-            footer: {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Use the same encryption password on every device. Automatic sync combines nearby edits and checks for changes while the app is open.")
-                    if !state.hasUnsavedChanges {
-                        Text("Connection Saved")
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("sync-saved")
-                            .accessibilityFocused($savedFocused)
-                    }
-                }
-                .foregroundStyle(AccentTheme.secondaryText)
             }
-            .disabled(state.folderCopyInProgress)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
             if state.hasUnsavedChanges || state.saving {
                 Section {
                     if state.failure == .configuration, let issue = state.configurationIssue {
@@ -352,7 +423,7 @@ struct SyncSettings: View {
                     Button {
                         Task { if await state.save() { savedFocused = true } }
                     } label: {
-                        SettingsLabel("Save Connection", symbol: "checkmark.circle.fill")
+                        SyncSettingsLabel("Save Connection", symbol: "checkmark.circle.fill")
                             .frame(minHeight: 44)
                     }
                     .accessibilityIdentifier("sync-save")
@@ -364,6 +435,37 @@ struct SyncSettings: View {
         }
         .disabled(state.saving)
     }
+
+    @ViewBuilder private var folderCopyControls: some View {
+        if state.draft.folder == "momentum", settingsDestination == "sync.folder-copy" {
+            Text("The Momentum folder is already selected.").settingsTarget("sync.folder-copy")
+        }
+        if state.draft.folder != "momentum" || state.folderCopy != .idle {
+            Group {
+                switch state.folderCopy {
+                case .copying:
+                    ProgressView("Copying and verifying files…")
+                    Button("Cancel") { state.cancelFolderCopy() }
+                case .saving:
+                    ProgressView("Saving connection…")
+                case .copied:
+                    Label("Sync folder copied and verified. This device now uses momentum.", systemImage: "checkmark.circle")
+                case .failure(let message):
+                    AccessibleErrorMessage(message)
+                case .idle: EmptyView()
+                }
+                if !state.folderCopyInProgress, state.draft.folder != "momentum" {
+                    Button("Copy to Momentum folder…") { confirmingFolderCopy = true }
+                        .disabled(!state.canCopyFolder || model.isRestoringBackup)
+                        .accessibilityIdentifier("sync-copy-folder").settingsTarget("sync.folder-copy")
+                }
+                Text("The original folder stays intact. The saved folder changes only after every copied file is verified.")
+                    .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+            }
+        }
+
+    }
+
 }
 
 extension NextcloudSyncState.Failure {
@@ -371,7 +473,7 @@ extension NextcloudSyncState.Failure {
         switch self {
         case .credentialsRead: "The saved connection couldn’t be read. Unlock your device and try again. Your saved details have not been replaced."
         case .credentialsWrite: "The connection couldn’t be saved. Your changes are still here. Unlock your device and try again."
-        case .configuration: "Correct the connection field described above, then save again."
+        case .configuration: "Check the connection fields, then save again."
         case .connection: "Check your server address, app password, encryption password, and the sync file’s compatibility, then try again."
         case .network: "Sync couldn’t finish. Check your connection and server, then try again. Your local changes are safe."
         case .busy: "Another exchange is finishing. Wait a moment, then try again."
@@ -414,13 +516,13 @@ struct SyncFailureSection: View {
                     default: await state.syncNow()
                     }
                 }
-            } label: { SettingsLabel("Try Again", symbol: "arrow.clockwise") }
+            } label: { SyncSettingsLabel("Try Again", symbol: "arrow.clockwise") }
             .disabled(state.loading || state.saving || state.isSyncing ||
                       (failure != .credentialsRead && failure != .credentialsWrite && !state.canSync))
             .accessibilityIdentifier("sync-retry")
             if state.canReplaceServerCopy {
                 Button(role: .destructive) { confirmReplace = true } label: {
-                    SettingsLabel("Replace Server Copy…", symbol: "arrow.up.doc.on.clipboard")
+                    SyncSettingsLabel("Replace Server Copy…", symbol: "arrow.up.doc.on.clipboard")
                 }
                 .disabled(state.isSyncing || !state.canSync)
                 .accessibilityIdentifier("sync-replace-server-copy")
@@ -482,6 +584,17 @@ private extension NextcloudConnectionIssue {
     }
 }
 
+private extension SyncMethod {
+    var setupExplanation: LocalizedStringKey {
+        switch self {
+        case .off: "Your tasks stay on this device. Choose Nextcloud for a server or LibreSync for nearby devices."
+        case .nextcloud: "Sync through your Nextcloud server. Use the same account and sync folder on every device."
+        case .libresync: "Sync directly with linked nearby devices. No server or account is needed."
+        }
+    }
+
+}
+
 private struct SyncProviderSettings: View {
     @Bindable var state: NextcloudSyncState
     @Environment(\.dismiss) private var dismiss
@@ -492,7 +605,12 @@ private struct SyncProviderSettings: View {
                     Task { await state.select(provider); dismiss() }
                 } label: {
                     HStack {
-                        Text(provider.label).fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(provider.label)
+                            Text(provider.setupExplanation)
+                                .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
                         Spacer()
                         if state.provider == provider {
                             Image(systemName: "checkmark").accessibilityHidden(true)
@@ -531,7 +649,8 @@ private struct SyncProviderSettings: View {
     var symbol: String {
         if needsAttention { return "exclamationmark.circle" }
         if syncing { return "arrow.trianglehead.2.clockwise.rotate.90" }
-        return state.provider == .libresync ? "antenna.radiowaves.left.and.right" : "checkmark.circle"
+        if state.provider == .libresync { return "antenna.radiowaves.left.and.right" }
+        return lastSync == nil ? "clock" : "checkmark.circle"
     }
 
     private var lastSync: Date? {

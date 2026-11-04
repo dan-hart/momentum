@@ -145,3 +145,11 @@ public struct SettingsRouteState: Equatable, Sendable {
         destination = SettingsDiscovery.entries(platform: platform).contains { $0.id == id } ? id : nil
     }
 }
+
+/// Keep search destinations and folder-copy progress/recovery reachable inside the
+/// advanced disclosure without ever selecting a different sync provider.
+public enum SyncSettingsDisclosure {
+    public static func requiresExpansion(destination: String?, operationActive: Bool, operationMessage: String?) -> Bool {
+        operationActive || operationMessage != nil || destination == "sync.compression" || destination == "sync.folder-copy"
+    }
+}

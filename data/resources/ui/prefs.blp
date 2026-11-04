@@ -161,84 +161,94 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     title: _("Sync & Devices");
     icon-name: "emblem-synchronizing-symbolic";
     Adw.PreferencesGroup {
-      title: _("Sync");
+      title: _("Sync overview");
       description: _("Choose one service. Switching keeps your tasks and saved connections.");
-
-      Adw.ActionRow sync_status_row { name: "sync.status"; title: _("Sync status"); subtitle: _("Choose a provider to connect your devices"); }
+      Adw.ActionRow sync_status_row {
+        name: "sync.status";
+        title: _("Sync status");
+        subtitle-lines: 0;
+      }
+      Adw.ActionRow sync_error_row {
+        title: _("Sync needs attention");
+        subtitle-lines: 0;
+        visible: false;
+      }
+      Adw.ButtonRow sync_details_row {
+        title: _("Show error details…");
+        visible: false;
+      }
+      Adw.ButtonRow sync_now_row {
+        title: _("Sync Now");
+        start-icon-name: "view-refresh-symbolic";
+        action-name: "app.sync";
+      }
       Adw.ComboRow method_row {
         title: _("Sync method");
         subtitle: _("Off by default. Nothing leaves this device until you turn it on.");
       }
-          Adw.SwitchRow background_sync_row {
-        title: _("Sync in the background");
-        subtitle: _("Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works.");
-      }
     }
 
     Adw.PreferencesGroup nextcloud_group {
-      title: _("Nextcloud");
-      description: _("Use the same sync folder and encryption password on your devices.");
-
-      Adw.EntryRow server_row {
-        title: _("Server URL");
+      title: _("Connect to Nextcloud");
+      description: _("Enter your server base URL, for example https://cloud.example.com or https://example.com/nextcloud. Include an installation subfolder, but no WebDAV path. Connection fields save automatically.");
+      Adw.EntryRow server_row { title: _("Server URL"); }
+      Adw.EntryRow user_row { title: _("Username"); }
+      Adw.PasswordEntryRow password_row { title: _("App password"); }
+      Adw.ActionRow app_password_help_row {
+        title: _("Create an app password");
+        subtitle: _("In Nextcloud, open Personal settings → Security → Devices &amp; sessions. Create an app password for Momentum and enter it above.");
+        subtitle-lines: 0;
       }
-
-      Adw.EntryRow user_row {
-        title: _("Username");
+      Adw.ActionRow connection_test_status_row {
+        title: _("Connection test");
+        subtitle: _("Tests the saved connection without syncing or changing tasks.");
+        subtitle-lines: 0;
       }
-
-      Adw.PasswordEntryRow password_row {
-        title: _("App password");
+      Adw.ButtonRow connection_test_row {
+        title: _("Test saved connection");
+        start-icon-name: "network-server-symbolic";
       }
-
-      Adw.EntryRow folder_row {
-        title: _("Sync folder");
-      }
-
-      Adw.ButtonRow migrate_folder_row {
-        title: _("Copy to Momentum folder…");
-        start-icon-name: "folder-copy-symbolic";
-      }
-
-      Adw.PasswordEntryRow encrypt_row {
-        title: _("Encryption password");
-      }
-
-      Adw.SwitchRow auto_row {
-        title: _("Sync automatically");
-        subtitle: _("At startup, frequently while active, less often while idle, and shortly after changes");
-      }
-
-      Adw.ButtonRow optimized_row {
-        title: _("Upgrade to optimized sync…");
-        start-icon-name: "view-refresh-symbolic";
-      }
-
-      Adw.SwitchRow compress_row {
-        title: _("Compress sync file");
-      }
-
-      Adw.ButtonRow {
-        title: _("Sync Now");
-        start-icon-name: "view-refresh-symbolic";
-        action-name: "app.sync";
+      Adw.ExpanderRow advanced_nextcloud_row {
+        title: _("Advanced Nextcloud options");
+        subtitle: _("Shared folder, encryption, compression and upgrades");
+        Adw.ActionRow {
+          title: _("Use the same folder on every device");
+          subtitle: _("The folder is inside your Nextcloud files. Keep the folder and encryption password the same on every device.");
+          subtitle-lines: 0;
+        }
+        Adw.EntryRow folder_row { title: _("Sync folder"); }
+        Adw.PasswordEntryRow encrypt_row { title: _("Encryption password"); }
+        Adw.SwitchRow compress_row { title: _("Compress sync file"); }
+        Adw.ButtonRow optimized_row {
+          title: _("Upgrade to optimized sync…");
+          start-icon-name: "view-refresh-symbolic";
+        }
+        Adw.ButtonRow migrate_folder_row {
+          title: _("Copy to Momentum folder…");
+          start-icon-name: "folder-copy-symbolic";
+        }
       }
     }
 
     Adw.PreferencesGroup nearby_group {
       title: _("LibreSync");
       description: _("Sync directly with linked devices on your network. Changes sync automatically while this service is selected.");
-
       Adw.ButtonRow {
         title: _("Manage Devices…");
         start-icon-name: "computer-symbolic";
         action-name: "app.devices";
       }
+    }
 
-      Adw.ButtonRow {
-        title: _("Sync Devices Now");
-        start-icon-name: "view-refresh-symbolic";
-        action-name: "app.sync-devices";
+    Adw.PreferencesGroup timing_group {
+      title: _("Automatic and background sync");
+      Adw.SwitchRow auto_row {
+        title: _("Sync automatically");
+        subtitle: _("At startup, frequently while active, less often while idle, and shortly after changes");
+      }
+      Adw.SwitchRow background_sync_row {
+        title: _("Sync in the background");
+        subtitle: _("Keep syncing automatically while the window is closed. Turn this off to sync only while the window is open; Sync Now always works.");
       }
     }
 

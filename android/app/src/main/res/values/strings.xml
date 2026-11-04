@@ -309,4 +309,18 @@
     <string name="optimized_sync_enabled">Optimized sync enabled</string>
     <string name="optimized_sync_hint">Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.</string>
     <string name="upgrade">Upgrade</string>
+    <string name="sync_off_explanation">Tasks stay on this device. You can keep using Momentum offline.</string>
+    <string name="sync_provider_off_description">Off keeps your saved connections for later.</string>
+    <string name="sync_provider_nextcloud_description">Nextcloud syncs tasks through your own server.</string>
+    <string name="sync_provider_libresync_description">LibreSync connects nearby linked devices directly, without a server.</string>
+    <string name="nextcloud_setup_hint">Use the same server and sync folder on every device.</string>
+    <string name="nextcloud_server_hint">Enter your Nextcloud base URL, including its installation subfolder if needed. Do not enter a WebDAV file URL.</string>
+    <string name="nextcloud_app_password_hint">Create an app password in Nextcloud: Personal settings → Security. Use it here instead of your account password.</string>
+    <string name="sync_unsaved_connection">Unsaved connection changes. Save them before testing or syncing.</string>
+    <string name="nextcloud_test_saved_hint">Test connection checks the saved details without changing server files or syncing tasks. Saving details does not test the connection.</string>
+    <string name="nextcloud_advanced_show">Show advanced Nextcloud options</string>
+    <string name="nextcloud_advanced_hide">Hide advanced Nextcloud options</string>
+    <string name="nextcloud_folder_hint">The shared folder contains Momentum sync data. Use the same folder on every device; changing this field does not copy existing server data.</string>
+    <string name="sync_timing_heading">Automatic and background sync</string>
+    <string name="sync_timing_hint">Automatic sync keeps tasks up to date while using the app. Background sync also allows scheduled exchanges when Android permits them.</string>
 </resources>

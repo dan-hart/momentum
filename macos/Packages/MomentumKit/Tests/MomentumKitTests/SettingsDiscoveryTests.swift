@@ -5,6 +5,14 @@ import Testing
 @testable import MomentumKit
 
 @MainActor @Suite struct SettingsDiscoveryTests {
+    @Test func advancedSyncSearchAndOperationsStayVisible() {
+        #expect(SyncSettingsDisclosure.requiresExpansion(destination: "sync.compression", operationActive: false, operationMessage: nil))
+        #expect(SyncSettingsDisclosure.requiresExpansion(destination: "sync.folder-copy", operationActive: false, operationMessage: nil))
+        #expect(SyncSettingsDisclosure.requiresExpansion(destination: nil, operationActive: true, operationMessage: nil))
+        #expect(SyncSettingsDisclosure.requiresExpansion(destination: nil, operationActive: false, operationMessage: "Copy failed"))
+        #expect(!SyncSettingsDisclosure.requiresExpansion(destination: "sync.nextcloud", operationActive: false, operationMessage: nil))
+        #expect(!SyncSettingsDisclosure.requiresExpansion(destination: nil, operationActive: false, operationMessage: nil))
+    }
     @Test func nativeDirectoryHasUniqueKnownDestinationsAndEveryCategory() {
         for platform in [SettingsPlatform.macos, .ios] {
             let entries = SettingsDiscovery.entries(platform: platform)

@@ -244,9 +244,11 @@ private struct SyncSettings: SwiftUI.View {
     @AppStorage(PrefKey.nextcloudOptimizedConnections) private var optimizedConnections = "[]"
     @State private var confirmingOptimizedUpgrade = false
     @State private var optimizedUpgradeIdentity = ""
-    @State private var password = ""
-    @State private var encryption = ""
+    @State private var password = SyncCredentialDraft(account: Keychain.nextcloud)
+    @State private var encryption = SyncCredentialDraft(account: Keychain.encryption)
     @State private var confirmingFolderCopy = false
+    @State private var showAdvanced = false
+    @State private var connectionTest = NextcloudConnectionTest()
 
     var body: some SwiftUI.View {
         Form {
@@ -259,6 +261,143 @@ private struct SyncSettings: SwiftUI.View {
                 .disabled(state.syncInProgress)
             } footer: {
                 Text(String(localized: "Choose one service to keep your tasks in sync. Switching services keeps your tasks and saved connections."))
+            }
+            if state.syncAvailable {
+                Section(String(localized: "Status")) {
+                    SyncStatusBar().settingsTarget("sync.status")
+                        .disabled(connectionTest.isRunning || (method == "nextcloud" && !credentialsSaved))
+                    LabeledContent(String(localized: "Pending changes"), value: "\(state.syncStatus.pendingOps)")
+                    if lastTaskSync > 0 {
+                        LabeledContent(String(localized: "Last successful sync")) {
+                            Text(Date(timeIntervalSince1970: Double(lastTaskSync) / 1_000), style: .relative)
+                        }
+                    }
+                    if let kind = state.syncFailureKind, state.syncError != nil {
+                        Text(Strings.syncFailureHeadline(kind)).fontWeight(.semibold)
+                        Text(Strings.syncFailureRemedy(kind))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            if let target = SettingsNavigation.shared.destination, target.hasPrefix("sync."),
+               (["sync.nextcloud", "sync.automatic", "sync.compression", "sync.folder-copy"].contains(target) && method != "nextcloud") || (["sync.libresync", "sync.devices"].contains(target) && method != "libresync") || (["sync.status", "sync.background"].contains(target) && method == "off") {
+                Text(String(localized: "This setting belongs to an inactive sync provider. Choose that provider to edit its connection; opening this result does not change your provider.")).settingsTarget(target)
+            }
+            if state.isDemo {
+                Text(String(localized: "Sync is unavailable in preview mode. Open Momentum normally to sync your tasks."))
+            } else if method == SyncMethod.off.rawValue {
+                Text(String(localized: "Your tasks are stored on this Mac. Choose a service above to sync them with your other devices."))
+                    .foregroundStyle(.secondary)
+            }
+            if method == SyncMethod.nextcloud.rawValue {
+                Section(String(localized: "Nextcloud connection")) {
+                    Text(String(localized: "Sync through your own Nextcloud server."))
+                        .foregroundStyle(.secondary)
+                    TextField(String(localized: "Server URL"), text: $server, prompt: Text(verbatim: "https://cloud.example.com")).settingsTarget("sync.nextcloud")
+                    TextField(String(localized: "Username"), text: $user)
+                    SecureField(String(localized: "App password"), text: Binding(
+                        get: { password.value }, set: { connectionTest.cancel(); password.save($0, to: state.keychain) }
+                    )).disabled(!password.isLoaded)
+                    Text(String(localized: "Create an app password in Nextcloud: Personal settings → Security. Use it here instead of your login password."))
+                        .appFont(.caption).foregroundStyle(.secondary)
+                    Text(String(localized: "Use your server’s base URL, including any installation subfolder, for example https://cloud.example.com/nextcloud. Connection changes are saved automatically."))
+                        .appFont(.caption).foregroundStyle(.secondary)
+                }
+                .disabled(state.syncInProgress)
+                if password.hasError || encryption.hasError {
+                    Section {
+                        Label(String(localized: "Credentials need attention"), systemImage: "exclamationmark.triangle")
+                        Text(String(localized: "The credentials shown could not be read or saved in Keychain. Unlock your Keychain and retry before testing the connection or using Sync Now."))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(String(localized: "Retry Keychain")) {
+                            connectionTest.cancel()
+                            if password.hasError { password.retry(using: state.keychain) }
+                            if encryption.hasError { encryption.retry(using: state.keychain) }
+                        }
+                    }
+                }
+                Section {
+                    if connectionTest.isRunning {
+                        ProgressView(String(localized: "Testing saved connection…"))
+                        Button(String(localized: "Cancel")) { connectionTest.cancel() }
+                    } else {
+                        Button(String(localized: "Test saved connection")) {
+                            guard !state.isDemo, credentialsSaved, let saved = state.prefs.nextcloud(keychain: state.keychain) else { return }
+                            connectionTest.start(engine: state.engine, settings: saved)
+                        }
+                        .disabled(state.syncInProgress || !state.prefs.syncConfigured || !credentialsSaved)
+                    }
+                    Text(String(localized: "Checks saved connection details without syncing tasks. A successful test does not mean your tasks are up to date."))
+                        .appFont(.caption).foregroundStyle(.secondary)
+                    if connectionTest.succeeded == true {
+                        Label(String(localized: "Connection test passed"), systemImage: "checkmark.circle")
+                    }
+                    if let error = connectionTest.error {
+                        Label(String(localized: "Connection test failed"), systemImage: "exclamationmark.triangle")
+                        Text(error).textSelection(.enabled)
+                    }
+                }
+
+                Section(String(localized: "When")) {
+                    Toggle(String(localized: "Sync automatically"), isOn: $autoSync).settingsTarget("sync.automatic")
+                    backgroundSyncToggle
+                }
+                Section {
+                    DisclosureGroup(String(localized: "Advanced Nextcloud options"), isExpanded: Binding(
+                        get: { showAdvanced || SyncSettingsDisclosure.requiresExpansion(
+                            destination: SettingsNavigation.shared.destination,
+                            operationActive: state.folderCopyInProgress, operationMessage: state.folderCopyMessage) },
+                        set: { showAdvanced = $0 }
+                    )) {
+                        TextField(String(localized: "Folder"), text: $folder)
+                            .disabled(state.syncInProgress)
+                        Text(String(localized: "Use the same folder on every device. Changing this field does not move existing sync files."))
+                            .appFont(.caption).foregroundStyle(.secondary)
+                        SecureField(String(localized: "Encryption password"), text: Binding(
+                            get: { encryption.value }, set: { connectionTest.cancel(); encryption.save($0, to: state.keychain) }
+                        )).disabled(!encryption.isLoaded)
+                            .disabled(state.syncInProgress)
+                        Toggle(String(localized: "Compress the sync file"), isOn: $compress).settingsTarget("sync.compression")
+                        if state.prefs.nextcloudOptimized {
+                            Label(String(localized: "Optimized sync enabled"), systemImage: "checkmark.circle")
+                        } else {
+                            Button(String(localized: "Upgrade to optimized sync…")) {
+                                optimizedUpgradeIdentity = state.prefs.nextcloudConnectionIdentity
+                                confirmingOptimizedUpgrade = true
+                            }
+                                .disabled(state.isSyncing || !state.prefs.syncConfigured || !credentialsSaved)
+                        }
+                        Text(String(localized: "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."))
+                            .appFont(.caption).foregroundStyle(.secondary)
+                        if folder != "momentum" || state.folderCopyMessage != nil {
+                            Text(String(localized: "Copy to Momentum folder…")).settingsTarget("sync.folder-copy")
+                            if state.folderCopyInProgress {
+                                ProgressView(String(localized: "Copying and verifying files…"))
+                                Button(String(localized: "Cancel")) { state.cancelFolderCopy() }
+                            } else if folder != "momentum" {
+                                Button(String(localized: "Copy to Momentum folder…")) { confirmingFolderCopy = true }
+                                    .disabled(!state.canCopyFolder || !credentialsSaved)
+                            }
+                            if let message = state.folderCopyMessage { Text(message).textSelection(.enabled) }
+                            Text(String(localized: "The original folder stays intact. The saved folder changes only after every copied file is verified."))
+                                .appFont(.caption).foregroundStyle(.secondary)
+                        }
+
+                        if folder == "momentum", SettingsNavigation.shared.destination == "sync.folder-copy" {
+                            Text(String(localized: "The Momentum folder is already selected.")).settingsTarget("sync.folder-copy")
+                        }
+                    }
+                }
+            } else if method == SyncMethod.libresync.rawValue {
+                Section("LibreSync") {
+                    Text("LibreSync").settingsTarget("sync.libresync")
+                    Text(String(localized: "Your devices sync directly over the local network, end-to-end encrypted, with no server. Link them once with a six-digit code."))
+                    LabeledContent(String(localized: "Linked devices"), value: "\(state.syncStatus.linkedDevices)")
+                    Button(String(localized: "Manage Devices…")) { state.showDevices() }.settingsTarget("sync.devices")
+                }
+                Section(String(localized: "When")) {
+                    backgroundSyncToggle
+                }
             }
             Section(String(localized: "App settings")) {
                 Toggle(String(localized: "Sync app settings"), isOn: Binding(
@@ -303,102 +442,42 @@ private struct SyncSettings: SwiftUI.View {
                 if let error = state.appSettingsSync.error {
                     Text(error).foregroundStyle(.red).textSelection(.enabled)
                     Button(String(localized: "Retry")) { state.sync() }
+                        .disabled(connectionTest.isRunning || (method == "nextcloud" && !credentialsSaved))
                 }
             }
-            if let target = SettingsNavigation.shared.destination, target.hasPrefix("sync."),
-               (["sync.nextcloud", "sync.automatic", "sync.compression", "sync.folder-copy"].contains(target) && method != "nextcloud") || (["sync.libresync", "sync.devices"].contains(target) && method != "libresync") || (["sync.status", "sync.background"].contains(target) && method == "off") {
-                Text(String(localized: "This setting belongs to an inactive sync provider. Choose that provider to edit its connection; opening this result does not change your provider.")).settingsTarget(target)
-            }
-            if state.isDemo {
-                Text(String(localized: "Sync is unavailable in preview mode. Open Momentum normally to sync your tasks."))
-            } else if method == SyncMethod.off.rawValue {
-                Text(String(localized: "Your tasks are stored on this Mac. Choose a service above to sync them with your other devices."))
-                    .foregroundStyle(.secondary)
-            }
-            if method == SyncMethod.nextcloud.rawValue {
-                Section(String(localized: "Connection")) {
-                    TextField(String(localized: "Server URL"), text: $server, prompt: Text(verbatim: "https://cloud.example.com")).settingsTarget("sync.nextcloud")
-                    TextField(String(localized: "Username"), text: $user)
-                    SecureField(String(localized: "App password"), text: $password)
-                    TextField(String(localized: "Folder"), text: $folder)
-                    SecureField(String(localized: "Encryption password"), text: $encryption)
-                }
-                .disabled(state.syncInProgress)
 
-                if folder != "momentum" || state.folderCopyMessage != nil {
-                    Section {
-                        Text(String(localized: "Copy to Momentum folder…")).settingsTarget("sync.folder-copy")
-                        if state.folderCopyInProgress {
-                            ProgressView(String(localized: "Copying and verifying files…"))
-                            Button(String(localized: "Cancel")) { state.cancelFolderCopy() }
-                        } else if folder != "momentum" {
-                            Button(String(localized: "Copy to Momentum folder…")) { confirmingFolderCopy = true }
-                                .disabled(!state.canCopyFolder)
-                        }
-                        if let message = state.folderCopyMessage { Text(message).textSelection(.enabled) }
-                        Text(String(localized: "The original folder stays intact. The saved folder changes only after every copied file is verified."))
-                            .appFont(.caption).foregroundStyle(.secondary)
-                    }
-                }
-
-                Section(String(localized: "When")) {
-                    Toggle(String(localized: "Sync automatically"), isOn: $autoSync).settingsTarget("sync.automatic")
-                    backgroundSyncToggle
-                    Toggle(String(localized: "Compress the sync file"), isOn: $compress).settingsTarget("sync.compression")
-                    if state.prefs.nextcloudOptimized {
-                        Label(String(localized: "Optimized sync enabled"), systemImage: "checkmark.circle")
-                    } else {
-                        Button(String(localized: "Upgrade to optimized sync…")) {
-                            optimizedUpgradeIdentity = state.prefs.nextcloudConnectionIdentity
-                            confirmingOptimizedUpgrade = true
-                        }
-                            .disabled(state.isSyncing || !state.prefs.syncConfigured)
-                    }
-                    Text(String(localized: "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."))
-                        .appFont(.caption).foregroundStyle(.secondary)
-
-                }
-            } else if method == SyncMethod.libresync.rawValue {
-                Section("LibreSync") {
-                    Text("LibreSync").settingsTarget("sync.libresync")
-                    Text(String(localized: "Your devices sync directly over the local network, end-to-end encrypted, with no server. Link them once with a six-digit code."))
-                    LabeledContent(String(localized: "Linked devices"), value: "\(state.syncStatus.linkedDevices)")
-                    Button(String(localized: "Manage Devices…")) { state.showDevices() }.settingsTarget("sync.devices")
-                }
-                Section(String(localized: "When")) {
-                    backgroundSyncToggle
-                }
-            }
-            if method == "nextcloud", folder == "momentum", SettingsNavigation.shared.destination == "sync.folder-copy" {
-                Text(String(localized: "The Momentum folder is already selected.")).settingsTarget("sync.folder-copy")
-            }
-            if state.syncAvailable {
-                Section(String(localized: "Status")) {
-                    SyncStatusBar().settingsTarget("sync.status")
-                }
-            }
         }
         .formStyle(.grouped)
         .disabled(state.isDemo)
         .onAppear {
             guard !state.isDemo else { return }
-            password = state.keychain.get(Keychain.nextcloud) ?? ""
-            encryption = state.keychain.get(Keychain.encryption) ?? ""
+            password.load(from: state.keychain)
+            encryption.load(from: state.keychain)
         }
-        .onChange(of: method) { _, _ in state.preferencesChanged() }
+        .onChange(of: method) { _, _ in connectionTest.cancel(); state.preferencesChanged() }
+        .onChange(of: server) { _, _ in connectionTest.cancel() }
+        .onChange(of: user) { _, _ in connectionTest.cancel() }
+        .onChange(of: folder) { _, _ in connectionTest.cancel() }
+        .onChange(of: compress) { _, _ in connectionTest.cancel() }
+        .onChange(of: optimizedConnections) { _, _ in connectionTest.cancel() }
+        .onChange(of: state.syncInProgress) { _, active in if active { connectionTest.cancel() } }
         .onChange(of: backgroundSync) { _, _ in state.preferencesChanged() }
-        .onChange(of: password) { _, new in state.keychain.set(Keychain.nextcloud, new) }
-        .onChange(of: encryption) { _, new in state.keychain.set(Keychain.encryption, new) }
-        .onDisappear { state.cancelFolderCopy() }
+        .onDisappear { connectionTest.cancel(); state.cancelFolderCopy() }
         .alert(String(localized: "Upgrade to optimized sync?"), isPresented: $confirmingOptimizedUpgrade) {
             Button(String(localized: "Cancel"), role: .cancel) {}
-            Button(String(localized: "Upgrade")) { state.upgradeOptimizedSync(expectedIdentity: optimizedUpgradeIdentity) }
+            Button(String(localized: "Upgrade")) {
+                guard credentialsSaved else { return }
+                state.upgradeOptimizedSync(expectedIdentity: optimizedUpgradeIdentity)
+            }
         } message: {
             Text(String(localized: "Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available."))
         }
         .alert(String(localized: "Copy to Momentum folder?"), isPresented: $confirmingFolderCopy) {
             Button(String(localized: "Cancel"), role: .cancel) {}
-            Button(String(localized: "Copy and switch")) { Task { await state.copyToMomentumFolder() } }
+            Button(String(localized: "Copy and switch")) {
+                guard credentialsSaved else { return }
+                Task { await state.copyToMomentumFolder() }
+            }
         } message: {
             Text(String(localized: "Copy and verify your sync files in the momentum folder, then switch this device to it. The original folder stays intact. Choose the new folder on your other devices after the copy succeeds."))
         }
@@ -406,6 +485,12 @@ private struct SyncSettings: SwiftUI.View {
 }
 
 private extension SyncSettings {
+    var credentialsSaved: Bool { password.canUseSavedValue && encryption.canUseSavedValue }
+
+    var lastTaskSync: UInt64 {
+        method == SyncMethod.nextcloud.rawValue ? state.syncStatus.lastNextcloudMs : state.syncStatus.lastNearbyMs
+    }
+
     /// Automatic sync keeps running with the window closed only while this is on; Sync
     /// Now always works. Pair it with General › Keep running in the background.
     @ViewBuilder var backgroundSyncToggle: some SwiftUI.View {

@@ -304,6 +304,70 @@ import XCTest
         XCTAssertFalse(model.sync.lowPowerMode)
     }
 
+    func testSyncOverviewExplainsProviderBeforeOptionalPreferences() async throws {
+        let name = "momentum-sync-overview-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        let state = NextcloudSyncState(defaults: defaults, persistence: RenderConnection())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await state.load()
+        let mounted = try HostingFixture.mount(
+            NavigationStack { SyncSettings(state: state) }.environment(model),
+            defaults: defaults, defaultsName: name)
+        defer { mounted.unmount(); try? FileManager.default.removeItem(at: directory) }
+        await mounted.settle()
+        XCTAssertTrue(mounted.hasAccessibilityElement(label: "Your tasks stay on this device. Choose Nextcloud for a server or LibreSync for nearby devices."))
+        XCTAssertNil(mounted.accessibilityElement(identifier: "sync-background"),
+                     "Off must not show controls for an inactive provider")
+        XCTAssertNil(mounted.accessibilityElement(identifier: "sync-password"))
+    }
+
+    func testAdvancedSearchRevealsFolderWithoutSwitchingProvider() async throws {
+        for target in [String?.none, "sync.compression"] {
+            let name = "momentum-sync-advanced-\(UUID())"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+            let state = NextcloudSyncState(defaults: defaults, persistence: RenderConnection())
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+            await state.load()
+            await state.select(.nextcloud)
+            let mounted = try HostingFixture.mount(
+                NavigationStack { SyncSettings(state: state) }
+                    .environment(model).environment(\.settingsDestination, target),
+                defaults: defaults, defaultsName: name, size: CGSize(width: 600, height: 2400))
+            await mounted.settle()
+            XCTAssertEqual(state.provider, .nextcloud)
+            let folder = mounted.accessibilityElement(identifier: "sync-folder")
+            if target == nil {
+                XCTAssertNil(folder, "Advanced connection fields should start collapsed")
+            } else {
+                XCTAssertNotNil(folder, "Searching for compression must reveal the advanced connection controls")
+            }
+            mounted.unmount()
+            try? FileManager.default.removeItem(at: directory)
+        }
+    }
+
+    func testProviderRemainsCompactAtLargestGermanTextSize() async throws {
+        let name = "momentum-sync-provider-ax-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        let state = NextcloudSyncState(defaults: defaults, persistence: RenderConnection())
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await state.load()
+        await state.select(.nextcloud)
+        let mounted = try HostingFixture.mount(
+            NavigationStack { SyncSettings(state: state) }.environment(model),
+            defaults: defaults, defaultsName: name, size: CGSize(width: 320, height: 844),
+            locale: "de", dynamicTypeSize: .accessibility5)
+        defer { mounted.unmount(); try? FileManager.default.removeItem(at: directory) }
+        await mounted.settle()
+        let provider = try XCTUnwrap(mounted.accessibilityElement(identifier: "sync-provider"))
+        XCTAssertLessThan(provider.frame.height, 320,
+                          "The provider row should not consume a whole compact screen at accessibility sizes")
+        XCTAssertTrue(mounted.hasAccessibilityElement(label: "Nextcloud"))
+    }
+
     func testSettingsFitCompactWidthsAndGermanAccessibilityText() async throws {
         let name = "momentum-sync-render-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
@@ -319,6 +383,8 @@ import XCTest
         })
         await state.load()
         await state.select(.nextcloud)
+        XCTAssertEqual(SyncStatusPresentation(state: state).symbol, "clock",
+                       "A connection that has never synced must not display a success checkmark")
         for scheme in [ColorScheme.light, .dark] {
             for large in [false, true] {
                 let render = try HostingFixture.render(

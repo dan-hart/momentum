@@ -99,12 +99,16 @@ transport or use personal sync credentials.
 ## Nextcloud sync
 
 1. Open **Settings → Sync → Sync Provider** and select **Nextcloud**.
-2. Enter the server URL, username, app password and sync folder. If your other
-   devices encrypt the sync file, enter the same encryption password here.
+2. Enter your Nextcloud website address, username and app password. The setup
+   explains how to create the app password under Nextcloud Personal settings →
+   Security. **Advanced Nextcloud options** contains the sync folder, encryption,
+   compression and upgrade tools. Use your other devices’ existing folder and
+   encryption password when connecting to existing tasks.
    Momentum requires HTTPS for remote servers and accepts HTTP only for an isolated
    localhost test server. Login details, query strings and fragments do not belong
    in the server URL.
-3. Choose compression and automatic sync as needed, then **Save Connection**.
+3. Set **When to sync** as needed, then **Save Connection** (also available in the
+   navigation bar while there are unsaved edits).
    **Connection Saved** confirms that the connection details were stored; it does
    not claim that a server exchange succeeded.
 4. Choose **Test Connection** to verify the saved server and credentials without

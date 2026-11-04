@@ -4,6 +4,31 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-186 — Sync setup obscures connection state and recovery
+
+- **Severity/platforms:** medium usability issue reported by the user; source-confirmed
+  on Linux, macOS, iOS and Android. Existing forms mix technical options, timing,
+  optional settings sync and diagnosis; important errors/actions can be far apart.
+- **Reproduction:** open Sync settings, configure Nextcloud, then try to distinguish
+  saving credentials, testing the connection and completing a task exchange. On Android,
+  edit the visible saved connection and choose Test Connection: the old form tests the
+  stored credentials. Desktop unchecked/concurrent credential writes can also make the
+  displayed secret differ from what a new saved-connection probe would use.
+- **Expected:** simple server/account/app-password setup; visible task-sync status,
+  pending edits, last success and recovery; clear saved-versus-edited connection semantics;
+  advanced tools discoverable without competing with ordinary setup.
+- **Fix (F-077):** native status-first presentation, guided Nextcloud setup, advanced
+  disclosure, grouped timing and settings consent last. Mobile guards saved-only actions;
+  desktop read-only cancellable probes never mark tasks synced. Desktop persistence
+  failures remain actionable; Linux coalesces per-secret writes and preserves typing
+  during asynchronous loading. Provider Off hides stale exchange messages. Search
+  opens advanced controls without changing the selected provider; ongoing copy/failure
+  surfaces remain visible. Existing format/copy/replace confirmations are preserved.
+- **Evidence/status:** Implemented on all four platforms in the 2026-11-03 dirty main
+  checkout based on 4555a80. Automated, resource and build results plus explicit native,
+  accessibility and hosted-server gaps are recorded in the F-077 PROGRESS handoff.
+  No real account or personal task store was used. No release is claimed.
+
 ## B-185 — Linux large-text keyboard test omits the new font dropdown
 
 - **Severity/platforms:** low, Linux test-only failure. Apple/Android native navigation

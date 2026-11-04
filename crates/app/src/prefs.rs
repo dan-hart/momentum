@@ -6,12 +6,104 @@ use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
 
+/// One queue per keyring purpose. A slow write cannot overtake a newer edit;
+/// intermediate edits coalesce while the current write finishes.
+#[derive(Default)]
+struct CredentialSaveState {
+    revision: u64,
+    loading: bool,
+    active: bool,
+    pending: Option<String>,
+    failed: bool,
+}
+
+impl CredentialSaveState {
+    fn edit(&mut self, value: String) {
+        self.revision += 1;
+        self.pending = Some(value);
+    }
+
+    fn finish_loading(&mut self) -> bool {
+        self.loading = false;
+        self.revision == 0
+    }
+
+    fn begin_write(&mut self) -> Option<(u64, String)> {
+        if self.loading || self.active {
+            return None;
+        }
+        let value = self.pending.take()?;
+        self.active = true;
+        Some((self.revision, value))
+    }
+
+    fn finish_write(&mut self, revision: u64, succeeded: bool) {
+        self.active = false;
+        // A superseded failure is resolved by the queued latest write, not by
+        // another credential field finishing successfully.
+        if self.revision == revision {
+            self.failed = !succeeded;
+        }
+    }
+
+    fn busy(&self) -> bool {
+        self.loading || self.active || self.pending.is_some()
+    }
+}
+
+async fn drain_credential_writes<F, Fut>(
+    state: std::rc::Rc<std::cell::RefCell<CredentialSaveState>>,
+    first: (u64, String),
+    mut write: F,
+) where
+    F: FnMut(String) -> Fut,
+    Fut: std::future::Future<Output = bool>,
+{
+    let mut next = Some(first);
+    while let Some((revision, value)) = next {
+        let succeeded = write(value).await;
+        let mut state = state.borrow_mut();
+        state.finish_write(revision, succeeded);
+        next = state.begin_write();
+    }
+}
+
+fn persist_credential_edits(state: std::rc::Rc<std::cell::RefCell<CredentialSaveState>>, purpose: &'static str) {
+    let first = state.borrow_mut().begin_write();
+    if let Some(first) = first {
+        glib::spawn_future_local(drain_credential_writes(state, first, move |value| async move {
+            matches!(
+                gio::spawn_blocking(move || crate::keyring::set(purpose, &value)).await,
+                Ok(Ok(_))
+            )
+        }));
+    }
+}
+
 mod imp {
     use super::*;
     #[derive(Default, gtk::CompositeTemplate)]
     #[template(resource = "/io/github/dan_hart/Momentum/ui/prefs.ui")]
     pub struct MomentumPrefs {
         pub configured: std::cell::Cell<bool>,
+        pub refresh_source: std::cell::RefCell<Option<glib::SourceId>>,
+        pub(super) password_save: std::rc::Rc<std::cell::RefCell<CredentialSaveState>>,
+        pub(super) encryption_save: std::rc::Rc<std::cell::RefCell<CredentialSaveState>>,
+        pub connection_test: std::cell::RefCell<Option<std::sync::Arc<momentum_core::SyncCancellation>>>,
+        #[template_child]
+        pub advanced_nextcloud_row: TemplateChild<adw::ExpanderRow>,
+        #[template_child]
+        pub timing_group: TemplateChild<adw::PreferencesGroup>,
+        #[template_child]
+        pub sync_now_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub sync_error_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub sync_details_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub connection_test_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub connection_test_status_row: TemplateChild<adw::ActionRow>,
         pub updating_settings_sync: std::cell::Cell<bool>,
         #[template_child]
         pub settings_sync_row: TemplateChild<adw::SwitchRow>,
@@ -155,6 +247,13 @@ mod imp {
                     let imp = prefs.imp();
                     imp.nextcloud_group.set_visible(method == "nextcloud");
                     imp.nearby_group.set_visible(method == "libresync");
+                    imp.timing_group.set_visible(method != "off");
+                    imp.auto_row.set_visible(method == "nextcloud");
+                    imp.method_row.set_subtitle(&gettext(match method.as_str() {
+                        "nextcloud" => "Nextcloud syncs through your personal server.",
+                        "libresync" => "LibreSync connects nearby linked devices without a server.",
+                        _ => "Tasks stay on this device. Saved connections are preserved.",
+                    }));
                     for row in [
                         imp.server_row.upcast_ref::<gtk::Widget>(),
                         imp.user_row.upcast_ref(),
@@ -355,7 +454,13 @@ mod imp {
                 ));
             });
             self.about_group.add(&details);
-            self.obj().connect_closed(|_| crate::sound::stop());
+            self.obj().connect_closed(|prefs| {
+                crate::sound::stop();
+                prefs.cancel_connection_test();
+                if let Some(source) = prefs.imp().refresh_source.borrow_mut().take() {
+                    source.remove();
+                }
+            });
             self.obj().connect_visible_page_notify(|_| crate::sound::stop());
             s.bind("completion-sound", &*self.completion_sound_row, "active")
                 .build();
@@ -667,20 +772,41 @@ mod imp {
                     }
                 });
             });
-            for (purpose, row) in [
-                ("nextcloud", self.password_row.clone()),
-                ("encryption", self.encrypt_row.clone()),
+            for (purpose, row, state) in [
+                ("nextcloud", self.password_row.clone(), self.password_save.clone()),
+                ("encryption", self.encrypt_row.clone(), self.encryption_save.clone()),
             ] {
-                glib::spawn_future_local(async move {
-                    if let Ok(Some(p)) = gio::spawn_blocking(move || crate::keyring::get(purpose)).await {
-                        row.set_text(&p);
+                if cfg!(test) || std::env::var_os("MOMENTUM_DEMO").is_some() {
+                    continue;
+                }
+                state.borrow_mut().loading = true;
+                let applying_initial = std::rc::Rc::new(std::cell::Cell::new(false));
+                row.connect_changed(glib::clone!(
+                    #[strong]
+                    state,
+                    #[strong]
+                    applying_initial,
+                    move |row| {
+                        if applying_initial.get() {
+                            return;
+                        }
+                        state.borrow_mut().edit(row.text().to_string());
+                        persist_credential_edits(state.clone(), purpose);
                     }
-                    row.connect_changed(move |row| {
-                        let t = row.text().to_string();
-                        gio::spawn_blocking(move || {
-                            crate::keyring::set(purpose, &t).map_err(|e| tracing::warn!("keyring: {e}"))
-                        });
-                    });
+                ));
+                glib::spawn_future_local(async move {
+                    let initial = gio::spawn_blocking(move || crate::keyring::get(purpose)).await;
+                    // Hydration never overwrites typing that happened while the
+                    // keyring was locked or slow. Those edits are saved next.
+                    let untouched = state.borrow_mut().finish_loading();
+                    if untouched {
+                        if let Ok(Some(value)) = initial {
+                            applying_initial.set(true);
+                            row.set_text(&value);
+                            applying_initial.set(false);
+                        }
+                    }
+                    persist_credential_edits(state, purpose);
                 });
             }
         }
@@ -708,15 +834,25 @@ impl MomentumPrefs {
             .and_downcast::<crate::window::MomentumWindow>()
         {
             self.connect_app_settings(&owner);
-            let status = owner.engine().sync_status();
-            let text = owner.imp().sync_error.borrow().clone().unwrap_or_else(|| {
-                if status.last_nextcloud_ms > 0 {
-                    gettext("Previous sync completed")
-                } else {
-                    gettext("No completed sync yet")
-                }
-            });
-            self.imp().sync_status_row.set_subtitle(&text);
+            self.refresh_app_settings(&owner);
+            if self.imp().refresh_source.borrow().is_none() {
+                let source = glib::timeout_add_local(
+                    std::time::Duration::from_secs(1),
+                    glib::clone!(
+                        #[weak(rename_to = prefs)]
+                        self,
+                        #[weak]
+                        owner,
+                        #[upgrade_or]
+                        glib::ControlFlow::Break,
+                        move || {
+                            prefs.refresh_app_settings(&owner);
+                            glib::ControlFlow::Continue
+                        }
+                    ),
+                );
+                *self.imp().refresh_source.borrow_mut() = Some(source);
+            }
         }
         // A short desktop window must not squeeze a full preferences page.
         // Keep libadwaita's compact-width boundary (450px) rather than comparing
@@ -746,8 +882,185 @@ impl MomentumPrefs {
         }
     }
 
+    fn refresh_sync_overview(&self, owner: &crate::window::MomentumWindow) {
+        let imp = self.imp();
+        let settings = &owner.imp().settings;
+        let method = sync_method(settings);
+        let status = owner.engine().sync_status();
+        let busy = owner.imp().syncing.get() || owner.imp().nearby_syncing.get();
+        let preview = std::env::var_os("MOMENTUM_DEMO").is_some();
+        let last = if method == "libresync" {
+            status.last_nearby_ms
+        } else {
+            status.last_nextcloud_ms
+        };
+        let message = if preview {
+            gettext("Preview mode · Sync is off")
+        } else if method == "off" {
+            gettext("Tasks stay on this device. Saved connections are preserved.")
+        } else {
+            let state = if busy {
+                gettext("Syncing…")
+            } else if last > 0 {
+                format!("{} {}", gettext("Last synced"), crate::window::ago_text(last))
+            } else {
+                gettext("Not synced yet")
+            };
+            format!("{}\n{}: {}", state, gettext("Pending changes"), status.pending_ops)
+        };
+        imp.sync_status_row.set_subtitle(&glib::markup_escape_text(&message));
+        let error = method != "off" && owner.imp().sync_error.borrow().is_some();
+        imp.sync_error_row.set_visible(error);
+        imp.sync_details_row.set_visible(error);
+        if error {
+            let remedy = owner
+                .imp()
+                .sync_failure_kind
+                .get()
+                .map(crate::messages::sync_failure_remedy)
+                .unwrap_or_else(|| gettext("Check your connection settings, then retry."));
+            imp.sync_error_row.set_subtitle(&glib::markup_escape_text(&remedy));
+        }
+        imp.sync_now_row.set_visible(method != "off");
+        imp.sync_now_row.set_sensitive(!busy && !preview);
+        imp.sync_now_row
+            .set_title(&gettext(if error { "Retry" } else { "Sync Now" }));
+        let saving = imp.password_save.borrow().busy() || imp.encryption_save.borrow().busy();
+        let credential_error = imp.password_save.borrow().failed || imp.encryption_save.borrow().failed;
+        imp.connection_test_row.set_sensitive(
+            !cfg!(test)
+                && !preview
+                && !busy
+                && !saving
+                && !credential_error
+                && imp.connection_test.borrow().is_none()
+                && owner.sync_configured(),
+        );
+        if !saving
+            && !credential_error
+            && imp.connection_test_status_row.subtitle().as_deref()
+                == Some(gettext("Saving credentials… Wait before testing the saved connection.").as_str())
+        {
+            imp.connection_test_status_row.set_subtitle(&gettext(
+                "Tests the saved connection without syncing or changing tasks.",
+            ));
+        }
+        if saving || credential_error {
+            imp.connection_test_status_row.set_subtitle(&gettext(if saving {
+                "Saving credentials… Wait before testing the saved connection."
+            } else {
+                "Credentials could not be saved. Check your system keyring and enter them again."
+            }));
+        }
+    }
+
+    fn cancel_connection_test(&self) {
+        if let Some(cancellation) = self.imp().connection_test.borrow_mut().take() {
+            cancellation.cancel();
+            self.imp().connection_test_status_row.set_subtitle(&gettext(
+                "Tests the saved connection without syncing or changing tasks.",
+            ));
+        }
+    }
+
+    fn connect_connection_test(&self, owner: &crate::window::MomentumWindow) {
+        // Connection fields save immediately. Editing invalidates any in-flight probe
+        // so its result cannot describe a different server, account or password.
+        for row in [
+            self.imp().server_row.upcast_ref::<gtk::Editable>(),
+            self.imp().user_row.upcast_ref(),
+            self.imp().password_row.upcast_ref(),
+            self.imp().folder_row.upcast_ref(),
+        ] {
+            row.connect_changed(glib::clone!(
+                #[weak(rename_to = prefs)]
+                self,
+                move |_| {
+                    prefs.cancel_connection_test();
+                    prefs.imp().connection_test_status_row.set_subtitle(&gettext(
+                        "Tests the saved connection without syncing or changing tasks.",
+                    ));
+                }
+            ));
+        }
+        owner.imp().settings.connect_changed(
+            Some("sync-method"),
+            glib::clone!(
+                #[weak(rename_to = prefs)]
+                self,
+                move |_, _| {
+                    prefs.cancel_connection_test();
+                }
+            ),
+        );
+        self.imp().connection_test_row.connect_activated(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            move |_| {
+                if cfg!(test)
+                    || std::env::var_os("MOMENTUM_DEMO").is_some()
+                    || prefs.imp().password_save.borrow().busy()
+                    || prefs.imp().encryption_save.borrow().busy()
+                    || prefs.imp().password_save.borrow().failed
+                    || prefs.imp().encryption_save.borrow().failed
+                    || prefs.imp().connection_test.borrow().is_some()
+                    || owner.imp().syncing.get()
+                    || !owner.sync_configured()
+                    || sync_method(&owner.imp().settings) != "nextcloud"
+                {
+                    return;
+                }
+                let settings = &owner.imp().settings;
+                let mut connection = momentum_core::NextcloudSettings {
+                    server_url: settings.string("nextcloud-server").into(),
+                    user_name: settings.string("nextcloud-user").into(),
+                    folder: effective_nextcloud_folder(settings),
+                    compress: settings.boolean("compress"),
+                    optimized: nextcloud_optimized(settings),
+                    password: String::new(),
+                    encryption_password: None,
+                };
+                let cancellation = momentum_core::SyncCancellation::new();
+                *prefs.imp().connection_test.borrow_mut() = Some(cancellation.clone());
+                prefs.imp().connection_test_row.set_sensitive(false);
+                prefs
+                    .imp()
+                    .connection_test_status_row
+                    .set_subtitle(&gettext("Testing saved connection…"));
+                let engine = owner.engine();
+                glib::spawn_future_local(async move {
+                    let probe = cancellation.clone();
+                    let result = gio::spawn_blocking(move || {
+                        connection.password = crate::keyring::get("nextcloud").unwrap_or_default();
+                        engine.test_nextcloud_connection_cancellable(connection, probe, 15_000)
+                    })
+                    .await;
+                    let current = prefs
+                        .imp()
+                        .connection_test
+                        .borrow()
+                        .as_ref()
+                        .is_some_and(|active| std::sync::Arc::ptr_eq(active, &cancellation));
+                    if !current {
+                        return;
+                    }
+                    prefs.imp().connection_test.borrow_mut().take();
+                    prefs.imp().connection_test_status_row.set_subtitle(&gettext(if matches!(result, Ok(Ok(()))) {
+                        "Connection succeeded. No tasks were synced."
+                    } else {
+                        "Connection failed. Check the server URL, username, app password and network, then try again."
+                    }));
+                    prefs.refresh_sync_overview(&owner);
+                });
+            }
+        ));
+    }
+
     fn refresh_app_settings(&self, owner: &crate::window::MomentumWindow) {
         let imp = self.imp();
+        self.refresh_sync_overview(owner);
         let status = owner.engine().settings_sync_status();
         imp.updating_settings_sync.set(true);
         imp.settings_sync_row.set_active(status.enabled);
@@ -813,6 +1126,18 @@ impl MomentumPrefs {
             return;
         }
         self.refresh_app_settings(owner);
+        self.connect_connection_test(owner);
+        self.imp().sync_details_row.connect_activated(glib::clone!(
+            #[weak(rename_to = prefs)]
+            self,
+            #[weak]
+            owner,
+            move |_| {
+                if let Some(dialog) = owner.sync_error_dialog() {
+                    dialog.present(Some(&prefs));
+                }
+            }
+        ));
         self.imp()
             .settings_sync_row
             .set_sensitive(std::env::var_os("MOMENTUM_DEMO").is_none());
@@ -918,21 +1243,6 @@ impl MomentumPrefs {
                 owner.migrate_nextcloud_folder();
             }
         ));
-        glib::timeout_add_local(
-            std::time::Duration::from_secs(1),
-            glib::clone!(
-                #[weak(rename_to = prefs)]
-                self,
-                #[weak]
-                owner,
-                #[upgrade_or]
-                glib::ControlFlow::Break,
-                move || {
-                    prefs.refresh_app_settings(&owner);
-                    glib::ControlFlow::Continue
-                }
-            ),
-        );
     }
 
     fn transfer_settings(&self, owner: &crate::window::MomentumWindow, export: bool) {
@@ -1069,6 +1379,141 @@ pub fn sync_method(s: &gio::Settings) -> String {
 #[cfg(test)]
 mod sync_tests {
     use super::*;
+
+    #[test]
+    fn credential_queue_serializes_and_coalesces_rapid_edits() {
+        let state = std::rc::Rc::new(std::cell::RefCell::new(CredentialSaveState::default()));
+        state.borrow_mut().edit("first".into());
+        let first = state.borrow_mut().begin_write().unwrap();
+        let writes = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        async_io::block_on(drain_credential_writes(state.clone(), first, {
+            let state = state.clone();
+            let writes = writes.clone();
+            move |value| {
+                writes.borrow_mut().push(value.clone());
+                if value == "first" {
+                    state.borrow_mut().edit("intermediate".into());
+                    state.borrow_mut().edit("latest".into());
+                    assert!(
+                        state.borrow_mut().begin_write().is_none(),
+                        "only one write may run per purpose"
+                    );
+                }
+                std::future::ready(value != "first")
+            }
+        }));
+        assert_eq!(*writes.borrow(), ["first", "latest"]);
+        assert!(!state.borrow().busy());
+        assert!(
+            !state.borrow().failed,
+            "the successfully saved latest edit resolves the superseded failure"
+        );
+    }
+
+    #[test]
+    fn credential_load_preserves_typing_and_errors_belong_to_their_field() {
+        let mut password = CredentialSaveState {
+            loading: true,
+            ..Default::default()
+        };
+        password.edit("typed while loading".into());
+        assert!(
+            password.begin_write().is_none(),
+            "wait for the initial read before writing"
+        );
+        assert!(!password.finish_loading(), "late hydration must not overwrite an edit");
+        let (revision, value) = password.begin_write().unwrap();
+        assert_eq!(value, "typed while loading");
+        password.finish_write(revision, false);
+        let mut encryption = CredentialSaveState::default();
+        encryption.edit("other purpose".into());
+        let (revision, _) = encryption.begin_write().unwrap();
+        encryption.finish_write(revision, true);
+        assert!(
+            password.failed,
+            "another field succeeding cannot clear the password error"
+        );
+        assert!(!encryption.failed);
+        assert!(!password.busy());
+        let mut untouched = CredentialSaveState {
+            loading: true,
+            ..Default::default()
+        };
+        assert!(
+            untouched.finish_loading(),
+            "an untouched field can receive its saved value"
+        );
+    }
+
+    #[test]
+    fn sync_disclosure_search_and_status_preserve_the_selected_connection() {
+        use crate::tests::support::*;
+        on_gtk(|| {
+            reset_settings();
+            let (owner, _directory) = empty_window();
+            let settings = settings();
+            settings.set_string("sync-method", "off").unwrap();
+            let prefs = MomentumPrefs::default();
+            prefs.present(Some(&owner));
+            assert!(prefs.imp().refresh_source.borrow().is_some());
+            assert!(
+                descendants(prefs.upcast_ref()).iter().any(|widget| {
+                    widget
+                        .downcast_ref::<gtk::Label>()
+                        .is_some_and(|label| label.text().contains("Security → Devices & sessions."))
+                }),
+                "Nextcloud app-password guidance must render its literal ampersand"
+            );
+            *prefs.imp().connection_test.borrow_mut() = Some(momentum_core::SyncCancellation::new());
+            prefs
+                .imp()
+                .connection_test_status_row
+                .set_subtitle("Testing saved connection…");
+            prefs.cancel_connection_test();
+            assert!(prefs.imp().connection_test.borrow().is_none());
+            assert_eq!(
+                prefs.imp().connection_test_status_row.subtitle().as_deref(),
+                Some("Tests the saved connection without syncing or changing tasks.")
+            );
+            prefs.reveal("sync.compression");
+            assert_eq!(sync_method(&settings), "off", "search must not enable syncing");
+            assert!(!prefs.imp().advanced_nextcloud_row.is_expanded());
+            settings.set_string("sync-method", "nextcloud").unwrap();
+            prefs.reveal("sync.compression");
+            assert!(prefs.imp().advanced_nextcloud_row.is_expanded());
+            prefs.imp().server_row.set_text("https://example.test/nextcloud");
+            assert_eq!(settings.string("nextcloud-server"), "https://example.test/nextcloud");
+            prefs.refresh_sync_overview(&owner);
+            assert!(!prefs.imp().sync_error_row.is_visible());
+            owner.set_sync_failure(
+                Some("fixture detail".into()),
+                Some(momentum_core::SyncFailureKind::Unauthorized),
+            );
+            prefs.refresh_sync_overview(&owner);
+            assert!(prefs.imp().sync_error_row.is_visible());
+            assert!(prefs.imp().sync_details_row.is_visible());
+            assert!(
+                !prefs
+                    .imp()
+                    .sync_error_row
+                    .subtitle()
+                    .unwrap()
+                    .contains("fixture detail"),
+                "technical details remain in their disclosure"
+            );
+            settings.set_string("sync-method", "off").unwrap();
+            prefs.refresh_sync_overview(&owner);
+            assert!(!prefs.imp().sync_now_row.is_visible());
+            assert!(!prefs.imp().sync_error_row.is_visible());
+            assert_eq!(settings.string("nextcloud-server"), "https://example.test/nextcloud");
+            prefs.close();
+            assert!(
+                prefs.imp().refresh_source.borrow().is_none(),
+                "closing removes the status timer"
+            );
+            reset_settings();
+        });
+    }
 
     #[test]
     fn legacy_folder_pin_failure_leaves_the_migration_retryable() {
@@ -1251,6 +1696,9 @@ impl MomentumPrefs {
             self.imp().method_row.set_focusable(true);
             self.imp().method_row.grab_focus();
             return;
+        }
+        if ["sync.nextcloud", "sync.compression", "sync.folder-copy"].contains(&id) {
+            self.imp().advanced_nextcloud_row.set_expanded(true);
         }
         let id = id.to_string();
         let prefs = self.clone();

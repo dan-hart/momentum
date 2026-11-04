@@ -1,5 +1,72 @@
 # Momentum progress and handoff
 
+## 2026-11-03 — Sync settings redesigned locally (F-077 / B-186)
+
+- **Direction:** the user requested a complete simplification and delegated design
+  decisions. Chose a native overview with progressive disclosure over a setup wizard
+  or another flat form. [Design](superpowers/specs/2026-11-03-sync-settings-redesign-design.md)
+  and [implementation plan](superpowers/plans/2026-11-03-sync-settings-redesign.md).
+- **Scope/source:** dirty `main` based on `4555a80`; Linux, macOS, iOS and Android.
+  Inherited delivery records in this file, FEATURES and ios/README were preserved.
+  Initial implementation stayed local. The user subsequently authorized committing
+  and pushing this redesign to `main`; no account operation or release.
+- **Result:** status, pending changes, last successful exchange and recovery precede
+  optional controls. Nextcloud setup explains the base URL, username and app password;
+  folder/encryption/compression/upgrade/copy controls live under native Advanced.
+  Timing is grouped and optional app-settings consent/review comes last. Provider
+  selection remains explicit and search never selects a provider. Existing task,
+  backup and sync formats, Rust transport, generated bindings and scheduling policy
+  are unchanged.
+- **Diagnosis safeguards:** desktop read-only cancellable connection probes stay
+  separate from task-sync success. Android blocks saved-only actions for edited
+  connection drafts and hides prior-provider exchange messages when Off. Linux
+  serializes/coalesces per-secret writes, protects edits from late initial reads,
+  retains separate save failures and resets canceled test status. macOS preserves
+  failed secret drafts/old saved values with checked Keychain reload/retry and gates
+  task/test/recovery actions until persistence succeeds. iOS keeps folder-copy failure
+  visible, preserves individual field accessibility labels and uses a clock before
+  the first successful sync. Compact accessibility-size labels omit decorative icons.
+- **macOS evidence:** sanitized Debug app build passes after final review fixes
+  (`/tmp/momentum-mac-sync-final-ui-build.log`). Full MomentumKit suite: **259 tests,
+  53 suites, zero failures**, including injected Keychain failure/retry, probe
+  cancellation/no-sync-mutation and disclosure/search tests
+  (`/tmp/momentum-mac-sync-reviewed-tests.log`).
+- **iOS evidence:** **21 native SyncSettingsIntegrationTests pass** on iOS 27,
+  including advanced search reveal, Off/preview boundaries, compact German AX5
+  provider geometry and EN/DE light/dark renders. Result bundle:
+  `ios/DerivedData/TestReports/views-1793751890633034000.xcresult`.
+  **37 portable NextcloudSyncStateTests pass**; saved/draft, lifecycle, cancellation,
+  recovery and scheduling coverage (`/tmp/momentum-ios-sync-state-tests.log`).
+  Full simulator app build passes; final incremental build log:
+  `/tmp/momentum-sync-ios-app-build.log`. Exported final screenshots were visually
+  inspected under the task's `sync-redesign/ios-final` artifact directory.
+- **Android evidence:** **121 JVM tests, zero failures/errors**; debug app and
+  instrumentation APK compilation and lint pass. Three isolated Compose cases
+  compile for draft gating, advanced search and Off/error behavior. Lint retains
+  16 pre-existing warnings and zero errors. Report sources:
+  `android/app/build/test-results/testDebugUnitTest`,
+  `android/app/build/reports/lint-results-debug.xml`.
+- **Linux evidence:** app/test compilation and **two fake-writer credential tests
+  pass** (`cargo check -p momentum --tests --offline`; `cargo test -p momentum
+  --offline credential_ -- --nocapture`). Blueprint compilation, gettext format
+  checks and scoped Rust formatting pass. A disposable compiler virtualenv under
+  `/tmp` allowed native GTK template instantiation on macOS with memory settings:
+  named controls resolve, Advanced expands, and app-password guidance renders fully
+  without markup warnings. This is GTK resource evidence on macOS, not Linux runtime
+  acceptance. The full native GTK regression is compiled but not run here.
+- **Review/limits:** independent platform reviews found and corrected stale Off/test
+  messages, credential ordering/persistence, hidden copy failures, GTK ampersand
+  markup and inherited SwiftUI child identifiers. Final whitespace/resource syntax
+  checks pass. All four F-077 platform statuses remain **Implemented**, not Verified:
+  true Linux runtime/keyboard behavior, desktop interaction, Android interaction
+  (owned API37 emulator could not start with HVF/mprotect errors), physical-device,
+  full long-form/large-text journeys, spoken accessibility and hosted-server
+  acceptance remain outstanding. No real account, production keyring or personal
+  task store was used for validation. Next: run those native acceptance flows with
+  disposable stores and credentials on supported environments.
+
+
+
 ## 2026-11-03 — Momentum 0.4.17 released (F-022/B-182–B-185)
 
 - **Merged/published source:** `task/app-wide-fonts` was fast-forwarded into `main`,

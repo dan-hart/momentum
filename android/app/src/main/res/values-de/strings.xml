@@ -309,4 +309,18 @@
     <string name="optimized_sync_enabled">Optimierte Synchronisierung aktiviert</string>
     <string name="optimized_sync_hint">Aktualisiere alle beteiligten Geräte und aktiviere auf jedem die optimierte Synchronisierung. Diese Verbindung kann nicht zur bisherigen Synchronisierung zurückkehren. Bestehende Dateien bleiben erhalten. Die Synchronisierung kann weiterhin ausgeschaltet werden.</string>
     <string name="upgrade">Umstellen</string>
+    <string name="sync_off_explanation">Aufgaben bleiben auf diesem Gerät. Du kannst Momentum weiter offline nutzen.</string>
+    <string name="sync_provider_off_description">Aus bewahrt deine gespeicherten Verbindungen für später auf.</string>
+    <string name="sync_provider_nextcloud_description">Nextcloud synchronisiert Aufgaben über deinen eigenen Server.</string>
+    <string name="sync_provider_libresync_description">LibreSync verbindet gekoppelte Geräte in der Nähe direkt, ohne Server.</string>
+    <string name="nextcloud_setup_hint">Verwende auf jedem Gerät denselben Server und Sync-Ordner.</string>
+    <string name="nextcloud_server_hint">Gib die Basis-URL deiner Nextcloud an, bei Bedarf mit dem Installationsunterordner. Verwende keine WebDAV-Datei-URL.</string>
+    <string name="nextcloud_app_password_hint">Erstelle in Nextcloud unter Persönliche Einstellungen → Sicherheit ein App-Passwort. Verwende es hier statt deines Kontopassworts.</string>
+    <string name="sync_unsaved_connection">Ungespeicherte Verbindungsänderungen. Speichere sie vor dem Testen oder Synchronisieren.</string>
+    <string name="nextcloud_test_saved_hint">Verbindung testen prüft die gespeicherten Angaben, ohne Serverdateien zu ändern oder Aufgaben zu synchronisieren. Speichern testet die Verbindung nicht.</string>
+    <string name="nextcloud_advanced_show">Erweiterte Nextcloud-Optionen anzeigen</string>
+    <string name="nextcloud_advanced_hide">Erweiterte Nextcloud-Optionen ausblenden</string>
+    <string name="nextcloud_folder_hint">Der gemeinsame Ordner enthält die Momentum-Sync-Daten. Verwende auf jedem Gerät denselben Ordner. Eine Änderung dieses Felds kopiert keine vorhandenen Serverdaten.</string>
+    <string name="sync_timing_heading">Automatischer Sync und Hintergrund-Sync</string>
+    <string name="sync_timing_hint">Automatischer Sync hält Aufgaben während der App-Nutzung aktuell. Hintergrund-Sync erlaubt zusätzlich geplante Abgleiche, wenn Android sie zulässt.</string>
 </resources>

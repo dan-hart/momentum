@@ -1,6 +1,262 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+"Credentials need attention": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Credentials need attention"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Zugangsdaten überprüfen"
+        }
+      }
+    }
+  },
+  "The credentials shown could not be read or saved in Keychain. Unlock your Keychain and retry before testing the connection or using Sync Now.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "The credentials shown could not be read or saved in Keychain. Unlock your Keychain and retry before testing the connection or using Sync Now."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Die angezeigten Zugangsdaten konnten nicht aus dem Schlüsselbund gelesen oder darin gespeichert werden. Entsperre deinen Schlüsselbund und versuche es erneut, bevor du die Verbindung testest oder „Jetzt synchronisieren“ verwendest."
+        }
+      }
+    }
+  },
+  "Retry Keychain": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Retry Keychain"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Schlüsselbund erneut versuchen"
+        }
+      }
+    }
+  },
+"Testing saved connection…": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Testing saved connection…"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Gespeicherte Verbindung wird geprüft …"
+        }
+      }
+    }
+  },
+  "Test saved connection": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Test saved connection"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Gespeicherte Verbindung testen"
+        }
+      }
+    }
+  },
+  "Checks saved connection details without syncing tasks. A successful test does not mean your tasks are up to date.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Checks saved connection details without syncing tasks. A successful test does not mean your tasks are up to date."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Prüft die gespeicherten Verbindungsdaten, ohne Aufgaben zu synchronisieren. Ein erfolgreicher Test bedeutet nicht, dass deine Aufgaben aktuell sind."
+        }
+      }
+    }
+  },
+  "Connection test passed": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Connection test passed"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verbindungstest erfolgreich"
+        }
+      }
+    }
+  },
+  "Connection test failed": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Connection test failed"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verbindungstest fehlgeschlagen"
+        }
+      }
+    }
+  },
+"Pending changes": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Pending changes"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Ausstehende Änderungen"
+        }
+      }
+    }
+  },
+  "Last successful sync": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Last successful sync"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Letzte erfolgreiche Synchronisierung"
+        }
+      }
+    }
+  },
+  "Nextcloud connection": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Nextcloud connection"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Nextcloud-Verbindung"
+        }
+      }
+    }
+  },
+  "Sync through your own Nextcloud server.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Sync through your own Nextcloud server."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Synchronisiere über deinen eigenen Nextcloud-Server."
+        }
+      }
+    }
+  },
+  "Create an app password in Nextcloud: Personal settings → Security. Use it here instead of your login password.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Create an app password in Nextcloud: Personal settings → Security. Use it here instead of your login password."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Erstelle in Nextcloud unter Persönliche Einstellungen → Sicherheit ein App-Passwort. Verwende es hier anstelle deines Anmeldepassworts."
+        }
+      }
+    }
+  },
+  "Use your server’s base URL, including any installation subfolder, for example https://cloud.example.com/nextcloud. Connection changes are saved automatically.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Use your server’s base URL, including any installation subfolder, for example https://cloud.example.com/nextcloud. Connection changes are saved automatically."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verwende die Basis-URL deines Servers einschließlich eines Installationsunterordners, zum Beispiel https://cloud.example.com/nextcloud. Änderungen an der Verbindung werden automatisch gespeichert."
+        }
+      }
+    }
+  },
+  "Advanced Nextcloud options": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Advanced Nextcloud options"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Erweiterte Nextcloud-Optionen"
+        }
+      }
+    }
+  },
+  "Use the same folder on every device. Changing this field does not move existing sync files.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Use the same folder on every device. Changing this field does not move existing sync files."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verwende auf jedem Gerät denselben Ordner. Änderungen an diesem Feld verschieben keine vorhandenen Synchronisierungsdateien."
+        }
+      }
+    }
+  },
 "Optimized sync enabled": {
     "localizations": {
       "de": {

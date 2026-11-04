@@ -4497,3 +4497,99 @@ msgid ""
 "custom installed font to System, and retain keyboard access at large text "
 "sizes."
 msgstr "Verhindert einen Linux-Absturz beim Wechseln der App-Schrift, auch beim Zurückwechseln von einer installierten Schrift zur Systemschrift. Die Tastaturbedienung bleibt bei großen Textgrößen erhalten."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Sync overview"
+msgstr "Synchronisierung im Überblick"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Show error details…"
+msgstr "Fehlerdetails anzeigen…"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Connect to Nextcloud"
+msgstr "Mit Nextcloud verbinden"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Enter your server base URL, for example https://cloud.example.com or https://example.com/nextcloud. Include an installation subfolder, but no WebDAV path. Connection fields save automatically."
+msgstr "Gib die Basis-URL deines Servers ein, zum Beispiel https://cloud.example.com oder https://example.com/nextcloud. Gib gegebenenfalls den Installationsunterordner an, aber keinen WebDAV-Pfad. Verbindungsangaben werden automatisch gespeichert."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Create an app password"
+msgstr "App-Passwort erstellen"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "In Nextcloud, open Personal settings → Security → Devices &amp; sessions. Create an app password for Momentum and enter it above."
+msgstr "Öffne in Nextcloud Persönliche Einstellungen → Sicherheit → Geräte &amp; Sitzungen. Erstelle ein App-Passwort für Momentum und gib es oben ein."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Connection test"
+msgstr "Verbindungstest"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Tests the saved connection without syncing or changing tasks."
+msgstr "Prüft die gespeicherte Verbindung, ohne Aufgaben zu synchronisieren oder zu ändern."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Test saved connection"
+msgstr "Gespeicherte Verbindung testen"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Advanced Nextcloud options"
+msgstr "Erweiterte Nextcloud-Optionen"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Shared folder, encryption, compression and upgrades"
+msgstr "Gemeinsamer Ordner, Verschlüsselung, Komprimierung und Upgrades"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Use the same folder on every device"
+msgstr "Auf jedem Gerät denselben Ordner verwenden"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "The folder is inside your Nextcloud files. Keep the folder and encryption password the same on every device."
+msgstr "Der Ordner liegt in deinen Nextcloud-Dateien. Verwende auf jedem Gerät denselben Ordner und dasselbe Verschlüsselungspasswort."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Automatic and background sync"
+msgstr "Automatische Synchronisierung & Hintergrund"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Nextcloud syncs through your personal server."
+msgstr "Nextcloud synchronisiert über deinen persönlichen Server."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "LibreSync connects nearby linked devices without a server."
+msgstr "LibreSync verbindet verknüpfte Geräte in der Nähe ohne Server."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Tasks stay on this device. Saved connections are preserved."
+msgstr "Aufgaben bleiben auf diesem Gerät. Gespeicherte Verbindungen bleiben erhalten."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Pending changes"
+msgstr "Ausstehende Änderungen"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Check your connection settings, then retry."
+msgstr "Prüfe deine Verbindungseinstellungen und versuche es erneut."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Saving credentials… Wait before testing the saved connection."
+msgstr "Zugangsdaten werden gespeichert… Warte, bevor du die gespeicherte Verbindung testest."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Credentials could not be saved. Check your system keyring and enter them again."
+msgstr "Die Zugangsdaten konnten nicht gespeichert werden. Prüfe den Schlüsselbund deines Systems und gib sie erneut ein."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Testing saved connection…"
+msgstr "Gespeicherte Verbindung wird getestet…"
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Connection succeeded. No tasks were synced."
+msgstr "Verbindung erfolgreich. Es wurden keine Aufgaben synchronisiert."
+
+#: crates/app/src/prefs.rs data/resources/ui/prefs.blp
+msgid "Connection failed. Check the server URL, username, app password and network, then try again."
+msgstr "Verbindung fehlgeschlagen. Prüfe die Server-URL, den Benutzernamen, das App-Passwort und das Netzwerk und versuche es erneut."

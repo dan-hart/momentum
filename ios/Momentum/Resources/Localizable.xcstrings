@@ -1,6 +1,262 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+  "Check the connection fields, then save again.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Check the connection fields, then save again."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Prüfe die Verbindungsfelder und speichere erneut."
+        }
+      }
+    }
+  },
+  "Your tasks stay on this device. Choose Nextcloud for a server or LibreSync for nearby devices.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Your tasks stay on this device. Choose Nextcloud for a server or LibreSync for nearby devices."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Deine Aufgaben bleiben auf diesem Gerät. Wähle Nextcloud für einen Server oder LibreSync für Geräte in der Nähe."
+        }
+      }
+    }
+  },
+  "Sync through your Nextcloud server. Use the same account and sync folder on every device.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Sync through your Nextcloud server. Use the same account and sync folder on every device."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Synchronisiere über deinen Nextcloud-Server. Verwende auf jedem Gerät dasselbe Konto und denselben Sync-Ordner."
+        }
+      }
+    }
+  },
+  "Sync directly with linked nearby devices. No server or account is needed.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Sync directly with linked nearby devices. No server or account is needed."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Synchronisiere direkt mit verknüpften Geräten in der Nähe. Kein Server oder Konto erforderlich."
+        }
+      }
+    }
+  },
+  "When to sync": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "When to sync"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Wann synchronisieren"
+        }
+      }
+    }
+  },
+  "Check connection": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Check connection"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verbindung prüfen"
+        }
+      }
+    }
+  },
+  "Sync status": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Sync status"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Sync-Status"
+        }
+      }
+    }
+  },
+  "Use your Nextcloud website address, including its installation folder if it has one.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Use your Nextcloud website address, including its installation folder if it has one."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verwende die Adresse deiner Nextcloud-Website, gegebenenfalls mit dem Unterordner der Installation."
+        }
+      }
+    }
+  },
+  "Where do I get an app password?": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Where do I get an app password?"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Wo bekomme ich ein App-Passwort?"
+        }
+      }
+    }
+  },
+  "Open Nextcloud in your browser. Go to Personal settings → Security, create an app password for Momentum, then paste it here.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Open Nextcloud in your browser. Go to Personal settings → Security, create an app password for Momentum, then paste it here."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Öffne Nextcloud im Browser. Gehe zu Persönliche Einstellungen → Sicherheit, erstelle ein App-Passwort für Momentum und füge es hier ein."
+        }
+      }
+    }
+  },
+  "Nextcloud account": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Nextcloud account"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Nextcloud-Konto"
+        }
+      }
+    }
+  },
+  "Connection details are saved securely on this device. Saving does not test the server or sync your tasks.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Connection details are saved securely on this device. Saving does not test the server or sync your tasks."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verbindungsdaten werden sicher auf diesem Gerät gespeichert. Beim Speichern wird weder der Server geprüft noch werden Aufgaben synchronisiert."
+        }
+      }
+    }
+  },
+  "Advanced Nextcloud options": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Advanced Nextcloud options"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Erweiterte Nextcloud-Optionen"
+        }
+      }
+    }
+  },
+  "Use the same folder on every device. New connections use momentum; keep your existing folder when connecting to existing tasks.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Use the same folder on every device. New connections use momentum; keep your existing folder when connecting to existing tasks."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verwende auf jedem Gerät denselben Ordner. Neue Verbindungen verwenden momentum; behalte deinen bisherigen Ordner, um vorhandene Aufgaben zu verbinden."
+        }
+      }
+    }
+  },
+  "Use the same encryption password on every device. This is separate from your Nextcloud app password.": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Use the same encryption password on every device. This is separate from your Nextcloud app password."
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verwende auf jedem Gerät dasselbe Verschlüsselungspasswort. Es ist unabhängig von deinem Nextcloud-App-Passwort."
+        }
+      }
+    }
+  },
+  "https://cloud.example.com": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "https://cloud.example.com"
+        }
+      },
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "https://cloud.example.com"
+        }
+      }
+    }
+  },
     "Choose Font…" : {
       "localizations" : {
         "en" : {
@@ -3974,7 +4230,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synchronisierungsdienst"
+            "value" : "Dienst"
           }
         }
       }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
@@ -74,27 +75,26 @@ import java.time.format.FormatStyle
             com.codedbydan.momentum.core.nextcloudConnectionIdentity(it.serverUrl, it.userName, it.folder)
     } == true
     val optimized = sameSavedTarget && storedConnection?.optimized == true
+    val draft = NextcloudSettings(server.trim(), user.trim(), password, folder.trim(), compress, encryption.takeIf { it.isNotEmpty() }, optimized)
+    val matchesSaved = savedConnectionMatchesDraft(storedConnection, draft)
+    val unsavedChanges = !matchesSaved && (storedConnection != null || server.isNotEmpty() || user.isNotEmpty() || password.isNotEmpty() || folder != "momentum" || encryption.isNotEmpty() || !compress)
+    var advancedExpanded by rememberSaveable { mutableStateOf(false) }
+    val advancedFailure = migrationError || status.failureKind == SyncFailureKind.ENCRYPTION_PASSWORD_MISSING ||
+        status.failureKind == SyncFailureKind.ENCRYPTION_PASSWORD_WRONG
+    LaunchedEffect(state.settingsDestination, status.migratingFolder, advancedFailure) {
+        if (revealAdvancedNextcloud(state.settingsDestination, status.migratingFolder, advancedFailure)) advancedExpanded = true
+    }
     DisposableEffect(Unit) { onDispose { platform.pairing(false); platform.cancelFolderMigration() } }
     Column(Modifier.widthIn(max = 720.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if((state.settingsDestination in listOf("sync.nextcloud", "sync.automatic", "sync.background", "sync.compression", "sync.folder-copy") && settings.provider != SyncProvider.Nextcloud) ||
             (state.settingsDestination in listOf("sync.libresync", "sync.devices") && settings.provider != SyncProvider.LibreSync)) Text(stringResource(R.string.inactive_provider_hint))
-        SettingHeading(R.string.provider)
-        SyncProvider.entries.forEach { provider ->
-            ChoiceRow(stringResource(when(provider) { SyncProvider.Off -> R.string.off; SyncProvider.Nextcloud -> R.string.nextcloud; SyncProvider.LibreSync -> R.string.libresync }),
-                settings.provider == provider, !status.syncing && !status.migratingFolder) {
-                if(provider == SyncProvider.LibreSync && Build.VERSION.SDK_INT >= 37 && context.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") != PackageManager.PERMISSION_GRANTED) {
-                    pendingProvider = provider; permission.launch("android.permission.ACCESS_LOCAL_NETWORK")
-                } else scope.launch { platform.selectProvider(provider); vm.refresh() }
-            }
-        }
-        AppSettingsSync(state, vm)
         if(localError) Text(stringResource(R.string.local_network_denied), color = MaterialTheme.colorScheme.error)
         if(status.statusPersistenceError != null) {
             Text(stringResource(R.string.sync_status_save_failed), color = MaterialTheme.colorScheme.error)
             OutlinedButton(platform::retryStatusPersistence) { Text(stringResource(R.string.sync_status_save_retry)) }
         }
+        SettingHeading(R.string.sync_status_heading)
         if(settings.provider != SyncProvider.Off) {
-            SettingHeading(R.string.sync_status_heading)
             if(status.syncing) LinearProgressIndicator(Modifier.fillMaxWidth())
             status.error?.let { error ->
                 Text(stringResource(syncRemedy(status.failureKind)), color = MaterialTheme.colorScheme.error)
@@ -103,47 +103,81 @@ import java.time.format.FormatStyle
                 if(settings.provider == SyncProvider.Nextcloud && status.failureKind == SyncFailureKind.REMOTE_FILE_DAMAGED)
                     OutlinedButton({ replace = true }, enabled = !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.replace_server)) }
             }
-            status.information?.let { Text(stringResource(it)) }
-            val sync = state.snapshot!!.sync
+            status.information?.takeUnless {
+                settings.provider == SyncProvider.Nextcloud && !matchesSaved && it in listOf(R.string.connection_ok, R.string.connection_saved)
+            }?.let { Text(stringResource(it)) }
+            val sync = state.snapshot.sync
             val last = if(settings.provider == SyncProvider.Nextcloud) sync.lastNextcloudMs else sync.lastNearbyMs
             Text(if(last == 0uL) stringResource(R.string.sync_never) else stringResource(R.string.last_sync,
                 Instant.ofEpochMilli(last.toLong()).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(locale))))
             Text(pluralStringResource(R.plurals.pending_changes, sync.pendingOps.toInt(), sync.pendingOps.toInt()))
-            Button({ platform.syncNow(); vm.refresh() }, enabled = !status.syncing && !status.migratingFolder, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sync_now)) }
+            Button({ platform.syncNow(); vm.refresh() }, enabled = !status.syncing && !status.migratingFolder && (settings.provider != SyncProvider.Nextcloud || matchesSaved), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sync_now)) }
+            if(settings.provider == SyncProvider.Nextcloud && unsavedChanges)
+                Text(stringResource(R.string.sync_unsaved_connection), style = MaterialTheme.typography.bodySmall)
+        }
+        if(settings.provider == SyncProvider.Off) {
+            Text(stringResource(R.string.sync_off_explanation))
+        }
+        SettingHeading(R.string.provider)
+        SyncProvider.entries.forEach { provider ->
+            ChoiceRow(stringResource(when(provider) { SyncProvider.Off -> R.string.off; SyncProvider.Nextcloud -> R.string.nextcloud; SyncProvider.LibreSync -> R.string.libresync }),
+                settings.provider == provider, !status.syncing && !status.migratingFolder) {
+                if(provider == SyncProvider.LibreSync && Build.VERSION.SDK_INT >= 37 && context.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") != PackageManager.PERMISSION_GRANTED) {
+                    pendingProvider = provider; permission.launch("android.permission.ACCESS_LOCAL_NETWORK")
+                } else scope.launch { platform.selectProvider(provider); vm.refresh() }
+            }
+            Text(stringResource(when(provider) {
+                SyncProvider.Off -> R.string.sync_provider_off_description
+                SyncProvider.Nextcloud -> R.string.sync_provider_nextcloud_description
+                SyncProvider.LibreSync -> R.string.sync_provider_libresync_description
+            }), modifier = Modifier.padding(start = 16.dp), style = MaterialTheme.typography.bodySmall)
         }
         if(settings.provider == SyncProvider.Nextcloud) {
             SettingHeading(R.string.nextcloud)
-            OutlinedTextField(server, { server = it }, label = { Text(stringResource(R.string.server)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Text(stringResource(R.string.nextcloud_setup_hint), style = MaterialTheme.typography.bodyMedium)
+            OutlinedTextField(server, { server = it }, label = { Text(stringResource(R.string.server)) }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                placeholder = { Text("https://cloud.example.com") },
+                supportingText = { Text(stringResource(R.string.nextcloud_server_hint)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false))
             OutlinedTextField(user, { user = it }, label = { Text(stringResource(R.string.username)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(password, { password = it }, label = { Text(stringResource(R.string.password)) }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false))
-            OutlinedTextField(folder, { folder = it }, label = { Text(stringResource(R.string.folder)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(encryption, { encryption = it }, label = { Text(stringResource(R.string.encryption_password)) }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false))
-            SettingSwitch(R.string.compress, compress) { compress = it }
-            if (optimized) Text(stringResource(R.string.optimized_sync_enabled))
-            else OutlinedButton({ upgradeIdentity = com.codedbydan.momentum.core.nextcloudConnectionIdentity(server, user, folder); upgrade = true }, enabled = sameSavedTarget && storedConnection != null &&
-                !status.syncing && !status.migratingFolder && storedConnection?.password == password &&
-                storedConnection?.compress == compress && storedConnection?.encryptionPassword.orEmpty() == encryption) {
-                Text(stringResource(R.string.optimized_sync_upgrade))
+            Text(stringResource(R.string.nextcloud_app_password_hint), style = MaterialTheme.typography.bodySmall)
+            if(unsavedChanges) Text(stringResource(R.string.sync_unsaved_connection), color = MaterialTheme.colorScheme.primary)
+            TextButton({ advancedExpanded = !advancedExpanded }, enabled = !status.migratingFolder && !advancedFailure) {
+                Text(stringResource(if(advancedExpanded) R.string.nextcloud_advanced_hide else R.string.nextcloud_advanced_show))
             }
-            Text(stringResource(R.string.optimized_sync_hint), style = MaterialTheme.typography.bodySmall)
+            if(advancedExpanded) {
+                OutlinedTextField(folder, { folder = it }, label = { Text(stringResource(R.string.folder)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                Text(stringResource(R.string.nextcloud_folder_hint), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(encryption, { encryption = it }, label = { Text(stringResource(R.string.encryption_password)) }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false))
+                SettingSwitch(R.string.compress, compress) { compress = it }
+                if (optimized) Text(stringResource(R.string.optimized_sync_enabled))
+                else OutlinedButton({ upgradeIdentity = com.codedbydan.momentum.core.nextcloudConnectionIdentity(server, user, folder); upgrade = true }, enabled = matchesSaved && !status.syncing && !status.migratingFolder) {
+                    Text(stringResource(R.string.optimized_sync_upgrade))
+                }
+                Text(stringResource(R.string.optimized_sync_hint), style = MaterialTheme.typography.bodySmall)
 
-            OutlinedButton({ scope.launch { platform.saveConnection(NextcloudSettings(server.trim(), user.trim(), password, folder.trim(), compress, encryption.takeIf { it.isNotEmpty() }, optimized)); storedConnection = platform.connection(); vm.refresh() } },
-                Modifier.fillMaxWidth(), enabled = !status.migratingFolder && server.isNotBlank() && user.isNotBlank() && password.isNotEmpty() && folder.isNotBlank()) { Text(stringResource(R.string.save_connection)) }
-            if(state.settingsDestination == "sync.folder-copy") {
-                SettingHeading(R.string.folder_migration_action)
-                if(storedConnection?.folder == null || storedConnection?.folder == "momentum") Text(stringResource(R.string.folder_copy_unavailable))
+                if(state.settingsDestination == "sync.folder-copy") {
+                    SettingHeading(R.string.folder_migration_action)
+                    if(storedConnection?.folder == null || storedConnection?.folder == "momentum") Text(stringResource(R.string.folder_copy_unavailable))
+                }
+                if(storedConnection?.folder != null && storedConnection?.folder != "momentum") OutlinedButton({ migrationSource = storedConnection },
+                    Modifier.fillMaxWidth(), enabled = matchesSaved && !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.folder_migration_action)) }
+                if(status.migratingFolder) {
+                    Text(stringResource(R.string.folder_migration_progress))
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    TextButton(platform::cancelFolderMigration) { Text(stringResource(R.string.cancel)) }
+                }
+                if(migrationError) Text(stringResource(R.string.folder_migration_failed), color = MaterialTheme.colorScheme.error)
             }
-            if(storedConnection?.folder != null && storedConnection?.folder != "momentum") OutlinedButton({ migrationSource = storedConnection },
-                Modifier.fillMaxWidth(), enabled = !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.folder_migration_action)) }
-            if(status.migratingFolder) {
-                Text(stringResource(R.string.folder_migration_progress))
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                TextButton(platform::cancelFolderMigration) { Text(stringResource(R.string.cancel)) }
-            }
-            if(migrationError) Text(stringResource(R.string.folder_migration_failed), color = MaterialTheme.colorScheme.error)
-            OutlinedButton({ platform.syncNow(test = true) }, Modifier.fillMaxWidth(), enabled = !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.test_connection)) }
+            OutlinedButton({ scope.launch { platform.saveConnection(draft); storedConnection = platform.connection(); vm.refresh() } },
+                Modifier.fillMaxWidth(), enabled = !status.syncing && !status.migratingFolder && server.isNotBlank() && user.isNotBlank() && password.isNotEmpty() && folder.isNotBlank()) { Text(stringResource(R.string.save_connection)) }
+            OutlinedButton({ platform.syncNow(test = true) }, Modifier.fillMaxWidth(), enabled = matchesSaved && !status.syncing && !status.migratingFolder) { Text(stringResource(R.string.test_connection)) }
+            Text(stringResource(R.string.nextcloud_test_saved_hint), style = MaterialTheme.typography.bodySmall)
+            SettingHeading(R.string.sync_timing_heading)
+            Text(stringResource(R.string.sync_timing_hint), style = MaterialTheme.typography.bodySmall)
             SettingSwitch(R.string.automatic_sync, settings.automaticSync) { enabled -> vm.settings { it.copy(automaticSync = enabled) } }
             SettingSwitch(R.string.background_sync, settings.backgroundSync) { enabled -> vm.settings { it.copy(backgroundSync = enabled) } }
             if(Build.VERSION.SDK_INT >= 37) OutlinedButton({ permission.launch("android.permission.ACCESS_LOCAL_NETWORK") }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.allow_local_network)) }
@@ -164,6 +198,7 @@ import java.time.format.FormatStyle
                 Button({ scope.launch { platform.link(address.trim(), code.trim()); vm.refresh() } }, enabled = address.isNotBlank() && code.matches(Regex("[0-9]{6}")), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.link)) }
             }
         }
+        AppSettingsSync(state, vm)
         Spacer(Modifier.height(24.dp))
     }
     migrationSource?.let { source -> AlertDialog(onDismissRequest = { migrationSource = null },
@@ -185,7 +220,7 @@ import java.time.format.FormatStyle
         confirmButton = { TextButton({
             upgrade = false
             val connection = storedConnection
-            if(connection != null && sameSavedTarget && com.codedbydan.momentum.core.nextcloudConnectionIdentity(connection.serverUrl, connection.userName, connection.folder) == upgradeIdentity && !status.syncing && !status.migratingFolder) scope.launch {
+            if(connection != null && matchesSaved && com.codedbydan.momentum.core.nextcloudConnectionIdentity(connection.serverUrl, connection.userName, connection.folder) == upgradeIdentity && !status.syncing && !status.migratingFolder) scope.launch {
                 platform.saveConnection(connection.copy(optimized = true))
                 storedConnection = platform.connection()
                 if(storedConnection?.optimized == true) platform.syncNow()
