@@ -4,13 +4,13 @@
     <title>Momentum</title>
     <link>https://github.com/dan-hart/momentum/releases</link>
     <item>
-      <title>Momentum 0.4.17</title>
-      <link>https://github.com/dan-hart/momentum/releases/tag/v0.4.17</link>
-      <sparkle:version>417</sparkle:version>
-      <sparkle:shortVersionString>0.4.17</sparkle:shortVersionString>
+      <title>Momentum 0.4.18</title>
+      <link>https://github.com/dan-hart/momentum/releases/tag/v0.4.18</link>
+      <sparkle:version>418</sparkle:version>
+      <sparkle:shortVersionString>0.4.18</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>26.0.0</sparkle:minimumSystemVersion>
-      <description>See the release notes for changes in Momentum 0.4.17.</description>
-      <enclosure url="https://github.com/dan-hart/momentum/releases/download/v0.4.17/Momentum-v0.4.17-macos.zip" sparkle:edSignature="mcnWZyFjNButacProVY2gyJ53++5VptiQE/ehE5YW0PlPABN/wP3mdODPSXFUsIW9r5FVoxJ4qXYgrrdp2auAw==" length="18037438" type="application/octet-stream" />
+      <description>See the release notes for changes in Momentum 0.4.18.</description>
+      <enclosure url="https://github.com/dan-hart/momentum/releases/download/v0.4.18/Momentum-v0.4.18-macos.zip" sparkle:edSignature="XM7ZiS/WnEvp7wyCQoD3ufUmO0mzGWIfWCSM6N1REQxx4ZdRJLzcKUQYiaF5uiaPwiT+wQhWUHhY/Tc9XD9VDg==" length="18099202" type="application/octet-stream" />
     </item>
   </channel>
 </rss>
