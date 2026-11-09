@@ -7,12 +7,61 @@
 // reverses. Together they are the net that catches a change breaking one platform.
 import Foundation
 import MomentumCore
+import Observation
+import Synchronization
 import Testing
 
 @testable import MomentumKit
 
 @MainActor
 @Suite struct ViewsAndSections {
+    @Test func unchangedRefreshLeavesTaskPresentationUnobserved() {
+        let h = Harness()
+        h.state.selection = [h.rows[0]]
+        let changed = Mutex(false)
+        withObservationTracking {
+            _ = (h.state.listing, h.state.dayStatus, h.state.sidebar, h.state.selection)
+        } onChange: {
+            changed.withLock { $0 = true }
+        }
+        h.state.refresh()
+        #expect(!changed.withLock { $0 })
+    }
+
+    @Test func shortNextcloudPollKeepsTheIdleCaptionAndTaskPresentation() async {
+        let h = Harness()
+        h.defaults.set("nextcloud", forKey: PrefKey.syncMethod)
+        h.state.preferencesChanged()
+        let caption = h.state.syncCaption
+        #expect(caption != nil)
+        let listing = h.state.listing
+        let sync = h.state.runNextcloud { _ in
+            SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)
+        }
+        #expect(h.state.syncInProgress)
+        #expect(h.state.syncCaption == caption)
+        await sync.value
+        #expect(h.state.listing == listing)
+        #expect(!h.state.syncInProgress)
+    }
+
+    @Test func retryKeepsTheLastSyncFailureVisibleUntilRecovery() async {
+        let h = Harness()
+        h.defaults.set("nextcloud", forKey: PrefKey.syncMethod)
+        h.state.preferencesChanged()
+        await h.state.runNextcloud { _ in throw CoreError.NotConfigured }.value
+        let error = h.state.syncError
+        #expect(error != nil)
+
+        let retry = h.state.runNextcloud { _ in
+            SyncReport(downloaded: false, uploaded: false, opsUploaded: 0)
+        }
+        #expect(h.state.syncError == error)
+        await retry.value
+        #expect(h.state.syncError == nil)
+        #expect(h.state.banner == nil)
+    }
+
     @Test func everyListingGivesEachSectionADistinctIdentity() {
         let h = Harness()
         for view in [MomentumCore.View.today, .upcoming, .archive, .search] {

@@ -4,6 +4,30 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-187 Background refresh interrupts the visible task list
+
+- Medium severity. Reported on macOS 0.4.16 with Nextcloud selected.
+  Related presentation defects reproduced with isolated fixtures on macOS, Linux,
+  iOS and Android.
+- Keep a populated task view open while a background refresh
+  returns identical tasks. On Linux, also expand the Archive beyond the first page
+  before refreshing. Expect the list, scroll position and pagination to stay steady.
+- macOS swapped sync controls and caption as soon as a poll started.
+  The live jump also occurred between syncs. AppKit's outline view repeatedly
+  replaced measured 68-point offscreen rows with its 24-point estimate.
+  Linux cleared the task widgets and treated sidebar reselection as navigation.
+  iOS animated identical task snapshots. Android drove the pull-to-refresh indicator
+  from the general snapshot-loading flag.
+- macOS now waits one second to show Nextcloud progress in a fixed-size footer
+  slot and keeps the last failure visible until recovery. The task list derives
+  its native row-height estimate from the configured font metrics and density.
+  Linux keeps existing
+  widgets for equivalent presentation and retains the current Archive page. iOS
+  compares task presentation before assigning a snapshot. Android reserves the
+  pull indicator for explicit pulls.
+- Isolated regressions, native checks and the installed-app verification limit are
+  recorded in the [2026-11-09 handoff](PROGRESS.md#2026-11-09-stable-task-list-refresh).
+
 ## B-186 — Sync setup obscures connection state and recovery
 
 - **Severity/platforms:** medium usability issue reported by the user; source-confirmed

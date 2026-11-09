@@ -1,5 +1,49 @@
 # Momentum progress and handoff
 
+## 2026-11-09 Stable task list refresh
+
+- B-187, F-003 and F-075 in dirty `main` based on `2215986`. Fixed four native refresh paths using
+  the existing Rust projections. Preserved inherited TestFlight documentation edits.
+- The installed macOS 0.4.16 app has Nextcloud selected. The isolated regression
+  reproduced the immediate change to “Syncing…” on a short poll. A native AppKit host
+  of the fixed Debug app's detail view kept the same list, frame and nonzero scroll
+  offset across three short polls and one slow exchange with visible progress.
+  The Debug app builds and all 262 MomentumKit tests pass, including failure retention
+  through retry and clearing on recovery. The exact jump reported in the installed
+  app had yet to be reproduced against its active profile. At this stage the
+  installed build was 0.4.16.
+- The production iOS Simulator build and all 46 native rendering tests passed on
+  the dedicated iOS 26.5 simulator.
+  The new test failed before the fix because the identical result started a
+  transition. Real task changes retain their existing animation policy. The result
+  bundle is `ios/DerivedData/TestReports/views-1794249006683858000.xcresult`.
+- GTK reproduced replacing the task widgets on refresh. The Linux VM
+  workspace run passed, including all 135 native app tests and 31 CLI tests. The GTK
+  fix also separates sidebar reselection from navigation. The extended Archive
+  regression confirms a refresh preserves the expanded page.
+- Compose reproduced an indeterminate indicator during a blocked
+  background query. The JVM suite and all 11 Compose flow tests passed on the
+  dedicated API 36 emulator. The regression verifies that an explicit refresh
+  still displays the native pull indicator.
+
+### macOS live installation follow-up
+
+- The first local build reproduced the jump with the real profile and a single
+  app instance. A temporary geometry trace showed offscreen rows falling from
+  68 to 24 points with the same task count, viewport, and last sync timestamp.
+  A 68-point candidate kept the document height and nonzero clip origin fixed.
+- The final native estimate uses the configured title and caption line heights,
+  the row density's spacing and padding, and the inset list's native padding.
+  The Release build and all 263 MomentumKit tests passed, including estimates
+  at different text sizes and densities.
+- Installed and launched the uninstrumented local 0.4.17 build with the
+  existing profile on macOS 27.2. Seven successful automatic Nextcloud
+  exchanges occurred during the 42-second scrolled Today check. The scrollbar
+  value was identical in all 36 accessibility reads, with zero vertical
+  displacement across 89 comparable frames. Thirteen frames of a different
+  capture size were excluded. The original Developer ID bundle was preserved
+  for rollback.
+
 ## 2026-11-03 — Sync redesign CI corrections (F-077 / B-186)
 
 - **Initial hosted result:** [CI 41751835810](https://github.com/dan-hart/momentum/actions/runs/41751835810)

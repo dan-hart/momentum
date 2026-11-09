@@ -191,11 +191,7 @@ struct ToolbarItems: CustomizableToolbarContent {
         }
         ToolbarItem(id: "sync") {
             Button { state.sync() } label: {
-                if state.syncInProgress {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Label(String(localized: "Sync Now"), systemImage: "arrow.triangle.2.circlepath")
-                }
+                Label(String(localized: "Sync Now"), systemImage: "arrow.triangle.2.circlepath")
             }
             .disabled(state.syncInProgress || !state.syncAvailable)
             .help(state.syncInProgress ? String(localized: "Syncing…") : String(localized: "Sync Now (\(state.modifier.symbol)R)"))
@@ -301,19 +297,23 @@ struct SyncStatusBar: SwiftUI.View {
 
     var body: some SwiftUI.View {
         HStack(spacing: 10) {
-            if state.syncInProgress {
-                ProgressView().controlSize(.small)
-                    .accessibilityLabel(String(localized: "Syncing…"))
-            } else {
-                Image(systemName: state.syncError == nil ? "arrow.triangle.2.circlepath" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(state.syncError == nil ? Color.secondary : Color.orange)
-                    .accessibilityHidden(true)
+            Group {
+                if state.showsSyncProgress {
+                    ProgressView().controlSize(.small)
+                        .accessibilityLabel(String(localized: "Syncing…"))
+                } else {
+                    Image(systemName: state.syncError == nil ? "arrow.triangle.2.circlepath" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(state.syncError == nil ? Color.secondary : Color.orange)
+                        .accessibilityHidden(true)
+                }
             }
+            .frame(width: 20, height: 20)
             VStack(alignment: .leading, spacing: 2) {
                 if !state.isDemo {
                     Text(state.selectedSyncMethod.label).appFont(.caption).fontWeight(.semibold)
                 }
                 Text(state.syncCaption ?? "").appFont(.caption).foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             Spacer(minLength: 8)
             if state.syncError != nil {

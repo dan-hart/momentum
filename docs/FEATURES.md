@@ -1,5 +1,12 @@
 # Momentum feature ledger
 
+For F-003/F-075 (2026-11-09, B-187), background refreshes keep equivalent task
+content mounted on Linux and avoid animating an identical presentation on iOS.
+Android reserves the list spinner for explicit pulls. macOS keeps sync controls
+steady during brief Nextcloud polls and uses the configured typography and
+density for its native task row estimate. [BUGS.md](BUGS.md#b-187-background-refresh-interrupts-the-visible-task-list) and
+[PROGRESS.md](PROGRESS.md#2026-11-09-stable-task-list-refresh).
+
 0.4.17 delivery (2026-11-03): F-022 and B-182–B-185 are merged into main and released
 at `3f669c1`. Main CI and the complete tagged release pass, including signed/notarized
 macOS assets, Android packaging, authenticated updater, Homebrew and both trusted

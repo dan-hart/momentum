@@ -9,10 +9,10 @@ struct TaskRowView: SwiftUI.View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.appTypography) private var typography
     @LabelColors private var colorful: Bool
-    @AppStorage(PrefKey.rowDensity) private var density = "regular"
     let row: TaskRow
+    let layout: TaskRowLayout
     @State private var targeted = false
-    private var compact: Bool { density == "compact" }
+    private var compact: Bool { layout.compact }
 
     var body: some SwiftUI.View {
         Group {
@@ -37,7 +37,7 @@ struct TaskRowView: SwiftUI.View {
         }
         .appFont(.body, area: .content)
         .padding(.leading, row.isSubtask ? 28 : 0)
-        .padding(.vertical, compact ? 0 : 6)
+        .padding(.vertical, layout.verticalPadding)
         .contentShape(Rectangle())
         .listRowBackground(targeted ? Color.accentColor.opacity(0.15) : nil)
         .modifier(TaskDragSource(id: row.id))
@@ -68,7 +68,7 @@ struct TaskRowView: SwiftUI.View {
                 .labelsHidden()
                 .accessibilityLabel(String(localized: "Done: \(row.title)"))
             }
-            VStack(alignment: .leading, spacing: compact ? 1 : 4) {
+            VStack(alignment: .leading, spacing: layout.textSpacing) {
                 Text(row.title)
                     .appFont(.body, area: .content)
                     .foregroundStyle(row.isDone ? .secondary : .primary)

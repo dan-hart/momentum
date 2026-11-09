@@ -6,6 +6,17 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.18] - 2026-11-09
+
+### Changed
+- Redesigned Sync settings across all four apps to make connection status, setup, and recovery easier to find.
+
+### Fixed
+- Keep the macOS task list steady when scrolling and during short Nextcloud polls.
+- Preserve existing task rows and the expanded Archive page during background refreshes on Linux.
+- Skip list animations for unchanged task data on iOS.
+- Show the Android pull-to-refresh spinner only when you pull to refresh.
+
 ## [0.4.17] - 2026-11-03
 
 ### Added

@@ -28,6 +28,7 @@ data class UiState(
     val query: String = "",
     val snapshot: Snapshot? = null,
     val loading: Boolean = true,
+    val pullRefreshing: Boolean = false,
     val busy: Boolean = false,
     val selected: Set<String> = emptySet(),
     val selecting: Boolean = false,
@@ -141,23 +142,34 @@ class MomentumViewModel(
             }
         }
     }
-    fun refresh() {
+    fun refresh() = refreshTasks()
+
+    fun pullToRefresh() {
+        if (mutable.value.snapshot?.settings?.provider?.let { it != SyncProvider.Off } == true) {
+            platform.syncNow()
+        }
+        refreshTasks(pulled = true)
+    }
+
+    private fun refreshTasks(pulled: Boolean = false) {
         val version = ++request
         val route = mutable.value.view
         val query = mutable.value.query
-        mutable.update { it.copy(loading = true) }
+        mutable.update { it.copy(loading = true, pullRefreshing = pulled || it.pullRefreshing) }
         viewModelScope.launch {
             try {
                 val snapshot = repository.snapshot(route, query, archiveLimit)
                 if (version == request) mutable.update {
-                    it.copy(snapshot = snapshot, view = snapshot.listing.view, loading = false,
+                    it.copy(snapshot = snapshot, view = snapshot.listing.view, loading = false, pullRefreshing = false,
                         selected = it.selected.intersect(snapshot.listing.sections.flatMap { section ->
                             section.rows.filterIsInstance<Row.Task>().map { row -> row.row.id }
                         }.toSet()))
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                if (version == request) mutable.update { it.copy(loading = false, error = e.message ?: "") }
+                if (version == request) mutable.update {
+                    it.copy(loading = false, pullRefreshing = false, error = e.message ?: "")
+                }
             }
         }
     }
@@ -166,7 +178,8 @@ class MomentumViewModel(
         saved["view"] = viewKey(view); saved["context"] = when(view) { is View.Project -> view.id; is View.Tag -> view.id; else -> "" }
         saved["tab"] = tab.name
         if(tab == Tab.Today) { saved["today-view"] = viewKey(view); saved["today-context"] = saved.get<String>("context") }
-        mutable.update { it.copy(tab = tab, view = view, selected = emptySet(), selecting = false, snapshot = null) }
+        mutable.update { it.copy(tab = tab, view = view, selected = emptySet(), selecting = false,
+            snapshot = null, pullRefreshing = false) }
         refresh()
     }
     fun tab(tab: Tab) {

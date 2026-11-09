@@ -196,8 +196,8 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
                             if(state.view == View.Search) OutlinedTextField(state.query, vm::search, label = { Text(stringResource(R.string.search)) },
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(searchFocus), singleLine = true,
                                 trailingIcon = { if(state.query.isNotEmpty()) IconButton({ vm.search("") }) { Icon(Icons.Default.Close, stringResource(R.string.close)) } })
-                            PullToRefreshBox(isRefreshing = state.loading && state.snapshot != null,
-                                onRefresh = { if(state.snapshot?.settings?.provider?.let { it != com.codedbydan.momentum.data.SyncProvider.Off } == true) vm.platform.syncNow(); vm.refresh() }, modifier = Modifier.weight(1f)) {
+                            PullToRefreshBox(isRefreshing = state.pullRefreshing,
+                                onRefresh = vm::pullToRefresh, modifier = Modifier.weight(1f)) {
                                 TaskList(state, vm, editRepeatSchedule = { repeatConfiguration = it }) { rowMenu = it }
                             }
                             SyncFooter(state, vm)

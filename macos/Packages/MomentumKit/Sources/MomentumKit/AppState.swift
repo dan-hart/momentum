@@ -88,8 +88,9 @@ public final class AppState {
     public var syncInProgress: Bool { isSyncing || nearbySyncing }
     /// The main window is on screen. Automatic sync may pause while it is not.
     public private(set) var mainWindowVisible = true
-    /// A sync passed one second: show the spinner rather than flashing it.
-    public private(set) var syncIsSlow = false
+    private var syncIsSlow = false
+    /// Brief Nextcloud polls keep the previous status visible.
+    public var showsSyncProgress: Bool { syncIsSlow || nearbySyncing }
     public var sheet: Sheet?
     private var pendingSearchTaskId: String?
     public var confirmation: Confirmation?
@@ -1024,7 +1025,7 @@ public final class AppState {
             prefs.rememberOptimizedConnection(prefs.nextcloudConnectionIdentity)
         }
         let connection = settings
-        runNextcloud(connection) { engine in try engine.syncNextcloud(settings: connection) }
+        runNextcloud { engine in try engine.syncNextcloud(settings: connection) }
     }
 
     /// Publish this Mac's tasks as the server copy, keeping the damaged copy on the
@@ -1032,27 +1033,25 @@ public final class AppState {
     /// the person confirmed that this Mac's tasks should win.
     public func replaceServerCopy() {
         guard !isDemo, !isSyncing, let settings = prefs.nextcloud(keychain: keychain) else { return }
-        runNextcloud(settings) { engine in
+        runNextcloud { engine in
             try engine.replaceRemoteSyncFile(settings: settings, cancellation: SyncCancellation())
         }
     }
 
-    private func runNextcloud(_ settings: NextcloudSettings,
-                              _ work: @escaping @Sendable (Engine) throws -> SyncReport) {
+    @discardableResult
+    func runNextcloud(_ work: @escaping @Sendable (Engine) throws -> SyncReport) -> Task<Void, Never> {
         isSyncing = true
-        syncError = nil
-        syncFailureKind = nil
-        syncIsSlow = false
-        // Say what is happening right away, but only animate if it takes a while.
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1))
-            if let self, self.isSyncing { self.syncIsSlow = true }
+        // Keep progress tied to this exchange, even when polls finish in quick succession.
+        let progress = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            self?.syncIsSlow = true
         }
         let engine = self.engine
-        Task { [weak self] in
+        return Task { [weak self] in
             let result = await Task.detached(priority: .utility) { () -> Result<SyncReport, Error> in
                 do { return .success(try work(engine)) } catch { return .failure(error) }
             }.value
+            progress.cancel()
             guard let self else { return }
             self.isSyncing = false
             self.syncIsSlow = false
@@ -1060,6 +1059,8 @@ public final class AppState {
             switch result {
             case .success(let r):
                 self.banner = nil
+                self.syncError = nil
+                self.syncFailureKind = nil
                 self.refresh()
                 self.indexer?.reindex(engine.allTasks())
                 if r.downloaded || r.uploaded {
@@ -1090,7 +1091,7 @@ public final class AppState {
         // Reading an observable value keeps views current after defaults changes.
         _ = selectedSyncMethod
         if isDemo { return String(localized: "Preview mode · Sync is off", bundle: .module) }
-        if syncInProgress { return String(localized: "Syncing…", bundle: .module) }
+        if showsSyncProgress { return String(localized: "Syncing…", bundle: .module) }
         if syncError != nil { return String(localized: "Sync needs attention", bundle: .module) }
         switch prefs.syncMethod {
         case .off: return nil

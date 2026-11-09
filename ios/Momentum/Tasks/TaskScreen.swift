@@ -394,6 +394,7 @@ struct TaskScreen: SwiftUI.View {
             }
             let result = await snapshotLoader(worker, view, query, archiveLimit)
             guard !Task.isCancelled else { return }
+            if let snapshot, result.hasSamePresentation(as: snapshot) { return }
             onSnapshotChange(result)
             selection.formIntersection(result.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id))
             let transition = TaskSnapshotTransition.decision(

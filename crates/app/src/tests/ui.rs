@@ -43,6 +43,21 @@ fn today_view_shows_only_today_morning_evening_groups() {
         assert!(!shown(&*win.imp().empty) && shown(&*win.imp().task_box));
     });
 }
+
+#[test]
+fn unchanged_refresh_keeps_the_existing_task_widgets() {
+    on_gtk(|| {
+        let (win, _dir) = demo_window();
+        let section = win.imp().task_box.first_child().unwrap();
+        win.refresh();
+        assert_eq!(win.imp().task_box.first_child(), Some(section.clone()));
+
+        win.add_task("Changed task projection");
+        assert_ne!(win.imp().task_box.first_child(), Some(section));
+        assert!(row_ids(&win).contains(&id_of(&win, "Changed task projection")));
+    });
+}
+
 #[test]
 fn quick_add_parses_tags_and_estimate_and_plans_for_the_current_view() {
     on_gtk(|| {
@@ -186,6 +201,12 @@ fn archive_view_pages_in_batches() {
         more.emit_clicked();
         pump();
         assert_eq!(row_ids(&win).len(), 230);
+        win.refresh();
+        assert_eq!(
+            row_ids(&win).len(),
+            230,
+            "refreshing must retain the expanded archive page"
+        );
     });
 }
 #[test]

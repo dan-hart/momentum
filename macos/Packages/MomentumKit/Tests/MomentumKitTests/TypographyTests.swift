@@ -4,6 +4,16 @@ import Testing
 @testable import MomentumKit
 
 @Suite struct TypographyTests {
+    @Test func taskRowEstimateAccountsForFontSizeAndRowDensity() {
+        let regular = TaskRowLayout(compact: false)
+        let compact = TaskRowLayout(compact: true)
+        let typography = AppTypography(fontName: "AtkinsonHyperlegibleMono-Regular", contentSize: 18, interfaceSize: 16)
+        #expect(regular.estimatedHeight(typography: typography) == 68)
+        #expect(compact.estimatedHeight(typography: typography) == 53)
+        let larger = AppTypography(fontName: typography.fontName, contentSize: 28, interfaceSize: 16)
+        #expect(regular.estimatedHeight(typography: larger) > regular.estimatedHeight(typography: typography))
+    }
+
     @Test func bundledFontsResolveInBothAreasWithoutChangingSizes() {
         for name in ["AtkinsonHyperlegibleMono-Regular", "OpenDyslexic-Regular"] {
             let typography = AppTypography(fontName: name, contentSize: 23, interfaceSize: 16)

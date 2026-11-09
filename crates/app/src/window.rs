@@ -11,8 +11,8 @@ use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
 use momentum_core::{
-    AllDone, ClockTime, DayLabel, DayRelation, EmptyState, Engine, EstimateRange, GroupBy, MonthlyRule, Outcome,
-    RepeatDescription, Row, SectionKind, SectionNote, Slot, TaskGroup, TaskRow, ViewTitle,
+    AllDone, ClockTime, DayLabel, DayRelation, DayStatus, EmptyState, Engine, EstimateRange, GroupBy, Listing,
+    MonthlyRule, Outcome, RepeatDescription, Row, SectionKind, SectionNote, Slot, TaskGroup, TaskRow, ViewTitle,
 };
 use momentum_model::{day_number, day_str, now_ms, today_str, INBOX_PROJECT_ID};
 use momentum_oplog::Action;
@@ -32,6 +32,18 @@ pub enum MenuKind {
     Task,
     Project,
     Tag,
+}
+
+#[derive(PartialEq)]
+struct TaskPresentation {
+    listing: Listing,
+    day_status: Option<DayStatus>,
+    empty_copy: (String, String, String),
+    search_query: Option<String>,
+    selecting: bool,
+    compact: bool,
+    colorful: bool,
+    completion_message_context: Option<(String, u8)>,
 }
 
 /// Data directory for windows created from now on (tests give every window its own).
@@ -88,6 +100,7 @@ mod imp {
         pub view: RefCell<View>,
         pub views: RefCell<Vec<Option<View>>>,
         pub rows: RefCell<Vec<String>>,
+        pub(super) task_presentation: RefCell<Option<TaskPresentation>>,
         pub filter: RefCell<String>,
         pub color_css: RefCell<String>,
         pub tag_popover: gtk::Popover,
@@ -160,6 +173,7 @@ mod imp {
                 view: RefCell::new(View::Today),
                 views: Default::default(),
                 rows: Default::default(),
+                task_presentation: Default::default(),
                 filter: Default::default(),
                 color_css: Default::default(),
                 tag_popover: gtk::Popover::builder()
@@ -595,9 +609,14 @@ impl MomentumWindow {
             self,
             move |_, row| {
                 let Some(row) = row else { return };
-                if let Some(Some(v)) = w.imp().views.borrow().get(row.index() as usize) {
-                    *w.imp().view.borrow_mut() = v.clone();
+                let view = w.imp().views.borrow().get(row.index() as usize).cloned().flatten();
+                let Some(view) = view else { return };
+                // Sidebar refreshes reselect the current destination. That is
+                // not navigation and must preserve the list and archive page.
+                if *w.imp().view.borrow() == view {
+                    return;
                 }
+                *w.imp().view.borrow_mut() = view;
                 w.imp().archive_shown.set(100);
                 if w.imp().split_view.is_collapsed() {
                     w.imp().split_view.set_show_sidebar(false);
@@ -2542,7 +2561,7 @@ impl MomentumWindow {
             a.set_enabled(self.engine().can_archive());
         }
         self.refresh_sidebar();
-        self.refresh_tasks();
+        self.render_tasks(true);
     }
 
     /// View Options › Layout › Compact: rows keep only what a title and one line of
@@ -2762,6 +2781,9 @@ impl MomentumWindow {
         }
         imp.archive_shown.set(100);
         *imp.view.borrow_mut() = view;
+        if imp.split_view.is_collapsed() {
+            imp.split_view.set_show_sidebar(false);
+        }
         self.refresh();
     }
 
@@ -3168,9 +3190,12 @@ impl MomentumWindow {
     }
 
     fn refresh_tasks(&self) {
+        self.render_tasks(false);
+    }
+
+    fn render_tasks(&self, skip_unchanged: bool) {
         let imp = self.imp();
         self.update_context_actions();
-        self.clear_sections();
         let view = imp.view.borrow().clone();
         let searching = view == View::Search;
         imp.add_clamp.set_visible(!searching && !imp.selecting.get());
@@ -3185,6 +3210,37 @@ impl MomentumWindow {
         } else {
             (imp.engine.listing(view.clone(), imp.archive_shown.get()), None)
         };
+        let complete = day_status.as_ref().is_some_and(|s| {
+            matches!(
+                s.completion,
+                momentum_core::DayCompletion::PeriodComplete | momentum_core::DayCompletion::DayComplete
+            )
+        });
+        let empty = listing.empty.clone().unwrap_or_else(|| self.empty_state_kind());
+        let dynamic_completion = complete && imp.settings.boolean("dynamic-empty-state-messages");
+        let presentation = TaskPresentation {
+            listing,
+            day_status,
+            empty_copy: self.empty_state_text(&empty),
+            search_query: searching.then(|| imp.filter.borrow().clone()),
+            selecting: imp.selecting.get(),
+            compact: self.compact_rows(),
+            colorful: self.colorful(),
+            completion_message_context: dynamic_completion.then(|| (today_str(), crate::empty_messages::local_phase())),
+        };
+        // Polls can update sync status without changing any task widgets. Keeping
+        // those widgets mounted also preserves native scroll and keyboard focus.
+        if skip_unchanged && imp.task_presentation.borrow().as_ref() == Some(&presentation) {
+            self.update_sync_button();
+            return;
+        }
+        self.clear_sections();
+        let TaskPresentation {
+            listing,
+            day_status,
+            empty_copy: (icon, empty_title, desc),
+            ..
+        } = &presentation;
         // Refreshes can hide rows without leaving selection mode (for example,
         // the local Today visibility preference). Bulk actions must use visible rows.
         let visible: HashSet<&str> = listing
@@ -3210,18 +3266,10 @@ impl MomentumWindow {
         if imp.selecting.get() && !searching {
             self.update_selection_ui();
         }
-        let empty = listing.empty.clone().unwrap_or_else(|| self.empty_state_kind());
-        let (icon, title, desc) = self.empty_state_text(&empty);
-        imp.empty.set_icon_name(Some(&icon));
-        imp.empty.set_title(&title);
-        imp.empty.set_description(Some(&desc));
+        imp.empty.set_icon_name(Some(icon));
+        imp.empty.set_title(empty_title);
+        imp.empty.set_description(Some(desc));
         // Everything is done: celebrate above the Completed section and offer to archive.
-        let complete = day_status.as_ref().is_some_and(|s| {
-            matches!(
-                s.completion,
-                momentum_core::DayCompletion::PeriodComplete | momentum_core::DayCompletion::DayComplete
-            )
-        });
         let hidden_only = listing.sections.is_empty()
             && day_status
                 .as_ref()
@@ -3267,7 +3315,7 @@ impl MomentumWindow {
                         View::Tonight => gettext("Your evening list is complete."),
                         _ => gettext("Everything planned for today is complete."),
                     };
-                    if imp.settings.boolean("dynamic-empty-state-messages") {
+                    if dynamic_completion {
                         let hour = glib::DateTime::now_local().map(|date| date.hour() as u8).unwrap_or(12);
                         let mut selection = imp.completion_message.borrow_mut();
                         selection.update(&view, status.completion, &today_str(), hour);
@@ -3311,7 +3359,7 @@ impl MomentumWindow {
             if listing.can_archive {
                 page.append(&archive);
             }
-            if complete && imp.settings.boolean("dynamic-empty-state-messages") {
+            if dynamic_completion {
                 page.append(&crate::empty_messages::celebrate_button());
             }
             imp.task_box.append(&page);
@@ -3353,7 +3401,7 @@ impl MomentumWindow {
                 self.section_note(note);
             }
         }
-        if let Some(status) = day_status.filter(|_| view == View::Today) {
+        if let Some(status) = day_status.as_ref().filter(|_| view == View::Today) {
             for (count, destination, period, action) in [
                 (status.hidden_morning, View::Morning, "Morning", N_("Go to Morning")),
                 (status.hidden_evening, View::Tonight, "Evening", N_("Go to Tonight")),
@@ -3499,6 +3547,7 @@ impl MomentumWindow {
         let none = imp.rows.borrow().is_empty();
         imp.empty.set_visible(none);
         imp.task_box.set_visible(!none);
+        *imp.task_presentation.borrow_mut() = Some(presentation);
         self.update_sync_button();
     }
 

@@ -10,6 +10,8 @@ import SwiftUI
 struct TaskListView: SwiftUI.View {
     @Environment(AppState.self) private var state
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.appTypography) private var typography
+    @AppStorage(PrefKey.rowDensity) private var density = "regular"
     @LabelColors private var colorful: Bool
     @FocusState private var listFocused: Bool
 
@@ -115,6 +117,8 @@ struct TaskListView: SwiftUI.View {
                     }
                 }
                 .listStyle(.inset)
+                // AppKit falls back to this estimate when a task row leaves the viewport.
+                .environment(\.defaultMinListRowHeight, rowLayout.estimatedHeight(typography: typography))
                 .overlay {
                     if let empty = state.listing.empty, (!state.isSearching || SettingsDiscovery.results(state.searchText, platform: .macos).isEmpty), state.dayStatus.completion != .dayComplete, state.dayStatus.completion != .periodComplete, state.dayStatus.hiddenMorning == 0, state.dayStatus.hiddenEvening == 0 {
                         let copy = Strings.empty(empty, modifier: state.modifier.symbol, syncConfigured: state.prefs.syncConfigured)
@@ -165,6 +169,7 @@ struct TaskListView: SwiftUI.View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    private var rowLayout: TaskRowLayout { TaskRowLayout(compact: density == "compact") }
     private var calmLayout: Bool { state.view == .today && state.prefs.core.groupBy == .morningNight }
     private func orderedIds(_ ids: Set<String>) -> [String] {
         state.allRowIds.filter { ids.contains($0) }
@@ -174,7 +179,7 @@ struct TaskListView: SwiftUI.View {
     private func rowView(_ row: Row) -> some SwiftUI.View {
         switch row {
         case .task(let task):
-            TaskRowView(row: task)
+            TaskRowView(row: task, layout: rowLayout)
                 .tag(task.id)
                 .selectionDisabled(task.occurrence != nil)
         case .project(let item):

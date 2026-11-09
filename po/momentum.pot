@@ -4414,3 +4414,23 @@ msgid ""
 "Connection failed. Check the server URL, username, app password and network, "
 "then try again."
 msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:47
+msgid "Redesigned Sync settings across all four apps to make connection status, setup, and recovery easier to find."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid "Keep the macOS task list steady when scrolling and during short Nextcloud polls."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid "Preserve existing task rows and the expanded Archive page during background refreshes on Linux."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
+msgid "Skip list animations for unchanged task data on iOS."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
+msgid "Show the Android pull-to-refresh spinner only when you pull to refresh."
+msgstr ""

@@ -331,7 +331,7 @@ import XCTest
         XCTAssertEqual(contentFrame.maxY, loadingFrame.maxY, accuracy: 0.5)
         XCTAssertEqual(contentFrame.height, loadingFrame.height, accuracy: 0.5)
 
-        today.model.refreshAfterEdit()
+        await today.model.perform(.add("Snapshot transition fixture", .today))
         await today.gate.waitForArrival(2)
         await today.gate.releaseNext()
         let refresh = await today.assignments.next()
@@ -349,7 +349,7 @@ import XCTest
             XCTAssertTrue(first.transaction.disablesAnimations)
             XCTAssertNil(first.transaction.animation)
 
-            fixture.model.refreshAfterEdit()
+            await fixture.model.perform(.add("Snapshot transition fixture", .today))
             await fixture.gate.waitForArrival(2)
             await fixture.gate.releaseNext()
             let second = await fixture.assignments.next()
@@ -357,6 +357,23 @@ import XCTest
             XCTAssertTrue(second.transaction.disablesAnimations)
             XCTAssertNil(second.transaction.animation)
         }
+    }
+
+    func testUnchangedTaskSnapshotDoesNotStartAListTransition() async throws {
+        let reassignment = expectation(description: "An unchanged listing was reassigned")
+        reassignment.isInverted = true
+        let fixture = try await taskScreenSnapshotFixture(view: .today, reduceMotion: false) {
+            reassignment.fulfill()
+        }
+        defer { fixture.mounted.unmount(); fixture.cleanup() }
+
+        await fixture.gate.waitForArrival(1)
+        await fixture.gate.releaseNext()
+        _ = await fixture.assignments.next()
+        fixture.model.refreshAfterEdit()
+        await fixture.gate.waitForArrival(2)
+        await fixture.gate.releaseNext()
+        await fulfillment(of: [reassignment], timeout: 1)
     }
 
     func testTaskWorkspaceCollapsesAtPhonePortraitWidth() async throws {
@@ -1343,7 +1360,8 @@ import XCTest
 
     private func taskScreenSnapshotFixture(
         view: MomentumCore.View,
-        reduceMotion: Bool
+        reduceMotion: Bool,
+        onReassignment: @escaping () -> Void = {}
     ) async throws -> (
         mounted: HostingFixture.MountedView,
         model: MobileAppModel,
@@ -1366,6 +1384,7 @@ import XCTest
                     return await worker.snapshot(view: view, query: query, archiveLimit: archiveLimit)
                 },
                 onSnapshotAssignment: { transition, transaction in
+                    if assignments.hasRecords { onReassignment() }
                     assignments.record(transition: transition, transaction: transaction)
                 }
             )
@@ -1598,6 +1617,7 @@ private actor SnapshotDeliveryGate {
     }
 
     private var records: [Record] = []
+    var hasRecords: Bool { !records.isEmpty }
     private var cursor = 0
     private var waiter: CheckedContinuation<Void, Never>?
 

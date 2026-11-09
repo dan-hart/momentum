@@ -2,6 +2,8 @@
 package com.codedbydan.momentum
 
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
@@ -9,7 +11,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.codedbydan.momentum.core.*
 import com.codedbydan.momentum.data.MomentumRepository
 import com.codedbydan.momentum.ui.MomentumApp
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.junit.*
 import org.junit.runner.RunWith
 import java.io.File
@@ -33,6 +35,26 @@ class ComposeFlowTest {
         compose.waitUntil(15_000) { !vm.state.value.loading && !vm.state.value.editorLoading }
     }
     @After fun cleanup() = runBlocking { repo.close(); directory.deleteRecursively(); Unit }
+
+    @Test fun pullToRefreshProgressOnlyAppearsForAnExplicitPull(): Unit = runBlocking {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val held = launch(Dispatchers.IO) { repo.read { entered.complete(Unit); release.await() } }
+        try {
+            withTimeout(5_000) { entered.await() }
+            compose.runOnUiThread { vm.refresh() }
+            compose.onNodeWithTag("task-list").assertIsDisplayed()
+            val progress = compose.onNode(
+                SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate)
+            )
+            progress.assertDoesNotExist()
+            compose.runOnUiThread { vm.pullToRefresh() }
+            progress.assertIsDisplayed()
+        } finally {
+            release.complete(Unit)
+            held.join()
+        }
+    }
 
     @Test fun fullEditorCreatesTaskAndCheckboxUndoUsesRustBatch() {
         compose.onNodeWithContentDescription("Add task").performClick()

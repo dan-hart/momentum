@@ -18,6 +18,14 @@ public struct TaskSnapshot: Sendable {
     /// Reuse the ordered projection made on the worker, rather than rebuilding it
     /// for each selection, keyboard or drag calculation during a view update.
     public let tasks: [TaskRow]
+
+    /// Sync progress is presented by the sync coordinator. Changes there alone
+    /// should not replace or animate the visible task snapshot.
+    public func hasSamePresentation(as other: TaskSnapshot) -> Bool {
+        listing == other.listing && dayStatus == other.dayStatus && sidebar == other.sidebar
+            && projects == other.projects && tags == other.tags && canUndo == other.canUndo
+            && viewExists == other.viewExists && parentTitles == other.parentTitles
+    }
 }
 
 public enum TaskCommand: Sendable {

@@ -21,3 +21,25 @@ public extension Listing {
     /// Every section identity, in order; a test asserts they never repeat.
     var sectionIdentities: [SectionIdentity] { sections.map(\.identity) }
 }
+
+#if os(macOS)
+import AppKit
+
+public struct TaskRowLayout {
+    public let compact: Bool
+
+    public init(compact: Bool) { self.compact = compact }
+
+    public var verticalPadding: CGFloat { compact ? 0 : 6 }
+    public var textSpacing: CGFloat { compact ? 1 : 4 }
+
+    /// Match the AppKit estimate for an unloaded row to a typical title and metadata
+    /// row, including the inset list's four points of native padding on each edge.
+    public func estimatedHeight(typography: AppTypography) -> CGFloat {
+        let layout = NSLayoutManager()
+        let title = layout.defaultLineHeight(for: typography.resolvedFont(in: .content))
+        let metadata = layout.defaultLineHeight(for: typography.resolvedFont(in: .content, role: .caption))
+        return ceil(title + textSpacing + metadata + 2 * verticalPadding + 8)
+    }
+}
+#endif
