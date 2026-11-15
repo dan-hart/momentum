@@ -2847,58 +2847,60 @@ fn typography_mono_tightens_each_native_text_size_without_changing_it() {
         settings().set_int("typography-content-scale", 175).unwrap();
         settings().set_int("typography-interface-scale", 125).unwrap();
 
-        let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        crate::typography::register_interface_root(&root);
-        let body = gtk::Label::new(Some("Interface text"));
-        let title = gtk::Label::new(Some("Semantic title"));
-        title.add_css_class("title-1");
-        let task = gtk::Label::new(Some("Task text"));
-        crate::typography::register_content_root(&task);
-        let labels = [&body, &title, &task];
-        for label in labels {
-            root.append(label);
-        }
-        let fixture = gtk::Window::builder().application(&app()).child(&root).build();
-        fixture.present();
-        pump();
+        // Give each choice a new widget tree so text measurement does not
+        // depend on the animation clock of a mapped, headless display.
+        let measure = |font: &str| {
+            settings().set_string("typography-font", font).unwrap();
+            pump();
+            let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            crate::typography::register_interface_root(&root);
+            let body = gtk::Label::new(Some("Interface text"));
+            let title = gtk::Label::new(Some("Semantic title"));
+            title.add_css_class("title-1");
+            let task = gtk::Label::new(Some("Task text"));
+            crate::typography::register_content_root(&task);
+            let labels = [&body, &title, &task];
+            for label in labels {
+                root.append(label);
+            }
+            let fixture = gtk::Window::builder().application(&app()).child(&root).build();
+            fixture.present();
+            pump();
 
-        let text_size = |label: &gtk::Label| label.pango_context().font_description().unwrap().size();
-        let spacing = |label: &gtk::Label| {
-            label.layout().attributes().and_then(|attributes| {
-                attributes
-                    .iterator()
-                    .get(gtk::pango::AttrType::LetterSpacing)
-                    .and_then(|attribute| attribute.downcast::<gtk::pango::AttrInt>().ok())
-                    .map(|attribute| attribute.value())
-            })
+            let measurements = labels.map(|label| {
+                let size = label.pango_context().font_description().unwrap().size();
+                let spacing = label.layout().attributes().and_then(|attributes| {
+                    attributes
+                        .iterator()
+                        .get(gtk::pango::AttrType::LetterSpacing)
+                        .and_then(|attribute| attribute.downcast::<gtk::pango::AttrInt>().ok())
+                        .map(|attribute| attribute.value())
+                });
+                (size, spacing)
+            });
+            fixture.close();
+            pump();
+            measurements
         };
-        let original_sizes = labels.map(text_size);
+
+        let system = measure("");
+        let original_sizes = system.map(|(size, _)| size);
         assert!(original_sizes[1] > original_sizes[0]);
         assert!(original_sizes[2] > original_sizes[0]);
+        assert_eq!(system.map(|(_, spacing)| spacing), [None; 3]);
 
-        settings()
-            .set_string("typography-font", crate::font_choice::MONO_FAMILY)
-            .unwrap();
-        pump_ms(250);
-        assert_eq!(labels.map(text_size), original_sizes);
-        for (label, size) in labels.into_iter().zip(original_sizes) {
+        let mono = measure(crate::font_choice::MONO_FAMILY);
+        assert_eq!(mono.map(|(size, _)| size), original_sizes);
+        for (size, spacing) in mono {
             let expected = (size as f64 * -0.025).round() as i32;
-            let actual = spacing(label).expect("Pango letter spacing for AH Mono");
+            let actual = spacing.expect("Pango letter spacing for AH Mono");
             assert!(
                 (actual - expected).abs() <= 1,
                 "spacing {actual} vs {expected} for {size}"
             );
         }
 
-        settings()
-            .set_string("typography-font", crate::font_choice::NEXT_FAMILY)
-            .unwrap();
-        pump_ms(250);
-        assert_eq!(labels.map(text_size), original_sizes);
-        assert_eq!(labels.map(spacing), [None; 3]);
-
-        fixture.close();
-        pump();
+        assert_eq!(measure(crate::font_choice::NEXT_FAMILY), system);
         reset_typography_settings();
     });
 }

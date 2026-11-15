@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-## 2026-11-15 — 0.4.21 typography (F-022, B-190)
+## 2026-11-15 — 0.4.22 typography (F-022, B-190)
 
 - Atkinson Hyperlegible Next is selectable offline on all four platforms. The
   resource check verified four original faces per family and all three bundled
@@ -19,13 +19,17 @@
   simulator app showed both abbreviated choices and the Braille Institute
   credit in Appearance, along with both fonts in the Search empty state.
 - The focused GTK settings test passed on Linux arm64 using Xvfb, with native
-  family resolution, independent sizing, custom font and reset. MomentumKit
-  passed seven macOS typography tests. Android passed six JVM typography tests
-  and four Compose instrumentation tests on its API 37 emulator. The iOS and
-  macOS Debug apps and Android APK report 0.4.21.
-- The checkout is based on `99247eb` with local 0.4.21 metadata and existing Inbox
-  icon changes. Physical-device, spoken accessibility and hosted CI checks for
-  the patch remain open.
+  family resolution, independent sizing, custom font and reset. All 140 GTK
+  tests passed on both X11 and Broadway after the fixture fix. The macOS app
+  built, 272 MomentumKit tests passed, and the opt-in nearby-sync loopback
+  passed. Android passed 122 JVM tests and 11 API 37 instrumentation tests,
+  including the font link and Android Inbox cleanup.
+- The tagged 0.4.21 run was cancelled before publication because an inherited
+  style assertion depended on the display animation clock. The 0.4.22 fixture
+  measures each font in freshly mounted widgets. The live preference-change
+  path remains covered by the native picker regression.
+- This patch includes the Inbox icon changes. Physical-device and spoken
+  accessibility checks remain open.
 
 ## 2026-11-15 — Inbox cleanup button icon (F-078, B-189)
 

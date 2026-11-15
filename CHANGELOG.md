@@ -6,7 +6,7 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.4.21] - 2026-11-15
+## [0.4.22] - 2026-11-15
 
 ### Added
 - Choose the proportional Atkinson Hyperlegible Next font on Linux, macOS, iOS, and Android.
