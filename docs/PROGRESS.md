@@ -1,6 +1,6 @@
 # Momentum progress and handoff
 
-## 2026-11-15 — 0.4.22 typography (F-022, B-190)
+## 2026-11-15 — 0.4.23 typography (F-022, B-190)
 
 - Atkinson Hyperlegible Next is selectable offline on all four platforms. The
   resource check verified four original faces per family and all three bundled
@@ -10,8 +10,8 @@
   Each platform retains the original text sizes and tightens Mono character
   spacing by 0.025 em in its app typography. On macOS this applies to SwiftUI
   text. The system’s AppKit bridge retains native spacing in editing controls.
-  Each Appearance page uses AH Mono and AH Next and explains the names beside
-  a link to the Braille Institute’s free font page.
+  The pickers use AH Mono and AH Next. The explanation and Braille Institute
+  link are in Appearance on iOS, macOS and Android and in About & Help on Linux.
 - The hosted iOS 26.5 suite ran 125 tests with 3 skipped and no failures. The
   tracking regression demonstrated reduced line width at the original glyph
   height. Native title checks confirmed the original point sizes, reduced
@@ -28,6 +28,10 @@
   style assertion depended on the display animation clock. The 0.4.22 fixture
   measures each font in freshly mounted widgets. The live preference-change
   path remains covered by the native picker regression.
+- The 0.4.22 tagged run was cancelled before publication after hosted AppStream
+  validation found an empty German release-note item. The translated metadata
+  now merges without warnings, retains the full German note, and passes
+  AppStream validation for the stable and development app IDs on Linux.
 - This patch includes the Inbox icon changes. Physical-device and spoken
   accessibility checks remain open.
 

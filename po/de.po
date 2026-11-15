@@ -4775,7 +4775,7 @@ msgid ""
 msgstr ""
 "Atkinson Hyperlegible Mono hat engere Zeichenabstände bei gleicher "
 "Schriftgröße. AH Mono und AH Next stehen unter „Erscheinungsbild“. "
-"Unter „Über & Hilfe“ führt ein Link zu den kostenlosen Schriften des Braille Institute."
+"Im Hilfebereich führt ein Link zu den kostenlosen Schriften des Braille Institute."
 
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
 msgid ""
