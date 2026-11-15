@@ -134,7 +134,7 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     icon-name: "preferences-system-notifications-symbolic";
     Adw.PreferencesGroup {
       title: _("Notifications");
-      description: _("Summarize today's tasks once a day at this local time, or when Momentum next opens. Task reminders are separate.");
+      description: _("On selected days, Momentum sends the summary at your chosen local time or when it next opens that day.");
 
       Adw.ActionRow { name: "notifications.reminders"; title: _("Task reminders"); subtitle: _("Set reminders in task details. Momentum must be running to deliver them."); }
       Adw.SwitchRow morning_summary_row {
@@ -152,6 +152,30 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         numeric: true;
         snap-to-ticks: true;
         adjustment: Gtk.Adjustment { lower: 0; upper: 59; step-increment: 1; page-increment: 5; };
+      }
+      Adw.ExpanderRow morning_days_row {
+        title: _("Summary days");
+        Adw.ButtonRow morning_every_day_row { title: _("Every day"); }
+        Adw.ButtonRow morning_weekdays_row { title: _("Weekdays"); }
+        Adw.SwitchRow morning_monday_row { title: _("Monday"); }
+        Adw.SwitchRow morning_tuesday_row { title: _("Tuesday"); }
+        Adw.SwitchRow morning_wednesday_row { title: _("Wednesday"); }
+        Adw.SwitchRow morning_thursday_row { title: _("Thursday"); }
+        Adw.SwitchRow morning_friday_row { title: _("Friday"); }
+        Adw.SwitchRow morning_saturday_row { title: _("Saturday"); }
+        Adw.SwitchRow morning_sunday_row { title: _("Sunday"); }
+      }
+      Adw.ExpanderRow morning_sections_row {
+        title: _("Include in summary");
+        Adw.SwitchRow morning_today_row { title: _("Today"); }
+        Adw.SwitchRow morning_morning_row { title: _("Morning"); }
+        Adw.SwitchRow morning_evening_row { title: _("Evening"); }
+        Adw.SwitchRow morning_overdue_row { title: _("Overdue"); }
+      }
+      Adw.ActionRow morning_preview_row {
+        title: _("Summary preview");
+        subtitle-lines: 0;
+        visible: false;
       }
     }
   }

@@ -4434,3 +4434,82 @@ msgstr ""
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
 msgid "Show the Android pull-to-refresh spinner only when you pull to refresh."
 msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:76
+msgid "Weekdays selected for the morning summary"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:77
+msgid "Task sections selected for the morning summary"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:137
+msgid ""
+"On selected days, Momentum sends the summary at your chosen local time or "
+"when it next opens that day."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:157 crates/app/src/settings_ui.rs:92
+msgid "Summary days"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:158 crates/app/src/prefs.rs:305
+msgid "Every day"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:159 crates/app/src/prefs.rs:304
+msgid "Weekdays"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:169 crates/app/src/settings_ui.rs:97
+msgid "Include in summary"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:176
+msgid "Summary preview"
+msgstr ""
+
+#: crates/app/src/background_status.rs:114
+msgid "No overdue tasks"
+msgstr ""
+
+#: crates/app/src/window.rs
+#, c-format
+msgid "1 task today"
+msgid_plural "%d tasks today"
+msgstr[0] ""
+msgstr[1] ""
+
+#: crates/app/src/background_status.rs:122
+msgid "1 overdue task"
+msgid_plural "%d overdue tasks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: crates/app/src/prefs.rs:303 crates/app/src/prefs.rs:969
+msgid "No days selected"
+msgstr ""
+
+#: crates/app/src/prefs.rs:398
+msgid "Overdue only"
+msgstr ""
+
+#: crates/app/src/prefs.rs:971
+msgid "No sections selected"
+msgstr ""
+
+#: crates/app/src/prefs.rs:975
+msgid "No tasks in the selected sections"
+msgstr ""
+
+#: crates/app/src/settings_ui.rs:88
+msgid "reminder hour minute time"
+msgstr ""
+
+#: crates/app/src/settings_ui.rs:93
+msgid "schedule weekdays custom"
+msgstr ""
+
+#: crates/app/src/settings_ui.rs:98
+msgid "summary today overdue morning evening"
+msgstr ""

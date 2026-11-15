@@ -70,8 +70,13 @@ internal class TaskCountNotifier(private val context: Context, private val repos
                             .setData(Uri.parse("momentum-private://task-count/today"))
                             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                             .putExtra("open-today", true), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                    val text = context.resources.getQuantityString(if(mode == TaskCountMode.DUE_TODAY)
-                        R.plurals.task_count_due_today else R.plurals.task_count_today_overdue, count, count)
+                    val countText = when (mode) {
+                        TaskCountMode.NONE -> return@withLock true
+                        TaskCountMode.OVERDUE_ONLY -> R.plurals.task_count_overdue_only
+                        TaskCountMode.DUE_TODAY -> R.plurals.task_count_due_today
+                        TaskCountMode.TODAY_INCLUDING_OVERDUE -> R.plurals.task_count_today_overdue
+                    }
+                    val text = context.resources.getQuantityString(countText, count, count)
                     manager.notify(tag, ID, NotificationCompat.Builder(context, channelId)
                         .setSmallIcon(R.drawable.ic_launcher_foreground)
                         .setContentTitle(context.getString(R.string.task_count_title)).setContentText(text)

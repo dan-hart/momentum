@@ -147,7 +147,7 @@ private actor FakeSchedulingCenter: NotificationSchedulingCenter {
 
 private func request(_ id: String = "task", revision: String = "private-revision", fire: UInt64 = 2_000) -> NotificationRequest {
     NotificationRequest(id: id, sourceRevision: revision, scheduledAtMs: fire, fireAtMs: fire,
-                        content: .reminder(taskId: id, title: "Private task", dueAtMs: fire))
+                        content: .reminder(taskId: id, title: "Private task", dueAtMs: fire), badgeCount: nil)
 }
 private func observation(_ request: NotificationRequest) -> NotificationObservation {
     NotificationObservation(id: request.id, sourceRevision: request.sourceRevision)
@@ -542,15 +542,17 @@ private func coordinator(_ core: FakeSchedulingCore, _ center: FakeSchedulingCen
     @Test func typedRoutesComeFromCoreContentWithoutParsingOpaqueIdentifiers() async {
         let reminder = NotificationRequest(id: "opaque-one", sourceRevision: "private-reminder-revision",
             scheduledAtMs: 2_000, fireAtMs: 2_000,
-            content: .reminder(taskId: "core-task-id", title: "Task", dueAtMs: 2_000))
+            content: .reminder(taskId: "core-task-id", title: "Task", dueAtMs: 2_000), badgeCount: 3)
         let summary = NotificationRequest(id: "opaque-two", sourceRevision: "private-summary-revision",
             scheduledAtMs: 3_000, fireAtMs: 3_000,
-            content: .summary(day: "2030-01-02", counts: MorningSummary(total: 2, morning: 1, tonight: 0), taskIds: ["a", "b"]))
+            content: .summary(day: "2030-01-02", counts: MorningSummary(total: 2, morning: 1, tonight: 0, overdue: 0, sections: 7),
+                taskIds: ["a", "b"]), badgeCount: nil)
         let events = NotificationEvents()
         let core = FakeSchedulingCore(plan: plan([reminder, summary]), events: events)
         let center = FakeSchedulingCenter(events: events)
         _ = await coordinator(core, center).refresh()
         #expect(await center.additions.map(\.route) == [.reminder(taskID: "core-task-id"), .summary(day: "2030-01-02")])
+        #expect(await center.additions.map(\.badgeCount) == [3, nil])
         #expect(await core.accepted == [reminder, summary])
     }
 

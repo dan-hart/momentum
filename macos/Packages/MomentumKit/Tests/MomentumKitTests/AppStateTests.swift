@@ -583,6 +583,72 @@ import Testing
         #expect(h.notifier.badges.last == todayCount + 1)
     }
 
+    @Test func overdueBadgeUsesOnlyOverdueTasks() throws {
+        let h = Harness()
+        h.defaults.set(DockBadgeMode.overdueOnly.rawValue, forKey: PrefKey.dockBadgeMode)
+        h.state.preferencesChanged()
+        let count = try #require(h.notifier.badges.last)
+        #expect(count > 0)
+        #expect(count == h.engine.taskCount(mode: .overdueOnly))
+        h.state.addTaskForToday("An unfinished task due today")
+        #expect(h.notifier.badges.last == count)
+        h.state.setDone(h.id("Renew library books"), true)
+        #expect(h.notifier.badges.last == count - 1)
+    }
+
+    @Test func morningSummaryUsesSelectedDaysAndSections() throws {
+        let h = Harness()
+        let weekday = Calendar.current.component(.weekday, from: .now)
+        let today = 1 << ((weekday + 5) % 7)
+        h.defaults.set(0, forKey: PrefKey.morningSummaryHour)
+        h.defaults.set(true, forKey: PrefKey.morningSummaryEnabled)
+        h.defaults.set(127 ^ today, forKey: PrefKey.morningSummaryWeekdays)
+        h.defaults.set(8, forKey: PrefKey.morningSummarySections)
+        h.state.preferencesChanged()
+        h.state.checkReminders()
+        #expect(h.notifier.summaries.isEmpty)
+
+        h.defaults.set(today, forKey: PrefKey.morningSummaryWeekdays)
+        h.state.preferencesChanged()
+        h.state.checkReminders()
+        let summary = try #require(h.notifier.summaries.first)
+        #expect(summary.sections == 8)
+        #expect(summary.overdue > 0)
+        #expect(summary.displayText.contains(summary.overdue.formatted()))
+    }
+
+    @Test func morningSummaryRefreshesTheSelectedBadgeOnlyWhenRequested() {
+        for enabled in [false, true] {
+            let h = Harness()
+            h.defaults.set(0, forKey: PrefKey.morningSummaryHour)
+            h.defaults.set(true, forKey: PrefKey.morningSummaryEnabled)
+            h.defaults.set(enabled, forKey: PrefKey.summaryUpdatesBadge)
+            h.defaults.set(DockBadgeMode.overdueOnly.rawValue, forKey: PrefKey.dockBadgeMode)
+            h.state.preferencesChanged()
+            let previousBadgeWrites = h.notifier.badges.count
+            h.state.checkReminders()
+            #expect(h.notifier.summaries.count == 1)
+            #expect(h.notifier.badges.count == previousBadgeWrites + (enabled ? 1 : 0))
+            #expect(h.notifier.badges.last == h.engine.taskCount(mode: .overdueOnly))
+        }
+    }
+
+    @Test func taskRemindersCanRefreshTheSelectedBadgeWithoutASummary() {
+        let h = Harness(demo: false)
+        for enabled in [false, true] {
+            h.defaults.set(enabled, forKey: PrefKey.remindersUpdateBadge)
+            h.state.createTask(TaskDraft(title: "Reminder", projectId: "", dueDay: nil,
+                time: ClockTime(hour: 0, minute: 0), reminderMinutesBefore: 0,
+                estimateMs: 0, notes: "", tagIds: [], newTags: []))
+            let previousBadgeWrites = h.notifier.badges.count
+            let previousReminders = h.notifier.reminders.count
+            h.state.checkReminders()
+            #expect(h.notifier.summaries.isEmpty)
+            #expect(h.notifier.reminders.count == previousReminders + 1)
+            #expect(h.notifier.badges.count == previousBadgeWrites + (enabled ? 1 : 0))
+        }
+    }
+
     @Test func todayBadgeCountsParentsOnceAndExcludesCompletedAndArchivedTasks() {
         let h = Harness(demo: false)
         h.defaults.set("todayIncludingOverdue", forKey: "dock-badge-mode")

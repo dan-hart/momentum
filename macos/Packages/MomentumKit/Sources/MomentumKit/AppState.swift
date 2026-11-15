@@ -173,7 +173,7 @@ public final class AppState {
         let initialSettingsStatus = engine.settingsSyncStatus()
         self.appSettingsSync = initialSettingsStatus
         engine.setDayPeriodTasksInToday(visible: p.showDayPeriodTasksInToday)
-        do { try engine.setDeviceSummaryPreferences(enabled: p.core.morningSummaryEnabled, time: p.core.morningSummaryTime) }
+        do { try Self.applySummaryOptions(p, to: engine) }
         catch { appSettingsError = Strings.error(error) }
         self.selectedSyncMethod = p.syncMethod
         self.modifier = p.modifier
@@ -351,7 +351,7 @@ public final class AppState {
             banner = nil
         }
         engine.setDayPeriodTasksInToday(visible: p.showDayPeriodTasksInToday)
-        do { try engine.setDeviceSummaryPreferences(enabled: p.core.morningSummaryEnabled, time: p.core.morningSummaryTime) }
+        do { try Self.applySummaryOptions(p, to: engine) }
         catch { appSettingsError = Strings.error(error) }
         refresh()
         if p.modifier != modifier { modifier = p.modifier }
@@ -455,7 +455,7 @@ public final class AppState {
         do {
             try PortableAppSettings.apply(engine.portableSettingsJson(), to: defaults)
             engine.setDayPeriodTasksInToday(visible: prefs.showDayPeriodTasksInToday)
-            try engine.setDeviceSummaryPreferences(enabled: prefs.core.morningSummaryEnabled, time: prefs.core.morningSummaryTime)
+            try Self.applySummaryOptions(prefs, to: engine)
             portableRevision = appSettingsSync.revision
             lastNativeSettings = try PortableAppSettings.encode(defaults)
             colorful = prefs.colorful
@@ -603,6 +603,11 @@ public final class AppState {
             folderCopyMessage = String(localized: "Folder copy was cancelled. The original folder stays intact.", bundle: .module)
         } catch { folderCopyMessage = Strings.error(error) }
         return false
+    }
+
+    private static func applySummaryOptions(_ prefs: Preferences, to engine: Engine) throws {
+        try engine.setDeviceSummaryOptions(enabled: prefs.morningSummaryEnabled,
+            time: prefs.morningSummaryTime, weekdays: prefs.morningSummaryWeekdays, sections: prefs.morningSummarySections)
     }
 
     private func updateDockBadge() {
@@ -916,11 +921,18 @@ public final class AppState {
     }
     public func checkReminders() {
         guard let notifier else { return }
-        for r in engine.dueReminders() {
-            notifier.reminder(r)
+        let reminders = engine.dueReminders()
+        for reminder in reminders {
+            notifier.reminder(reminder)
         }
-        if let s = engine.morningSummary() {
-            notifier.morningSummary(s)
+        let summary = engine.morningSummary()
+        if let summary {
+            notifier.morningSummary(summary)
+        }
+        // These alerts are sent by the running app. Refresh the Dock from the
+        // current task store so a delivered alert cannot restore an older count.
+        if (!reminders.isEmpty && prefs.remindersUpdateBadge) || (summary != nil && prefs.summaryUpdatesBadge) {
+            updateDockBadge()
         }
     }
     public func completeFromNotification(_ id: String) {

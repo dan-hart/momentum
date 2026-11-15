@@ -31,10 +31,11 @@ import com.codedbydan.momentum.core.TaskCountMode
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         vm.platform.refreshTaskCount(); vm.refresh()
     }
-    SettingHeading(R.string.task_count_title)
-    TaskCountMode.entries.forEach { choice ->
+    SettingHeading(R.string.app_badge_count)
+    listOf(TaskCountMode.NONE, TaskCountMode.OVERDUE_ONLY, TaskCountMode.DUE_TODAY, TaskCountMode.TODAY_INCLUDING_OVERDUE).forEach { choice ->
         ChoiceRow(stringResource(when(choice) {
             TaskCountMode.NONE -> R.string.task_count_off
+            TaskCountMode.OVERDUE_ONLY -> R.string.task_count_overdue_only_mode
             TaskCountMode.DUE_TODAY -> R.string.task_count_due_mode
             TaskCountMode.TODAY_INCLUDING_OVERDUE -> R.string.task_count_overdue_mode
         }), mode == choice) {

@@ -389,3 +389,51 @@ fn read_only_schedule_directory_propagates_acceptance_error() {
     assert!(!dir.path().join("notification-schedule.json").exists());
     assert_eq!(first(&e, now), request);
 }
+
+#[test]
+fn notification_badges_replace_only_affected_pending_requests_and_keep_delivered_actions() {
+    use momentum_core::momentum_model::{day_number, day_str};
+    use momentum_core::{ClockTime, NotificationAction, TaskCountMode};
+
+    let (engine, _dir, _) = setup();
+    let today = "2026-09-16".to_owned();
+    let now = local_ms(&today, 7, 0).unwrap();
+    engine.with_store_mut(|store| {
+        let task = store.state.task.entities.get_mut("task").unwrap();
+        task.due_day = Some(today.clone());
+        task.remind_at = Some(now + 60_000);
+        store.state.task.insert(
+            "overdue",
+            Task {
+                id: "overdue".into(),
+                due_day: Some(day_str(day_number(&today).unwrap() - 1)),
+                ..Task::default()
+            },
+        );
+    });
+    engine
+        .set_device_summary_options(true, ClockTime { hour: 8, minute: 0 }, 127, 7)
+        .unwrap();
+    let original = engine.notification_plan(now).unwrap().requests;
+    for request in &original {
+        assert!(engine.accept_notification(request.clone(), now).unwrap().accepted);
+    }
+    let pending = original.iter().map(observation).collect();
+    engine.set_device_notification_badge_options(TaskCountMode::OverdueOnly, true, false);
+
+    let plan = engine.reconcile_notifications(now, pending, vec![]).unwrap();
+    assert_eq!(plan.cancellations, [observation(&original[0])]);
+    assert_eq!(plan.accepted, [observation(&original[1])]);
+    let new_reminder = plan.requests[0].clone();
+    assert_eq!(new_reminder.badge_count, Some(1));
+    assert_eq!(plan.requests[1].badge_count, None);
+    assert!(engine.accept_notification(new_reminder.clone(), now).unwrap().accepted);
+
+    engine.set_device_notification_badge_options(TaskCountMode::None, false, false);
+    assert!(
+        engine
+            .perform_notification_action(new_reminder, NotificationAction::Done, now + 60_000,)
+            .unwrap()
+            .changed
+    );
+}

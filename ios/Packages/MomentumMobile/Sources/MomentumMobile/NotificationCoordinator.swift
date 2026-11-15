@@ -124,7 +124,7 @@ public actor NotificationCoordinator {
             }
             let submission = NotificationSubmission(route: route, identifier: identifier,
                 metadata: NotificationIdentity.metadata(for: identity), title: text.title,
-                body: text.body, timeInterval: max(1, interval))
+                body: text.body, timeInterval: max(1, interval), badgeCount: request.badgeCount)
             do { try await center.add(submission) }
             catch {
                 status.issues.insert(.schedulingFailed)

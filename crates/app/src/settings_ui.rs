@@ -85,7 +85,17 @@ pub fn entries() -> Vec<SettingsEntry> {
         (
             "notifications.morning-summary",
             N_("Morning summary"),
-            N_("reminder hour minute"),
+            N_("reminder hour minute time"),
+        ),
+        (
+            "notifications.summary-days",
+            N_("Summary days"),
+            N_("schedule weekdays custom"),
+        ),
+        (
+            "notifications.summary-sections",
+            N_("Include in summary"),
+            N_("summary today overdue morning evening"),
         ),
         ("notifications.reminders", N_("Task reminders"), N_("notifications")),
         ("sync.provider", N_("Sync method"), N_("off nextcloud libresync")),

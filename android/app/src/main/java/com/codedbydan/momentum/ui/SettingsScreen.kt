@@ -4,7 +4,6 @@ package com.codedbydan.momentum.ui
 import com.codedbydan.momentum.R
 
 import android.Manifest
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -28,7 +27,6 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codedbydan.momentum.*
-import com.codedbydan.momentum.core.ClockTime
 import com.codedbydan.momentum.data.*
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -37,8 +35,9 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 @Composable fun SettingsScreen(state: UiState, vm: MomentumViewModel) {
-    val settings = state.snapshot?.settings ?: return
-    val preferences = state.snapshot!!.preferences
+    val snapshot = state.snapshot ?: return
+    val settings = snapshot.settings
+    val preferences = snapshot.preferences
     val page = state.settingsPage
     val context = LocalContext.current
     val locale = LocalLocale.current.platformLocale
@@ -65,7 +64,7 @@ import java.time.format.FormatStyle
     BackHandler { vm.settingsPage("main") }
     CompositionLocalProvider(LocalSettingsAnchorLabel provides settingsAnchorLabel(state.settingsDestination, settings.provider)) {
     Column(Modifier.widthIn(max = 720.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        state.snapshot?.appSettingsError?.let {
+        snapshot.appSettingsError?.let {
             Text(stringResource(R.string.app_settings_apply_failed), color = MaterialTheme.colorScheme.error)
             TextButton(vm::refresh) { Text(stringResource(R.string.retry)) }
         }
@@ -138,12 +137,17 @@ import java.time.format.FormatStyle
         }) { Text(stringResource(R.string.exact_alarms)) } }
         if(Build.VERSION.SDK_INT >= 31 && !context.getSystemService(android.app.AlarmManager::class.java).canScheduleExactAlarms())
             Text(stringResource(R.string.exact_hint), style = MaterialTheme.typography.bodyMedium)
-        SettingSwitch(R.string.summary, preferences.morningSummaryEnabled) { enabled -> vm.preferences { it.copy(morningSummaryEnabled = enabled) } }
-        TextButton({ TimePickerDialog(context, { _, hour, minute -> vm.preferences { it.copy(morningSummaryTime = ClockTime(hour.toUInt(), minute.toUInt())) } },
-            preferences.morningSummaryTime.hour.toInt(), preferences.morningSummaryTime.minute.toInt(), android.text.format.DateFormat.is24HourFormat(context)).show()
-        }) { Text(stringResource(R.string.time) + ": " + clockText(preferences.morningSummaryTime)) }
+        MorningSummarySettings(snapshot, vm)
+        SettingHeading(R.string.notification_badges)
+        SettingSwitch(R.string.badge_task_reminders, settings.badgeTaskReminders) { enabled ->
+            vm.settings { it.copy(badgeTaskReminders = enabled) }
         }
-        if(page == "integrations") { TaskCountSettings(state, vm) }
+        SettingSwitch(R.string.badge_morning_summary, settings.badgeMorningSummary) { enabled ->
+            vm.settings { it.copy(badgeMorningSummary = enabled) }
+        }
+        Text(stringResource(R.string.notification_badges_hint), style = MaterialTheme.typography.bodyMedium)
+        TaskCountSettings(state, vm)
+        }
         if(page == "data") {
         AutomationSettings()
         SettingHeading(R.string.backups)

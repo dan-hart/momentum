@@ -51,6 +51,9 @@ final class MobileAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificati
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         guard Self.route(for: notification.request) != nil else { return [] }
+        if notification.request.content.badge != nil {
+            await MobileAppModel.shared.notifications.refreshBadge()
+        }
         return [.banner, .list, .sound]
     }
 

@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.os.Build
 import androidx.test.platform.app.InstrumentationRegistry
+import com.codedbydan.momentum.R
 import com.codedbydan.momentum.core.*
 import com.codedbydan.momentum.data.MomentumRepository
 import kotlinx.coroutines.*
@@ -75,6 +76,36 @@ class ReminderOsTest {
         awaitDismissed()
         Assert.assertTrue(repo.mutate { undo() }.changed)
         Assert.assertFalse(repo.detail(taskId)!!.isDone)
+    }
+
+    @Test fun pendingDeliveriesUseIndependentBadgePreferencesAndSelectedSummaryContent() = runBlocking {
+        repo.create(TaskDraft("Private overdue fixture", "INBOX_PROJECT", LocalDate.now().minusDays(1).toString(),
+            null, null, 0.0, "", emptyList(), emptyList()), View.Today)
+        repo.updatePreferences {
+            it.copy(morningSummaryEnabled = true, morningSummaryTime = ClockTime(0u, 0u), morningSummarySections = 8u)
+        }
+        val summary = repo.read { notificationPlan(System.currentTimeMillis().toULong()).requests.first {
+            it.content is NotificationContent.Summary
+        } }
+        val summaryKey = ReminderIdentity.key(ReminderIdentity.observation(summary))
+        scheduler.reconcile()
+        repo.updateSettings { it.copy(badgeTaskReminders = false, badgeMorningSummary = true) }
+        delivered()
+        Assert.assertTrue(scheduler.receive(Intent().putExtra("momentum.notification.key", summaryKey)))
+        withTimeout(5_000) { while(notifications.activeNotifications.none { it.tag == summaryKey }) delay(20) }
+
+        val reminderNotification = notifications.activeNotifications.single { it.tag == key }.notification
+        val summaryNotification = notifications.activeNotifications.single { it.tag == summaryKey }.notification
+        Assert.assertEquals("momentum.reminders.no-badge", reminderNotification.channelId)
+        Assert.assertFalse(notifications.getNotificationChannel(reminderNotification.channelId).canShowBadge())
+        Assert.assertEquals("momentum.morning-summary", summaryNotification.channelId)
+        Assert.assertTrue(notifications.getNotificationChannel(summaryNotification.channelId).canShowBadge())
+        Assert.assertEquals(context.getString(R.string.summary_overdue_count, 1L),
+            summaryNotification.extras.getString(Notification.EXTRA_TEXT))
+        Assert.assertNull(summaryNotification.publicVersion.extras.getString(Notification.EXTRA_TEXT))
+        repo.updateSettings { it.copy(notifications = false) }
+        scheduler.reconcile()
+        withTimeout(5_000) { while(notifications.activeNotifications.any { it.tag in setOf(key, summaryKey) }) delay(20) }
     }
 
     @Test fun lockedActionsKeepTheReceiptAndDisplayedReminderForUnlockedRetry() = runBlocking {

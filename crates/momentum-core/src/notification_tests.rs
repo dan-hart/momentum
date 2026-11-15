@@ -13,6 +13,8 @@ fn options(day: &str) -> NotificationPlanningOptions {
         consumed_ids: Default::default(),
         morning_summary_enabled: false,
         morning_summary_time: ClockTime { hour: 8, minute: 0 },
+        morning_summary_weekdays: 127,
+        morning_summary_sections: 7,
     }
 }
 fn store() -> (Store, tempfile::TempDir) {
@@ -160,7 +162,9 @@ fn notification_summary_membership_matches_desktop_including_slot_precedence() {
         MorningSummary {
             total: 3,
             morning: 1,
-            tonight: 1
+            tonight: 1,
+            overdue: 0,
+            sections: 7,
         }
     );
     e.set_preferences(Preferences {
@@ -490,4 +494,31 @@ fn notification_projection_and_engine_recurrence_share_constructor_and_project_f
             });
         }
     }
+}
+
+#[test]
+fn custom_summary_skips_unselected_days_and_empty_sections() {
+    let (mut s, _dir) = store();
+    let mut o = options("2026-09-19"); // Saturday
+    o.morning_summary_enabled = true;
+    o.morning_summary_weekdays = 0b000_0001; // Monday
+    o.morning_summary_sections = 8; // Overdue only
+    o.morning_summary_time = ClockTime { hour: 10, minute: 15 };
+    task(&mut s, "late", "2026-09-18", None);
+    task(&mut s, "today", "2026-09-21", None);
+    task(&mut s, "child", "2026-09-18", None);
+    s.state.task.entities.get_mut("child").unwrap().parent_id = Some("late".into());
+
+    let p = plan(&s, &o);
+    assert_eq!(p.requests.len(), 1);
+    let (day, counts, ids) = summary(&p.requests[0]);
+    assert_eq!(day, "2026-09-21");
+    assert_eq!(p.requests[0].fire_at_ms, local_ms(day, 10, 15).unwrap());
+    assert_eq!((counts.sections, counts.total, counts.overdue), (8, 0, 1));
+    assert_eq!(ids, ["late"]);
+
+    o.morning_summary_sections = 4; // Evening only with no evening task.
+    assert!(plan(&s, &o).requests.is_empty());
+    o.morning_summary_sections = 0;
+    assert!(plan(&s, &o).requests.is_empty());
 }

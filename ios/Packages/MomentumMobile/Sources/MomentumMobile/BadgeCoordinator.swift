@@ -3,7 +3,7 @@ import MomentumCore
 import MomentumKit
 
 public protocol NotificationBadgeCore: Sendable {
-    func badgeCount(includeOverdue: Bool) async -> UInt32
+    func badgeCount(mode: TaskCountMode) async -> UInt32
 }
 
 public protocol NotificationBadgeCenter: Sendable {
@@ -52,7 +52,7 @@ public actor BadgeCoordinator {
                     continue
                 }
                 let count: UInt32 = requestedMode == .none ? 0
-                    : await core.badgeCount(includeOverdue: requestedMode == .todayIncludingOverdue)
+                    : await core.badgeCount(mode: requestedMode.taskCountMode)
                 try await center.setBadgeCount(count)
                 status = .updated(count)
             } catch { status = .failed }
@@ -62,7 +62,7 @@ public actor BadgeCoordinator {
 }
 
 extension EngineWorker: NotificationBadgeCore {
-    public func badgeCount(includeOverdue: Bool) -> UInt32 {
-        engine.taskCount(mode: includeOverdue ? .todayIncludingOverdue : .dueToday)
+    public func badgeCount(mode: TaskCountMode) -> UInt32 {
+        engine.taskCount(mode: mode)
     }
 }

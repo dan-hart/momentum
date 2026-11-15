@@ -622,11 +622,15 @@ impl AppData {
     }
     /// Open top-level tasks planned for a day that has passed, oldest first.
     pub fn overdue_ids(&self) -> Vec<String> {
-        let today = today_str();
+        self.overdue_ids_on(&today_str())
+    }
+
+    /// Open top-level tasks planned before a supplied local date, oldest first.
+    pub fn overdue_ids_on(&self, day: &str) -> Vec<String> {
         let mut v: Vec<&Task> = self
             .task
             .iter()
-            .filter(|t| t.parent_id.is_none() && t.is_overdue(&today))
+            .filter(|t| t.parent_id.is_none() && t.is_overdue(day))
             .collect();
         v.sort_by(|a, b| a.plan_day().cmp(&b.plan_day()).then_with(|| a.created.cmp(&b.created)));
         v.into_iter().map(|t| t.id.clone()).collect()

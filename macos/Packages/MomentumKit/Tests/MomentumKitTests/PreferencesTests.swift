@@ -181,6 +181,27 @@ import Testing
         #expect(Preferences(d).core.morningSummaryTime == ClockTime(hour: 8, minute: 0))
     }
 
+    @Test func summaryOptionsAndNotificationBadgingUseDeviceLocalDefaults() {
+        let (d, name) = freshDefaults()
+        defer { d.removePersistentDomain(forName: name) }
+        let prefs = Preferences(d)
+        #expect(prefs.morningSummaryWeekdays == 127)
+        #expect(prefs.morningSummarySections == 7)
+        #expect(!prefs.remindersUpdateBadge && !prefs.summaryUpdatesBadge)
+
+        d.set(31, forKey: PrefKey.morningSummaryWeekdays)
+        d.set(9, forKey: PrefKey.morningSummarySections)
+        d.set(true, forKey: PrefKey.remindersUpdateBadge)
+        #expect(prefs.morningSummaryWeekdays == 31)
+        #expect(prefs.morningSummarySections == 9)
+        #expect(prefs.remindersUpdateBadge && !prefs.summaryUpdatesBadge)
+
+        d.set(-1, forKey: PrefKey.morningSummaryWeekdays)
+        d.set(16, forKey: PrefKey.morningSummarySections)
+        #expect(prefs.morningSummaryWeekdays == 127)
+        #expect(prefs.morningSummarySections == 7)
+    }
+
     @Test func everySortChoiceReachesTheCore() {
         let (d, name) = freshDefaults()
         defer { d.removePersistentDomain(forName: name) }
@@ -217,6 +238,7 @@ import Testing
         let expected: [(DockBadgeMode, TaskCountMode)] = [
             (.dueToday, .dueToday),
             (.todayIncludingOverdue, .todayIncludingOverdue),
+            (.overdueOnly, .overdueOnly),
             (.none, .none),
         ]
         for (badgeMode, taskCountMode) in expected {

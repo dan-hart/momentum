@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import struct MomentumCore.MorningSummary
 import MomentumKit
 import MomentumMobile
 import SwiftUI
@@ -9,9 +10,14 @@ struct NotificationSettings: View {
     @AppStorage(PrefKey.morningSummaryEnabled) private var summaryEnabled = false
     @AppStorage(PrefKey.morningSummaryHour) private var hour = 8
     @AppStorage(PrefKey.morningSummaryMinute) private var minute = 0
+    @AppStorage(PrefKey.morningSummaryWeekdays) private var weekdays = 127
+    @AppStorage(PrefKey.morningSummarySections) private var sections = 7
+    @AppStorage(PrefKey.remindersUpdateBadge) private var remindersUpdateBadge = false
+    @AppStorage(PrefKey.summaryUpdatesBadge) private var summaryUpdatesBadge = false
     @AppStorage(PrefKey.dockBadgeMode) private var badgeMode = DockBadgeMode.dueToday.rawValue
     @State private var editingSummaryTime = false
     @State private var summaryTimeDraft = Date()
+    @State private var summaryPreview: MorningSummary?
 
     private var notifications: MobileNotifications { model.notifications }
 
@@ -60,11 +66,43 @@ struct NotificationSettings: View {
                             SettingsLabel("Time", symbol: "clock.fill")
                         }
                     }
-                        .accessibilityIdentifier("notifications-summary-time")
+                    .accessibilityIdentifier("notifications-summary-time")
+
+                    NavigationLink {
+                        summaryDays
+                    } label: {
+                        LabeledContent {
+                            Text(daySelectionLabel).foregroundStyle(AccentTheme.secondaryText)
+                        } label: {
+                            SettingsLabel("Days", symbol: "calendar")
+                        }
+                    }
+                    .accessibilityIdentifier("notifications-summary-days")
+
+                    NavigationLink {
+                        Form {
+                            ForEach(MorningSummarySection.allCases) { section in
+                                Toggle(section.label, isOn: selected($sections, bit: Int(section.rawValue)))
+                                    .accessibilityIdentifier("notifications-summary-section-\(section.rawValue)")
+                            }
+                        }
+                        .navigationTitle("Include in Summary")
+                    } label: {
+                        SettingsLabel("Include in Summary", symbol: "list.bullet")
+                    }
+                    .accessibilityIdentifier("notifications-summary-sections")
+
+                    if weekdays == 0 || sections == 0 {
+                        Text("Select at least one day and one section to receive the summary.")
+                            .foregroundStyle(AccentTheme.secondaryText)
+                    } else if let preview = summaryPreview, Int(preview.sections) == sections {
+                        LabeledContent("Preview") { Text(preview.displayText) }
+                            .accessibilityIdentifier("notifications-summary-preview")
+                    }
                 }
             } header: { Text("Daily Overview").foregroundStyle(AccentTheme.secondaryText) }
             footer: {
-                Text("An optional overview of today's tasks. Task reminders are configured separately on each task.")
+                Text("The summary skips days when the selected sections are empty. Configure individual reminders on each task.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
@@ -73,7 +111,14 @@ struct NotificationSettings: View {
                     ForEach(DockBadgeMode.allCases) { mode in Text(mode.label).tag(mode.rawValue) }
                 } label: { SettingsLabel("App Badge", symbol: "app.badge.fill") }
                 .accessibilityIdentifier("notifications-badge-mode").settingsTarget("notifications.badge")
-                if notifications.badgeStatus == .blockedBySystem {
+                Group {
+                    Toggle("Task Reminders Update Badge", isOn: $remindersUpdateBadge)
+                        .accessibilityIdentifier("notifications-reminders-update-badge")
+                    Toggle("Morning Summary Updates Badge", isOn: $summaryUpdatesBadge)
+                        .accessibilityIdentifier("notifications-summary-updates-badge")
+                }
+                .disabled(badgeMode == DockBadgeMode.none.rawValue)
+                if badgeMode != DockBadgeMode.none.rawValue && notifications.badgeStatus == .blockedBySystem {
                     Text("Allow badges in iOS Settings to show the task count on the app icon.")
                         .foregroundStyle(AccentTheme.secondaryText)
                 } else if notifications.badgeStatus == .failed {
@@ -82,6 +127,10 @@ struct NotificationSettings: View {
             } footer: {
                 Text("Each unfinished parent task counts once. Subtasks are included with their parent; zero hides the badge.")
                     .foregroundStyle(AccentTheme.secondaryText)
+                if badgeMode != DockBadgeMode.none.rawValue && (remindersUpdateBadge || summaryUpdatesBadge) {
+                    Text("When Momentum is closed, notifications use the badge count calculated when they were scheduled.")
+                        .foregroundStyle(AccentTheme.secondaryText)
+                }
             }
 
             Section {
@@ -146,9 +195,71 @@ struct NotificationSettings: View {
             .presentationDragIndicator(.visible)
         }
         .task { await model.start(); await notifications.refresh() }
-        .onChange(of: "\(summaryEnabled)-\(hour)-\(minute)-\(badgeMode)") {
+        .task(id: PreviewInput(sections: sections, revision: model.revision, ready: model.worker != nil)) {
+            summaryPreview = await model.worker?.morningSummaryPreview(sections: UInt8(clamping: sections))
+        }
+        .onChange(of: preferences) {
             Task { await model.preferencesChanged() }
         }
+    }
+
+    private struct PreviewInput: Equatable {
+        let sections: Int
+        let revision: Int
+        let ready: Bool
+    }
+
+    private struct NotificationPreferences: Equatable {
+        let summaryEnabled: Bool
+        let hour: Int
+        let minute: Int
+        let weekdays: Int
+        let sections: Int
+        let badgeMode: String
+        let remindersUpdateBadge: Bool
+        let summaryUpdatesBadge: Bool
+    }
+
+    private var preferences: NotificationPreferences {
+        NotificationPreferences(summaryEnabled: summaryEnabled, hour: hour, minute: minute, weekdays: weekdays,
+            sections: sections, badgeMode: badgeMode, remindersUpdateBadge: remindersUpdateBadge,
+            summaryUpdatesBadge: summaryUpdatesBadge)
+    }
+
+    private var daySelectionLabel: LocalizedStringKey {
+        switch weekdays {
+        case 0: "None"
+        case 31: "Weekdays"
+        case 127: "Every Day"
+        default: "Custom"
+        }
+    }
+
+    private var summaryDays: some View {
+        let calendar = Calendar.current
+        let symbols = calendar.weekdaySymbols
+        return Form {
+            Section {
+                Button("Every Day") { weekdays = 127 }
+                Button("Weekdays") { weekdays = 31 }
+            }
+            Section {
+                ForEach(0..<7) { offset in
+                    let index = (calendar.firstWeekday - 1 + offset) % 7
+                    let bit = 1 << ((index + 6) % 7)
+                    Toggle(symbols[index], isOn: selected($weekdays, bit: bit))
+                        .accessibilityIdentifier("notifications-summary-day-\(bit)")
+                }
+            }
+        }
+        .navigationTitle("Days")
+    }
+
+    private func selected(_ mask: Binding<Int>, bit: Int) -> Binding<Bool> {
+        Binding(get: { mask.wrappedValue & bit != 0 }, set: { enabled in
+            let current = mask.wrappedValue
+            mask.wrappedValue = enabled ? current | bit : current & ~bit
+        })
     }
 
     private var permissionLabel: LocalizedStringKey {

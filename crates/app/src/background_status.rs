@@ -11,15 +11,17 @@ pub enum BackgroundCountMode {
     DueToday,
     TodayIncludingOverdue,
     Off,
+    OverdueOnly,
 }
 
 impl BackgroundCountMode {
-    pub const VALUES: [&'static str; 3] = ["due-today", "today-including-overdue", "off"];
+    pub const VALUES: [&'static str; 4] = ["due-today", "today-including-overdue", "off", "overdue-only"];
 
     pub fn from_setting(value: &str) -> Self {
         match value {
             "today-including-overdue" => Self::TodayIncludingOverdue,
             "off" => Self::Off,
+            "overdue-only" => Self::OverdueOnly,
             _ => Self::DueToday,
         }
     }
@@ -29,6 +31,7 @@ impl BackgroundCountMode {
             Self::DueToday => TaskCountMode::DueToday,
             Self::TodayIncludingOverdue => TaskCountMode::TodayIncludingOverdue,
             Self::Off => TaskCountMode::None,
+            Self::OverdueOnly => TaskCountMode::OverdueOnly,
         }
     }
 }
@@ -107,11 +110,16 @@ pub fn format_status(mode: BackgroundCountMode, count: u32) -> String {
         return gettext("Momentum is running");
     }
     if count == 0 {
-        return gettext("All done for today");
+        return if mode == BackgroundCountMode::OverdueOnly {
+            gettext("No overdue tasks")
+        } else {
+            gettext("All done for today")
+        };
     }
     let message = match mode {
         BackgroundCountMode::DueToday => ngettext("1 task due today", "%d tasks due today", count),
         BackgroundCountMode::TodayIncludingOverdue => ngettext("1 open task in Today", "%d open tasks in Today", count),
+        BackgroundCountMode::OverdueOnly => ngettext("1 overdue task", "%d overdue tasks", count),
         BackgroundCountMode::Off => unreachable!("handled above"),
     };
     message.replace("%d", &count.to_string())
@@ -128,11 +136,16 @@ pub fn format_status_with(
         return singular("Momentum is running");
     }
     if count == 0 {
-        return singular("All done for today");
+        return if mode == BackgroundCountMode::OverdueOnly {
+            singular("No overdue tasks")
+        } else {
+            singular("All done for today")
+        };
     }
     let message = match mode {
         BackgroundCountMode::DueToday => plural("1 task due today", "%d tasks due today", count),
         BackgroundCountMode::TodayIncludingOverdue => plural("1 open task in Today", "%d open tasks in Today", count),
+        BackgroundCountMode::OverdueOnly => plural("1 overdue task", "%d overdue tasks", count),
         BackgroundCountMode::Off => unreachable!("handled above"),
     };
     message.replace("%d", &count.to_string())

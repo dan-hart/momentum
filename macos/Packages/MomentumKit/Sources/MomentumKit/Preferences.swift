@@ -38,6 +38,10 @@ public enum PrefKey {
     public static let morningSummaryEnabled = "morning-summary-enabled"
     public static let morningSummaryHour = "morning-summary-hour"
     public static let morningSummaryMinute = "morning-summary-minute"
+    public static let morningSummaryWeekdays = "morning-summary-weekdays"
+    public static let morningSummarySections = "morning-summary-sections"
+    public static let remindersUpdateBadge = "reminders-update-badge"
+    public static let summaryUpdatesBadge = "summary-updates-badge"
     public static let p2pEnabled = "p2p-enabled"
     public static let sidebarVisible = "sidebar-visible"
     /// Portable list density: "regular" or "compact".
@@ -64,13 +68,15 @@ public enum SyncMethod: String, CaseIterable, Identifiable {
 
 public enum DockBadgeMode: String, CaseIterable, Identifiable, Sendable {
     case dueToday, todayIncludingOverdue, none
+    case overdueOnly = "overdue-only"
     public var id: String { rawValue }
 
     public var label: String {
         switch self {
         case .dueToday: String(localized: "Due or scheduled today", bundle: .module)
         case .todayIncludingOverdue: String(localized: "Today, including overdue", bundle: .module)
-        case .none: String(localized: "None", bundle: .module)
+        case .none: String(localized: "Off", bundle: .module)
+        case .overdueOnly: String(localized: "Overdue only", bundle: .module)
         }
     }
 
@@ -79,6 +85,7 @@ public enum DockBadgeMode: String, CaseIterable, Identifiable, Sendable {
         case .dueToday: .dueToday
         case .todayIncludingOverdue: .todayIncludingOverdue
         case .none: .none
+        case .overdueOnly: .overdueOnly
         }
     }
 }
@@ -176,6 +183,10 @@ public struct Preferences {
             PrefKey.morningSummaryEnabled: false,
             PrefKey.morningSummaryHour: 8,
             PrefKey.morningSummaryMinute: 0,
+            PrefKey.morningSummaryWeekdays: 127,
+            PrefKey.morningSummarySections: 7,
+            PrefKey.remindersUpdateBadge: false,
+            PrefKey.summaryUpdatesBadge: false,
             PrefKey.p2pEnabled: false,
             PrefKey.sidebarVisible: true,
             PrefKey.rowDensity: "regular",
@@ -221,6 +232,20 @@ public struct Preferences {
         DockBadgeMode(rawValue: defaults.string(forKey: PrefKey.dockBadgeMode) ?? "") ?? .dueToday
     }
 
+    public var morningSummaryEnabled: Bool { defaults.bool(forKey: PrefKey.morningSummaryEnabled) }
+    public var remindersUpdateBadge: Bool { defaults.bool(forKey: PrefKey.remindersUpdateBadge) }
+    public var summaryUpdatesBadge: Bool { defaults.bool(forKey: PrefKey.summaryUpdatesBadge) }
+    public var morningSummaryWeekdays: UInt8 {
+        Self.summaryMask(defaults.object(forKey: PrefKey.morningSummaryWeekdays) as? Int, validBits: 127, defaultValue: 127)
+    }
+    public var morningSummarySections: UInt8 {
+        Self.summaryMask(defaults.object(forKey: PrefKey.morningSummarySections) as? Int, validBits: 15, defaultValue: 7)
+    }
+    private static func summaryMask(_ saved: Int?, validBits: UInt8, defaultValue: UInt8) -> UInt8 {
+        guard let saved, let mask = UInt8(exactly: saved), mask & ~validBits == 0 else { return defaultValue }
+        return mask
+    }
+
     public var morningSummaryTime: ClockTime {
         let hour = defaults.object(forKey: PrefKey.morningSummaryHour) as? Int ?? 8
         let minute = defaults.object(forKey: PrefKey.morningSummaryMinute) as? Int ?? 0
@@ -254,8 +279,10 @@ public struct Preferences {
         let days = UInt32(defaults.string(forKey: PrefKey.upcomingRange) ?? "7") ?? 7
         return MomentumCore.Preferences(groupBy: group, showDayPeriodTasksInToday: showDayPeriodTasksInToday, sort: sort, direction: direction, upcomingDays: days,
                                         autoArchive: defaults.bool(forKey: PrefKey.autoArchive),
-                                        morningSummaryEnabled: defaults.bool(forKey: PrefKey.morningSummaryEnabled),
-                                        morningSummaryTime: morningSummaryTime)
+                                        morningSummaryEnabled: morningSummaryEnabled,
+                                        morningSummaryTime: morningSummaryTime,
+                                        morningSummaryWeekdays: morningSummaryWeekdays,
+                                        morningSummarySections: morningSummarySections)
     }
 
     public var nextcloudConnectionIdentity: String {

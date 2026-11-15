@@ -1,6 +1,36 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "No tasks in the selected sections today.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute gibt es keine Aufgaben in den ausgewählten Abschnitten."
+          }
+        }
+      }
+    },
+    "Overdue only": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur überfällige Aufgaben"
+          }
+        }
+      }
+    },
     "%@ changed its identity. Unlink it and link again.": {
       "localizations": {
         "de": {

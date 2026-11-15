@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Dan Hart
 //! Pure, bounded notification snapshots. Planning is not scheduling or delivery.
 use crate::{listing, ClockTime, MorningSummary, Slot};
-use momentum_model::{day_number, day_of_ms, day_str, local_ms, time_of_ms};
+use momentum_model::{day_number, day_of_ms, day_str, local_ms, time_of_ms, weekday, AppData};
 use momentum_store::Store;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -18,6 +18,8 @@ pub struct NotificationPlanningOptions {
     pub consumed_ids: HashSet<String>,
     pub morning_summary_enabled: bool,
     pub morning_summary_time: ClockTime,
+    pub morning_summary_weekdays: u8,
+    pub morning_summary_sections: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +55,9 @@ pub struct NotificationRequest {
     /// Catch-up requests fire at `now_ms`; future requests keep their original time.
     pub fire_at_ms: u64,
     pub content: NotificationContent,
+    /// Optional app-icon count to apply on delivery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub badge_count: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,7 +129,12 @@ pub fn plan(store: &Store, options: &NotificationPlanningOptions) -> Notificatio
         projected_occurrences: Vec::new(),
     };
     let time = options.morning_summary_time;
-    if !options.morning_summary_enabled || time.hour > 23 || time.minute > 59 {
+    if !options.morning_summary_enabled
+        || options.morning_summary_weekdays == 0
+        || options.morning_summary_sections == 0
+        || time.hour > 23
+        || time.minute > 59
+    {
         return result;
     }
 
@@ -140,30 +150,16 @@ pub fn plan(store: &Store, options: &NotificationPlanningOptions) -> Notificatio
     for n in 0..7 {
         let day = day_str(first_day + n);
         let id = format!("summary:{day}");
-        if store.meta.last_summary_day == day || options.consumed_ids.contains(&id) {
+        if !summary_runs_on(&day, options.morning_summary_weekdays)
+            || store.meta.last_summary_day == day
+            || options.consumed_ids.contains(&id)
+        {
             continue;
         }
-        let mut open: Vec<_> = state
-            .planned_ids(&day)
-            .iter()
-            .filter_map(|id| state.task.entities.get(id))
-            .filter(|task| !task.is_done)
-            .collect();
-        if open.is_empty() {
+        let (counts, task_ids) = summary_counts(store, &state, &day, options.morning_summary_sections);
+        if task_ids.is_empty() {
             continue;
         }
-        open.sort_by(|a, b| a.id.cmp(&b.id));
-        let counts = MorningSummary {
-            total: open.len() as u32,
-            morning: open
-                .iter()
-                .filter(|t| listing::slot_of(store, t) == Some(Slot::Morning))
-                .count() as u32,
-            tonight: open
-                .iter()
-                .filter(|t| listing::slot_of(store, t) == Some(Slot::Tonight))
-                .count() as u32,
-        };
         let Some(at) = summary_time_ms(&day, time) else {
             continue;
         };
@@ -172,11 +168,7 @@ pub fn plan(store: &Store, options: &NotificationPlanningOptions) -> Notificatio
                 options,
                 id,
                 at,
-                NotificationContent::Summary {
-                    day,
-                    counts,
-                    task_ids: open.iter().map(|t| t.id.clone()).collect(),
-                },
+                NotificationContent::Summary { day, counts, task_ids },
             ));
         } else {
             result.overflow_summaries += 1;
@@ -187,6 +179,66 @@ pub fn plan(store: &Store, options: &NotificationPlanningOptions) -> Notificatio
         .projected_occurrences
         .sort_by(|a, b| a.day.cmp(&b.day).then_with(|| a.task_id.cmp(&b.task_id)));
     result
+}
+
+pub(crate) fn summary_runs_on(day: &str, weekdays: u8) -> bool {
+    day_number(day).is_some_and(|day| weekdays & (1 << ((weekday(day) + 6) % 7)) != 0)
+}
+
+pub(crate) fn summary_counts(store: &Store, state: &AppData, day: &str, sections: u8) -> (MorningSummary, Vec<String>) {
+    const TODAY: u8 = 1;
+    const MORNING: u8 = 2;
+    const EVENING: u8 = 4;
+    const OVERDUE: u8 = 8;
+    let mut counts = MorningSummary {
+        total: 0,
+        morning: 0,
+        tonight: 0,
+        overdue: 0,
+        sections,
+    };
+    let mut ids = Vec::new();
+    if sections & (TODAY | MORNING | EVENING) != 0 {
+        for task in state
+            .planned_ids(day)
+            .iter()
+            .filter_map(|id| state.task.entities.get(id))
+        {
+            if task.is_done {
+                continue;
+            }
+            let selected = match listing::slot_of(store, task) {
+                Some(Slot::Morning) if sections & MORNING != 0 => {
+                    counts.morning += 1;
+                    true
+                }
+                Some(Slot::Tonight) if sections & EVENING != 0 => {
+                    counts.tonight += 1;
+                    true
+                }
+                _ => false,
+            };
+            if sections & TODAY != 0 {
+                counts.total += 1;
+            }
+            if selected || sections & TODAY != 0 {
+                ids.push(task.id.clone());
+            }
+        }
+    }
+    if sections & OVERDUE != 0 {
+        for task in store
+            .state
+            .task
+            .iter()
+            .filter(|task| task.parent_id.is_none() && task.is_overdue(day))
+        {
+            counts.overdue += 1;
+            ids.push(task.id.clone());
+        }
+    }
+    ids.sort();
+    (counts, ids)
 }
 
 fn request(
@@ -201,6 +253,7 @@ fn request(
         scheduled_at_ms: at,
         fire_at_ms: at.max(options.now_ms),
         content,
+        badge_count: None,
     }
 }
 

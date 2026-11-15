@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_badge_count">App badge count</string>
+    <string name="task_count_overdue_only_mode">Overdue only</string>
+    <plurals name="task_count_overdue_only">
+        <item quantity="one">%1$d overdue task</item>
+        <item quantity="other">%1$d overdue tasks</item>
+    </plurals>
+    <string name="notification_badges">Notification badges</string>
+    <string name="badge_task_reminders">Badge task reminders</string>
+    <string name="badge_morning_summary">Badge the morning summary</string>
+    <string name="notification_badges_hint">Choose which new notifications can add a badge. Android settings and your launcher also control badges.</string>
+    <string name="reminders_without_badge">Task reminders without badges</string>
+    <string name="summary_without_badge">Morning summary without badges</string>
+    <string name="summary_time_option">Time · %1$s</string>
+    <string name="summary_days">Delivery days</string>
+    <string name="summary_days_option">Delivery days · %1$s</string>
+    <string name="summary_every_day">Every day</string>
+    <string name="summary_weekdays">Weekdays</string>
+    <string name="summary_no_days">None</string>
+    <string name="summary_sections">Include in the summary</string>
+    <string name="summary_preview">Preview</string>
+    <string name="summary_preview_no_days">Choose a day to receive a summary.</string>
+    <string name="summary_preview_no_sections">Choose what to include in the summary.</string>
+    <string name="summary_preview_empty">There are no tasks in the selected sections today.</string>
+    <string name="summary_today_count">Today: %1$d</string>
+    <string name="summary_morning_count">Morning: %1$d</string>
+    <string name="summary_evening_count">Evening: %1$d</string>
+    <string name="summary_overdue_count">Overdue: %1$d</string>
+</resources>

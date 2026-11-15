@@ -181,6 +181,8 @@ pub fn reset_settings() {
         "morning-summary-enabled",
         "morning-summary-hour",
         "morning-summary-minute",
+        "morning-summary-weekdays",
+        "morning-summary-sections",
     ] {
         s.reset(k);
     }

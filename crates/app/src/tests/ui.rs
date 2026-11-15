@@ -1844,7 +1844,7 @@ fn background_status_preference_is_accessible_bound_and_retained_while_disabled(
         let imp = prefs.imp();
 
         assert_eq!(imp.background_count_row.selected(), 0);
-        assert_eq!(imp.background_count_row.model().expect("count choices").n_items(), 3);
+        assert_eq!(imp.background_count_row.model().expect("count choices").n_items(), 4);
         assert!(gtk::test_accessible_has_property(
             imp.background_count_row.upcast_ref::<gtk::Widget>(),
             gtk::AccessibleProperty::Label
@@ -1862,6 +1862,8 @@ fn background_status_preference_is_accessible_bound_and_retained_while_disabled(
 
         imp.background_count_row.set_selected(2);
         assert_eq!(settings().string("background-count-mode"), "off");
+        imp.background_count_row.set_selected(3);
+        assert_eq!(settings().string("background-count-mode"), "overdue-only");
         settings().set_string("background-count-mode", "due-today").unwrap();
         pump();
         assert_eq!(
@@ -1906,6 +1908,16 @@ fn background_status_mode_changes_refresh_the_window_immediately_without_a_porta
         assert_eq!(
             win.imp().background_status.borrow().desired(),
             Some(format_status(BackgroundCountMode::TodayIncludingOverdue, today_count).as_str())
+        );
+
+        settings().set_string("background-count-mode", "overdue-only").unwrap();
+        pump();
+        let overdue_count = win
+            .engine()
+            .task_count(BackgroundCountMode::OverdueOnly.task_count_mode());
+        assert_eq!(
+            win.imp().background_status.borrow().desired(),
+            Some(format_status(BackgroundCountMode::OverdueOnly, overdue_count).as_str())
         );
 
         settings().set_string("background-count-mode", "off").unwrap();
@@ -2986,23 +2998,52 @@ fn morning_summary_settings_are_opt_in_and_update_the_running_engine() {
         let imp = prefs.imp();
         assert!(!imp.morning_summary_row.is_active());
         assert!(!imp.morning_hour_row.is_sensitive());
+        assert!(!imp.morning_days_row.is_sensitive());
+        assert!(!imp.morning_sections_row.is_sensitive());
         assert!(!win.engine().preferences().morning_summary_enabled);
+        assert_eq!(win.engine().preferences().morning_summary_weekdays, 127);
+        assert_eq!(win.engine().preferences().morning_summary_sections, 7);
         imp.morning_summary_row.set_active(true);
+        assert!(imp.morning_days_row.is_sensitive());
+        assert!(imp.morning_sections_row.is_sensitive());
+        imp.morning_weekdays_row.emit_by_name::<()>("activated", &[]);
+        assert!(!imp.morning_saturday_row.is_active());
+        assert!(!imp.morning_sunday_row.is_active());
+        imp.morning_saturday_row.set_active(true);
+        imp.morning_overdue_row.set_active(true);
         imp.morning_hour_row.set_value(9.0);
         imp.morning_minute_row.set_value(45.0);
         pump();
         let saved = win.engine().preferences();
         assert!(saved.morning_summary_enabled);
+        assert_eq!(saved.morning_summary_weekdays, 63);
+        assert_eq!(saved.morning_summary_sections, 15);
         assert_eq!(
             saved.morning_summary_time,
             momentum_core::ClockTime { hour: 9, minute: 45 }
         );
         assert!(imp.morning_hour_row.is_sensitive());
         assert_eq!(settings().int("morning-summary-minute"), 45);
+        prefs.present(Some(&win));
+        assert!(shown(&*imp.morning_preview_row));
+        assert!(imp
+            .morning_preview_row
+            .subtitle()
+            .is_some_and(|preview| preview.contains("Overdue")));
+        imp.morning_today_row.set_active(false);
+        imp.morning_morning_row.set_active(false);
+        imp.morning_evening_row.set_active(false);
+        assert_eq!(imp.morning_preview_row.subtitle().as_deref(), Some("Overdue: 1"));
         imp.morning_summary_row.set_active(false);
         pump();
         assert!(!win.engine().preferences().morning_summary_enabled);
         assert!(!imp.morning_minute_row.is_sensitive());
+        assert!(!shown(&*imp.morning_preview_row));
+        assert_eq!(settings().uint("morning-summary-weekdays"), 63);
+        assert_eq!(settings().uint("morning-summary-sections"), 8);
+        settings().set_uint("morning-summary-weekdays", 127).unwrap();
+        assert!(imp.morning_saturday_row.is_active());
+        assert!(imp.morning_sunday_row.is_active());
         assert_eq!(
             win.engine().preferences().morning_summary_time,
             saved.morning_summary_time
@@ -3013,6 +3054,7 @@ fn morning_summary_settings_are_opt_in_and_update_the_running_engine() {
             10.0,
             "external preference changes reach the UI"
         );
+        prefs.close();
         reset_settings();
         win.close();
     });

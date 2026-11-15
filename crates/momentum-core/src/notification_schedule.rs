@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Dan Hart
 //! Device-local OS scheduling acknowledgements, separate from desktop delivery claims.
 use crate::notifications::*;
-use crate::{CoreError, Engine, Preferences};
+use crate::{CoreError, Engine, Preferences, TaskCountMode};
 use momentum_model::{day_of_ms, time_of_ms};
 use momentum_store::Store;
 use serde::{Deserialize, Serialize};
@@ -84,7 +84,30 @@ fn invalid_ledger() -> CoreError {
     }
 }
 
-fn desired(store: &Store, prefs: &Preferences, now_ms: u64, ledger: &Ledger) -> NotificationPlan {
+#[derive(Clone, Copy)]
+pub(crate) struct NotificationBadges {
+    pub(crate) mode: TaskCountMode,
+    pub(crate) reminders: bool,
+    pub(crate) summary: bool,
+}
+
+impl Default for NotificationBadges {
+    fn default() -> Self {
+        Self {
+            mode: TaskCountMode::None,
+            reminders: false,
+            summary: false,
+        }
+    }
+}
+
+fn desired(
+    store: &Store,
+    prefs: &Preferences,
+    badges: NotificationBadges,
+    now_ms: u64,
+    ledger: &Ledger,
+) -> NotificationPlan {
     let mut result = plan(
         store,
         &NotificationPlanningOptions {
@@ -98,15 +121,22 @@ fn desired(store: &Store, prefs: &Preferences, now_ms: u64, ledger: &Ledger) -> 
                 .collect(),
             morning_summary_enabled: prefs.morning_summary_enabled,
             morning_summary_time: prefs.morning_summary_time,
+            morning_summary_weekdays: prefs.morning_summary_weekdays,
+            morning_summary_sections: prefs.morning_summary_sections,
         },
     );
+    let badge_count = (badges.mode != TaskCountMode::None && (badges.reminders || badges.summary))
+        .then(|| crate::engine::task_count(&store.state, badges.mode, &day_of_ms(now_ms)));
     for request in &mut result.requests {
         // Canonical structured comparison survives restarts and has no hash collisions.
         // It is private metadata (may contain task titles): never log or display it.
         // Exclude moving catch-up fire_at_ms; await latency is not a source edit.
-        let summary_clock = matches!(request.content, NotificationContent::Summary { .. })
-            .then_some((prefs.morning_summary_time.hour, prefs.morning_summary_time.minute));
-        request.source_revision = serde_json::json!({
+        let summary = matches!(request.content, NotificationContent::Summary { .. });
+        let summary_clock = summary.then_some((prefs.morning_summary_time.hour, prefs.morning_summary_time.minute));
+        if if summary { badges.summary } else { badges.reminders } {
+            request.badge_count = badge_count;
+        }
+        let mut source = serde_json::json!({
             "version": 1,
             // A restored copy may have identical task IDs and fields. Reuse the
             // existing durable restore generation to reject pre-restore callbacks.
@@ -117,8 +147,11 @@ fn desired(store: &Store, prefs: &Preferences, now_ms: u64, ledger: &Ledger) -> 
             "local_time": time_of_ms(request.scheduled_at_ms),
             "summary_clock": summary_clock,
             "content": request.content,
-        })
-        .to_string();
+        });
+        if let Some(count) = request.badge_count {
+            source["badge_count"] = count.into();
+        }
+        request.source_revision = source.to_string();
     }
     result
 }
@@ -136,6 +169,7 @@ fn decorate(mut plan: NotificationPlan, ledger: &Ledger) -> NotificationPlan {
 fn current_request(
     store: &Store,
     prefs: &Preferences,
+    badges: NotificationBadges,
     request: &NotificationRequest,
     now_ms: u64,
     ledger: &Ledger,
@@ -151,12 +185,13 @@ fn current_request(
     {
         validation.accepted.remove(&request.id);
     }
-    desired(store, prefs, now_ms, &validation)
+    desired(store, prefs, badges, now_ms, &validation)
         .requests
         .iter()
         .any(|current| {
             current.observation() == identity
                 && current.content == request.content
+                && current.badge_count == request.badge_count
                 && current.scheduled_at_ms == request.scheduled_at_ms
                 && request.fire_at_ms >= request.scheduled_at_ms
                 && (request.fire_at_ms == request.scheduled_at_ms || request.fire_at_ms <= now_ms)
@@ -173,7 +208,35 @@ pub(crate) fn request_is_current(
 ) -> Result<bool, CoreError> {
     let mut ledger = Ledger::load(store.dir())?;
     ledger.consume_elapsed(now_ms);
-    Ok(current_request(store, prefs, request, now_ms, &ledger))
+    // Badge configuration is presentation only. Keep already-delivered task actions
+    // valid after changing it without relaxing task source or restore validation.
+    let mut request = request.clone();
+    if request.badge_count.is_some()
+        && ledger
+            .accepted
+            .get(&request.id)
+            .is_some_and(|a| a.identity == request.observation())
+    {
+        ledger.accepted.remove(&request.id);
+    }
+    if request.badge_count.take().is_some() {
+        let Ok(mut source) = serde_json::from_str::<serde_json::Value>(&request.source_revision) else {
+            return Ok(false);
+        };
+        let Some(fields) = source.as_object_mut() else {
+            return Ok(false);
+        };
+        fields.remove("badge_count");
+        request.source_revision = source.to_string();
+    }
+    Ok(current_request(
+        store,
+        prefs,
+        NotificationBadges::default(),
+        &request,
+        now_ms,
+        &ledger,
+    ))
 }
 
 #[cfg_attr(feature = "ffi", uniffi::export)]
@@ -184,7 +247,10 @@ impl Engine {
         let g = self.lock();
         let mut ledger = Ledger::load(g.store.dir())?;
         ledger.consume_elapsed(now_ms);
-        Ok(decorate(desired(&g.store, &g.prefs, now_ms, &ledger), &ledger))
+        Ok(decorate(
+            desired(&g.store, &g.prefs, g.notification_badges, now_ms, &ledger),
+            &ledger,
+        ))
     }
 
     /// Reconcile complete OS snapshots for this app's requests. Observations must retain
@@ -203,7 +269,7 @@ impl Engine {
         ledger.consume_elapsed(now_ms);
         let pending: BTreeSet<_> = pending.into_iter().collect();
         let delivered: BTreeSet<_> = delivered.into_iter().collect();
-        let desired = desired(&g.store, &g.prefs, now_ms, &ledger);
+        let desired = desired(&g.store, &g.prefs, g.notification_badges, now_ms, &ledger);
         let mut cancellations = BTreeSet::new();
         ledger.accepted.retain(|_, a| {
             if a.consumed {
@@ -240,7 +306,10 @@ impl Engine {
         if ledger != before {
             ledger.save(g.store.dir())?;
         }
-        let mut result = decorate(self::desired(&g.store, &g.prefs, now_ms, &ledger), &ledger);
+        let mut result = decorate(
+            self::desired(&g.store, &g.prefs, g.notification_badges, now_ms, &ledger),
+            &ledger,
+        );
         cancellations.extend(result.cancellations);
         result.cancellations = cancellations.into_iter().collect();
         Ok(result)
@@ -259,7 +328,7 @@ impl Engine {
         let mut ledger = before.clone();
         ledger.consume_elapsed(now_ms);
         let identity = request.observation();
-        let valid = current_request(&g.store, &g.prefs, &request, now_ms, &ledger);
+        let valid = current_request(&g.store, &g.prefs, g.notification_badges, &request, now_ms, &ledger);
         let accepted = valid;
         if valid && !ledger.accepted.get(&request.id).is_some_and(|a| a.identity == identity) {
             ledger.accepted.insert(

@@ -186,6 +186,38 @@ mod imp {
         #[template_child]
         pub morning_minute_row: TemplateChild<adw::SpinRow>,
         #[template_child]
+        pub morning_days_row: TemplateChild<adw::ExpanderRow>,
+        #[template_child]
+        pub morning_every_day_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub morning_weekdays_row: TemplateChild<adw::ButtonRow>,
+        #[template_child]
+        pub morning_monday_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_tuesday_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_wednesday_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_thursday_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_friday_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_saturday_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_sunday_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_sections_row: TemplateChild<adw::ExpanderRow>,
+        #[template_child]
+        pub morning_today_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_morning_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_evening_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_overdue_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub morning_preview_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
         pub font_button: TemplateChild<gtk::FontDialogButton>,
         #[template_child]
         pub font_choice_row: TemplateChild<adw::ComboRow>,
@@ -206,6 +238,83 @@ mod imp {
         }
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
             obj.init_template();
+        }
+    }
+    impl MomentumPrefs {
+        fn bind_morning_summary(&self, settings: &gio::Settings) {
+            const WEEKDAYS: &str = "morning-summary-weekdays";
+            const SECTIONS: &str = "morning-summary-sections";
+            settings
+                .bind("morning-summary-enabled", &*self.morning_summary_row, "active")
+                .build();
+            for (key, row) in [
+                ("morning-summary-hour", &*self.morning_hour_row),
+                ("morning-summary-minute", &*self.morning_minute_row),
+            ] {
+                settings.bind(key, row, "value").build();
+                settings
+                    .bind("morning-summary-enabled", row, "sensitive")
+                    .get_only()
+                    .build();
+            }
+            for row in [&*self.morning_days_row, &*self.morning_sections_row] {
+                settings
+                    .bind("morning-summary-enabled", row, "sensitive")
+                    .get_only()
+                    .build();
+            }
+            settings
+                .bind("morning-summary-enabled", &*self.morning_preview_row, "visible")
+                .get_only()
+                .build();
+            for (index, row) in [
+                &*self.morning_monday_row,
+                &*self.morning_tuesday_row,
+                &*self.morning_wednesday_row,
+                &*self.morning_thursday_row,
+                &*self.morning_friday_row,
+                &*self.morning_saturday_row,
+                &*self.morning_sunday_row,
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                bind_summary_toggle(settings, WEEKDAYS, row, 1 << index);
+            }
+            for (index, row) in [
+                &*self.morning_today_row,
+                &*self.morning_morning_row,
+                &*self.morning_evening_row,
+                &*self.morning_overdue_row,
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                bind_summary_toggle(settings, SECTIONS, row, 1 << index);
+            }
+            for (row, mask) in [(&*self.morning_every_day_row, 127), (&*self.morning_weekdays_row, 31)] {
+                let settings = settings.clone();
+                row.connect_activated(move |_| {
+                    settings.set_uint(WEEKDAYS, mask).ok();
+                });
+            }
+            let day_summary = |settings: &gio::Settings, row: &adw::ExpanderRow| {
+                row.set_subtitle(&gettext(match settings.uint(WEEKDAYS) {
+                    0 => N_("No days selected"),
+                    31 => N_("Weekdays"),
+                    127 => N_("Every day"),
+                    _ => N_("Custom"),
+                }));
+            };
+            day_summary(settings, &self.morning_days_row);
+            settings.connect_changed(
+                Some(WEEKDAYS),
+                glib::clone!(
+                    #[weak(rename_to = row)]
+                    self.morning_days_row,
+                    move |settings, _| day_summary(settings, &row)
+                ),
+            );
         }
     }
     impl ObjectImpl for MomentumPrefs {
@@ -277,52 +386,24 @@ mod imp {
             s.bind("colorful-labels", &*self.colorful_row, "active").build();
             s.bind("run-in-background", &*self.background_row, "active").build();
             s.bind("background-sync", &*self.background_sync_row, "active").build();
-            let count_labels = [
-                gettext("Due or scheduled today"),
-                gettext("Today including overdue"),
-                gettext("Off"),
-            ];
-            self.background_count_row.set_model(Some(&gtk::StringList::new(
-                &count_labels.iter().map(String::as_str).collect::<Vec<_>>(),
-            )));
-            let count_mode =
-                crate::background_status::BackgroundCountMode::from_setting(&s.string("background-count-mode"));
-            let count_index = match count_mode {
-                crate::background_status::BackgroundCountMode::DueToday => 0,
-                crate::background_status::BackgroundCountMode::TodayIncludingOverdue => 1,
-                crate::background_status::BackgroundCountMode::Off => 2,
-            };
-            self.background_count_row.set_selected(count_index);
+            bind_choice(
+                &s,
+                "background-count-mode",
+                &self.background_count_row,
+                &crate::background_status::BackgroundCountMode::VALUES,
+                &[
+                    N_("Due or scheduled today"),
+                    N_("Today including overdue"),
+                    N_("Off"),
+                    N_("Overdue only"),
+                ],
+            );
             self.background_count_row.upcast_ref::<gtk::Widget>().update_property(&[
                 gtk::accessible::Property::Label(&gettext("Background task count")),
                 gtk::accessible::Property::Description(&gettext(
                     "Choose which tasks appear in the Background Apps status",
                 )),
             ]);
-            let settings = s.clone();
-            self.background_count_row.connect_selected_notify(move |row| {
-                if let Some(value) = crate::background_status::BackgroundCountMode::VALUES.get(row.selected() as usize)
-                {
-                    settings.set_string("background-count-mode", value).ok();
-                }
-            });
-            s.connect_changed(
-                Some("background-count-mode"),
-                glib::clone!(
-                    #[weak(rename_to = row)]
-                    self.background_count_row,
-                    move |settings, _| {
-                        let selected = match crate::background_status::BackgroundCountMode::from_setting(
-                            &settings.string("background-count-mode"),
-                        ) {
-                            crate::background_status::BackgroundCountMode::DueToday => 0,
-                            crate::background_status::BackgroundCountMode::TodayIncludingOverdue => 1,
-                            crate::background_status::BackgroundCountMode::Off => 2,
-                        };
-                        row.set_selected(selected);
-                    }
-                ),
-            );
             s.bind("auto-archive", &*self.auto_archive_row, "active").build();
             s.bind("show-day-period-tasks-in-today", &*self.day_period_today_row, "active")
                 .build();
@@ -491,6 +572,8 @@ mod imp {
                 ("appearance.interface-size", self.interface_scale_row.upcast_ref()),
                 ("appearance.reset", self.reset_typography_row.upcast_ref()),
                 ("notifications.morning-summary", self.morning_summary_row.upcast_ref()),
+                ("notifications.summary-days", self.morning_days_row.upcast_ref()),
+                ("notifications.summary-sections", self.morning_sections_row.upcast_ref()),
                 ("integrations.shortcuts", self.modifier_row.upcast_ref()),
                 ("integrations.startup", self.background_row.upcast_ref()),
                 ("integrations.count", self.background_count_row.upcast_ref()),
@@ -731,15 +814,7 @@ mod imp {
                     updating_font.set(false);
                 }
             ));
-            s.bind("morning-summary-enabled", &*self.morning_summary_row, "active")
-                .build();
-            for (key, row) in [
-                ("morning-summary-hour", &*self.morning_hour_row),
-                ("morning-summary-minute", &*self.morning_minute_row),
-            ] {
-                s.bind(key, row, "value").build();
-                s.bind("morning-summary-enabled", row, "sensitive").get_only().build();
-            }
+            self.bind_morning_summary(&s);
             // Modifier key: platform-specific choices mapped to the setting's string value.
             let choices = crate::modifier::choices();
             let labels: Vec<&str> = choices.iter().map(|(_, l)| l.as_str()).collect();
@@ -836,6 +911,7 @@ impl MomentumPrefs {
         {
             self.connect_app_settings(&owner);
             self.refresh_app_settings(&owner);
+            self.refresh_summary_preview(&owner);
             if self.imp().refresh_source.borrow().is_none() {
                 let source = glib::timeout_add_local(
                     std::time::Duration::from_secs(1),
@@ -881,6 +957,25 @@ impl MomentumPrefs {
         if let Some(parent) = parent {
             crate::typography::fit_dialog_to_parent(self, parent);
         }
+    }
+
+    fn refresh_summary_preview(&self, owner: &crate::window::MomentumWindow) {
+        let row = &self.imp().morning_preview_row;
+        let settings = &owner.imp().settings;
+        if !settings.boolean("morning-summary-enabled") {
+            return;
+        }
+        let sections = settings.uint("morning-summary-sections") as u8;
+        let preview = if settings.uint("morning-summary-weekdays") == 0 {
+            gettext("No days selected")
+        } else if sections == 0 {
+            gettext("No sections selected")
+        } else {
+            let counts = owner.engine().morning_summary_preview(sections);
+            crate::window::format_morning_summary(&counts)
+                .unwrap_or_else(|| gettext("No tasks in the selected sections"))
+        };
+        row.set_subtitle(&glib::markup_escape_text(&preview));
     }
 
     fn refresh_sync_overview(&self, owner: &crate::window::MomentumWindow) {
@@ -1128,6 +1223,24 @@ impl MomentumPrefs {
         }
         self.refresh_app_settings(owner);
         self.connect_connection_test(owner);
+        owner.imp().settings.connect_closure(
+            "changed",
+            false,
+            glib::closure_local!(
+                #[watch(rename_to = prefs)]
+                self,
+                #[weak]
+                owner,
+                move |_: gio::Settings, key: &str| {
+                    if matches!(
+                        key,
+                        "morning-summary-enabled" | "morning-summary-weekdays" | "morning-summary-sections"
+                    ) {
+                        prefs.refresh_summary_preview(&owner);
+                    }
+                }
+            ),
+        );
         self.imp().sync_details_row.connect_activated(glib::clone!(
             #[weak(rename_to = prefs)]
             self,
@@ -1632,6 +1745,26 @@ mod sync_tests {
         s.set_boolean("sync-enabled", false).unwrap();
         assert_eq!(sync_method(&s), "off");
     }
+}
+
+fn bind_summary_toggle(settings: &gio::Settings, key: &'static str, row: &adw::SwitchRow, bit: u32) {
+    row.set_active(settings.uint(key) & bit != 0);
+    let saved_settings = settings.clone();
+    row.connect_active_notify(move |row| {
+        let current = saved_settings.uint(key);
+        let updated = if row.is_active() { current | bit } else { current & !bit };
+        if current != updated {
+            saved_settings.set_uint(key, updated).ok();
+        }
+    });
+    settings.connect_changed(
+        Some(key),
+        glib::clone!(
+            #[weak]
+            row,
+            move |settings, _| row.set_active(settings.uint(key) & bit != 0)
+        ),
+    );
 }
 
 /// Bind a presentation picker without overwriting unknown raw values during refresh.

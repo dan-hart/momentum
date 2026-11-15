@@ -56,6 +56,12 @@ final class NotificationManager: NSObject, Notifier, UNUserNotificationCenterDel
     func morningSummary(_ summary: MorningSummary) {
         let content = UNMutableNotificationContent()
         content.title = String(localized: "Good morning")
+        content.body = Self.summaryBody(summary)
+        post(id: "morning", content)
+    }
+
+    static func summaryBody(_ summary: MorningSummary) -> String {
+        guard summary.sections == 7, summary.total > 0 else { return summary.displayText }
         var body = String(localized: "\(summary.total) tasks today")
         if summary.morning > 0 {
             body += String(localized: ", \(summary.morning) this morning")
@@ -63,8 +69,7 @@ final class NotificationManager: NSObject, Notifier, UNUserNotificationCenterDel
         if summary.tonight > 0 {
             body += String(localized: ", \(summary.tonight) tonight")
         }
-        content.body = body
-        post(id: "morning", content)
+        return body
     }
 
     func updateBadge(_ count: UInt32) {

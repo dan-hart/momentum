@@ -163,6 +163,13 @@ fn background_status_count_mode_maps_exhaustively_with_default_fallback() {
         BackgroundCountMode::from_setting("today-including-overdue"),
         BackgroundCountMode::TodayIncludingOverdue
     );
+    assert_eq!(
+        BackgroundCountMode::from_setting("overdue-only").task_count_mode(),
+        TaskCountMode::OverdueOnly
+    );
+    assert_eq!(format_status(BackgroundCountMode::OverdueOnly, 0), "No overdue tasks");
+    assert_eq!(format_status(BackgroundCountMode::OverdueOnly, 1), "1 overdue task");
+    assert_eq!(format_status(BackgroundCountMode::OverdueOnly, 3), "3 overdue tasks");
     assert_eq!(BackgroundCountMode::from_setting("off"), BackgroundCountMode::Off);
     assert_eq!(
         BackgroundCountMode::from_setting("future-value"),
@@ -174,6 +181,41 @@ fn background_status_count_mode_maps_exhaustively_with_default_fallback() {
         TaskCountMode::TodayIncludingOverdue
     );
     assert_eq!(BackgroundCountMode::Off.task_count_mode(), TaskCountMode::None);
+}
+
+#[test]
+fn morning_summary_format_only_includes_selected_sections_and_skips_empty_results() {
+    use crate::window::format_morning_summary;
+    use momentum_core::MorningSummary;
+
+    let mut summary = MorningSummary {
+        total: 5,
+        morning: 2,
+        tonight: 1,
+        overdue: 3,
+        sections: 7,
+    };
+    assert_eq!(
+        format_morning_summary(&summary).as_deref(),
+        Some("5 tasks today, 2 this morning, 1 tonight")
+    );
+    let single = MorningSummary {
+        total: 1,
+        morning: 0,
+        tonight: 0,
+        ..summary.clone()
+    };
+    assert_eq!(format_morning_summary(&single).as_deref(), Some("1 task today"));
+    summary.sections = 10;
+    assert_eq!(
+        format_morning_summary(&summary).as_deref(),
+        Some("Morning: 2, Overdue: 3")
+    );
+    summary.sections = 8;
+    summary.overdue = 0;
+    assert_eq!(format_morning_summary(&summary), None);
+    summary.sections = 0;
+    assert_eq!(format_morning_summary(&summary), None);
 }
 
 #[test]

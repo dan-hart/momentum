@@ -415,7 +415,7 @@ msgstr "Morgenübersicht"
 
 #: data/resources/ui/prefs.blp:137
 msgid "Off by default. Momentum must be running to send notifications."
-msgstr ""
+msgstr "Standardmäßig aus. Momentum muss laufen, um Benachrichtigungen zu senden."
 "Standardmäßig ausgeschaltet. Momentum muss laufen, um Benachrichtigungen zu "
 "senden."
 
@@ -1863,31 +1863,31 @@ msgstr ""
 
 #: crates/app/src/repeat_dialog.rs:114 crates/app/src/window.rs:349
 msgid "Sunday"
-msgstr ""
+msgstr "Sonntag"
 
 #: crates/app/src/repeat_dialog.rs:115 crates/app/src/window.rs:350
 msgid "Monday"
-msgstr ""
+msgstr "Montag"
 
 #: crates/app/src/repeat_dialog.rs:116 crates/app/src/window.rs:351
 msgid "Tuesday"
-msgstr ""
+msgstr "Dienstag"
 
 #: crates/app/src/repeat_dialog.rs:117 crates/app/src/window.rs:352
 msgid "Wednesday"
-msgstr ""
+msgstr "Mittwoch"
 
 #: crates/app/src/repeat_dialog.rs:118 crates/app/src/window.rs:353
 msgid "Thursday"
-msgstr ""
+msgstr "Donnerstag"
 
 #: crates/app/src/repeat_dialog.rs:119 crates/app/src/window.rs:354
 msgid "Friday"
-msgstr ""
+msgstr "Freitag"
 
 #: crates/app/src/repeat_dialog.rs:120 crates/app/src/window.rs:355
 msgid "Saturday"
-msgstr ""
+msgstr "Samstag"
 
 #: crates/app/src/repeat_dialog.rs:123
 msgid "Weekday"
@@ -2299,9 +2299,8 @@ msgstr "Aus Heute entfernen"
 #: crates/app/src/window.rs:1818 crates/app/src/window.rs:2650
 #: crates/app/src/window.rs:2774 crates/app/src/window.rs:2789
 #: crates/app/src/window.rs:3164
-#, fuzzy
 msgid "Morning"
-msgstr "Guten Morgen"
+msgstr "Morgen"
 
 #: crates/app/src/window.rs:1826 crates/app/src/window.rs:2651
 #: crates/app/src/window.rs:2776 crates/app/src/window.rs:3165
@@ -2695,14 +2694,12 @@ msgid "tasks today"
 msgstr ""
 
 #: crates/app/src/window.rs:3813
-#, fuzzy
 msgid "this morning"
-msgstr "Guten Morgen"
+msgstr "heute Morgen"
 
 #: crates/app/src/window.rs:3816
-#, fuzzy
 msgid "tonight"
-msgstr "Heute Abend"
+msgstr "heute Abend"
 
 #: crates/app/src/window.rs:3818
 msgid "Good morning"
@@ -4167,6 +4164,86 @@ msgid "System-wide shortcuts through the GlobalShortcuts portal"
 msgstr ""
 
 #, fuzzy
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:76
+msgid "Weekdays selected for the morning summary"
+msgstr "Ausgewählte Wochentage für die Morgenzusammenfassung"
+
+#: data/io.github.dan_hart.Momentum.gschema.xml.in:77
+msgid "Task sections selected for the morning summary"
+msgstr "Ausgewählte Aufgabenbereiche für die Morgenzusammenfassung"
+
+#: data/resources/ui/prefs.blp:137
+msgid ""
+"On selected days, Momentum sends the summary at your chosen local time or "
+"when it next opens that day."
+msgstr "An ausgewählten Tagen sendet Momentum die Zusammenfassung zur gewählten Ortszeit oder wenn du die App später an diesem Tag öffnest."
+
+#: data/resources/ui/prefs.blp:157 crates/app/src/settings_ui.rs:92
+msgid "Summary days"
+msgstr "Tage für die Zusammenfassung"
+
+#: data/resources/ui/prefs.blp:158 crates/app/src/prefs.rs:305
+msgid "Every day"
+msgstr "Jeden Tag"
+
+#: data/resources/ui/prefs.blp:159 crates/app/src/prefs.rs:304
+msgid "Weekdays"
+msgstr "Werktage (Mo–Fr)"
+
+#: data/resources/ui/prefs.blp:169 crates/app/src/settings_ui.rs:97
+msgid "Include in summary"
+msgstr "In der Zusammenfassung anzeigen"
+
+#: data/resources/ui/prefs.blp:176
+msgid "Summary preview"
+msgstr "Vorschau der Zusammenfassung"
+
+#: crates/app/src/background_status.rs:114
+msgid "No overdue tasks"
+msgstr "Keine überfälligen Aufgaben"
+
+#: crates/app/src/window.rs
+#, c-format
+msgid "1 task today"
+msgid_plural "%d tasks today"
+msgstr[0] "1 Aufgabe heute"
+msgstr[1] "%d Aufgaben heute"
+
+#: crates/app/src/background_status.rs:122
+msgid "1 overdue task"
+msgid_plural "%d overdue tasks"
+msgstr[0] "1 überfällige Aufgabe"
+msgstr[1] "%d überfällige Aufgaben"
+
+#: crates/app/src/prefs.rs:303 crates/app/src/prefs.rs:969
+msgid "No days selected"
+msgstr "Keine Tage ausgewählt"
+
+#: crates/app/src/prefs.rs:398
+msgid "Overdue only"
+msgstr "Nur überfällige Aufgaben"
+
+#: crates/app/src/prefs.rs:971
+msgid "No sections selected"
+msgstr "Keine Bereiche ausgewählt"
+
+#: crates/app/src/prefs.rs:975
+msgid "No tasks in the selected sections"
+msgstr "Keine Aufgaben in den ausgewählten Bereichen"
+
+#: crates/app/src/settings_ui.rs:88
+msgid "reminder hour minute time"
+msgstr "Erinnerung Stunde Minute Uhrzeit"
+
+#: crates/app/src/settings_ui.rs:93
+msgid "schedule weekdays custom"
+msgstr "Zeitplan Werktage individuell"
+
+#: crates/app/src/settings_ui.rs:98
+msgid "summary today overdue morning evening"
+msgstr "Zusammenfassung heute überfällig morgens abends"
+
 #~ msgid "linked devices"
 #~ msgstr "Dieses Gerät"
 

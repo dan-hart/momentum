@@ -51,7 +51,7 @@ import Testing
         let worker = await EngineWorker.open(directory: directory)
         let preferences = MomentumCore.Preferences(groupBy: .morningNight, showDayPeriodTasksInToday: true, sort: .manual,
             direction: .ascending, upcomingDays: 7, autoArchive: true,
-            morningSummaryEnabled: false, morningSummaryTime: ClockTime(hour: 8, minute: 0))
+            morningSummaryEnabled: false, morningSummaryTime: ClockTime(hour: 8, minute: 0), morningSummaryWeekdays: 127, morningSummarySections: 7)
         await worker.setPreferences(preferences)
         _ = await worker.perform(.add("Archive from notification", .today))
         let task = try #require(await worker.snapshot(view: .today).tasks.first)

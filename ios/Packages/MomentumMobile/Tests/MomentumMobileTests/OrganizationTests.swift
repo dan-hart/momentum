@@ -123,7 +123,7 @@ import Testing
         _ = await worker.perform(.add("Short #First #Second 15m", .today))
         let prefs = MomentumCore.Preferences(groupBy: .tag, showDayPeriodTasksInToday: true, sort: .manual, direction: .ascending,
             upcomingDays: 7, autoArchive: false, morningSummaryEnabled: false,
-            morningSummaryTime: ClockTime(hour: 8, minute: 0))
+            morningSummaryTime: ClockTime(hour: 8, minute: 0), morningSummaryWeekdays: 127, morningSummarySections: 7)
         await worker.setPreferences(prefs)
         let snapshot = await worker.snapshot(view: .today)
         #expect(snapshot.tasks.count == 1)

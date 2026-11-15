@@ -77,6 +77,7 @@ internal class ReminderObservations(path: File) {
                 .put("due", c.dueAtMs?.toString() ?: JSONObject.NULL)
             is NotificationContent.Summary -> JSONObject().put("type", "summary").put("day", c.day).put("tasks", JSONArray(c.taskIds))
                 .put("total", c.counts.total.toLong()).put("morning", c.counts.morning.toLong()).put("tonight", c.counts.tonight.toLong())
+                .put("overdue", c.counts.overdue.toLong()).put("sections", c.counts.sections.toInt())
         }
         return JSONObject().put("id", request.id).put("revision", request.sourceRevision)
             .put("scheduled", request.scheduledAtMs.toString()).put("fire", request.fireAtMs.toString()).put("content", content)
@@ -92,11 +93,17 @@ internal class ReminderObservations(path: File) {
         val c = json.getJSONObject("content")
         val content = when (c.getString("type")) {
             "reminder" -> NotificationContent.Reminder(c.getString("task"), c.getString("title"), if (c.isNull("due")) null else c.timestamp("due"))
-            "summary" -> NotificationContent.Summary(c.getString("day"), MorningSummary(c.count("total"), c.count("morning"), c.count("tonight")),
-                c.getJSONArray("tasks").let { a -> (0 until a.length()).map { a.getString(it) } })
+            "summary" -> {
+                val sections = if (c.has("sections")) c.getInt("sections") else 7
+                check(sections in 0..15) { "Invalid summary sections; existing data was preserved" }
+                val counts = MorningSummary(c.count("total"), c.count("morning"), c.count("tonight"),
+                    if (c.has("overdue")) c.count("overdue") else 0u, sections.toUByte())
+                NotificationContent.Summary(c.getString("day"), counts,
+                    c.getJSONArray("tasks").let { a -> (0 until a.length()).map { a.getString(it) } })
+            }
             else -> error("Unsupported reminder content; existing data was preserved")
         }
-        val request = NotificationRequest(json.getString("id"), json.getString("revision"), json.timestamp("scheduled"), json.timestamp("fire"), content)
+        val request = NotificationRequest(json.getString("id"), json.getString("revision"), json.timestamp("scheduled"), json.timestamp("fire"), content, badgeCount = null)
         check(request.fireAtMs >= request.scheduledAtMs) { "Invalid reminder timing; existing data was preserved" }
         return request
     }

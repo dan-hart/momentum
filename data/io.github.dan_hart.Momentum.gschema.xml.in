@@ -66,13 +66,15 @@
     </key>
     <key name="run-in-background" type="b"><default>false</default><summary>Keep running after the window closes</summary></key>
     <key name="background-count-mode" type="s">
-      <choices><choice value="due-today"/><choice value="today-including-overdue"/><choice value="off"/></choices>
+      <choices><choice value="due-today"/><choice value="today-including-overdue"/><choice value="off"/><choice value="overdue-only"/></choices>
       <default>'due-today'</default>
       <summary>Task count shown in the Background Apps status</summary>
     </key>
     <key name="morning-summary-enabled" type="b"><default>false</default><summary>Show a daily morning summary</summary></key>
     <key name="morning-summary-hour" type="i"><range min="0" max="23"/><default>8</default><summary>Morning summary hour in local time</summary></key>
     <key name="morning-summary-minute" type="i"><range min="0" max="59"/><default>0</default><summary>Morning summary minute</summary></key>
+    <key name="morning-summary-weekdays" type="u"><range min="0" max="127"/><default>127</default><summary>Weekdays selected for the morning summary</summary></key>
+    <key name="morning-summary-sections" type="u"><range min="0" max="15"/><default>7</default><summary>Task sections selected for the morning summary</summary></key>
     <key name="last-summary-day" type="s"><default>''</default><summary>Day the morning summary was last shown</summary></key>
     <key name="modifier-key" type="s">
       <choices><choice value="control"/><choice value="alt"/><choice value="super"/><choice value="option"/><choice value="command"/></choices>

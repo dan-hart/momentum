@@ -1863,9 +1863,11 @@ fn task_counts_share_today_membership_and_count_families_once() {
     });
     assert_eq!(e.task_count(TaskCountMode::DueToday), 2);
     assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 3);
+    assert_eq!(e.task_count(TaskCountMode::OverdueOnly), 1);
     assert_eq!(e.today_open_count(), e.task_count(TaskCountMode::DueToday));
     e.bulk_done(vec![parent, overdue_id]);
     assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
+    assert_eq!(e.task_count(TaskCountMode::OverdueOnly), 0);
     e.archive_done();
     assert_eq!(e.task_count(TaskCountMode::TodayIncludingOverdue), 1);
     assert_eq!(e.task_count(TaskCountMode::DueToday), 1);

@@ -1,6 +1,96 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Badges": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kennzeichen"
+          }
+        }
+      }
+    },
+    "Every day": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeden Tag"
+          }
+        }
+      }
+    },
+    "Momentum sends the summary on selected days when the app is running and the selected sections contain tasks.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentum sendet die Zusammenfassung an den ausgewählten Tagen, wenn die App läuft und die ausgewählten Abschnitte Aufgaben enthalten."
+          }
+        }
+      }
+    },
+    "Refresh badge with morning summary": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kennzeichen bei der Morgenzusammenfassung aktualisieren"
+          }
+        }
+      }
+    },
+    "Refresh badge with task reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kennzeichen bei Aufgabenerinnerungen aktualisieren"
+          }
+        }
+      }
+    },
+    "Send morning summary": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgenzusammenfassung senden"
+          }
+        }
+      }
+    },
+    "Summary days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tage für die Zusammenfassung"
+          }
+        }
+      }
+    },
+    "Summary sections": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abschnitte der Zusammenfassung"
+          }
+        }
+      }
+    },
+    "Weekdays": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werktags (Mo–Fr)"
+          }
+        }
+      }
+    },
 "Credentials need attention": {
     "localizations": {
       "en": {

@@ -13,7 +13,7 @@ import java.util.UUID
 class ReminderObservationsTest {
     @Test fun roundTripRetainsPendingAndDeliveredExactSourcesAndActions() = fixture { file, observations ->
         val reminder = request("reminder", "one", NotificationContent.Reminder("fixture-id", "Private title", 3_000uL))
-        val summary = request("summary", "two", NotificationContent.Summary("2026-10-11", MorningSummary(2u, 1u, 1u), listOf("a", "b")))
+        val summary = request("summary", "two", NotificationContent.Summary("2026-10-11", MorningSummary(2u, 1u, 1u, 3u, 15u), listOf("a", "b")))
         val records = records(ReminderRecord(reminder), ReminderRecord(summary, delivered = true, actions = setOf("done")))
         observations.save(records)
         assertEquals(records, ReminderObservations(file).load())
@@ -22,6 +22,12 @@ class ReminderObservationsTest {
             observations.save(records(ReminderRecord(reminder, actions = setOf("invalid"))))
         }
         assertArrayEquals(original, file.readBytes())
+    }
+
+    @Test fun readsOriginalSummaryReceiptsWithDefaultSections() = fixture { file, observations ->
+        file.writeText("""{"version":1,"records":[{"request":{"id":"summary:2026-10-11","revision":"old","scheduled":"1000","fire":"2000","content":{"type":"summary","day":"2026-10-11","total":2,"morning":1,"tonight":1,"tasks":["a","b"]}},"delivered":false,"actions":[]}]}""")
+        val content = observations.load().values.single().request.content as NotificationContent.Summary
+        assertEquals(MorningSummary(2u, 1u, 1u, 0u, 7u), content.counts)
     }
 
     @Test fun capacityFailurePreservesAllExistingPendingRecords() = fixture { file, observations ->
@@ -48,7 +54,7 @@ class ReminderObservationsTest {
         assertArrayEquals(malformed, file.inputStream().use { input -> ByteArray(malformed.size).also { assertEquals(it.size, input.read(it)) } })
     }
 
-    private fun request(id: String, source: String, content: NotificationContent) = NotificationRequest(id, source, 1_000uL, 2_000uL, content)
+    private fun request(id: String, source: String, content: NotificationContent) = NotificationRequest(id, source, 1_000uL, 2_000uL, content, badgeCount = null)
     private fun records(vararg values: ReminderRecord) = values.associateByTo(linkedMapOf()) {
         ReminderIdentity.key(ReminderIdentity.observation(it.request))
     }

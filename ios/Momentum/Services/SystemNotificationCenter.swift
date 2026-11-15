@@ -76,6 +76,7 @@ actor SystemNotificationCenter: NotificationSchedulingCenter, NotificationBadgeC
         content.title = request.title
         content.body = request.body
         content.sound = .default
+        content.badge = request.badgeCount.map { NSNumber(value: $0) }
         var metadata = request.metadata
         switch request.route {
         case .reminder(let taskID):

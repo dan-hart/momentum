@@ -25,14 +25,14 @@ internal val settingsLabels = linkedMapOf(
     "sounds.enabled" to R.string.completion_sound_enabled, "sounds.selection" to R.string.completion_sound_choice,
     "sounds.volume" to R.string.sound_volume, "notifications.permission" to R.string.enable_notifications,
     "notifications.reminders" to R.string.reminder, "notifications.morning-summary" to R.string.summary,
-    "notifications.exact-alarm" to R.string.exact_alarms, "sync.provider" to R.string.sync,
+    "notifications.badge" to R.string.app_badge_count, "notifications.exact-alarm" to R.string.exact_alarms, "sync.provider" to R.string.sync,
     "sync.nextcloud" to R.string.nextcloud, "sync.libresync" to R.string.libresync,
     "sync.automatic" to R.string.automatic_sync, "sync.background" to R.string.background_sync, "sync.status" to R.string.sync_status_heading, "sync.compression" to R.string.compress,
     "sync.folder-copy" to R.string.folder_migration_action, "sync.devices" to R.string.nearby,
     "sync.settings" to R.string.sync_app_settings,
     "data.summary" to R.string.automation_title, "data.tasks-import" to R.string.import_backup, "data.tasks-export" to R.string.export_backup,
     "data.settings-import" to R.string.import_app_settings, "data.settings-export" to R.string.export_app_settings,
-    "integrations.shortcuts" to R.string.keyboard_shortcuts, "integrations.count" to R.string.task_count_title,
+    "integrations.shortcuts" to R.string.keyboard_shortcuts,
     "integrations.system-search" to R.string.system_search, "about.app" to R.string.about,
     "about.source" to R.string.source_code, "about.issues" to R.string.report_issue,
     "about.license" to R.string.license, "about.acknowledgments" to R.string.acknowledgments,
@@ -60,7 +60,10 @@ internal val settingsCategoryDescriptions = mapOf("tasks" to R.string.settings_t
             }, when(it.id) {
                 "appearance.theme" -> listOf(R.string.dynamic_color, R.string.system, R.string.light, R.string.dark).map(resources::getString)
                 "tasks.sort-direction" -> listOf(resources.getString(R.string.descending))
-                "notifications.morning-summary" -> listOf(resources.getString(R.string.time))
+                "notifications.morning-summary" -> listOf(R.string.time, R.string.summary_days, R.string.summary_sections,
+                    R.string.summary_weekdays).map(resources::getString)
+                "notifications.badge" -> listOf(R.string.task_count_title, R.string.notification_badges, R.string.badge_task_reminders,
+                    R.string.badge_morning_summary, R.string.task_count_overdue_only_mode).map(resources::getString)
                 "integrations.shortcuts" -> listOf(resources.getString(R.string.keyboard_modifier_hint))
                 "tasks.day-period-visibility" -> listOf(resources.getString(R.string.morning), resources.getString(R.string.evening), if(language == "de") "Nacht" else "night")
                 "appearance.font", "appearance.content-size", "appearance.interface-size" -> listOf(resources.getString(R.string.font), resources.getString(R.string.content_text_size))

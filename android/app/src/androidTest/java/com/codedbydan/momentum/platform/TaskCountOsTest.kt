@@ -41,12 +41,13 @@ class TaskCountOsTest {
         if(::directory.isInitialized) directory.deleteRecursively()
         Unit
     }
-    private suspend fun posted(expectedCount: Int): Notification = withTimeout(5_000) {
+    private suspend fun posted(expectedCount: Int, expectedText: String? = null): Notification = withTimeout(5_000) {
         var notification = manager.activeNotifications.singleOrNull { it.tag == tag }?.notification
         var pendingChecks = 0
         // notify() also queues OS publication. An older notification with the same
         // tag is not evidence that the requested core projection has been posted.
-        while(notification == null || notification.number != expectedCount) {
+        while(notification == null || notification.number != expectedCount ||
+            (expectedText != null && notification.extras.getString(Notification.EXTRA_TEXT) != expectedText)) {
             pendingChecks++
             delay(20)
             notification = manager.activeNotifications.singleOrNull { it.tag == tag }?.notification
@@ -77,14 +78,16 @@ class TaskCountOsTest {
         Assert.assertTrue(notifier.reconcile())
         Assert.assertTrue("Notification cancellation must preserve the calling job", currentCoroutineContext().isActive)
         cancelled()
-        for(mode in listOf(TaskCountMode.DUE_TODAY, TaskCountMode.TODAY_INCLUDING_OVERDUE)) {
+        for(mode in listOf(TaskCountMode.DUE_TODAY, TaskCountMode.OVERDUE_ONLY, TaskCountMode.TODAY_INCLUDING_OVERDUE)) {
             repository.updateSettings { it.copy(taskCountMode = mode) }
             Assert.assertFalse(repository.settings().notifications) // Count opt-in is independent.
             Assert.assertTrue(notifier.reconcile())
             Assert.assertTrue("Notification publication must preserve the calling job", currentCoroutineContext().isActive)
             val expectedCount = repository.read { taskCount(mode) }.toInt()
             Assert.assertEquals(expectedCount, notifier.state.value.count)
-            val notification = posted(expectedCount)
+            val overdueText = if (mode == TaskCountMode.OVERDUE_ONLY) context.resources.getQuantityString(
+                R.plurals.task_count_overdue_only, expectedCount, expectedCount) else null
+            val notification = posted(expectedCount, overdueText)
             Assert.assertEquals(expectedCount, notification.number)
             Assert.assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility)
             Assert.assertEquals(context.getString(R.string.app_name), notification.publicVersion.extras.getString(Notification.EXTRA_TITLE))

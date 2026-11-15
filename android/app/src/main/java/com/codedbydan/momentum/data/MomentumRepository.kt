@@ -42,6 +42,8 @@ data class AppSettings(
     val accent: NativeAccent = NativeAccent.Momentum,
     val keyboardModifier: KeyboardModifier = KeyboardModifier.Ctrl,
     val taskCountMode: TaskCountMode = TaskCountMode.NONE,
+    val badgeTaskReminders: Boolean = true,
+    val badgeMorningSummary: Boolean = true,
 )
 
 data class Snapshot(
@@ -244,7 +246,8 @@ class MomentumRepository internal constructor(
         refreshPortableLocked(this)
     }
     private fun Engine.applyDevicePreferences(prefs: Preferences) {
-        setDeviceSummaryPreferences(prefs.morningSummaryEnabled, prefs.morningSummaryTime)
+        setDeviceSummaryOptions(prefs.morningSummaryEnabled, prefs.morningSummaryTime,
+            prefs.morningSummaryWeekdays, prefs.morningSummarySections)
         setDayPeriodTasksInToday(prefs.showDayPeriodTasksInToday)
     }
     suspend fun draft(input: EditorDraft): TaskDraft? = read {
@@ -300,6 +303,8 @@ private fun appSettings(prefs: androidx.datastore.preferences.core.Preferences):
     accent = enumValueOr(prefs[stringPreferencesKey("accent")], NativeAccent.Momentum),
     keyboardModifier = enumValueOr(prefs[stringPreferencesKey("keyboard-modifier")], KeyboardModifier.Ctrl),
     taskCountMode = enumValueOr(prefs[stringPreferencesKey("task-count-mode")], TaskCountMode.NONE),
+    badgeTaskReminders = prefs[booleanPreferencesKey("badge-task-reminders")] ?: true,
+    badgeMorningSummary = prefs[booleanPreferencesKey("badge-morning-summary")] ?: true,
 )
 private inline fun <reified T : Enum<T>> enumValueOr(value: String?, fallback: T): T =
     enumValues<T>().firstOrNull { it.name == value } ?: fallback
@@ -315,6 +320,8 @@ private fun corePreferences(prefs: androidx.datastore.preferences.core.Preferenc
         prefs[booleanPreferencesKey("morning-summary")] ?: false,
         ClockTime((prefs[intPreferencesKey("summary-hour")] ?: 8).coerceIn(0, 23).toUInt(),
             (prefs[intPreferencesKey("summary-minute")] ?: 0).coerceIn(0, 59).toUInt()),
+        (prefs[intPreferencesKey("summary-weekdays")] ?: 127).let { (it and 127).toUByte() },
+        (prefs[intPreferencesKey("summary-sections")] ?: 7).let { (it and 15).toUByte() },
     )
 
 private fun writeSettings(it: MutablePreferences, settings: AppSettings) {
@@ -338,6 +345,8 @@ private fun writeSettings(it: MutablePreferences, settings: AppSettings) {
     it[stringPreferencesKey("accent")] = settings.accent.name
     it[stringPreferencesKey("keyboard-modifier")] = settings.keyboardModifier.name
     it[stringPreferencesKey("task-count-mode")] = settings.taskCountMode.name
+    it[booleanPreferencesKey("badge-task-reminders")] = settings.badgeTaskReminders
+    it[booleanPreferencesKey("badge-morning-summary")] = settings.badgeMorningSummary
 }
 private fun writeCorePreferences(it: MutablePreferences, prefs: Preferences) {
     it[stringPreferencesKey("group")] = prefs.groupBy.name
@@ -349,6 +358,8 @@ private fun writeCorePreferences(it: MutablePreferences, prefs: Preferences) {
     it[booleanPreferencesKey("morning-summary")] = prefs.morningSummaryEnabled
     it[intPreferencesKey("summary-hour")] = prefs.morningSummaryTime.hour.toInt()
     it[intPreferencesKey("summary-minute")] = prefs.morningSummaryTime.minute.toInt()
+    it[intPreferencesKey("summary-weekdays")] = prefs.morningSummaryWeekdays.toInt() and 127
+    it[intPreferencesKey("summary-sections")] = prefs.morningSummarySections.toInt() and 15
 }
 
 internal fun resolvedListingView(view: View, exists: Boolean, completion: DayCompletion?): View {

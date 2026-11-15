@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import Foundation
+import MomentumCore
 import MomentumKit
 import Testing
 @testable import MomentumMobile
 
 private actor BadgeCore: NotificationBadgeCore {
-    var queries: [Bool] = []
-    func badgeCount(includeOverdue: Bool) -> UInt32 {
-        queries.append(includeOverdue)
-        return includeOverdue ? 5 : 2
+    var queries: [TaskCountMode] = []
+    func badgeCount(mode: TaskCountMode) -> UInt32 {
+        queries.append(mode)
+        return switch mode {
+        case .dueToday: 2
+        case .todayIncludingOverdue: 5
+        case .overdueOnly: 3
+        case .none: 0
+        }
     }
 }
 private actor BadgeCenter: NotificationBadgeCenter {
@@ -47,9 +53,10 @@ private actor BadgeCenter: NotificationBadgeCenter {
         let subject = BadgeCoordinator(core: core, center: center)
         #expect(await subject.refresh(mode: .dueToday) == .updated(2))
         #expect(await subject.refresh(mode: .todayIncludingOverdue) == .updated(5))
+        #expect(await subject.refresh(mode: .overdueOnly) == .updated(3))
         #expect(await subject.refresh(mode: .none) == .updated(0))
-        #expect(await core.queries == [false, true])
-        #expect(await center.counts == [2, 5, 0])
+        #expect(await core.queries == [.dueToday, .todayIncludingOverdue, .overdueOnly])
+        #expect(await center.counts == [2, 5, 3, 0])
     }
     @Test func deniedPermissionDoesNotWriteOrQuery() async {
         let core = BadgeCore(), center = BadgeCenter()

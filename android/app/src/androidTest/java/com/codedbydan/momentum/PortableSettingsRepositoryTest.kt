@@ -60,6 +60,36 @@ class PortableSettingsRepositoryTest {
         try { assertTrue(reopened.snapshot(View.Today).settings.compact); assertFalse(reopened.read { settingsSyncStatus().enabled }) }
         finally { reopened.close() }
     } }
+    @Test fun notificationPreferencesRemainDeviceLocalAcrossReopenAndImport() = runBlocking { fixture { repo, directory ->
+        val baseline = repo.snapshot(View.Today)
+        assertEquals(127u.toUByte(), baseline.preferences.morningSummaryWeekdays)
+        assertEquals(7u.toUByte(), baseline.preferences.morningSummarySections)
+        repo.updateSettings {
+            it.copy(taskCountMode = TaskCountMode.OVERDUE_ONLY,
+                badgeTaskReminders = false, badgeMorningSummary = false)
+        }
+        repo.updatePreferences {
+            it.copy(morningSummaryEnabled = true, morningSummaryTime = ClockTime(9u, 35u),
+                morningSummaryWeekdays = 0b0010101u, morningSummarySections = 9u)
+        }
+        val exported = File(directory, "device-local-settings.json")
+        repo.exportAppSettings(exported)
+        assertEquals(9, JSONObject(exported.readText()).getJSONObject("values").length())
+        repo.importAppSettings(exported)
+        repo.close()
+        val reopened = MomentumRepository(ApplicationProvider.getApplicationContext(), directory)
+        try {
+            val snapshot = reopened.snapshot(View.Today)
+            assertEquals(TaskCountMode.OVERDUE_ONLY, snapshot.settings.taskCountMode)
+            assertFalse(snapshot.settings.badgeTaskReminders)
+            assertFalse(snapshot.settings.badgeMorningSummary)
+            assertTrue(snapshot.preferences.morningSummaryEnabled)
+            assertEquals(ClockTime(9u, 35u), snapshot.preferences.morningSummaryTime)
+            assertEquals(0b0010101u.toUByte(), snapshot.preferences.morningSummaryWeekdays)
+            assertEquals(9u.toUByte(), snapshot.preferences.morningSummarySections)
+        } finally { reopened.close() }
+    } }
+
     @Test fun invalidIncludedSettingsCannotPartiallyRestoreTasksOrNativeValues() = runBlocking { fixture { repo, directory ->
         val task = repo.create(TaskDraft("Retained", "INBOX_PROJECT", null, null, null, 0.0, "", emptyList(), emptyList()), View.Today).id!!
         val backup = File(directory, "invalid.json")

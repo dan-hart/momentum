@@ -1,6 +1,106 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+  "Days": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Tage"
+        }
+      }
+    }
+  },
+  "Every Day": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Jeden Tag"
+        }
+      }
+    }
+  },
+  "Weekdays": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Werktage (Mo–Fr)"
+        }
+      }
+    }
+  },
+  "Custom": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Benutzerdefiniert"
+        }
+      }
+    }
+  },
+  "Include in Summary": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "In die Übersicht aufnehmen"
+        }
+      }
+    }
+  },
+  "Task Reminders Update Badge": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Aufgabenerinnerungen aktualisieren die Kennzeichnung"
+        }
+      }
+    }
+  },
+  "Morning Summary Updates Badge": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Morgenübersicht aktualisiert die Kennzeichnung"
+        }
+      }
+    }
+  },
+  "Select at least one day and one section to receive the summary.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Wähle mindestens einen Tag und einen Abschnitt aus, um die Übersicht zu erhalten."
+        }
+      }
+    }
+  },
+  "The summary skips days when the selected sections are empty. Configure individual reminders on each task.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Die Übersicht überspringt Tage, an denen die ausgewählten Abschnitte leer sind. Einzelne Erinnerungen legst du direkt in den Aufgaben fest."
+        }
+      }
+    }
+  },
+  "When Momentum is closed, notifications use the badge count calculated when they were scheduled.": {
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Wenn Momentum geschlossen ist, verwenden Mitteilungen den beim Planen berechneten Zählerstand."
+        }
+      }
+    }
+  },
   "Check the connection fields, then save again.": {
     "localizations": {
       "en": {

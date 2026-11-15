@@ -72,7 +72,7 @@ internal class ReminderScheduler(
                 // Opting out must hide displayed reminders even when saved alarm
                 // observations are corrupt. Leave unreadable bytes intact; unknown
                 // alarm callbacks cannot post because receive() also checks opt-in.
-                notifications.activeNotifications.filter { it.notification.channelId == CHANNEL }
+                notifications.activeNotifications.filter { it.notification.channelId in DELIVERY_CHANNELS }
                     .forEach { notifications.cancel(it.tag, it.id) }
                 val disabled = observations.load()
                 disabled.values.forEach { cancel(it.request) }
@@ -86,8 +86,7 @@ internal class ReminderScheduler(
                 records.entries.removeAll { !it.value.delivered }
                 observations.save(records)
             }
-            ensureChannel()
-            val delivered = notifications.activeNotifications.filter { it.notification.channelId == CHANNEL }.mapNotNull {
+            val delivered = notifications.activeNotifications.filter { it.notification.channelId in DELIVERY_CHANNELS }.mapNotNull {
                 val extras = it.notification.extras
                 val id = extras.getString(ID) ?: return@mapNotNull null
                 val revision = extras.getString(REVISION) ?: return@mapNotNull null
@@ -187,12 +186,12 @@ internal class ReminderScheduler(
             records[key] = record.copy(delivered = true)
             observations.save(records)
             cancelAlarm(record.request)
-            ensureChannel()
             if (!allowed()) { notifications.cancel(key, 0); return@withLock false }
-            val builder = NotificationCompat.Builder(context, CHANNEL)
+            val channel = deliveryChannel(record.request.content) ?: return@withLock false
+            val builder = NotificationCompat.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-                .setPublicVersion(NotificationCompat.Builder(context, CHANNEL)
+                .setPublicVersion(NotificationCompat.Builder(context, channel)
                     .setSmallIcon(R.drawable.ic_launcher_foreground).setContentTitle(context.getString(R.string.app_name)).build())
                 .setAutoCancel(true).setOnlyAlertOnce(true).setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .addExtras(android.os.Bundle().apply { putString(ID, record.request.id); putString(REVISION, record.request.sourceRevision) })
@@ -211,10 +210,12 @@ internal class ReminderScheduler(
                         .addAction(NotificationCompat.Action.Builder(0, context.getString(R.string.snooze), actionIntent(key, SNOOZE))
                             .setAuthenticationRequired(true).build())
                 }
-                is NotificationContent.Summary -> builder.setContentTitle(context.getString(R.string.summary))
-                    .setContentText(context.resources.getQuantityString(R.plurals.summary_count,
-                        content.counts.total.toInt(), content.counts.total.toInt()))
-                    .setContentIntent(openIntent(key, null))
+                is NotificationContent.Summary -> {
+                    val body = morningSummaryText(context, content.counts)
+                    builder.setContentTitle(context.getString(R.string.summary))
+                        .setContentText(body).setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                        .setContentIntent(openIntent(key, null))
+                }
             }
             notifications.notify(key, 0, builder.build())
             true
@@ -222,14 +223,53 @@ internal class ReminderScheduler(
     }
 
     private suspend fun allowed(): Boolean = repository.settings().notifications && notifications.areNotificationsEnabled() &&
-        (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) &&
-        notifications.getNotificationChannel(CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE
+        (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
 
-    private fun ensureChannel() {
-        notifications.createNotificationChannel(NotificationChannel(CHANNEL, context.getString(R.string.reminder), NotificationManager.IMPORTANCE_DEFAULT).apply {
+    private suspend fun deliveryChannel(content: NotificationContent): String? {
+        val settings = repository.settings()
+        if (!settings.notifications) return null
+
+        val reminders = ensureChannel(CHANNEL, context.getString(R.string.reminder))
+        val isSummary = content is NotificationContent.Summary
+        // Older installations use the reminders channel for both notifications.
+        // Seed the summary channel with those choices, then let Android manage them independently.
+        val base = if (isSummary) {
+            ensureChannel(SUMMARY_CHANNEL, context.getString(R.string.summary), reminders)
+        } else reminders
+        if (base.importance == NotificationManager.IMPORTANCE_NONE) return null
+
+        val badges = if (isSummary) settings.badgeMorningSummary else settings.badgeTaskReminders
+        if (badges || !base.canShowBadge()) return base.id
+        val id = if (isSummary) SUMMARY_WITHOUT_BADGE else REMINDER_WITHOUT_BADGE
+        val title = context.getString(if (isSummary) R.string.summary_without_badge else R.string.reminders_without_badge)
+        return ensureChannel(id, title, base, showBadge = false)
+            .takeIf { it.importance != NotificationManager.IMPORTANCE_NONE }?.id
+    }
+
+    private fun ensureChannel(
+        id: String, title: String, source: NotificationChannel? = null,
+        showBadge: Boolean = source?.canShowBadge() ?: true,
+    ): NotificationChannel {
+        notifications.getNotificationChannel(id)?.let { existing ->
+            if (existing.name != title) {
+                existing.name = title
+                notifications.createNotificationChannel(existing)
+            }
+            return existing
+        }
+        val channel = NotificationChannel(id, title, source?.importance ?: NotificationManager.IMPORTANCE_DEFAULT).apply {
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
-            setShowBadge(true)
-        })
+            setShowBadge(showBadge)
+            if (source != null) {
+                setSound(source.sound, source.audioAttributes)
+                vibrationPattern = source.vibrationPattern
+                enableVibration(source.shouldVibrate())
+                lightColor = source.lightColor
+                enableLights(source.shouldShowLights())
+            }
+        }
+        notifications.createNotificationChannel(channel)
+        return notifications.getNotificationChannel(id) ?: channel
     }
 
     private fun schedule(request: NotificationRequest) {
@@ -270,6 +310,10 @@ internal class ReminderScheduler(
 
     private companion object {
         const val CHANNEL = "momentum.reminders"
+        const val SUMMARY_CHANNEL = "momentum.morning-summary"
+        const val REMINDER_WITHOUT_BADGE = "momentum.reminders.no-badge"
+        const val SUMMARY_WITHOUT_BADGE = "momentum.morning-summary.no-badge"
+        val DELIVERY_CHANNELS = setOf(CHANNEL, SUMMARY_CHANNEL, REMINDER_WITHOUT_BADGE, SUMMARY_WITHOUT_BADGE)
         const val ID = "momentum.notification.id"
         const val REVISION = "momentum.notification.revision"
         const val KEY = "momentum.notification.key"

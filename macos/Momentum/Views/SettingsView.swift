@@ -126,6 +126,10 @@ private struct GeneralSettings: SwiftUI.View {
     @AppStorage(PrefKey.morningSummaryEnabled) private var morningSummary = false
     @AppStorage(PrefKey.morningSummaryHour) private var morningHour = 8
     @AppStorage(PrefKey.morningSummaryMinute) private var morningMinute = 0
+    @AppStorage(PrefKey.morningSummaryWeekdays) private var summaryWeekdays = 127
+    @AppStorage(PrefKey.morningSummarySections) private var summarySections = 7
+    @AppStorage(PrefKey.remindersUpdateBadge) private var remindersUpdateBadge = false
+    @AppStorage(PrefKey.summaryUpdatesBadge) private var summaryUpdatesBadge = false
 
 
     private var summaryTime: Binding<Date> {
@@ -138,6 +142,58 @@ private struct GeneralSettings: SwiftUI.View {
             morningHour = Calendar.current.component(.hour, from: date)
             morningMinute = Calendar.current.component(.minute, from: date)
         }
+    }
+
+    private var dockBadgePicker: some SwiftUI.View {
+        Picker(String(localized: "Dock badge"), selection: $dockBadgeMode) {
+            ForEach(DockBadgeMode.allCases) { mode in
+                Text(mode.label).tag(mode.rawValue)
+            }
+        }
+    }
+
+    private func includes(_ bit: Int, in selection: Binding<Int>, defaultValue: Int, maximum: Int) -> Binding<Bool> {
+        func normalized() -> Int {
+            let saved = selection.wrappedValue
+            return (0...maximum).contains(saved) ? saved : defaultValue
+        }
+        return Binding {
+            normalized() & bit != 0
+        } set: { isOn in
+            let current = normalized()
+            selection.wrappedValue = isOn ? current | bit : current & ~bit
+        }
+    }
+
+    private var summaryDayChoices: some SwiftUI.View {
+        let calendar = Calendar.current
+        let symbols = calendar.weekdaySymbols
+        return DisclosureGroup(String(localized: "Summary days")) {
+            HStack {
+                Button(String(localized: "Every day")) { summaryWeekdays = 127 }
+                Button(String(localized: "Weekdays")) { summaryWeekdays = 31 }
+            }
+            .buttonStyle(.borderless)
+            ForEach(0..<7) { index in
+                // Foundation weekday symbols start at Sunday. The stored mask starts at Monday.
+                let day = (calendar.firstWeekday - 1 + index) % 7
+                let bit = 1 << ((day + 6) % 7)
+                Toggle(symbols[day], isOn: includes(bit, in: $summaryWeekdays, defaultValue: 127, maximum: 127))
+            }
+        }
+    }
+
+    private var summarySectionChoices: some SwiftUI.View {
+        DisclosureGroup(String(localized: "Summary sections")) {
+            ForEach(MorningSummarySection.allCases) { section in
+                Toggle(section.label, isOn: includes(Int(section.rawValue), in: $summarySections, defaultValue: 7, maximum: 15))
+            }
+        }
+    }
+
+    private var summaryPreview: String {
+        let sections = (0...15).contains(summarySections) ? UInt8(summarySections) : 7
+        return NotificationManager.summaryBody(state.engine.morningSummaryPreview(sections: sections))
     }
 
     var body: some SwiftUI.View {
@@ -180,13 +236,26 @@ private struct GeneralSettings: SwiftUI.View {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
                 }
                 Text(String(localized: "Task reminders are configured on each task.")).settingsTarget("notifications.reminders")
-                Toggle(String(localized: "Morning summary"), isOn: $morningSummary).settingsTarget("notifications.morning-summary")
-                DatePicker(String(localized: "Summary time"), selection: summaryTime,
-                           displayedComponents: .hourAndMinute)
-                    .disabled(!morningSummary)
-                Text(String(localized: "Summarize today's tasks once a day at this local time, or when Momentum next opens. Task reminders are separate."))
-                    .appFont(.caption).foregroundStyle(.secondary)
-                Text(String(localized: "Off by default. Momentum must be running to send notifications."))
+            }
+            Section(String(localized: "Badges")) {
+                dockBadgePicker.settingsTarget("notifications.badge")
+                Toggle(String(localized: "Refresh badge with task reminders"), isOn: $remindersUpdateBadge)
+                    .disabled(dockBadgeMode == DockBadgeMode.none.rawValue)
+                Toggle(String(localized: "Refresh badge with morning summary"), isOn: $summaryUpdatesBadge)
+                    .disabled(dockBadgeMode == DockBadgeMode.none.rawValue)
+            }
+            Section(String(localized: "Morning summary")) {
+                Toggle(String(localized: "Send morning summary"), isOn: $morningSummary)
+                    .settingsTarget("notifications.morning-summary")
+                Group {
+                    DatePicker(String(localized: "Summary time"), selection: summaryTime,
+                               displayedComponents: .hourAndMinute)
+                    summaryDayChoices
+                    summarySectionChoices
+                    LabeledContent(String(localized: "Preview"), value: summaryPreview)
+                }
+                .disabled(!morningSummary)
+                Text(String(localized: "Momentum sends the summary on selected days when the app is running and the selected sections contain tasks."))
                     .appFont(.caption).foregroundStyle(.secondary)
             }
             }
@@ -205,11 +274,7 @@ private struct GeneralSettings: SwiftUI.View {
                 Text(String(localized: "Keyboard"))
             }
             Section(String(localized: "Desktop")) {
-                Picker(String(localized: "Dock badge"), selection: $dockBadgeMode) {
-                    ForEach(DockBadgeMode.allCases) { mode in
-                        Text(mode.label).tag(mode.rawValue)
-                    }
-                }.settingsTarget("integrations.dock")
+                dockBadgePicker.settingsTarget("integrations.dock")
                 Text(String(localized: "Counts unfinished tasks. Subtasks are included with their parent. The badge is hidden when the count is zero."))
                     .appFont(.caption).foregroundStyle(.secondary)
                 Toggle(String(localized: "Keep running in the background"), isOn: $background).settingsTarget("integrations.startup")

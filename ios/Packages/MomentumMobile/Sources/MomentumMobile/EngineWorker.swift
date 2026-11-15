@@ -107,7 +107,16 @@ public actor EngineWorker {
     }
 
     public func setDeviceSummaryPreferences(_ preferences: MomentumCore.Preferences) throws {
-        try engine.setDeviceSummaryPreferences(enabled: preferences.morningSummaryEnabled, time: preferences.morningSummaryTime)
+        try engine.setDeviceSummaryOptions(enabled: preferences.morningSummaryEnabled, time: preferences.morningSummaryTime,
+            weekdays: preferences.morningSummaryWeekdays, sections: preferences.morningSummarySections)
+    }
+
+    public func morningSummaryPreview(sections: UInt8) -> MorningSummary {
+        engine.morningSummaryPreview(sections: sections)
+    }
+
+    public func setDeviceNotificationBadgeOptions(mode: TaskCountMode, reminders: Bool, summary: Bool) {
+        engine.setDeviceNotificationBadgeOptions(mode: mode, reminders: reminders, summary: summary)
     }
 
     public func mobileSearchDocuments() -> [MobileSearchDocument] {

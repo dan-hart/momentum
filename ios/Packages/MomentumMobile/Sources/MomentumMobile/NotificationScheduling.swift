@@ -67,6 +67,7 @@ public struct NotificationSubmission: Sendable, Equatable {
     public let title: String
     public let body: String
     public let timeInterval: TimeInterval
+    public let badgeCount: UInt32?
 }
 
 public protocol NotificationSchedulingCore: Sendable {

@@ -211,6 +211,8 @@ fn notification_action_rejects_non_reminders_and_preserves_a_malformed_ledger() 
                 total: 1,
                 morning: 0,
                 tonight: 0,
+                overdue: 0,
+                sections: 7,
             },
             task_ids: vec!["task".into()],
         },

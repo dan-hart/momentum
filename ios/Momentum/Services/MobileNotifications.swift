@@ -7,6 +7,7 @@ import Observation
 
 /// Native presentation state; the coordinator and Rust own scheduling decisions.
 @MainActor @Observable final class MobileNotifications {
+    private var worker: EngineWorker?
     private var coordinator: NotificationCoordinator?
     private var badgeCoordinator: BadgeCoordinator?
     private let defaults: UserDefaults
@@ -35,6 +36,7 @@ import Observation
 
     func connect(worker: EngineWorker) {
         guard coordinator == nil else { return }
+        self.worker = worker
         coordinator = NotificationCoordinator(core: worker, center: center,
             nowMs: { UInt64(max(0, Date().timeIntervalSince1970 * 1_000)) },
             formatContent: Self.text)
@@ -53,7 +55,14 @@ import Observation
         guard let coordinator else { return }
         refreshes += 1
         defer { refreshes -= 1 }
+        let prefs = Preferences(defaults)
+        await worker?.setDeviceNotificationBadgeOptions(mode: prefs.dockBadgeMode.taskCountMode,
+            reminders: prefs.remindersUpdateBadge, summary: prefs.summaryUpdatesBadge)
         status = await coordinator.refresh()
+        await refreshBadge()
+    }
+
+    func refreshBadge() async {
         if let badgeCoordinator {
             badgeStatus = await badgeCoordinator.refresh(mode: Preferences(defaults).dockBadgeMode)
         }
@@ -81,7 +90,9 @@ import Observation
             return NotificationText(title: title, body: body)
         case .summary(_, let counts, _):
             return NotificationText(title: String(localized: "Good morning"),
-                body: String(localized: "Today: \(counts.total) · Morning: \(counts.morning) · Tonight: \(counts.tonight)"))
+                body: counts.sections == 7
+                    ? String(localized: "Today: \(counts.total) · Morning: \(counts.morning) · Tonight: \(counts.tonight)")
+                    : counts.displayText)
         }
     }
 }

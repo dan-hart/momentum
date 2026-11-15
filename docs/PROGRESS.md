@@ -1,5 +1,36 @@
 # Momentum progress and handoff
 
+## 2026-11-15 — Custom badges and Morning Summary (F-007, F-032, F-038)
+
+Local implementation on dirty `task/notification-options` based on `9691fcd`.
+See the [notification contract](NOTIFICATIONS.md) for platform behavior.
+
+- Shared Rust policies support overdue-only counts, selected local weekdays and
+  summary sections, previews, and badge-aware replacement of pending requests.
+  The portable Rust workspace and all-features lanes passed, including custom
+  weekday and section delivery, exact pending revision replacement, and reminder
+  actions after a badge change. The Apple XCFramework was regenerated.
+- iOS Debug built and ran on iOS 26.5. With disposable tasks and real notification
+  permission, native Settings retained a custom 08:02 time, a custom day selection,
+  overdue-only summary preview, overdue-only badge, and both notification badge
+  toggles across relaunch. Notification Center showed “Good morning” with
+  “Overdue: 1”. SpringBoard showed one badge item and cleared it after completing
+  the overdue task while the other Today task remained open. MomentumMobile ran
+  175 package tests. Locked-device delivery and system-triggered background
+  refresh remain open.
+- macOS Debug built and its release-launch smoke check passed. MomentumKit ran
+  268 package tests. Built German strings were checked. Live Dock and Notification
+  Center interaction remain open.
+- Android Debug and instrumentation APKs built. All 27 scoped tests passed on
+  API 26 and API 37, including native settings, persistence, legacy observations,
+  real NotificationManager badge channels, and the overdue-only count. Launcher
+  icon rendering and physical-device delivery remain open.
+- Linux passed 136 native GTK tests on arm64 with Broadway, including settings
+  search, custom days and sections, persistence, preview, and overdue status
+  readback. The production GTK binary delivered one overdue-only summary across
+  two ticks on a selected weekday and none on an excluded day in an isolated
+  Xvfb and D-Bus test. Visual GNOME Background Apps status remains open.
+
 ## 2026-11-09 Stable task list refresh
 
 - B-187, F-003 and F-075 in dirty `main` based on `2215986`. Fixed four native refresh paths using

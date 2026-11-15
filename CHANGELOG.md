@@ -6,6 +6,12 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.19] - 2026-11-15
+
+### Added
+- Show only overdue tasks in the app badge and choose which notifications update it on supported platforms.
+- Customize the Morning Summary time, days, and task counts, with a preview in Settings.
+
 ## [0.4.18] - 2026-11-09
 
 ### Changed

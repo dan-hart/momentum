@@ -39,6 +39,7 @@ pub enum TaskCountMode {
     DueToday,
     TodayIncludingOverdue,
     None,
+    OverdueOnly,
 }
 
 /// A part of the day inside Today: tasks tagged "Morning" or "Evening".
@@ -152,6 +153,10 @@ pub struct Preferences {
     pub morning_summary_enabled: bool,
     /// Local wall-clock time; hours 0–23, minutes 0–59.
     pub morning_summary_time: ClockTime,
+    /// Bit 0 is Monday and bit 6 is Sunday.
+    pub morning_summary_weekdays: u8,
+    /// Today (1), Morning (2), Evening (4), and Overdue (8).
+    pub morning_summary_sections: u8,
 }
 
 impl Preferences {
@@ -173,6 +178,8 @@ impl Default for Preferences {
             auto_archive: false,
             morning_summary_enabled: false,
             morning_summary_time: ClockTime { hour: 8, minute: 0 },
+            morning_summary_weekdays: 127,
+            morning_summary_sections: 7,
         }
     }
 }
@@ -711,6 +718,25 @@ pub struct MorningSummary {
     pub total: u32,
     pub morning: u32,
     pub tonight: u32,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub overdue: u32,
+    #[serde(
+        default = "default_summary_sections",
+        skip_serializing_if = "is_default_summary_sections"
+    )]
+    pub sections: u8,
+}
+
+fn is_zero(value: &u32) -> bool {
+    *value == 0
+}
+
+fn default_summary_sections() -> u8 {
+    7
+}
+
+fn is_default_summary_sections(value: &u8) -> bool {
+    *value == default_summary_sections()
 }
 
 /// A task as the desktop search (GNOME Shell, KRunner, Spotlight) lists it.

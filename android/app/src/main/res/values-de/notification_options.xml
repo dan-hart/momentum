@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_badge_count">Anzahl am App-Symbol</string>
+    <string name="task_count_overdue_only_mode">Nur überfällige Aufgaben</string>
+    <plurals name="task_count_overdue_only">
+        <item quantity="one">%1$d überfällige Aufgabe</item>
+        <item quantity="other">%1$d überfällige Aufgaben</item>
+    </plurals>
+    <string name="notification_badges">App-Symbol-Badges</string>
+    <string name="badge_task_reminders">Badge für Aufgabenerinnerungen</string>
+    <string name="badge_morning_summary">Badge für die Morgenübersicht</string>
+    <string name="notification_badges_hint">Wähle, welche neuen Benachrichtigungen ein Badge anzeigen dürfen. Auch die Android-Einstellungen und dein Launcher steuern die Anzeige.</string>
+    <string name="reminders_without_badge">Aufgabenerinnerungen ohne Badges</string>
+    <string name="summary_without_badge">Morgenübersicht ohne Badges</string>
+    <string name="summary_time_option">Uhrzeit · %1$s</string>
+    <string name="summary_days">Tage für die Zustellung</string>
+    <string name="summary_days_option">Zustellung · %1$s</string>
+    <string name="summary_every_day">Jeden Tag</string>
+    <string name="summary_weekdays">Montag bis Freitag</string>
+    <string name="summary_no_days">Keine</string>
+    <string name="summary_sections">Inhalt der Übersicht</string>
+    <string name="summary_preview">Vorschau</string>
+    <string name="summary_preview_no_days">Wähle einen Tag für die Morgenübersicht aus.</string>
+    <string name="summary_preview_no_sections">Wähle die Inhalte für die Morgenübersicht aus.</string>
+    <string name="summary_preview_empty">Heute sind in den gewählten Abschnitten keine Aufgaben vorhanden.</string>
+    <string name="summary_today_count">Heute: %1$d</string>
+    <string name="summary_morning_count">Morgens: %1$d</string>
+    <string name="summary_evening_count">Abends: %1$d</string>
+    <string name="summary_overdue_count">Überfällig: %1$d</string>
+</resources>

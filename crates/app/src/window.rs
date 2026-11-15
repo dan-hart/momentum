@@ -8,7 +8,7 @@
 use crate::settings_ui::N_;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gettextrs::gettext;
+use gettextrs::{gettext, ngettext};
 use gtk::{gio, glib};
 use momentum_core::{
     AllDone, ClockTime, DayLabel, DayRelation, DayStatus, EmptyState, Engine, EstimateRange, GroupBy, Listing,
@@ -475,6 +475,39 @@ impl momentum_core::ipc::CliDelegate for CliBridge {
     }
 }
 
+pub(crate) fn format_morning_summary(summary: &momentum_core::MorningSummary) -> Option<String> {
+    if summary.sections == 7 {
+        if summary.total == 0 {
+            return None;
+        }
+        let mut body =
+            ngettext("1 task today", "%d tasks today", summary.total).replace("%d", &summary.total.to_string());
+        if summary.morning > 0 {
+            body.push_str(&format!(", {} {}", summary.morning, gettext("this morning")));
+        }
+        if summary.tonight > 0 {
+            body.push_str(&format!(", {} {}", summary.tonight, gettext("tonight")));
+        }
+        return Some(body);
+    }
+    let selected: Vec<_> = [
+        (1, N_("Today"), summary.total),
+        (2, N_("Morning"), summary.morning),
+        (4, N_("Evening"), summary.tonight),
+        (8, N_("Overdue"), summary.overdue),
+    ]
+    .into_iter()
+    .filter(|(bit, _, _)| summary.sections & bit != 0)
+    .collect();
+    selected.iter().any(|(_, _, count)| *count > 0).then(|| {
+        selected
+            .iter()
+            .map(|(_, title, count)| format!("{}: {}", gettext(*title), count))
+            .collect::<Vec<_>>()
+            .join(", ")
+    })
+}
+
 #[cfg(test)]
 fn send_background_status_request(
     _controller: Rc<RefCell<crate::background_status::BackgroundStatusController>>,
@@ -706,6 +739,8 @@ impl MomentumWindow {
             "morning-summary-enabled",
             "morning-summary-hour",
             "morning-summary-minute",
+            "morning-summary-weekdays",
+            "morning-summary-sections",
         ] {
             imp.settings.connect_changed(
                 Some(key),
@@ -1210,12 +1245,14 @@ impl MomentumWindow {
         let s = &self.imp().settings;
         self.engine()
             .set_day_period_tasks_in_today(s.boolean("show-day-period-tasks-in-today"));
-        if let Err(error) = self.engine().set_device_summary_preferences(
+        if let Err(error) = self.engine().set_device_summary_options(
             s.boolean("morning-summary-enabled"),
             ClockTime {
                 hour: s.int("morning-summary-hour") as u32,
                 minute: s.int("morning-summary-minute") as u32,
             },
+            s.uint("morning-summary-weekdays") as u8,
+            s.uint("morning-summary-sections") as u8,
         ) {
             self.toast(&error.to_string());
         }
@@ -3890,18 +3927,16 @@ impl MomentumWindow {
         self.morning_summary();
     }
 
-    /// Once per day at the configured local time: "Today: 5 tasks, 2 tonight". Only when there is something to do.
+    /// Once on eligible days when at least one selected section has tasks.
     fn morning_summary(&self) {
-        let Some(s) = self.engine().morning_summary() else {
+        let Some(body) = self
+            .engine()
+            .morning_summary()
+            .as_ref()
+            .and_then(format_morning_summary)
+        else {
             return;
         };
-        let mut body = format!("{} {}", s.total, gettext("tasks today"));
-        if s.morning > 0 {
-            body.push_str(&format!(", {} {}", s.morning, gettext("this morning")));
-        }
-        if s.tonight > 0 {
-            body.push_str(&format!(", {} {}", s.tonight, gettext("tonight")));
-        }
         let note = gio::Notification::new(&gettext("Good morning"));
         note.set_body(Some(&body));
         note.set_default_action("app.today");

@@ -31,6 +31,7 @@ pub(crate) struct Inner {
     pub(crate) dirty: bool,
     pub(crate) store: Store,
     pub(crate) prefs: Preferences,
+    pub(crate) notification_badges: crate::notification_schedule::NotificationBadges,
     pub(crate) portable: crate::portable::PortableState,
     pub(crate) undo: Vec<(u64, Vec<Action>)>,
     next_undo: u64,
@@ -778,6 +779,7 @@ impl Engine {
                 dirty: false,
                 store,
                 prefs: Preferences::default(),
+                notification_badges: Default::default(),
                 portable,
                 undo: vec![],
                 next_undo: 0,
@@ -838,15 +840,31 @@ impl Engine {
     }
     /// Update device-only summary choices without replacing portable preferences.
     pub fn set_device_summary_preferences(&self, enabled: bool, time: ClockTime) -> Result<(), CoreError> {
-        if time.hour > 23 || time.minute > 59 {
-            return Err(CoreError::Invalid {
-                message: "Summary time must be a valid local hour and minute".into(),
-            });
-        }
         let mut g = self.lock();
-        g.prefs.morning_summary_enabled = enabled;
-        g.prefs.morning_summary_time = time;
-        Ok(())
+        let weekdays = g.prefs.morning_summary_weekdays;
+        let sections = g.prefs.morning_summary_sections;
+        update_summary_options(&mut g.prefs, enabled, time, weekdays, sections)
+    }
+    /// Update the complete local policy together before reconciling OS requests.
+    pub fn set_device_summary_options(
+        &self,
+        enabled: bool,
+        time: ClockTime,
+        weekdays: u8,
+        sections: u8,
+    ) -> Result<(), CoreError> {
+        update_summary_options(&mut self.lock().prefs, enabled, time, weekdays, sections)
+    }
+    pub fn morning_summary_preview(&self, sections: u8) -> MorningSummary {
+        let g = self.lock();
+        crate::notifications::summary_counts(&g.store, &g.store.state, &today_str(), sections & 15).0
+    }
+    pub fn set_device_notification_badge_options(&self, mode: TaskCountMode, reminders: bool, summary: bool) {
+        self.lock().notification_badges = crate::notification_schedule::NotificationBadges {
+            mode,
+            reminders,
+            summary,
+        };
     }
     pub fn preferences(&self) -> Preferences {
         self.lock().prefs.clone()
@@ -1099,27 +1117,7 @@ impl Engine {
     }
     /// Unfinished top-level tasks for a desktop badge or background status.
     pub fn task_count(&self, mode: TaskCountMode) -> u32 {
-        let g = self.lock();
-        let ids = match mode {
-            TaskCountMode::DueToday => g.store.state.today_ids(),
-            TaskCountMode::TodayIncludingOverdue => {
-                let mut ids = g.store.state.today_ids();
-                ids.extend(g.store.state.overdue_ids());
-                ids
-            }
-            TaskCountMode::None => return 0,
-        };
-        ids.into_iter()
-            .filter(|id| {
-                g.store
-                    .state
-                    .task
-                    .entities
-                    .get(id)
-                    .is_some_and(|task| !task.is_done && task.parent_id.is_none())
-            })
-            .collect::<HashSet<_>>()
-            .len() as u32
+        task_count(&self.lock().store.state, mode, &today_str())
     }
     /// Open tasks planned for today, kept while existing clients migrate to `task_count`.
     pub fn today_open_count(&self) -> u32 {
@@ -2474,6 +2472,48 @@ impl Engine {
     }
 }
 
+fn update_summary_options(
+    prefs: &mut Preferences,
+    enabled: bool,
+    time: ClockTime,
+    weekdays: u8,
+    sections: u8,
+) -> Result<(), CoreError> {
+    if time.hour > 23 || time.minute > 59 {
+        return Err(CoreError::Invalid {
+            message: "Summary time must be a valid local hour and minute".into(),
+        });
+    }
+    prefs.morning_summary_enabled = enabled;
+    prefs.morning_summary_time = time;
+    prefs.morning_summary_weekdays = weekdays & 127;
+    prefs.morning_summary_sections = sections & 15;
+    Ok(())
+}
+
+pub(crate) fn task_count(state: &AppData, mode: TaskCountMode, day: &str) -> u32 {
+    let ids = match mode {
+        TaskCountMode::DueToday => state.planned_ids(day),
+        TaskCountMode::OverdueOnly => state.overdue_ids_on(day),
+        TaskCountMode::TodayIncludingOverdue => {
+            let mut ids = state.planned_ids(day);
+            ids.extend(state.overdue_ids_on(day));
+            ids
+        }
+        TaskCountMode::None => return 0,
+    };
+    ids.into_iter()
+        .filter(|id| {
+            state
+                .task
+                .entities
+                .get(id)
+                .is_some_and(|task| !task.is_done && task.parent_id.is_none())
+        })
+        .collect::<HashSet<_>>()
+        .len() as u32
+}
+
 // Rust-only conveniences for the GTK app and tests (not exported over FFI).
 impl Engine {
     // Injectable wall-clock time for today's eligibility boundary; task membership and
@@ -2483,35 +2523,20 @@ impl Engine {
         let today = today_str();
         let scheduled = g.prefs.morning_summary_time;
         if !g.prefs.morning_summary_enabled
+            || g.prefs.morning_summary_sections == 0
             || scheduled.hour > 23
             || scheduled.minute > 59
             || (time.hour, time.minute) < (scheduled.hour, scheduled.minute)
             || g.store.meta.last_summary_day == today
+            || !crate::notifications::summary_runs_on(&today, g.prefs.morning_summary_weekdays)
         {
             return None;
         }
+        let (counts, ids) =
+            crate::notifications::summary_counts(&g.store, &g.store.state, &today, g.prefs.morning_summary_sections);
         g.store.meta.last_summary_day = today;
         g.store.save().ok();
-        let ids = g.store.state.today_ids();
-        let open: Vec<&Task> = ids
-            .iter()
-            .filter_map(|i| g.store.state.task.entities.get(i))
-            .filter(|t| !t.is_done)
-            .collect();
-        if open.is_empty() {
-            return None;
-        }
-        Some(MorningSummary {
-            total: open.len() as u32,
-            morning: open
-                .iter()
-                .filter(|t| listing::slot_of(&g.store, t) == Some(Slot::Morning))
-                .count() as u32,
-            tonight: open
-                .iter()
-                .filter(|t| listing::slot_of(&g.store, t) == Some(Slot::Tonight))
-                .count() as u32,
-        })
+        (!ids.is_empty()).then_some(counts)
     }
 
     pub fn dispatch(&self, action: Action) {
