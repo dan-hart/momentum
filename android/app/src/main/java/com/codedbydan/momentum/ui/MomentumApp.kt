@@ -196,6 +196,10 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
                             if(state.view == View.Search) OutlinedTextField(state.query, vm::search, label = { Text(stringResource(R.string.search)) },
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(searchFocus), singleLine = true,
                                 trailingIcon = { if(state.query.isNotEmpty()) IconButton({ vm.search("") }) { Icon(Icons.Default.Close, stringResource(R.string.close)) } })
+                            if(state.view == View.Project("INBOX_PROJECT") && state.snapshot?.listing?.view == state.view &&
+                                !state.selecting && state.editor == null) {
+                                InboxCleanupAction(vm, enabled = !state.busy && !state.restoring)
+                            }
                             PullToRefreshBox(isRefreshing = state.pullRefreshing,
                                 onRefresh = vm::pullToRefresh, modifier = Modifier.weight(1f)) {
                                 TaskList(state, vm, editRepeatSchedule = { repeatConfiguration = it }) { rowMenu = it }
@@ -309,13 +313,14 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
     val ids = state.selected.toList()
     val locale = LocalLocale.current.platformLocale
     var more by remember { mutableStateOf(false) }
+    val touchTarget = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
     Surface(tonalElevation = 3.dp) {
         FlowRow(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(vm::selectAll) { Text(stringResource(R.string.select_all)) }
-            TextButton({ vm.action { bulkDone(ids) } }, enabled = ids.isNotEmpty()) { Text(stringResource(R.string.complete)) }
-            TextButton(move, enabled = ids.isNotEmpty()) { Text(stringResource(R.string.move_to)) }
+            TextButton(vm::selectAll, modifier = touchTarget) { Text(stringResource(R.string.select_all)) }
+            TextButton({ vm.action { bulkDone(ids) } }, modifier = touchTarget, enabled = ids.isNotEmpty()) { Text(stringResource(R.string.complete)) }
+            TextButton(move, modifier = touchTarget, enabled = ids.isNotEmpty()) { Text(stringResource(R.string.move_to)) }
             Box {
-                IconButton({ more = true }, enabled = ids.isNotEmpty()) { Icon(Icons.Default.MoreVert, stringResource(R.string.selection_actions)) }
+                IconButton({ more = true }, modifier = touchTarget, enabled = ids.isNotEmpty()) { Icon(Icons.Default.MoreVert, stringResource(R.string.selection_actions)) }
                 DropdownMenu(more, { more = false }) {
                     fun invoke(block: Engine.() -> Outcome) { more = false; vm.action(block = block) }
                     DropdownMenuItem({ Text(stringResource(R.string.today)) }, { invoke { planForToday(ids) } })

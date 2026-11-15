@@ -316,6 +316,8 @@ public enum Strings {
         case .tasksPlannedForToday(let n): return String(localized: "\(n) tasks planned for today", bundle: .module)
         case .movedToProject(let name): return String(localized: "Moved to \(name)", bundle: .module)
         case .tagged(let name): return String(localized: "Tagged #\(name)", bundle: .module)
+        case .inboxCleaned: return String(localized: "Inbox cleaned up", bundle: .module)
+        case .inboxCleanupStale: return String(localized: "The Inbox changed. Refresh the preview and try again.", bundle: .module)
         case .tasksTagged(let n): return String(localized: "\(n) tasks tagged", bundle: .module)
         case .archived(let n): return String(localized: "\(n) completed tasks archived", bundle: .module)
         case .snoozed(let minutes): return String(localized: "Snoozed for \(minutes) minutes", bundle: .module)
@@ -413,6 +415,7 @@ public enum Strings {
              .movedToDay, .tasksMovedToDay, .plannedForToday, .plannedForMorning, .plannedForTonight, .removedFromToday, .tasksPlannedForToday:
             return String(localized: "Move", bundle: .module)
         case .movedToProject: return String(localized: "Move to Project", bundle: .module)
+        case .inboxCleaned: return String(localized: "Inbox Cleanup", bundle: .module)
         case .tagged, .tasksTagged: return String(localized: "Tag", bundle: .module)
         case .archived: return String(localized: "Archive", bundle: .module)
         default: return String(localized: "Change", bundle: .module)

@@ -1,7 +1,7 @@
 project(
   'momentum',
   'rust',
-  version: '0.4.19',
+  version: '0.4.20',
   meson_version: '>= 0.59',
   license: 'GPL-3.0-or-later',
 )

@@ -4690,3 +4690,71 @@ msgstr "Unter iOS wird die Aufgabenliste nur animiert, wenn sich die Aufgabendat
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
 msgid "Show the Android pull-to-refresh spinner only when you pull to refresh."
 msgstr "Unter Android erscheint die Ladeanzeige für das Aktualisieren nur, wenn du die Liste nach unten ziehst."
+
+#: crates/app/src/inbox_cleanup.rs:121
+msgid "Apply Changes"
+msgstr "Änderungen anwenden"
+
+#: data/resources/ui/window.blp:360
+msgid "Clean Up Inbox"
+msgstr "Eingang aufräumen"
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid "Customize app badges and the Morning Summary."
+msgstr "Passe App-Kennzeichen und die Morgenübersicht an."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid "Customize the Morning Summary time, days, and task counts, with a preview in Settings."
+msgstr "Passe Uhrzeit, Tage und Aufgabenzahlen der Morgenübersicht an. Die Einstellungen zeigen eine Vorschau."
+
+#: crates/app/src/messages.rs:22
+msgid "Inbox cleaned up"
+msgstr "Eingang aufgeräumt"
+
+#: crates/app/src/inbox_cleanup.rs:35
+msgid "Links moved to notes"
+msgstr "Links für die Notizen"
+
+#: crates/app/src/inbox_cleanup.rs:31
+msgid "New title"
+msgstr "Neuer Titel"
+
+#: crates/app/src/inbox_cleanup.rs:116
+msgid "No Inbox changes to review"
+msgstr "Im Eingang gibt es nichts aufzuräumen"
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid "Show only overdue tasks in the app badge and choose which notifications update it on supported platforms."
+msgstr "Zeige nur überfällige Aufgaben im App-Kennzeichen an und wähle auf unterstützten Plattformen, welche Mitteilungen es aktualisieren."
+
+#: crates/app/src/inbox_cleanup.rs:47
+msgid "Suggested tags"
+msgstr "Vorgeschlagene Schlagwörter"
+
+#: crates/app/src/messages.rs:23
+msgid "The Inbox changed. Review cleanup again."
+msgstr "Der Eingang hat sich geändert. Prüfe die Vorschläge erneut."
+
+#: data/resources/ui/prefs.blp:199
+msgid "Connection help"
+msgstr "Hilfe zur Verbindung"
+
+#: data/resources/ui/prefs.blp:202
+msgid "Enter your server address. Include any installation subfolder and omit the WebDAV path. Edits save automatically."
+msgstr "Gib deine Serveradresse ein, einschließlich eines vorhandenen Installationsunterordners. Lass den WebDAV-Pfad weg. Änderungen werden automatisch gespeichert."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Clean up the Inbox, select tasks, and set up sync more easily."
+msgstr "Räume den Posteingang auf, wähle Aufgaben aus und richte die Synchronisierung einfacher ein."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Clean up unfinished Inbox tasks offline with a preview and one Undo. Apple Intelligence can refine suggestions on supported iPhones, iPads, and Macs."
+msgstr "Räume offene Aufgaben im Posteingang offline mit Vorschau und einmaligem Rückgängigmachen auf. Apple Intelligence kann die Vorschläge auf unterstützten iPhones, iPads und Macs verbessern."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Show the Nextcloud connection fields near the provider picker so setup takes less scrolling."
+msgstr "Die Nextcloud-Verbindungsfelder stehen direkt bei der Anbieterauswahl, damit du beim Einrichten weniger scrollen musst."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Keep bulk selection actions separate from task rows on iOS and improve control sizing in compact Android and Linux windows."
+msgstr "Aktionen für mehrere ausgewählte Aufgaben stehen unter iOS getrennt von den Aufgabenzeilen. Die Bedienelemente passen besser in kompakte Android- und Linux-Fenster."

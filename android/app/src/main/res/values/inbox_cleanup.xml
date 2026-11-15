@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inbox_cleanup">Clean Up Inbox</string>
+    <string name="inbox_cleanup_preparing">Checking Inbox…</string>
+    <string name="inbox_cleanup_empty">There are no cleanup suggestions.</string>
+    <string name="inbox_cleanup_review">Review the suggested titles, links, and tags.</string>
+    <string name="inbox_cleanup_add_tag">Add tag %1$s</string>
+    <plurals name="inbox_cleanup_links">
+        <item quantity="one">Move %d link to notes</item>
+        <item quantity="other">Move %d links to notes</item>
+    </plurals>
+    <string name="inbox_cleanup_apply">Apply Changes</string>
+    <string name="inbox_cleanup_done">Inbox cleaned up</string>
+    <string name="inbox_cleanup_stale">The Inbox changed. Open Clean Up Inbox again.</string>
+</resources>

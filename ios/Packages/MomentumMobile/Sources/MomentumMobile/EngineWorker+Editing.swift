@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import MomentumCore
+import MomentumKit
 
 public struct TaskCreationResult: Sendable, Equatable {
     public let outcome: Outcome
@@ -16,6 +17,10 @@ extension EngineWorker {
     public func taskMenu(_ id: String) -> TaskMenuInfo? { engine.taskMenu(id: id) }
     public func editingProjects() -> [ProjectRef] { engine.projects() }
     public func editingTags() -> [TagRef] { engine.tags() }
+    public func inboxCleanupInput() -> InboxCleanupInput { InboxCleanupInput(engine: engine) }
+    public func applyInboxCleanup(_ changes: [InboxCleanupChange]) -> Outcome {
+        engine.applyInboxCleanup(changes: changes)
+    }
     public func lastAddedTaskID() -> String? { engine.lastAddedId() }
 
     public func createTask(_ draft: TaskDraft, view: MomentumCore.View) -> Outcome {

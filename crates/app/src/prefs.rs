@@ -1593,6 +1593,22 @@ mod sync_tests {
             assert_eq!(sync_method(&settings), "off", "search must not enable syncing");
             assert!(!prefs.imp().advanced_nextcloud_row.is_expanded());
             settings.set_string("sync-method", "nextcloud").unwrap();
+            prefs.reveal("sync.nextcloud");
+            assert!(
+                !prefs.imp().advanced_nextcloud_row.is_expanded(),
+                "connection search keeps advanced options closed"
+            );
+            let widgets = descendants(prefs.upcast_ref());
+            let position = |row: &gtk::Widget| widgets.iter().position(|widget| widget == row).unwrap();
+            let imp = prefs.imp();
+            let rows = [
+                imp.method_row.upcast_ref(),
+                imp.server_row.upcast_ref(),
+                imp.user_row.upcast_ref(),
+                imp.password_row.upcast_ref(),
+                imp.sync_status_row.upcast_ref(),
+            ];
+            assert!(rows.windows(2).all(|pair| position(pair[0]) < position(pair[1])));
             prefs.reveal("sync.compression");
             assert!(prefs.imp().advanced_nextcloud_row.is_expanded());
             prefs.imp().server_row.set_text("https://example.test/nextcloud");
@@ -1831,7 +1847,7 @@ impl MomentumPrefs {
             self.imp().method_row.grab_focus();
             return;
         }
-        if ["sync.nextcloud", "sync.compression", "sync.folder-copy"].contains(&id) {
+        if ["sync.compression", "sync.folder-copy"].contains(&id) {
             self.imp().advanced_nextcloud_row.set_expanded(true);
         }
         let id = id.to_string();

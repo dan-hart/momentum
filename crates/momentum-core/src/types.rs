@@ -632,6 +632,8 @@ pub enum Message {
     Snoozed {
         minutes: u32,
     },
+    InboxCleaned,
+    InboxCleanupStale,
     Undone,
     NothingToUndo,
     ManualOrderOnly,
@@ -659,6 +661,18 @@ pub enum Message {
     NearbyStartFailed {
         error: String,
     },
+}
+
+/// A proposed Inbox edit. Links are recomputed on apply and tag IDs are additions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct InboxCleanupChange {
+    pub task_id: String,
+    pub source_revision: String,
+    pub original_title: String,
+    pub title: String,
+    pub links: Vec<String>,
+    pub tag_ids: Vec<String>,
 }
 
 /// What a mutation did: whether anything changed, what to tell the user, and the undo

@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.codedbydan.momentum
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.codedbydan.momentum.core.*
@@ -36,6 +40,39 @@ class SyncSettingsUiTest {
             compose.onNodeWithText(app.getString(R.string.sync_unauthorized)).performScrollTo().assertIsDisplayed()
             compose.onAllNodesWithText(app.getString(R.string.sync_unsaved_connection))[0].performScrollTo().assertIsDisplayed()
             assertEquals("https://cloud.example.com", vm.platform.connection()?.serverUrl)
+        }
+    }
+
+    @Test fun compactNextcloudSetupShowsServerBeforeSecondaryStatus() = runBlocking {
+        fixture { repo, vm ->
+            val initial = repo.snapshot(View.Today)
+            compose.setContent {
+                MomentumTheme(initial.settings) {
+                    Box(Modifier.size(320.dp, 360.dp)) {
+                        SyncScreen(UiState(snapshot = initial, loading = false), vm)
+                    }
+                }
+            }
+            compose.onNodeWithText(app.getString(R.string.server)).assertIsDisplayed()
+            compose.onNodeWithText(app.getString(R.string.sync_status_heading)).assertIsNotDisplayed()
+            compose.onNodeWithText(app.getString(R.string.save_connection)).performScrollTo().assertIsNotEnabled()
+        }
+    }
+
+    @Test fun choosingNextcloudDirectlyShowsTheConnectionForm() = runBlocking {
+        fixture { repo, vm ->
+            repo.updateSettings { it.copy(provider = SyncProvider.Off) }
+            compose.runOnUiThread { vm.refresh() }
+            compose.setContent {
+                val state by vm.state.collectAsState()
+                MomentumTheme(state.snapshot?.settings ?: AppSettings()) { SyncScreen(state, vm) }
+            }
+            compose.waitUntil(10_000) { vm.state.value.snapshot?.settings?.provider == SyncProvider.Off }
+            compose.onNode(hasText(app.getString(R.string.off)) and hasClickAction()).performClick()
+            compose.onNodeWithText(app.getString(R.string.nextcloud)).performClick()
+            compose.waitUntil(10_000) { vm.state.value.snapshot?.settings?.provider == SyncProvider.Nextcloud }
+            compose.onNodeWithText(app.getString(R.string.server)).assertIsDisplayed()
+            assertNull(vm.platform.connection())
         }
     }
 

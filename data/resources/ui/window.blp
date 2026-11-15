@@ -273,7 +273,7 @@ template $MomentumWindow: Adw.ApplicationWindow {
 
         child: Adw.ToolbarView {
           [top]
-          Adw.HeaderBar {
+          Adw.HeaderBar task_header {
             [start]
             ToggleButton {
               icon-name: "sidebar-show-symbolic";
@@ -288,7 +288,11 @@ template $MomentumWindow: Adw.ApplicationWindow {
             [start]
             Button select_cancel {
               visible: false;
-              label: _("Cancel");
+              icon-name: "window-close-symbolic";
+              tooltip-text: _("Cancel");
+              accessibility {
+                label: _("Cancel");
+              }
               action-name: "win.select-cancel";
             }
 
@@ -337,6 +341,32 @@ template $MomentumWindow: Adw.ApplicationWindow {
           }
 
           [top]
+          Adw.Clamp inbox_cleanup_clamp {
+            visible: false;
+            maximum-size: 720;
+            margin-start: 12;
+            margin-end: 12;
+            margin-top: 6;
+            margin-bottom: 6;
+
+            child: Button {
+              action-name: "win.clean-up-inbox";
+              halign: center;
+              height-request: 42;
+
+              styles [
+                "suggested-action",
+                "pill",
+              ]
+
+              child: Adw.ButtonContent {
+                icon-name: "document-edit-symbolic";
+                label: _("Clean Up Inbox");
+              };
+            };
+          }
+
+          [top]
           Adw.Clamp add_clamp {
             maximum-size: 720;
             margin-start: 12;
@@ -356,23 +386,26 @@ template $MomentumWindow: Adw.ApplicationWindow {
           }
 
           [bottom]
-          ActionBar select_bar {
-            revealed: false;
+          Box select_bar {
+            visible: false;
+            orientation: horizontal;
+            spacing: 6;
+            margin-start: 12;
+            margin-end: 12;
+            margin-top: 6;
+            margin-bottom: 6;
 
-            [start]
             Button {
-              label: _("Select All");
+              icon-name: "edit-select-all-symbolic";
+              tooltip-text: _("Select All");
+              accessibility {
+                label: _("Select All");
+              }
               action-name: "win.select-all";
             }
 
-            [center]
-            Label select_count {
-              styles [
-                "dim-label",
-              ]
-            }
+            Box { hexpand: true; }
 
-            [end]
             Button {
               icon-name: "user-trash-symbolic";
               tooltip-text: _("Delete");
@@ -386,7 +419,6 @@ template $MomentumWindow: Adw.ApplicationWindow {
               ]
             }
 
-            [end]
             Button {
               icon-name: "tag-symbolic";
               tooltip-text: _("Add Tag…");
@@ -396,7 +428,6 @@ template $MomentumWindow: Adw.ApplicationWindow {
               action-name: "win.sel-tag";
             }
 
-            [end]
             Button {
               icon-name: "folder-symbolic";
               tooltip-text: _("Move to Project…");
@@ -406,7 +437,6 @@ template $MomentumWindow: Adw.ApplicationWindow {
               action-name: "win.sel-move";
             }
 
-            [end]
             Button {
               icon-name: "starred-symbolic";
               tooltip-text: _("Plan for Today");
@@ -416,7 +446,6 @@ template $MomentumWindow: Adw.ApplicationWindow {
               action-name: "win.sel-today";
             }
 
-            [end]
             Button {
               icon-name: "object-select-symbolic";
               tooltip-text: _("Mark as Done");

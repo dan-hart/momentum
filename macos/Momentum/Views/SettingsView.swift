@@ -324,8 +324,9 @@ private struct SyncSettings: SwiftUI.View {
                     }
                 }.settingsTarget("sync.provider")
                 .disabled(state.syncInProgress)
-            } footer: {
-                Text(String(localized: "Choose one service to keep your tasks in sync. Switching services keeps your tasks and saved connections."))
+            }
+            if method == SyncMethod.nextcloud.rawValue {
+                nextcloudConnection
             }
             if state.syncAvailable {
                 Section(String(localized: "Status")) {
@@ -355,54 +356,6 @@ private struct SyncSettings: SwiftUI.View {
                     .foregroundStyle(.secondary)
             }
             if method == SyncMethod.nextcloud.rawValue {
-                Section(String(localized: "Nextcloud connection")) {
-                    Text(String(localized: "Sync through your own Nextcloud server."))
-                        .foregroundStyle(.secondary)
-                    TextField(String(localized: "Server URL"), text: $server, prompt: Text(verbatim: "https://cloud.example.com")).settingsTarget("sync.nextcloud")
-                    TextField(String(localized: "Username"), text: $user)
-                    SecureField(String(localized: "App password"), text: Binding(
-                        get: { password.value }, set: { connectionTest.cancel(); password.save($0, to: state.keychain) }
-                    )).disabled(!password.isLoaded)
-                    Text(String(localized: "Create an app password in Nextcloud: Personal settings → Security. Use it here instead of your login password."))
-                        .appFont(.caption).foregroundStyle(.secondary)
-                    Text(String(localized: "Use your server’s base URL, including any installation subfolder, for example https://cloud.example.com/nextcloud. Connection changes are saved automatically."))
-                        .appFont(.caption).foregroundStyle(.secondary)
-                }
-                .disabled(state.syncInProgress)
-                if password.hasError || encryption.hasError {
-                    Section {
-                        Label(String(localized: "Credentials need attention"), systemImage: "exclamationmark.triangle")
-                        Text(String(localized: "The credentials shown could not be read or saved in Keychain. Unlock your Keychain and retry before testing the connection or using Sync Now."))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button(String(localized: "Retry Keychain")) {
-                            connectionTest.cancel()
-                            if password.hasError { password.retry(using: state.keychain) }
-                            if encryption.hasError { encryption.retry(using: state.keychain) }
-                        }
-                    }
-                }
-                Section {
-                    if connectionTest.isRunning {
-                        ProgressView(String(localized: "Testing saved connection…"))
-                        Button(String(localized: "Cancel")) { connectionTest.cancel() }
-                    } else {
-                        Button(String(localized: "Test saved connection")) {
-                            guard !state.isDemo, credentialsSaved, let saved = state.prefs.nextcloud(keychain: state.keychain) else { return }
-                            connectionTest.start(engine: state.engine, settings: saved)
-                        }
-                        .disabled(state.syncInProgress || !state.prefs.syncConfigured || !credentialsSaved)
-                    }
-                    Text(String(localized: "Checks saved connection details without syncing tasks. A successful test does not mean your tasks are up to date."))
-                        .appFont(.caption).foregroundStyle(.secondary)
-                    if connectionTest.succeeded == true {
-                        Label(String(localized: "Connection test passed"), systemImage: "checkmark.circle")
-                    }
-                    if let error = connectionTest.error {
-                        Label(String(localized: "Connection test failed"), systemImage: "exclamationmark.triangle")
-                        Text(error).textSelection(.enabled)
-                    }
-                }
-
                 Section(String(localized: "When")) {
                     Toggle(String(localized: "Sync automatically"), isOn: $autoSync).settingsTarget("sync.automatic")
                     backgroundSyncToggle
@@ -550,6 +503,54 @@ private struct SyncSettings: SwiftUI.View {
 }
 
 private extension SyncSettings {
+    @ViewBuilder var nextcloudConnection: some SwiftUI.View {
+        Section(String(localized: "Nextcloud connection")) {
+            TextField(String(localized: "Server URL"), text: $server, prompt: Text(verbatim: "https://cloud.example.com")).settingsTarget("sync.nextcloud")
+            TextField(String(localized: "Username"), text: $user)
+            SecureField(String(localized: "App password"), text: Binding(
+                get: { password.value }, set: { connectionTest.cancel(); password.save($0, to: state.keychain) }
+            )).disabled(!password.isLoaded)
+            DisclosureGroup(String(localized: "Connection Help")) {
+                Text(String(localized: "Include any installation subfolder in the server URL. In Nextcloud, create an app password under Personal settings → Security."))
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .disabled(state.syncInProgress)
+        if password.hasError || encryption.hasError {
+            Section {
+                Label(String(localized: "Credentials need attention"), systemImage: "exclamationmark.triangle")
+                Text(String(localized: "The credentials shown could not be read or saved in Keychain. Unlock your Keychain and retry before testing the connection or using Sync Now."))
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(String(localized: "Retry Keychain")) {
+                    connectionTest.cancel()
+                    if password.hasError { password.retry(using: state.keychain) }
+                    if encryption.hasError { encryption.retry(using: state.keychain) }
+                }
+            }
+        }
+        Section {
+            if connectionTest.isRunning {
+                ProgressView(String(localized: "Testing saved connection…"))
+                Button(String(localized: "Cancel")) { connectionTest.cancel() }
+            } else {
+                Button(String(localized: "Test saved connection")) {
+                    guard !state.isDemo, credentialsSaved, let saved = state.prefs.nextcloud(keychain: state.keychain) else { return }
+                    connectionTest.start(engine: state.engine, settings: saved)
+                }
+                .disabled(state.syncInProgress || !state.prefs.syncConfigured || !credentialsSaved)
+            }
+            if connectionTest.succeeded == true {
+                Label(String(localized: "Connection test passed"), systemImage: "checkmark.circle")
+            }
+            if let error = connectionTest.error {
+                Label(String(localized: "Connection test failed"), systemImage: "exclamationmark.triangle")
+                Text(error).textSelection(.enabled)
+            }
+        }
+    }
+
     var credentialsSaved: Bool { password.canUseSavedValue && encryption.canUseSavedValue }
 
     var lastTaskSync: UInt64 {

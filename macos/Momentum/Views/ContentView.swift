@@ -113,6 +113,20 @@ struct DetailView: SwiftUI.View {
                 QuickAddField()
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
+                if state.view == .project(id: state.inboxProjectId) {
+                    InboxCleanupButton {
+                        let engine = state.engine
+                        return await Task.detached { InboxCleanupInput(engine: engine) }.value
+                    } apply: { changes in
+                        let engine = state.engine
+                        let outcome = await Task.detached { engine.applyInboxCleanup(changes: changes) }.value
+                        if outcome.changed { state.apply(outcome) }
+                        return outcome
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                }
             }
             TaskListView()
             if state.syncAvailable || state.isDemo {

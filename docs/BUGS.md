@@ -4,6 +4,17 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-188 — Bulk selection controls crowd the task list
+
+- **Features:** F-010 and F-020. iOS drew selected-task actions, destination controls
+  and a floating Add button over the list. Compact Android used undersized touch
+  targets, and compact Linux reproduced a clipped Select All control.
+- **Fix:** iOS uses a native navigation bar for the selection actions. The move strip
+  occupies its own safe area. Android reserves 48 dp for each selection control.
+  Linux keeps the count flexible and shows six controls in a native toolbar.
+  macOS retains its existing native list selection and contextual actions. See the
+  2026-11-15 progress entry for verified scopes.
+
 ## B-187 Background refresh interrupts the visible task list
 
 - Medium severity. Reported on macOS 0.4.16 with Nextcloud selected.

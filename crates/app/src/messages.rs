@@ -19,6 +19,8 @@ pub fn text(m: &Message) -> String {
         Message::TaskAdded => gettext("Task added"),
         Message::TasksAdded { n } => format!("{n} {}", gettext("tasks added")),
         Message::TaskDuplicated => gettext("Task duplicated"),
+        Message::InboxCleaned => gettext("Inbox cleaned up"),
+        Message::InboxCleanupStale => gettext("The Inbox changed. Review cleanup again."),
         Message::MovedToTonight => gettext("Moved to tonight"),
         Message::MovedToMorning => gettext("Moved to the morning"),
         Message::MovedToToday => gettext("Moved to today"),

@@ -185,43 +185,28 @@ template $MomentumPrefs: Adw.PreferencesDialog {
     title: _("Sync & Devices");
     icon-name: "emblem-synchronizing-symbolic";
     Adw.PreferencesGroup {
-      title: _("Sync overview");
-      description: _("Choose one service. Switching keeps your tasks and saved connections.");
-      Adw.ActionRow sync_status_row {
-        name: "sync.status";
-        title: _("Sync status");
-        subtitle-lines: 0;
-      }
-      Adw.ActionRow sync_error_row {
-        title: _("Sync needs attention");
-        subtitle-lines: 0;
-        visible: false;
-      }
-      Adw.ButtonRow sync_details_row {
-        title: _("Show error details…");
-        visible: false;
-      }
-      Adw.ButtonRow sync_now_row {
-        title: _("Sync Now");
-        start-icon-name: "view-refresh-symbolic";
-        action-name: "app.sync";
-      }
       Adw.ComboRow method_row {
         title: _("Sync method");
-        subtitle: _("Off by default. Nothing leaves this device until you turn it on.");
       }
     }
 
     Adw.PreferencesGroup nextcloud_group {
       title: _("Connect to Nextcloud");
-      description: _("Enter your server base URL, for example https://cloud.example.com or https://example.com/nextcloud. Include an installation subfolder, but no WebDAV path. Connection fields save automatically.");
       Adw.EntryRow server_row { title: _("Server URL"); }
       Adw.EntryRow user_row { title: _("Username"); }
       Adw.PasswordEntryRow password_row { title: _("App password"); }
-      Adw.ActionRow app_password_help_row {
-        title: _("Create an app password");
-        subtitle: _("In Nextcloud, open Personal settings → Security → Devices &amp; sessions. Create an app password for Momentum and enter it above.");
-        subtitle-lines: 0;
+      Adw.ExpanderRow nextcloud_help_row {
+        title: _("Connection help");
+        Adw.ActionRow {
+          title: _("Server URL");
+          subtitle: _("Enter your server address. Include any installation subfolder and omit the WebDAV path. Edits save automatically.");
+          subtitle-lines: 0;
+        }
+        Adw.ActionRow {
+          title: _("Create an app password");
+          subtitle: _("In Nextcloud, open Personal settings → Security → Devices &amp; sessions. Create an app password for Momentum and enter it above.");
+          subtitle-lines: 0;
+        }
       }
       Adw.ActionRow connection_test_status_row {
         title: _("Connection test");
@@ -261,6 +246,28 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         title: _("Manage Devices…");
         start-icon-name: "computer-symbolic";
         action-name: "app.devices";
+      }
+    }
+
+    Adw.PreferencesGroup {
+      Adw.ActionRow sync_status_row {
+        name: "sync.status";
+        title: _("Sync status");
+        subtitle-lines: 0;
+      }
+      Adw.ActionRow sync_error_row {
+        title: _("Sync needs attention");
+        subtitle-lines: 0;
+        visible: false;
+      }
+      Adw.ButtonRow sync_details_row {
+        title: _("Show error details…");
+        visible: false;
+      }
+      Adw.ButtonRow sync_now_row {
+        title: _("Sync Now");
+        start-icon-name: "view-refresh-symbolic";
+        action-name: "app.sync";
       }
     }
 

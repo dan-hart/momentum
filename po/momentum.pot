@@ -4513,3 +4513,71 @@ msgstr ""
 #: crates/app/src/settings_ui.rs:98
 msgid "summary today overdue morning evening"
 msgstr ""
+
+#: crates/app/src/inbox_cleanup.rs:121
+msgid "Apply Changes"
+msgstr ""
+
+#: data/resources/ui/window.blp:360
+msgid "Clean Up Inbox"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid "Customize app badges and the Morning Summary."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid "Customize the Morning Summary time, days, and task counts, with a preview in Settings."
+msgstr ""
+
+#: crates/app/src/messages.rs:22
+msgid "Inbox cleaned up"
+msgstr ""
+
+#: crates/app/src/inbox_cleanup.rs:35
+msgid "Links moved to notes"
+msgstr ""
+
+#: crates/app/src/inbox_cleanup.rs:31
+msgid "New title"
+msgstr ""
+
+#: crates/app/src/inbox_cleanup.rs:116
+msgid "No Inbox changes to review"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid "Show only overdue tasks in the app badge and choose which notifications update it on supported platforms."
+msgstr ""
+
+#: crates/app/src/inbox_cleanup.rs:47
+msgid "Suggested tags"
+msgstr ""
+
+#: crates/app/src/messages.rs:23
+msgid "The Inbox changed. Review cleanup again."
+msgstr ""
+
+#: data/resources/ui/prefs.blp:199
+msgid "Connection help"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:202
+msgid "Enter your server address. Include any installation subfolder and omit the WebDAV path. Edits save automatically."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Clean up the Inbox, select tasks, and set up sync more easily."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Clean up unfinished Inbox tasks offline with a preview and one Undo. Apple Intelligence can refine suggestions on supported iPhones, iPads, and Macs."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Show the Nextcloud connection fields near the provider picker so setup takes less scrolling."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
+msgid "Keep bulk selection actions separate from task rows on iOS and improve control sizing in compact Android and Linux windows."
+msgstr ""

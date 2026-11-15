@@ -1,6 +1,196 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Clean Up Inbox": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posteingang aufräumen"
+          }
+        }
+      }
+    },
+    "Review Inbox Cleanup": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen im Posteingang prüfen"
+          }
+        }
+      }
+    },
+    "Preparing suggestions…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschläge werden vorbereitet …"
+          }
+        }
+      }
+    },
+    "No cleanup suggestions": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Vorschläge zum Aufräumen"
+          }
+        }
+      }
+    },
+    "Refining suggestions on this device…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschläge werden auf diesem Gerät verbessert …"
+          }
+        }
+      }
+    },
+    "Use Basic Suggestions": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einfache Vorschläge verwenden"
+          }
+        }
+      }
+    },
+    "Refresh Preview": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschau aktualisieren"
+          }
+        }
+      }
+    },
+    "Proposed Title": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorgeschlagener Titel"
+          }
+        }
+      }
+    },
+    "Move to Notes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In die Notizen verschieben"
+          }
+        }
+      }
+    },
+    "Tags to Add": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Schlagwörter"
+          }
+        }
+      }
+    },
+    "Remove Tag": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlagwort entfernen"
+          }
+        }
+      }
+    },
+    "Add Tag": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlagwort hinzufügen"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
+          }
+        }
+      }
+    },
+    "Apply Changes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen übernehmen"
+          }
+        }
+      }
+    },
+    "Could not load Inbox cleanup.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Vorschläge für den Posteingang konnten nicht geladen werden."
+          }
+        }
+      }
+    },
+    "Could not apply Inbox cleanup. Refresh the preview and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Posteingang konnte nicht aufgeräumt werden. Aktualisiere die Vorschau und versuche es erneut."
+          }
+        }
+      }
+    },
+    "Inbox cleaned up": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posteingang aufgeräumt"
+          }
+        }
+      }
+    },
+    "The Inbox changed. Refresh the preview and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Posteingang hat sich geändert. Aktualisiere die Vorschau und versuche es erneut."
+          }
+        }
+      }
+    },
+    "Inbox Cleanup": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posteingang aufräumen"
+          }
+        }
+      }
+    },
     "%@: %@": {
       "localizations": {
         "de": {

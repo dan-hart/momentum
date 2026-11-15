@@ -1322,6 +1322,60 @@ impl Engine {
             Outcome::changed()
         })
     }
+    /// Offline Inbox suggestions, including unchanged candidates for local model refinement.
+    pub fn preview_inbox_cleanup(&self) -> Vec<InboxCleanupChange> {
+        let g = self.lock();
+        let state = &g.store.state;
+        let tags = crate::inbox_cleanup::tags(state);
+        state
+            .task
+            .iter()
+            .filter(|task| crate::inbox_cleanup::eligible(task, state))
+            .map(|task| crate::inbox_cleanup::preview(task, &tags))
+            .collect()
+    }
+
+    /// Validate the whole review before staging one durable, undoable batch.
+    pub fn apply_inbox_cleanup(&self, changes: Vec<InboxCleanupChange>) -> Outcome {
+        self.edit(|g| {
+            let mut patches = Vec::new();
+            let mut seen = HashSet::new();
+            for proposal in changes {
+                let id = proposal.task_id.clone();
+                if !seen.insert(id.clone()) {
+                    continue;
+                }
+                let Some((change, undo)) = g
+                    .store
+                    .state
+                    .task
+                    .entities
+                    .get(&id)
+                    .and_then(|task| crate::inbox_cleanup::patches(task, &g.store.state, proposal))
+                else {
+                    return Outcome {
+                        message: Some(Message::InboxCleanupStale),
+                        ..Outcome::none()
+                    };
+                };
+                if !change.is_empty() {
+                    patches.push((id, change, undo));
+                }
+            }
+            if patches.is_empty() {
+                return Outcome::none();
+            }
+            let undo = patches
+                .into_iter()
+                .map(|(id, change, undo)| {
+                    g.update_task(&id, change);
+                    Action::UpdateTask { id, changes: undo }
+                })
+                .collect();
+            changed_with(Message::InboxCleaned, Some(g.push_undo(undo)))
+        })
+    }
+
     pub fn add_subtask(&self, parent_id: String, title: String) -> Outcome {
         if title.trim().is_empty() {
             return Outcome::none();

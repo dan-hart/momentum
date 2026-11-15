@@ -6,6 +6,17 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.20] - 2026-11-15
+
+### Added
+- Clean up unfinished Inbox tasks offline with a preview and one Undo. Apple Intelligence can refine suggestions on supported iPhones, iPads, and Macs.
+
+### Changed
+- Show the Nextcloud connection fields near the provider picker so setup takes less scrolling.
+
+### Fixed
+- Keep bulk selection actions separate from task rows on iOS and improve control sizing in compact Android and Linux windows.
+
 ## [0.4.19] - 2026-11-15
 
 ### Added

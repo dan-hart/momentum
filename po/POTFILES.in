@@ -6,6 +6,7 @@ data/resources/ui/shortcuts.blp
 data/resources/ui/window.blp
 crates/app/src/application.rs
 crates/app/src/background_status.rs
+crates/app/src/inbox_cleanup.rs
 crates/app/src/main.rs
 crates/app/src/messages.rs
 crates/app/src/modifier.rs

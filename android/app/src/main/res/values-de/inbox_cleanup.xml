@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inbox_cleanup">Posteingang aufräumen</string>
+    <string name="inbox_cleanup_preparing">Posteingang wird geprüft…</string>
+    <string name="inbox_cleanup_empty">Es gibt keine Vorschläge zum Aufräumen.</string>
+    <string name="inbox_cleanup_review">Prüfe die vorgeschlagenen Titel, Links und Tags.</string>
+    <string name="inbox_cleanup_add_tag">Tag %1$s hinzufügen</string>
+    <plurals name="inbox_cleanup_links">
+        <item quantity="one">%d Link in die Notizen verschieben</item>
+        <item quantity="other">%d Links in die Notizen verschieben</item>
+    </plurals>
+    <string name="inbox_cleanup_apply">Änderungen übernehmen</string>
+    <string name="inbox_cleanup_done">Posteingang aufgeräumt</string>
+    <string name="inbox_cleanup_stale">Der Posteingang wurde geändert. Öffne „Posteingang aufräumen“ erneut.</string>
+</resources>

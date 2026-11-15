@@ -1,6 +1,26 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Connection Help": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hilfe zur Verbindung"
+          }
+        }
+      }
+    },
+    "Include any installation subfolder in the server URL. In Nextcloud, create an app password under Personal settings → Security.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib einen eventuellen Installationsunterordner in der Server-URL an. Erstelle in Nextcloud unter Persönliche Einstellungen → Sicherheit ein App-Passwort."
+          }
+        }
+      }
+    },
     "Badges": {
       "localizations": {
         "de": {

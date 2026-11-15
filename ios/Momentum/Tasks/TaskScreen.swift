@@ -62,7 +62,6 @@ struct TaskScreen: SwiftUI.View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
-    @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(PrefKey.colorfulLabels) private var colorful = true
@@ -169,6 +168,19 @@ struct TaskScreen: SwiftUI.View {
         Group {
             if let snapshot {
                 List(selection: $selection) {
+                    if view == .project(id: "INBOX_PROJECT"), !editMode.isEditing {
+                        InboxCleanupButton {
+                            await model.worker?.inboxCleanupInput()
+                        } apply: { changes in
+                            guard let worker = model.worker else { return nil }
+                            let outcome = await worker.applyInboxCleanup(changes)
+                            if outcome.changed { model.accept(outcome) }
+                            return outcome
+                        }
+                        .selectionDisabled(true)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
                     if view == .search && !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         SettingsSearchResults(query: query).selectionDisabled(true)
                     }
@@ -283,7 +295,7 @@ struct TaskScreen: SwiftUI.View {
                     if let hiddenDestination { TaskScreen(view: hiddenDestination) }
                 }
                 .modifier(PullToRefresh(enabled: sync.provider != .off) { await model.pullToRefresh() })
-                .contentMargins(.bottom, 76, for: .scrollContent)
+                .contentMargins(.bottom, editMode.isEditing ? 0 : 76, for: .scrollContent)
                 .dropDestination(for: ExternalTaskText.self) { items, _ in
                     guard view != .archive else { return false }
                     // A task row also exports its ids as plain text for other apps; a row
@@ -314,13 +326,29 @@ struct TaskScreen: SwiftUI.View {
         .onChange(of: "\(groupBy)-\(showDayPeriods)-\(sortKey)-\(sortDirection)-\(upcomingRange)") {
             Task { await model.preferencesChanged() }
         }
-        .navigationTitle(title)
+        .navigationTitle(editMode.isEditing && !selection.isEmpty
+            ? String(localized: "\(selection.count) selected") : title)
         .navigationBarBackButtonHidden(showsSidebarButton)
         .momentumNavigationCanvas()
         .overlay(alignment: .bottomTrailing) {
-            bottomTaskControls
+            if !editMode.isEditing, view != .archive {
+                addTaskButton
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if editMode.isEditing, !selection.isEmpty, let snapshot {
+                TaskDropDestinations(
+                    selectedIDs: snapshot.tasks.filter { selection.contains($0.id) }.map(\.id),
+                    projects: snapshot.projects,
+                    tags: snapshot.tags,
+                    move: moveSelection
+                )
                 .padding(.horizontal, 20)
-                .padding(.bottom, 12)
+                .padding(.vertical, 6)
+                .background(Color(uiColor: .systemGroupedBackground))
+            }
         }
         .sheet(item: $taskSheet, onDismiss: model.presentPendingNotification) { sheet in
             taskSheetContent(sheet)
@@ -342,7 +370,18 @@ struct TaskScreen: SwiftUI.View {
         }
         .modifier(SearchPresentation(enabled: view == .search, query: $query, focused: $searchFocused))
         .toolbar {
-            if showsSidebarButton {
+            if editMode.isEditing {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done Selecting", systemImage: "checkmark") {
+                        transitionSelection(to: [], editing: false, feedback: .selection)
+                    }
+                    .labelStyle(.iconOnly)
+                    .accessibilityIdentifier("task-selection-done")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    selectionActions
+                }
+            } else if showsSidebarButton {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         dismiss()
@@ -352,31 +391,32 @@ struct TaskScreen: SwiftUI.View {
                     .accessibilityIdentifier("task-workspace-show-sidebar")
                 }
             }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                // Sync status without scrolling: a badge here and a capsule at the bottom.
-                SyncStatusToolbarButton(state: sync)
-                if view != .archive {
-                    Menu {
-                        Button(editMode.isEditing ? "Done Selecting" : "Select Tasks") {
-                            let wasEditing = editMode.isEditing
-                            transitionSelection(to: [], editing: !wasEditing, feedback: .selection)
-                        }
-                        Button("Select All") {
-                            transitionSelection(
-                                to: Set(snapshot?.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id) ?? []),
-                                editing: true,
-                                feedback: .selection
-                            )
-                        }
-                        Button("Archive Completed") { act(.archive) }
-                            .disabled(snapshot?.listing.canArchive != true)
-                        Divider()
-                        viewOptions
-                    } label: { Label("View Options", systemImage: "ellipsis") }
-                    .accessibilityIdentifier("task-view-options")
-                }
-                if snapshot?.canUndo == true {
-                    Button { act(.undo) } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+            if !editMode.isEditing {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    // Sync status without scrolling: a badge here and a capsule at the bottom.
+                    SyncStatusToolbarButton(state: sync)
+                    if view != .archive {
+                        Menu {
+                            Button("Select Tasks") {
+                                transitionSelection(to: [], editing: true, feedback: .selection)
+                            }
+                            Button("Select All") {
+                                transitionSelection(
+                                    to: Set(snapshot?.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id) ?? []),
+                                    editing: true,
+                                    feedback: .selection
+                                )
+                            }
+                            Button("Archive Completed") { act(.archive) }
+                                .disabled(snapshot?.listing.canArchive != true)
+                            Divider()
+                            viewOptions
+                        } label: { Label("View Options", systemImage: "ellipsis") }
+                        .accessibilityIdentifier("task-view-options")
+                    }
+                    if snapshot?.canUndo == true {
+                        Button { act(.undo) } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                    }
                 }
             }
         }
@@ -462,36 +502,6 @@ struct TaskScreen: SwiftUI.View {
         }
     }
 
-    @ViewBuilder private var bottomTaskControls: some SwiftUI.View {
-        let motion = InteractionMotionPolicy.presentation(reduceMotion: reduceMotion)
-        VStack(alignment: .trailing, spacing: 12) {
-            if !selection.isEmpty, let snapshot {
-                TaskDropDestinations(
-                    selectedIDs: snapshot.tasks.filter { selection.contains($0.id) }.map(\.id),
-                    projects: snapshot.projects,
-                    tags: snapshot.tags,
-                    move: moveSelection
-                )
-                .transition(motion.transition)
-            }
-            if textSize.isAccessibilitySize {
-                VStack(alignment: .trailing, spacing: 12) {
-                    if !selection.isEmpty {
-                        selectionActions.frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    if view != .archive { addTaskButton }
-                }
-            } else {
-                HStack(spacing: 12) {
-                    if !selection.isEmpty { selectionActions }
-                    Spacer(minLength: 0)
-                    if view != .archive { addTaskButton }
-                }
-            }
-        }
-        .animation(motion.animation, value: selection.isEmpty)
-    }
-
     private var addTaskButton: some SwiftUI.View {
         FloatingAddTaskButton { model.add(in: view) }
             .disabled(model.worker == nil)
@@ -499,23 +509,26 @@ struct TaskScreen: SwiftUI.View {
 
     private var selectionActions: some SwiftUI.View {
         Menu {
-            TaskActionsMenu(ids: snapshot?.tasks.filter { selection.contains($0.id) }.map(\.id) ?? [],
-                            projects: snapshot?.projects ?? [], tags: snapshot?.tags ?? [],
-                            onNewTag: { requestTag(selection.sorted()) },
-                            onFinished: {
-                                transitionSelection(to: [], editing: false, feedback: $0)
-                            })
+            Button("Select All") {
+                transitionSelection(
+                    to: Set(snapshot?.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id) ?? []),
+                    editing: true,
+                    feedback: .selection
+                )
+            }
+            if !selection.isEmpty {
+                Divider()
+                TaskActionsMenu(ids: snapshot?.tasks.filter { selection.contains($0.id) }.map(\.id) ?? [],
+                                projects: snapshot?.projects ?? [], tags: snapshot?.tags ?? [],
+                                onNewTag: { requestTag(selection.sorted()) },
+                                onFinished: {
+                                    transitionSelection(to: [], editing: false, feedback: $0)
+                                })
+            }
         } label: {
             Label("Actions (\(selection.count))", systemImage: "ellipsis.circle")
-                .mobileFont(.headline)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: 32)
+                .labelStyle(.iconOnly)
         }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.capsule)
-        .controlSize(.large)
-        .tint(.primary)
         .accessibilityIdentifier("task-selection-actions")
     }
 

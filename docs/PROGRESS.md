@@ -1,5 +1,28 @@
 # Momentum progress and handoff
 
+## 2026-11-15 — Inbox cleanup, bulk selection and Sync setup (F-078, F-010, F-077, B-188)
+
+- Inbox cleanup previews offline title, link and tag changes. One durable write
+  applies the reviewed edits, with one Undo. Rust checks cover stale previews,
+  exact link retention, existing tag matching and Undo. The real Apple model
+  suggested an existing Health tag for a disposable dentist task on macOS.
+  iOS simulator review, apply, notes and Undo passed with the offline fallback.
+- iOS 26.5 showed the selected count and separate navigation actions when two
+  tasks were selected at the largest accessibility text size. Mark as Done
+  applied to both tasks and left selection mode. macOS uses native contextual
+  actions on list selections.
+- Nextcloud setup places the account fields near the provider choice. iOS adds
+  keyboard Next navigation and keeps Save next to the credentials. The
+  existing provider, recovery, connection test and advanced controls remain
+  accessible. Android API 37 passed eight scoped tests covering Inbox cleanup
+  and Undo, German large-text selection, and compact Sync setup.
+- Linux's four focused GTK tests passed, including actual preview, apply and Undo,
+  connection-field order and keyboard focus. Xvfb showed six available selection
+  controls without overlap at 360 pixels and 250% text.
+- Shared workspace tests, 23 hosted iOS tests, the opt-in macOS LibreSync loopback,
+  and seven focused macOS tests passed. The Mac app built. Mac Sync layout and the
+  iOS model path still need native device acceptance.
+
 ## 2026-11-15 — Custom badges and Morning Summary (F-007, F-032, F-038)
 
 Local implementation on dirty `task/notification-options` based on `9691fcd`.

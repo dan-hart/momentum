@@ -16,6 +16,7 @@ pub mod demo;
 mod engine;
 mod folder_migration;
 pub use folder_migration::NextcloudFolderMigrationReport;
+mod inbox_cleanup;
 pub mod ipc;
 mod listing;
 mod settings;

@@ -59,6 +59,66 @@ fn unchanged_refresh_keeps_the_existing_task_widgets() {
 }
 
 #[test]
+fn inbox_cleanup_previews_selected_edits_and_undoes_the_batch() {
+    on_gtk(|| {
+        let (win, _dir) = empty_window();
+        let engine = win.engine();
+        let inbox = View::project(INBOX_PROJECT_ID);
+        let title = "review travel itinerary https://example.invalid/itinerary";
+        let skipped_title = "read https://example.invalid/article";
+        let tag = engine.add_tag("travel".into()).expect("fixture tag");
+        engine.add_task(title.into(), inbox.clone());
+        engine.add_task(skipped_title.into(), inbox.clone());
+        let edited = id_of(&win, title);
+        let skipped = id_of(&win, skipped_title);
+
+        assert!(!shown(&*win.imp().inbox_cleanup_clamp));
+        win.go_to(inbox);
+        assert!(shown(&*win.imp().inbox_cleanup_clamp));
+        win.set_selecting(true);
+        assert!(!shown(&*win.imp().inbox_cleanup_clamp));
+        win.set_selecting(false);
+        win.present();
+
+        assert!(gtk::prelude::WidgetExt::activate_action(&win, "win.clean-up-inbox", None).is_ok());
+        pump();
+        let dialog = win.visible_dialog().expect("Inbox cleanup preview");
+        assert_eq!(dialog.title().as_str(), "Clean Up Inbox");
+        let widgets = descendants(dialog.upcast_ref());
+        let choice = |name: &str| {
+            widgets
+                .iter()
+                .filter_map(|widget| widget.downcast_ref::<gtk::CheckButton>())
+                .find(|button| button.widget_name() == name)
+                .unwrap_or_else(|| panic!("missing cleanup selection for {name}"))
+        };
+        choice(&skipped).set_active(false);
+        choice(&format!("inbox-cleanup-tag-{tag}")).set_active(false);
+        assert_eq!(engine.task_title(edited.clone()).as_deref(), Some(title));
+
+        widgets
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<gtk::Button>().ok())
+            .find(|button| button.label().as_deref() == Some("Apply Changes"))
+            .expect("Apply Changes")
+            .emit_clicked();
+        pump();
+
+        let task = engine.task_detail(edited.clone()).expect("edited task");
+        assert!(!task.title.contains("https://"));
+        assert!(task.notes.contains("https://example.invalid/itinerary"));
+        assert!(task.tag_ids.is_empty(), "unchecked tag is not added");
+        assert_eq!(engine.task_title(skipped).as_deref(), Some(skipped_title));
+
+        assert!(gtk::prelude::WidgetExt::activate_action(&win, "win.undo", None).is_ok());
+        let task = engine.task_detail(edited).expect("restored task");
+        assert_eq!(task.title, title);
+        assert!(task.notes.is_empty());
+        win.close();
+    });
+}
+
+#[test]
 fn quick_add_parses_tags_and_estimate_and_plans_for_the_current_view() {
     on_gtk(|| {
         let (win, _dir) = demo_window();
@@ -232,7 +292,6 @@ fn selection_mode_bulk_done_today_and_delete_with_undo() {
         // Bulk actions apply to selected rows of the current view.
         win.go_to(View::project(&home));
         win.set_selecting(true);
-        assert!(win.imp().select_bar.is_revealed());
         assert!(
             shown(&*win.imp().select_bar),
             "selection controls remain visible while active"
@@ -240,7 +299,7 @@ fn selection_mode_bulk_done_today_and_delete_with_undo() {
         win.toggle_selected(&a);
         win.toggle_selected(&b);
         assert_eq!(win.imp().selected.borrow().len(), 2);
-        assert!(win.imp().select_count.label().starts_with('2'));
+        assert!(win.imp().content_page.title().starts_with('2'));
         win.bulk_today();
         pump();
         assert!(win
@@ -279,8 +338,86 @@ fn selection_mode_bulk_done_today_and_delete_with_undo() {
         win.go_to(View::Upcoming);
         assert!(!win.imp().selecting.get());
         assert!(win.imp().selected.borrow().is_empty());
-        assert!(!win.imp().select_bar.is_revealed());
         assert!(!shown(&*win.imp().select_bar), "route change hides bulk controls");
+    });
+}
+
+#[test]
+fn selection_mode_bulk_actions_fit_the_compact_large_text_window() {
+    on_gtk(|| {
+        reset_typography_settings();
+        let (win, _dir) = empty_window();
+        win.set_default_size(360, 560);
+        settings().set_int("typography-content-scale", 250).unwrap();
+        settings().set_int("typography-interface-scale", 250).unwrap();
+        win.present();
+        pump_ms(300);
+        assert!(win.imp().split_view.is_collapsed());
+        let inbox = View::project(INBOX_PROJECT_ID);
+        win.go_to(inbox);
+        win.add_task("Select this fixture");
+        pump_ms(300);
+        win.set_selecting(true);
+        win.toggle_selected(&id_of(&win, "Select this fixture"));
+        pump_ms(300);
+
+        let actions = descendants(win.imp().select_bar.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<gtk::Button>().ok())
+            .filter(|button| button.action_name().is_some())
+            .collect::<Vec<_>>();
+        let width = win.width();
+        let height = win.height();
+        let minimum = win.imp().split_view.measure(gtk::Orientation::Horizontal, -1).0;
+        let mapped = win.imp().select_bar.is_mapped();
+        let laid_out = win.imp().select_bar.width() > 0;
+        let controls_mapped = actions.iter().all(gtk::prelude::WidgetExt::is_mapped);
+        let allocations = actions
+            .iter()
+            .map(|button| {
+                (
+                    button.action_name().expect("bulk action"),
+                    button.compute_bounds(&win).expect("bulk action bounds"),
+                )
+            })
+            .collect::<Vec<_>>();
+        reset_typography_settings();
+        win.close();
+
+        assert_eq!(actions.len(), 6);
+        assert!(mapped, "bulk selection must mount the action bar");
+        assert!(controls_mapped, "bulk selection must show all six actions");
+        assert!(width <= 360, "bulk selection widened the 360 pt window to {width}");
+        assert!(
+            minimum <= width,
+            "selection layout requires {minimum} px inside {width} px"
+        );
+        if !laid_out && std::env::var("GDK_BACKEND").as_deref() == Ok("broadway") {
+            // Broadway can defer a second frame without a connected browser.
+            // Its size request above still detects a clipped compact layout.
+            return;
+        }
+        for (name, bounds) in &allocations {
+            assert!(
+                bounds.width() > 0.0
+                    && bounds.height() > 0.0
+                    && bounds.x() >= 0.0
+                    && bounds.x() + bounds.width() <= width as f32
+                    && bounds.y() >= 0.0
+                    && bounds.y() + bounds.height() <= height as f32,
+                "{name} must remain reachable: {bounds:?} in {width}x{height}"
+            );
+        }
+        for (index, (name, bounds)) in allocations.iter().enumerate() {
+            for (other, next) in &allocations[index + 1..] {
+                assert!(
+                    !bounds
+                        .intersection(next)
+                        .is_some_and(|area| area.width() > 0.0 && area.height() > 0.0),
+                    "{name} overlaps {other}: {bounds:?}, {next:?}"
+                );
+            }
+        }
     });
 }
 #[test]

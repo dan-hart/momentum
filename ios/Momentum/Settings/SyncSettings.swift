@@ -44,6 +44,11 @@ struct SyncSettings: View {
     @State private var confirmingOptimizedUpgrade = false
     @State private var optimizedUpgradeIdentity = ""
     @State private var advancedExpanded = false
+    @FocusState private var connectionField: ConnectionField?
+
+    private enum ConnectionField {
+        case server, username, password
+    }
 
     var body: some View {
         Form {
@@ -75,13 +80,17 @@ struct SyncSettings: View {
                 SyncFailureSection(state: state, failure: failure, focus: $failureFocused)
             }
             if state.provider == .nextcloud {
-                status
+                if state.loading { ProgressView("Loading Connection…") }
+                if state.loaded { connectionAccount }
                 if let failure = state.failure {
                     SyncFailureSection(state: state, failure: failure, focus: $failureFocused)
                 }
-                if state.loaded { connectionTest }
-                if state.loading { ProgressView("Loading Connection…") }
-                if state.loaded { connection; timing }
+                status
+                if state.loaded {
+                    connectionTest
+                    timing
+                    advancedConnection
+                }
             } else if state.provider == .libresync {
                 libreSync.settingsTarget("sync.libresync")
                 if state.loaded { connectionTest }
@@ -339,100 +348,104 @@ struct SyncSettings: View {
         }.padding(.vertical, 4)
     }
 
-    private var connection: some View {
-        Group {
-            Section {
-                field("Server URL") {
-                    TextField("Server URL", text: $state.draft.serverURL, prompt: Text(verbatim: "https://cloud.example.com"))
-                        .keyboardType(.URL).textContentType(.URL)
-                        .accessibilityLabel("Server URL")
-                        .accessibilityIdentifier("sync-server").settingsTarget("sync.nextcloud")
-                }
-                Text("Use your Nextcloud website address, including its installation folder if it has one.")
-                    .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
-                field("Username") {
-                    TextField("Username", text: $state.draft.userName)
-                        .textContentType(.username).accessibilityLabel("Username")
-                        .accessibilityIdentifier("sync-username")
-                }
-                field("App Password") {
-                    SecureField("App Password", text: $state.draft.password)
-                        .textContentType(.password).accessibilityLabel("App Password")
-                        .accessibilityIdentifier("sync-password")
-                }
-                DisclosureGroup("Where do I get an app password?") {
-                    Text("Open Nextcloud in your browser. Go to Personal settings → Security, create an app password for Momentum, then paste it here.")
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if !state.hasUnsavedChanges {
-                    Label("Connection Saved", systemImage: "checkmark.circle")
-                        .accessibilityIdentifier("sync-saved")
-                        .accessibilityFocused($savedFocused)
-                }
-            } header: { Text("Nextcloud account").foregroundStyle(Color.primary) }
-            footer: {
-                Text("Connection details are saved securely on this device. Saving does not test the server or sync your tasks.")
-                    .foregroundStyle(AccentTheme.secondaryText)
+    private var connectionAccount: some View {
+        Section {
+            field("Server URL") {
+                TextField("Server URL", text: $state.draft.serverURL, prompt: Text(verbatim: "https://cloud.example.com"))
+                    .keyboardType(.URL).textContentType(.URL)
+                    .focused($connectionField, equals: .server)
+                    .submitLabel(.next)
+                    .onSubmit { connectionField = .username }
+                    .accessibilityLabel("Server URL")
+                    .accessibilityIdentifier("sync-server").settingsTarget("sync.nextcloud")
             }
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .disabled(state.folderCopyInProgress)
-
-            Section {
-                DisclosureGroup("Advanced Nextcloud options", isExpanded: Binding(
-                    get: { advancedExpanded || state.folderCopyInProgress || folderCopyNeedsAttention },
-                    set: { advancedExpanded = $0 })) {
-                    field("Sync Folder") {
-                        TextField("Sync Folder", text: $state.draft.folder)
-                            .accessibilityLabel("Sync Folder")
-                            .accessibilityIdentifier("sync-folder")
-                    }.disabled(state.folderCopyInProgress)
-                    Text("Use the same folder on every device. New connections use momentum; keep your existing folder when connecting to existing tasks.")
-                        .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
-                    field("Encryption Password (Optional)") {
-                        SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
-                            .accessibilityLabel("Encryption Password (Optional)")
-                            .accessibilityIdentifier("sync-encryption-password")
-                    }.disabled(state.folderCopyInProgress)
-                    Text("Use the same encryption password on every device. This is separate from your Nextcloud app password.")
-                        .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
-                    Toggle("Compress Sync File", isOn: $state.draft.compress).settingsTarget("sync.compression")
-                        .disabled(state.folderCopyInProgress)
-                    if state.optimizedSyncEnabled {
-                        Label("Optimized sync enabled", systemImage: "checkmark.circle")
-                    } else {
-                        Button("Upgrade to optimized sync…") {
-                            optimizedUpgradeIdentity = state.draft.identity
-                            confirmingOptimizedUpgrade = true
-                        }
-                            .disabled(state.hasUnsavedChanges || !state.canSync || state.isSyncing || state.folderCopyInProgress)
-                    }
-                    Text("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.")
-                        .mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
-
-                    folderCopyControls
-                }
+            field("Username") {
+                TextField("Username", text: $state.draft.userName)
+                    .textContentType(.username).accessibilityLabel("Username")
+                    .focused($connectionField, equals: .username)
+                    .submitLabel(.next)
+                    .onSubmit { connectionField = .password }
+                    .accessibilityIdentifier("sync-username")
             }
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
+            field("App Password") {
+                SecureField("App Password", text: $state.draft.password)
+                    .textContentType(.password).accessibilityLabel("App Password")
+                    .focused($connectionField, equals: .password)
+                    .submitLabel(.done)
+                    .onSubmit { connectionField = nil }
+                    .accessibilityIdentifier("sync-password")
+            }
             if state.hasUnsavedChanges || state.saving {
-                Section {
-                    if state.failure == .configuration, let issue = state.configurationIssue {
-                        NextcloudConfigurationError(issue: issue)
-                    }
-                    Button {
-                        Task { if await state.save() { savedFocused = true } }
-                    } label: {
-                        SyncSettingsLabel("Save Connection", symbol: "checkmark.circle.fill")
-                            .frame(minHeight: 44)
-                    }
-                    .accessibilityIdentifier("sync-save")
-                    .disabled(state.saving)
-                    if state.saving { ProgressView("Saving Connection…") }
-                    Text("Save your changes before syncing.").foregroundStyle(AccentTheme.secondaryText)
+                if state.failure == .configuration, let issue = state.configurationIssue {
+                    NextcloudConfigurationError(issue: issue)
                 }
+                Button {
+                    connectionField = nil
+                    Task { if await state.save() { savedFocused = true } }
+                } label: {
+                    SyncSettingsLabel("Save Connection", symbol: "checkmark.circle.fill")
+                        .frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("sync-save")
+                .disabled(!state.allowed || state.saving || state.folderCopyInProgress)
+                if state.saving { ProgressView("Saving Connection…") }
+            } else {
+                Label("Connection Saved", systemImage: "checkmark.circle")
+                    .accessibilityIdentifier("sync-saved")
+                    .accessibilityFocused($savedFocused)
+            }
+            DisclosureGroup("Where do I get an app password?") {
+                Text("Open Nextcloud in your browser. Go to Personal settings → Security, create an app password for Momentum, then paste it here.")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } header: { Text("Nextcloud account").foregroundStyle(Color.primary) }
+        footer: {
+            Text("Use your Nextcloud website address, including its installation folder if it has one.")
+                .foregroundStyle(AccentTheme.secondaryText)
+        }
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+        .disabled(state.folderCopyInProgress || state.saving)
+    }
+
+    private var advancedConnection: some View {
+        Section {
+            DisclosureGroup("Advanced Nextcloud options", isExpanded: Binding(
+                get: { advancedExpanded || state.folderCopyInProgress || folderCopyNeedsAttention },
+                set: { advancedExpanded = $0 })) {
+                field("Sync Folder") {
+                    TextField("Sync Folder", text: $state.draft.folder)
+                        .accessibilityLabel("Sync Folder")
+                        .accessibilityIdentifier("sync-folder")
+                }.disabled(state.folderCopyInProgress)
+                Text("Use the same folder on every device. New connections use momentum; keep your existing folder when connecting to existing tasks.")
+                    .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                field("Encryption Password (Optional)") {
+                    SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
+                        .accessibilityLabel("Encryption Password (Optional)")
+                        .accessibilityIdentifier("sync-encryption-password")
+                }.disabled(state.folderCopyInProgress)
+                Text("Use the same encryption password on every device. This is separate from your Nextcloud app password.")
+                    .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+                Toggle("Compress Sync File", isOn: $state.draft.compress).settingsTarget("sync.compression")
+                    .disabled(state.folderCopyInProgress)
+                if state.optimizedSyncEnabled {
+                    Label("Optimized sync enabled", systemImage: "checkmark.circle")
+                } else {
+                    Button("Upgrade to optimized sync…") {
+                        optimizedUpgradeIdentity = state.draft.identity
+                        confirmingOptimizedUpgrade = true
+                    }
+                        .disabled(state.hasUnsavedChanges || !state.canSync || state.isSyncing || state.folderCopyInProgress)
+                }
+                Text("Upgrade every participating device and enable optimized sync on each one. This connection cannot return to legacy sync. Existing legacy files stay intact. Turning sync off remains available.")
+                    .mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
+
+                folderCopyControls
             }
         }
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
         .disabled(state.saving)
     }
 

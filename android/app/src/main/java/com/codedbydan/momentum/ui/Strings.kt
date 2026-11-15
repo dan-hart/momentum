@@ -103,6 +103,8 @@ import java.time.format.FormatStyle
     is Message.Archived -> R.string.action_archived
     Message.Undone -> R.string.action_undone
     Message.NothingToUndo -> R.string.nothing_undo
+    Message.InboxCleaned -> R.string.inbox_cleanup_done
+    Message.InboxCleanupStale -> R.string.inbox_cleanup_stale
     Message.ManualOrderOnly -> R.string.manual_only
     Message.PickAWeekday -> R.string.pick_weekday
     is Message.NoLongerRepeats -> R.string.no_longer_repeat

@@ -348,6 +348,32 @@ import XCTest
         }
     }
 
+    func testNextcloudCredentialsAreVisibleBeforeOperationalControls() async throws {
+        let name = "momentum-sync-connection-first-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let state = NextcloudSyncState(defaults: defaults, persistence: RenderConnection())
+        let model = MobileAppModel(isolatedDirectory: directory, defaults: defaults)
+        await state.load()
+        await state.select(.nextcloud)
+        let mounted = try HostingFixture.mount(
+            NavigationStack { SyncSettings(state: state) }.environment(model),
+            defaults: defaults, defaultsName: name, size: CGSize(width: 390, height: 780))
+        defer { mounted.unmount(); try? FileManager.default.removeItem(at: directory) }
+        await mounted.settle()
+        let provider = try XCTUnwrap(mounted.accessibilityElement(identifier: "sync-provider"))
+        let server = try XCTUnwrap(mounted.accessibilityElement(identifier: "sync-server"))
+        let username = try XCTUnwrap(mounted.accessibilityElement(identifier: "sync-username"))
+        let password = try XCTUnwrap(mounted.accessibilityElement(identifier: "sync-password"))
+        XCTAssertLessThan(provider.frame.minY, server.frame.minY)
+        XCTAssertLessThan(server.frame.minY, username.frame.minY)
+        XCTAssertLessThan(username.frame.minY, password.frame.minY)
+        XCTAssertLessThan(password.frame.maxY, 780, "The connection can be entered without hunting below Sync status")
+        if let status = mounted.accessibilityElement(identifier: "sync-overview-status") {
+            XCTAssertLessThan(password.frame.maxY, status.frame.minY)
+        }
+    }
+
     func testProviderRemainsCompactAtLargestGermanTextSize() async throws {
         let name = "momentum-sync-provider-ax-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))

@@ -60,6 +60,9 @@ fn test_data_dir() -> Option<PathBuf> {
 #[path = "tests/ui.rs"]
 mod ui_tests;
 
+#[path = "inbox_cleanup.rs"]
+mod inbox_cleanup;
+
 mod imp {
     use super::*;
 
@@ -72,6 +75,8 @@ mod imp {
         pub sidebar_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub content_page: TemplateChild<adw::NavigationPage>,
+        #[template_child]
+        pub task_header: TemplateChild<adw::HeaderBar>,
         #[template_child]
         pub task_box: TemplateChild<gtk::Box>,
         pub current_list: RefCell<Option<gtk::ListBox>>,
@@ -86,6 +91,8 @@ mod imp {
         pub banner: TemplateChild<adw::Banner>,
         #[template_child]
         pub add_clamp: TemplateChild<adw::Clamp>,
+        #[template_child]
+        pub inbox_cleanup_clamp: TemplateChild<adw::Clamp>,
         #[template_child]
         pub search_clamp: TemplateChild<adw::Clamp>,
         #[template_child]
@@ -120,9 +127,7 @@ mod imp {
         #[template_child]
         pub select_cancel: TemplateChild<gtk::Button>,
         #[template_child]
-        pub select_bar: TemplateChild<gtk::ActionBar>,
-        #[template_child]
-        pub select_count: TemplateChild<gtk::Label>,
+        pub select_bar: TemplateChild<gtk::Box>,
         pub search_debounce: RefCell<Option<glib::SourceId>>,
         pub sync_debounce: RefCell<Option<glib::SourceId>>,
         pub sync_activity_at: Cell<std::time::Instant>,
@@ -155,6 +160,7 @@ mod imp {
                 split_view: Default::default(),
                 sidebar_list: Default::default(),
                 content_page: Default::default(),
+                task_header: Default::default(),
                 task_box: Default::default(),
                 current_list: Default::default(),
                 completion_message: Default::default(),
@@ -163,6 +169,7 @@ mod imp {
                 sync_label: Default::default(),
                 banner: Default::default(),
                 add_clamp: Default::default(),
+                inbox_cleanup_clamp: Default::default(),
                 search_clamp: Default::default(),
                 search_entry: Default::default(),
                 toast_overlay: Default::default(),
@@ -197,7 +204,6 @@ mod imp {
                 selected: Default::default(),
                 select_cancel: Default::default(),
                 select_bar: Default::default(),
-                select_count: Default::default(),
                 search_debounce: Default::default(),
                 sync_debounce: Default::default(),
                 sync_activity_at: Cell::new(std::time::Instant::now()),
@@ -1003,6 +1009,7 @@ impl MomentumWindow {
             act("focus-add", |w| {
                 w.imp().add_entry.grab_focus();
             }),
+            act("clean-up-inbox", |w| w.show_inbox_cleanup()),
             act("toggle-sidebar", |w| {
                 let sv = &w.imp().split_view;
                 sv.set_show_sidebar(!sv.shows_sidebar());
@@ -1583,11 +1590,30 @@ impl MomentumWindow {
         if !on {
             imp.selected.borrow_mut().clear();
         }
-        imp.select_cancel.set_visible(on);
-        imp.select_bar.set_visible(on);
-        imp.select_bar.set_revealed(on);
+        self.set_selection_chrome(on);
         imp.add_clamp.set_visible(!on && *imp.view.borrow() != View::Search);
         self.refresh_tasks();
+    }
+
+    fn set_selection_chrome(&self, selecting: bool) {
+        let imp = self.imp();
+        imp.select_cancel.set_visible(selecting);
+        imp.select_bar.set_visible(selecting);
+        if selecting {
+            // Keep the native window controls and the bulk actions reachable at large
+            // interface sizes, where the default window title can force content wider.
+            let title = gtk::Label::builder()
+                .ellipsize(pango::EllipsizeMode::End)
+                .css_classes(["heading"])
+                .build();
+            imp.content_page
+                .bind_property("title", &title, "label")
+                .sync_create()
+                .build();
+            imp.task_header.set_title_widget(Some(&title));
+        } else {
+            imp.task_header.set_title_widget(None::<&gtk::Widget>);
+        }
     }
 
     fn toggle_selected(&self, id: &str) {
@@ -1603,18 +1629,7 @@ impl MomentumWindow {
 
     fn update_selection_ui(&self) {
         let imp = self.imp();
-        // An unrevealed ActionBar still contributes its full minimum width.
-        // Remove inactive bulk controls from layout in compact large-text views.
-        imp.select_bar.set_visible(imp.selecting.get());
         let n = imp.selected.borrow().len();
-        imp.select_count.set_text(&format!(
-            "{n} {}",
-            if n == 1 {
-                gettext("selected")
-            } else {
-                gettext("selected")
-            }
-        ));
         for name in ["sel-done", "sel-today", "sel-move", "sel-tag", "sel-delete"] {
             if let Some(a) = self.lookup_action(name).and_downcast::<gio::SimpleAction>() {
                 a.set_enabled(n > 0);
@@ -2361,12 +2376,16 @@ impl MomentumWindow {
             View::Tag { .. } => (true, true),
             _ => (false, false),
         };
+        let can_clean_up =
+            matches!(&view, View::Project { id } if id == INBOX_PROJECT_ID) && !self.imp().selecting.get();
+        self.imp().inbox_cleanup_clamp.set_visible(can_clean_up);
         // Coming Up is always one section per day, so its Group By choice is disabled.
         let groupable = view != View::Upcoming;
         for (name, on) in [
             ("edit-context", editable),
             ("delete-context", deletable),
             ("group-by", groupable),
+            ("clean-up-inbox", can_clean_up),
         ] {
             if let Some(a) = self.lookup_action(name).and_downcast::<gio::SimpleAction>() {
                 a.set_enabled(on);
@@ -2812,9 +2831,7 @@ impl MomentumWindow {
         if imp.selecting.get() {
             imp.selecting.set(false);
             imp.selected.borrow_mut().clear();
-            imp.select_cancel.set_visible(false);
-            imp.select_bar.set_visible(false);
-            imp.select_bar.set_revealed(false);
+            self.set_selection_chrome(false);
         }
         imp.archive_shown.set(100);
         *imp.view.borrow_mut() = view;

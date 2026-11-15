@@ -3,7 +3,10 @@ package com.codedbydan.momentum
 
 import android.content.res.Configuration
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
@@ -70,7 +73,7 @@ class NativeToolbarTest {
         Unit
     }
 
-    private fun showApp(windowSize: DpSize? = null) {
+    private fun showApp(windowSize: DpSize? = null, constrainWindow: Boolean = false) {
         // Use Android's context-backed converter, including non-linear system font scaling.
         val density = Density(german)
         compose.setContent {
@@ -85,7 +88,11 @@ class NativeToolbarTest {
             CompositionLocalProvider(LocalResources provides german.resources,
                 LocalConfiguration provides german.resources.configuration, LocalDensity provides density,
                 LocalWindowInfo provides fixtureWindow) {
-                MomentumApp(vm)
+                if (constrainWindow) {
+                    Box(Modifier.size(requireNotNull(windowSize))) { MomentumApp(vm) }
+                } else {
+                    MomentumApp(vm)
+                }
             }
         }
         compose.waitUntil(15_000) { !vm.state.value.loading && vm.state.value.snapshot?.settings?.interfaceTextScale == 2f }
@@ -152,6 +159,44 @@ class NativeToolbarTest {
             Assert.assertTrue("$name stays within the bottom window edge", bounds.bottom <= window.bottom + 1f)
             assertTitleFits(labels[shown.single().index])
         }
+    }
+
+
+    @Test fun germanSelectionActionsStayBetweenTheListAndTabsInACompactWindow() {
+        val project = runBlocking { repository.read { addProject("Auswahlprüfung")!! } }
+        val view = View.Project(project)
+        runBlocking {
+            listOf("Erste Aufgabe", "Zweite Aufgabe").forEach { title ->
+                repository.create(TaskDraft(title, project, null, null, null, 0.0, "", emptyList(), emptyList()), view)
+            }
+        }
+        compose.runOnUiThread { vm.navigate(view) }
+        showApp(DpSize(320.dp, 620.dp), constrainWindow = true)
+        compose.waitUntil(15_000) { vm.state.value.snapshot?.listing?.view == view }
+        compose.runOnUiThread { vm.selectAll() }
+        compose.waitUntil(15_000) { vm.state.value.selected.size == 2 }
+
+        val tabRole = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+        val activeTab = hasText(german.getString(R.string.today)) and tabRole and isSelected()
+        val tabTop = compose.onNode(activeTab).fetchSemanticsNode().boundsInRoot.top
+        val listBottom = compose.onNodeWithTag("task-list").fetchSemanticsNode().boundsInRoot.bottom
+        val more = assertAction(R.string.selection_actions)
+        val actions = listOf(R.string.select_all, R.string.complete, R.string.move_to).map {
+            compose.onNode(hasText(german.getString(it)) and hasClickAction())
+                .assertIsDisplayed().assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        } + more
+        val bounds = actions.map { it.fetchSemanticsNode().boundsInRoot }
+        bounds.forEach { target ->
+            Assert.assertTrue("Selection actions stay below list content", target.top >= listBottom - 1f)
+            Assert.assertTrue("Selection actions stay above the native tabs", target.bottom <= tabTop + 1f)
+        }
+        bounds.forEachIndexed { index, target ->
+            Assert.assertTrue("Selection actions have distinct touch areas",
+                bounds.drop(index + 1).none { other -> target.intersect(other).let { it.width > 1f && it.height > 1f } })
+        }
+        compose.onNodeWithContentDescription(german.getString(R.string.add_task)).assertDoesNotExist()
+        more.performClick()
+        compose.onNodeWithText(german.getString(R.string.add_tag)).assertIsDisplayed()
     }
 
     @Test fun GermanTabletRailKeepsCompleteLabelsInsideNativeItemsAtCombinedScale() {
