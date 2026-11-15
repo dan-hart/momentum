@@ -1,6 +1,54 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "About the AH Fonts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About the AH Fonts"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über die AH-Schriften"
+          }
+        }
+      }
+    },
+    "AH stands for Atkinson Hyperlegible. AH Mono uses fixed-width characters and AH Next uses proportional spacing.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AH stands for Atkinson Hyperlegible. AH Mono uses fixed-width characters and AH Next uses proportional spacing."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AH steht für Atkinson Hyperlegible. Bei AH Mono sind alle Zeichen gleich breit. Bei AH Next hängt die Breite vom jeweiligen Zeichen ab."
+          }
+        }
+      }
+    },
+    "Free fonts from Braille Institute": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free fonts from Braille Institute"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kostenlose Schriften vom Braille Institute"
+          }
+        }
+      }
+    },
     "Connection Help": {
       "localizations": {
         "de": {

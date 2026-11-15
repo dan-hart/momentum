@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import com.codedbydan.momentum.R
 import com.codedbydan.momentum.data.AppSettings
 import com.codedbydan.momentum.data.Appearance
@@ -23,6 +24,12 @@ private val atkinsonHyperlegibleMono = FontFamily(
     Font(R.font.atkinson_hyperlegible_mono_bold, FontWeight.Bold, FontStyle.Normal),
     Font(R.font.atkinson_hyperlegible_mono_italic, FontWeight.Normal, FontStyle.Italic),
     Font(R.font.atkinson_hyperlegible_mono_bold_italic, FontWeight.Bold, FontStyle.Italic),
+)
+private val atkinsonHyperlegibleNext = FontFamily(
+    Font(R.font.atkinson_hyperlegible_next_regular, FontWeight.Normal, FontStyle.Normal),
+    Font(R.font.atkinson_hyperlegible_next_bold, FontWeight.Bold, FontStyle.Normal),
+    Font(R.font.atkinson_hyperlegible_next_italic, FontWeight.Normal, FontStyle.Italic),
+    Font(R.font.atkinson_hyperlegible_next_bold_italic, FontWeight.Bold, FontStyle.Italic),
 )
 private val openDyslexic = FontFamily(
     Font(R.font.opendyslexic_regular, FontWeight.Normal, FontStyle.Normal),
@@ -44,11 +51,16 @@ internal fun nativeTypography(settings: AppSettings, base: Typography = Typograp
                 NativeFont.Serif -> FontFamily.Serif
                 NativeFont.Monospace -> FontFamily.Monospace
                 NativeFont.AtkinsonHyperlegibleMono -> atkinsonHyperlegibleMono
+                NativeFont.AtkinsonHyperlegibleNext -> atkinsonHyperlegibleNext
                 NativeFont.OpenDyslexic -> openDyslexic
             },
             fontSize = if(fontSize.isSp) fontSize * amount else fontSize,
             lineHeight = if(lineHeight.isSp) lineHeight * amount else lineHeight,
-            letterSpacing = if(letterSpacing.isSp) letterSpacing * amount else letterSpacing,
+            letterSpacing = when {
+                settings.font == NativeFont.AtkinsonHyperlegibleMono -> -0.025.em
+                letterSpacing.isSp -> letterSpacing * amount
+                else -> letterSpacing
+            },
         )
         return base.copy(
             displayLarge = base.displayLarge.scaled(), displayMedium = base.displayMedium.scaled(), displaySmall = base.displaySmall.scaled(),

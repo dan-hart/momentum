@@ -41,4 +41,5 @@ if __name__ == "__main__":
     problems = check()
     if problems:
         raise SystemExit("\n".join(problems))
-    print("8 original font faces and 2 licenses match across Linux, Apple and Android resources.")
+    manifest = json.loads((ROOT / "data/resources/fonts/provenance.json").read_text())
+    print(f"{len(manifest['fonts'])} font faces and {len(manifest['licenses'])} licenses match across Linux, Apple and Android resources.")

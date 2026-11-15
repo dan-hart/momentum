@@ -48,8 +48,9 @@ the title and notes and never opens the task store.
 The requested App Store Connect identity is `com.codedbydan.Momentum`; the embedded
 share extension uses `com.codedbydan.Momentum.Share`. Both require App Store signing
 profiles with `group.com.codedbydan.Momentum` assigned on the same personal signing team.
-The approved App Store Connect name is **Momentum Tasks by Daniel Hart**; the installed
-app and share extension retain the display name **Momentum**.
+The App Store Connect name is **Momentum Tasks!** with the subtitle
+**Open-Source To-Do List**. The installed app and share extension display
+**Momentum**.
 Changing the bundle ID creates a separate iOS app identity from earlier development
 builds; preparing a build does not migrate or alter those installations' local tasks.
 

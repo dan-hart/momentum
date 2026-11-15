@@ -68,9 +68,16 @@ impl TypographyPreferences {
         let interface_scale = self.interface_scale as f64 / DEFAULT_SCALE as f64;
         let content_scale = self.content_scale as f64 / self.interface_scale as f64;
         let mut font_rules = String::new();
+        let mut spacing_rules = String::new();
         if let Some(font) = &self.font {
             if let Some(family) = font.family() {
                 font_rules.push_str(&format!("  font-family: {};\n", css_string(&family)));
+                if family.eq_ignore_ascii_case(crate::font_choice::MONO_FAMILY) {
+                    // Compute relative spacing on each node at its own font size,
+                    // including semantic titles and independently scaled task text.
+                    spacing_rules =
+                        format!(".{INTERFACE_CLASS}, .{INTERFACE_CLASS} * {{\n  letter-spacing: -0.025em;\n}}\n");
+                }
             }
             let fields = font.set_fields();
             if fields.contains(FontMask::STYLE) {
@@ -114,7 +121,7 @@ impl TypographyPreferences {
         format!(
             ".{INTERFACE_CLASS} {{\n  font-size: {interface_scale:.4}em;\n{font_rules}}}\n\
              .{INTERFACE_CLASS} .{INTERFACE_CLASS} {{\n  font-size: 1em;\n}}\n\
-             .{INTERFACE_CLASS} .{CONTENT_CLASS} {{\n  font-size: {content_scale:.4}em;\n}}\n"
+             .{INTERFACE_CLASS} .{CONTENT_CLASS} {{\n  font-size: {content_scale:.4}em;\n}}\n{spacing_rules}"
         )
     }
 }
@@ -180,11 +187,15 @@ thread_local! {
     static BUNDLED_FONTS: RefCell<Option<BundledFontFiles>> = const { RefCell::new(None) };
 }
 
-pub const BUNDLED_FONT_FILES: [&str; 8] = [
+pub const BUNDLED_FONT_FILES: [&str; 12] = [
     "AtkinsonHyperlegibleMono-Regular.ttf",
     "AtkinsonHyperlegibleMono-Bold.ttf",
     "AtkinsonHyperlegibleMono-Italic.ttf",
     "AtkinsonHyperlegibleMono-BoldItalic.ttf",
+    "AtkinsonHyperlegibleNext-Regular.ttf",
+    "AtkinsonHyperlegibleNext-Bold.ttf",
+    "AtkinsonHyperlegibleNext-Italic.ttf",
+    "AtkinsonHyperlegibleNext-BoldItalic.ttf",
     "OpenDyslexic-Regular.otf",
     "OpenDyslexic-Bold.otf",
     "OpenDyslexic-Italic.otf",

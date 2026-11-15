@@ -73,7 +73,7 @@ struct SyncSettings: View {
                         .accessibilityIdentifier("sync-provider-readonly")
                 }
             } footer: {
-                Text(state.provider.setupExplanation)
+                Text(state.provider.setupExplanation).mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
             if state.provider != .nextcloud, let failure = state.failure {
@@ -193,8 +193,8 @@ struct SyncSettings: View {
                 Text(error).foregroundStyle(.red).textSelection(.enabled)
                 Button("Retry") { Task { await state.syncNow(); await model.refreshAppSettings() } }
             }
-        } header: { Text("App settings") } footer: {
-            Text("Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local.")
+        } header: { Text("App settings").mobileFont(.footnote) } footer: {
+            Text("Off by default. Uses your selected sync provider for task display, grouping, sorting, archive and sound preferences. Connections, credentials, permissions and device controls stay local.").mobileFont(.footnote)
                 .foregroundStyle(AccentTheme.secondaryText)
         }
     }
@@ -208,9 +208,9 @@ struct SyncSettings: View {
                 Text("Save your changes before syncing.")
                     .foregroundStyle(AccentTheme.secondaryText)
             }
-        } header: { Text("When to sync").foregroundStyle(Color.primary) }
+        } header: { Text("When to sync").mobileFont(.footnote).foregroundStyle(Color.primary) }
         footer: {
-            Text("iOS may wake Momentum now and then for one exchange while it is closed. Requires Sync Automatically; Low Power Mode pauses it.")
+            Text("iOS may wake Momentum now and then for one exchange while it is closed. Requires Sync Automatically; Low Power Mode pauses it.").mobileFont(.footnote)
                 .foregroundStyle(AccentTheme.secondaryText)
         }
         .disabled(state.folderCopyInProgress || state.saving)
@@ -241,11 +241,11 @@ struct SyncSettings: View {
                 AccessibleErrorMessage(String(localized: "Connection test failed: \(message)"))
                     .accessibilityIdentifier("sync-test-failure")
             }
-        } header: { Text("Check connection").foregroundStyle(Color.primary) }
+        } header: { Text("Check connection").mobileFont(.footnote).foregroundStyle(Color.primary) }
         footer: {
             Text(state.provider == .libresync
                  ? "Checks the link to a paired device without changing your tasks."
-                 : "Checks the saved server and credentials without uploading or downloading tasks.")
+                 : "Checks the saved server and credentials without uploading or downloading tasks.").mobileFont(.footnote)
                 .foregroundStyle(AccentTheme.secondaryText)
         }
     }
@@ -279,7 +279,7 @@ struct SyncSettings: View {
                 .disabled(nearby.phase != .running)
                 .accessibilityIdentifier("libresync-devices").settingsTarget("sync.devices")
             } footer: {
-                Text("LibreSync exchanges encrypted task data directly with linked devices while Momentum is open. No Momentum account is required.")
+                Text("LibreSync exchanges encrypted task data directly with linked devices while Momentum is open. No Momentum account is required.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
             if nearby.failure != nil || nearby.transportError != nil {
@@ -329,13 +329,13 @@ struct SyncSettings: View {
             }
             .disabled(!state.canSync || state.folderCopyInProgress)
             .accessibilityIdentifier("sync-now").settingsTarget("sync.status")
-        } header: { Text("Sync status").foregroundStyle(Color.primary) }
+        } header: { Text("Sync status").mobileFont(.footnote).foregroundStyle(Color.primary) }
         footer: {
             Text(state.lowPowerMode
                  ? "Sync Now remains available. Automatic sync resumes when Low Power Mode turns off."
                  : backgroundSync
                  ? "Exchanges stop when you leave the app; iOS may wake Momentum now and then to sync in the background. Unsynced changes stay on this device."
-                 : "Open Momentum to sync. Exchanges stop when you leave the app; unsynced changes stay on this device.")
+                 : "Open Momentum to sync. Exchanges stop when you leave the app; unsynced changes stay on this device.").mobileFont(.footnote)
                 .foregroundStyle(AccentTheme.secondaryText)
         }
     }
@@ -352,6 +352,7 @@ struct SyncSettings: View {
         Section {
             field("Server URL") {
                 TextField("Server URL", text: $state.draft.serverURL, prompt: Text(verbatim: "https://cloud.example.com"))
+                    .mobileFont()
                     .keyboardType(.URL).textContentType(.URL)
                     .focused($connectionField, equals: .server)
                     .submitLabel(.next)
@@ -361,6 +362,7 @@ struct SyncSettings: View {
             }
             field("Username") {
                 TextField("Username", text: $state.draft.userName)
+                    .mobileFont()
                     .textContentType(.username).accessibilityLabel("Username")
                     .focused($connectionField, equals: .username)
                     .submitLabel(.next)
@@ -369,6 +371,7 @@ struct SyncSettings: View {
             }
             field("App Password") {
                 SecureField("App Password", text: $state.draft.password)
+                    .mobileFont()
                     .textContentType(.password).accessibilityLabel("App Password")
                     .focused($connectionField, equals: .password)
                     .submitLabel(.done)
@@ -398,9 +401,9 @@ struct SyncSettings: View {
                 Text("Open Nextcloud in your browser. Go to Personal settings → Security, create an app password for Momentum, then paste it here.")
                     .fixedSize(horizontal: false, vertical: true)
             }
-        } header: { Text("Nextcloud account").foregroundStyle(Color.primary) }
+        } header: { Text("Nextcloud account").mobileFont(.footnote).foregroundStyle(Color.primary) }
         footer: {
-            Text("Use your Nextcloud website address, including its installation folder if it has one.")
+            Text("Use your Nextcloud website address, including its installation folder if it has one.").mobileFont(.footnote)
                 .foregroundStyle(AccentTheme.secondaryText)
         }
         .textInputAutocapitalization(.never)
@@ -415,6 +418,7 @@ struct SyncSettings: View {
                 set: { advancedExpanded = $0 })) {
                 field("Sync Folder") {
                     TextField("Sync Folder", text: $state.draft.folder)
+                        .mobileFont()
                         .accessibilityLabel("Sync Folder")
                         .accessibilityIdentifier("sync-folder")
                 }.disabled(state.folderCopyInProgress)
@@ -422,6 +426,7 @@ struct SyncSettings: View {
                     .mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
                 field("Encryption Password (Optional)") {
                     SecureField("Encryption Password (Optional)", text: $state.draft.encryptionPassword)
+                        .mobileFont()
                         .accessibilityLabel("Encryption Password (Optional)")
                         .accessibilityIdentifier("sync-encryption-password")
                 }.disabled(state.folderCopyInProgress)
@@ -557,7 +562,7 @@ struct SyncFailureSection: View {
                 .accessibilityIdentifier("sync-failure-details-toggle")
             }
         } footer: {
-            Text("Your tasks are safe on this device until sync succeeds.")
+            Text("Your tasks are safe on this device until sync succeeds.").mobileFont(.footnote)
                 .foregroundStyle(AccentTheme.secondaryText)
         }
     }
@@ -829,9 +834,9 @@ struct LibreSyncDeviceList: View {
                     .disabled(device.address == nil)
                     .accessibilityLabel("Link with \(device.name)")
                 }
-            } header: { Text("Nearby Devices") }
+            } header: { Text("Nearby Devices").mobileFont(.footnote) }
             footer: {
-                Text("Open this screen on another Momentum device, then enter its six-digit code here.")
+                Text("Open this screen on another Momentum device, then enter its six-digit code here.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
@@ -889,6 +894,7 @@ private struct LibreSyncLinkSheet: View {
                     Text("Enter the six-digit pairing code shown on \(device.name).")
                         .fixedSize(horizontal: false, vertical: true)
                     TextField("Pairing Code", text: $code)
+                        .mobileFont()
                         .keyboardType(.numberPad)
                         .textContentType(.oneTimeCode)
                         .multilineTextAlignment(.center)

@@ -50,7 +50,7 @@ class NativeTypographyTest {
     }
 
     @Test fun bundledChoicesUseFourRealFacesThroughoutBothTypographyAreas() {
-        val bundledNames = setOf("AtkinsonHyperlegibleMono", "OpenDyslexic")
+        val bundledNames = setOf("AtkinsonHyperlegibleMono", "AtkinsonHyperlegibleNext", "OpenDyslexic")
         assertTrue("Bundled choices must be selectable", NativeFont.entries.map { it.name }.containsAll(bundledNames))
         val base = Typography()
         for (choice in NativeFont.entries.filter { it.name in bundledNames }) {
@@ -83,6 +83,28 @@ class NativeTypographyTest {
         val baseline = nativeTypography(AppSettings(contentTextScale = 1.25f))
         val invalid = nativeTypography(AppSettings(contentTextScale = 1.25f, interfaceTextScale = Float.NaN))
         assertEquals(baseline, invalid)
+    }
+
+    @Test fun atkinsonMonoTightensTrackingWithoutChangingSemanticSizes() {
+        val base = Typography()
+        val settings = AppSettings(contentTextScale = 1.5f, interfaceTextScale = 0.8f)
+        val mono = nativeTypography(settings.copy(font = NativeFont.AtkinsonHyperlegibleMono), base)
+        val next = nativeTypography(settings.copy(font = NativeFont.AtkinsonHyperlegibleNext), base)
+        val system = nativeTypography(settings, base)
+
+        for ((monoStyles, nextStyles, systemStyles) in listOf(
+            Triple(mono.interfaceStyles, next.interfaceStyles, system.interfaceStyles),
+            Triple(mono.contentStyles, next.contentStyles, system.contentStyles),
+        )) {
+            assertEquals(-0.025.em, monoStyles.titleLarge.letterSpacing)
+            assertEquals(-0.025.em, monoStyles.bodyLarge.letterSpacing)
+            assertEquals(-0.025.em, monoStyles.labelSmall.letterSpacing)
+            assertEquals(systemStyles.titleLarge.fontSize, monoStyles.titleLarge.fontSize)
+            assertEquals(systemStyles.bodyLarge.fontSize, monoStyles.bodyLarge.fontSize)
+            assertEquals(systemStyles.labelSmall.fontSize, monoStyles.labelSmall.fontSize)
+            assertEquals(systemStyles.bodyLarge.lineHeight, monoStyles.bodyLarge.lineHeight)
+            assertEquals(systemStyles.bodyLarge.letterSpacing, nextStyles.bodyLarge.letterSpacing)
+        }
     }
 
     @Test fun relativeLineHeightAndTrackingStayRelativeToTheScaledFont() {

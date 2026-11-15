@@ -1,5 +1,38 @@
 # Momentum progress and handoff
 
+## 2026-11-15 — 0.4.21 typography (F-022, B-190)
+
+- Atkinson Hyperlegible Next is selectable offline on all four platforms. The
+  resource check verified four original faces per family and all three bundled
+  OFL texts across the GTK, Apple, and Android resources.
+- iOS styles the native inline and large navigation titles with the selected
+  face. Search empty copy and Settings form text follow the same preference.
+  Each platform retains the original text sizes and tightens Mono character
+  spacing by 0.025 em in its app typography. On macOS this applies to SwiftUI
+  text. The system’s AppKit bridge retains native spacing in editing controls.
+  Each Appearance page uses AH Mono and AH Next and explains the names beside
+  a link to the Braille Institute’s free font page.
+- The hosted iOS 26.5 suite ran 125 tests with 3 skipped and no failures. The
+  tracking regression demonstrated reduced line width at the original glyph
+  height. Native title checks confirmed the original point sizes, reduced
+  spacing, live family and scale changes, and System reset. The rebuilt
+  simulator app showed both abbreviated choices and the Braille Institute
+  credit in Appearance, along with both fonts in the Search empty state.
+- The focused GTK settings test passed on Linux arm64 using Xvfb, with native
+  family resolution, independent sizing, custom font and reset. MomentumKit
+  passed seven macOS typography tests. Android passed six JVM typography tests
+  and four Compose instrumentation tests on its API 37 emulator. The iOS and
+  macOS Debug apps and Android APK report 0.4.21.
+- The checkout is based on `99247eb` with local 0.4.21 metadata and existing Inbox
+  icon changes. Physical-device, spoken accessibility and hosted CI checks for
+  the patch remain open.
+
+## 2026-11-15 — Inbox cleanup button icon (F-078, B-189)
+
+The local follow-up makes the icon visible on the iOS Inbox button and adds a
+Material icon on Android. Debug builds passed, with native iOS 26.5 visual
+readback and Android API 37 Inbox cleanup coverage. See B-189.
+
 ## 2026-11-15 — Inbox cleanup, bulk selection and Sync setup (F-078, F-010, F-077, B-188)
 
 - Inbox cleanup previews offline title, link and tag changes. One durable write

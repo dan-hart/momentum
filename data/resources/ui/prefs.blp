@@ -374,6 +374,26 @@ template $MomentumPrefs: Adw.PreferencesDialog {
       description: _("Offline by design. Open source. Made for your day.");
       Adw.ButtonRow about_row { title: _("About Momentum"); start-icon-name: "help-about-symbolic"; action-name: "app.about"; }
     }
+
+    Adw.PreferencesGroup {
+      title: _("Typography");
+      description: _("AH stands for Atkinson Hyperlegible. AH Mono uses fixed-width characters and AH Next uses proportional spacing.");
+
+      Gtk.LinkButton {
+        uri: "https://www.brailleinstitute.org/freefont/";
+        halign: start;
+        accessible-role: link;
+        accessibility {
+          labelled-by: [braille_font_link_label];
+        }
+        child: Gtk.Label braille_font_link_label {
+          label: _("Free fonts from Braille Institute");
+          wrap: true;
+          wrap-mode: word_char;
+          xalign: 0;
+        };
+      }
+    }
   }
 
 }

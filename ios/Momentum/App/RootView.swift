@@ -335,9 +335,14 @@ struct StoreUnavailableView: SwiftUI.View {
     var body: some SwiftUI.View {
         ScrollView {
             ContentUnavailableView {
-                Label("Data Unavailable", systemImage: "externaldrive.badge.exclamationmark")
+                Label {
+                    Text("Data Unavailable").mobileFont(.title2).bold()
+                } icon: {
+                    Image(systemName: "externaldrive.badge.exclamationmark")
+                }
             } description: {
                 Text("Momentum couldn’t safely open its data. Existing files have been preserved.")
+                    .mobileFont(.callout)
             }
             DisclosureGroup("Details") {
                 Text(details).mobileFont(.footnote).textSelection(.enabled)

@@ -12,6 +12,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import com.codedbydan.momentum.R
 import com.codedbydan.momentum.data.AppSettings
@@ -30,6 +36,7 @@ import kotlin.math.roundToInt
             NativeFont.Serif -> R.string.font_serif
             NativeFont.Monospace -> R.string.font_monospace
             NativeFont.AtkinsonHyperlegibleMono -> R.string.font_atkinson_hyperlegible_mono
+            NativeFont.AtkinsonHyperlegibleNext -> R.string.font_atkinson_hyperlegible_next
             NativeFont.OpenDyslexic -> R.string.font_opendyslexic
         })
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -52,6 +59,22 @@ import kotlin.math.roundToInt
     SettingAnchor(R.string.typography_reset) { OutlinedButton(onClick = { change(::resetNativeTypography) }, modifier = Modifier.heightIn(min = 48.dp)) {
         Text(stringResource(R.string.typography_reset))
     } }
+    TypographyCredit()
+}
+
+@Composable private fun TypographyCredit() {
+    SettingHeading(R.string.typography_credit)
+    Text(stringResource(R.string.typography_credit_description), style = MaterialTheme.typography.bodyMedium)
+    val label = stringResource(R.string.typography_credit_link)
+    val linkStyles = TextLinkStyles(
+        style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline),
+    )
+    Text(
+        buildAnnotatedString {
+            withLink(LinkAnnotation.Url("https://www.brailleinstitute.org/freefont/", linkStyles)) { append(label) }
+        },
+        style = MaterialTheme.typography.bodyMedium,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -33,6 +33,7 @@ struct ContextEditor: View {
                 }
             }
             .navigationTitle(kind == .project ? "Project" : "Tag")
+            .momentumNavigationTypography()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel", systemImage: "xmark") { dismiss() } }

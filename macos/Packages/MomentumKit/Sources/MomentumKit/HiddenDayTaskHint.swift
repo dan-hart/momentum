@@ -18,7 +18,12 @@ public struct HiddenDayTaskHint: SwiftUI.View {
                 .frame(maxWidth: .infinity, minHeight: minimumActionHeight)
                 .contentShape(Rectangle())
         }
-        .font(.caption).foregroundStyle(.secondary)
+        #if os(macOS)
+        .appFont(.footnote)
+        #else
+        .font(.caption)
+        #endif
+        .foregroundStyle(.secondary)
         .buttonStyle(.borderless)
         .accessibilityLabel(Text(label))
         .accessibilityIdentifier(morning ? "hidden-tasks-morning" : "hidden-tasks-evening")

@@ -4,6 +4,30 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-190 — iOS navigation, empty states and settings can ignore the app font
+
+- **Feature and severity:** F-022, medium. Reproduced with Atkinson Hyperlegible
+  Mono on iOS 26.5. The Search title and empty copy, Settings navigation titles
+  and the selected font value could use system typography alongside custom text.
+- **Cause and fix:** UIKit owns the navigation title and SwiftUI controls can
+  override inherited font styles. Apply the selected face to native large and
+  inline titles, and set semantic text styles on the affected app-owned content.
+  Mono retains its original point sizes and uses tighter character spacing in
+  SwiftUI text and native navigation titles.
+- **Verification:** Native title update and reset tests and iOS 26.5 simulator
+  inspection attained the reported scope. See the 0.4.21 PROGRESS handoff for
+  other platform checks and physical-device limits.
+
+## B-189 — Inbox cleanup button icon is missing on iOS and Android
+
+- **Feature:** F-078. On iOS 26.5 the sparkles blend into the filled button.
+  Android's button label contains only text.
+- **Fix and evidence:** iOS renders the sparkles in the same contrasting ink as
+  the label. Android adds an Edit icon using Material button spacing. The rebuilt
+  iOS app shows the sparkles on the native Inbox screen, and the Android API 37
+  Inbox cleanup test passes. Verified on 2026-11-15 in the local worktree based
+  on `99247eb`.
+
 ## B-188 — Bulk selection controls crowd the task list
 
 - **Features:** F-010 and F-020. iOS drew selected-task actions, destination controls

@@ -291,7 +291,7 @@ msgstr ""
 msgid "Use the saved colors of projects and labels"
 msgstr "Gespeicherte Farben von Projekten und Labels verwenden"
 
-#: data/resources/ui/prefs.blp:55
+#: data/resources/ui/prefs.blp:55 data/resources/ui/prefs.blp:379
 msgid "Typography"
 msgstr "Typografie"
 
@@ -657,6 +657,18 @@ msgstr "Offline nutzbar. Open Source. Für deinen Alltag gemacht."
 #: data/resources/ui/prefs.blp:323 crates/app/src/settings_ui.rs:123
 msgid "About Momentum"
 msgstr "Über Momentum"
+
+#: data/resources/ui/prefs.blp:380
+msgid ""
+"AH stands for Atkinson Hyperlegible. AH Mono uses fixed-width characters and "
+"AH Next uses proportional spacing."
+msgstr ""
+"AH steht für Atkinson Hyperlegible. Bei AH Mono sind alle Zeichen gleich "
+"breit. Bei AH Next hängt die Breite vom jeweiligen Zeichen ab."
+
+#: data/resources/ui/prefs.blp:390
+msgid "Free fonts from Braille Institute"
+msgstr "Kostenlose Schriften vom Braille Institute"
 
 #: data/resources/ui/shortcuts.blp:14
 msgctxt "shortcut window"
@@ -4742,6 +4754,40 @@ msgstr "Hilfe zur Verbindung"
 #: data/resources/ui/prefs.blp:202
 msgid "Enter your server address. Include any installation subfolder and omit the WebDAV path. Edits save automatically."
 msgstr "Gib deine Serveradresse ein, einschließlich eines vorhandenen Installationsunterordners. Lass den WebDAV-Pfad weg. Änderungen werden automatisch gespeichert."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid "More accessible font choices and consistent iOS typography."
+msgstr "Mehr barrierefreie Schriften zur Auswahl und einheitliche Typografie unter iOS."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid ""
+"Choose the proportional Atkinson Hyperlegible Next font on Linux, macOS, "
+"iOS, and Android."
+msgstr ""
+"Die proportionale Schrift Atkinson Hyperlegible Next ist für Linux, macOS, "
+"iOS und Android verfügbar."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid ""
+"Tighten Atkinson Hyperlegible Mono character spacing at the original font "
+"sizes. Look for AH Mono and AH Next in Appearance, with a link to the "
+"Braille Institute’s free fonts."
+msgstr ""
+"Atkinson Hyperlegible Mono hat engere Zeichenabstände bei gleicher "
+"Schriftgröße. AH Mono und AH Next stehen unter „Erscheinungsbild“. "
+"Unter „Über & Hilfe“ führt ein Link zu den kostenlosen Schriften des Braille Institute."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
+msgid ""
+"Apply the selected iOS font to navigation titles, Search empty states, "
+"and more of Settings."
+msgstr ""
+"Unter iOS gilt die ausgewählte Schrift jetzt auch für Navigationstitel, "
+"die Suche ohne Ergebnisse und weitere Bereiche der Einstellungen."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
+msgid "Make the Inbox cleanup icon visible on iOS and Android."
+msgstr "Das Symbol zum Aufräumen des Posteingangs ist jetzt unter iOS und Android sichtbar."
 
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Clean up the Inbox, select tasks, and set up sync more easily."

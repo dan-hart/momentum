@@ -11,10 +11,13 @@ struct FontSettingsControls: SwiftUI.View {
     @AppStorage(PrefKey.appFontName) private var fontName = ""
     @AppStorage(PrefKey.contentFontSize) private var contentSize = 13.0
     @AppStorage(PrefKey.interfaceFontSize) private var interfaceSize = 13.0
+    private static let atkinsonWebsite = URL(string: "https://www.brailleinstitute.org/freefont/")!
 
     private var fontLabel: String {
-        guard !typography.fontName.isEmpty,
-              let font = NSFont(name: typography.fontName, size: 13) else {
+        if let choice = BundledAppFont(rawValue: fontName) {
+            return choice.label
+        }
+        guard let font = NSFont(name: fontName, size: 13) else {
             return String(localized: "System Font")
         }
         return font.displayName ?? font.fontName
@@ -81,6 +84,16 @@ struct FontSettingsControls: SwiftUI.View {
                     AppTypography.reset()
                     AppFontPanel.shared.refresh()
                 }.settingsTarget("appearance.reset")
+            }
+
+            Section {
+                Text("AH stands for Atkinson Hyperlegible. AH Mono uses fixed-width characters and AH Next uses proportional spacing.")
+                    .fixedSize(horizontal: false, vertical: true)
+                Link(destination: Self.atkinsonWebsite) {
+                    Label("Free fonts from Braille Institute", systemImage: "arrow.up.right")
+                }
+            } header: {
+                Text("About the AH Fonts")
             }
         }
         .formStyle(.grouped)

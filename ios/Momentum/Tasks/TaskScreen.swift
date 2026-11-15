@@ -115,6 +115,7 @@ struct TaskScreen: SwiftUI.View {
     @AppStorage(PrefKey.taskSort) private var sortKey = "manual"
     @AppStorage(PrefKey.sortDirection) private var sortDirection = "ascending"
     @AppStorage(PrefKey.upcomingRange) private var upcomingRange = "7"
+    @AppStorage(AccentChoice.preferenceKey) private var accentChoice = AccentChoice.momentum.id
     @AppStorage(PrefKey.rowDensity) private var rowDensity = TaskRowDensity.regular.rawValue
 
     /// The same choices as Settings › Task Lists, on the list they change, like the Mac's
@@ -169,7 +170,7 @@ struct TaskScreen: SwiftUI.View {
             if let snapshot {
                 List(selection: $selection) {
                     if view == .project(id: "INBOX_PROJECT"), !editMode.isEditing {
-                        InboxCleanupButton {
+                        InboxCleanupButton(foreground: AccentTheme.onAccent(AccentChoice.resolve(accentChoice))) {
                             await model.worker?.inboxCleanupInput()
                         } apply: { changes in
                             guard let worker = model.worker else { return nil }
@@ -189,13 +190,17 @@ struct TaskScreen: SwiftUI.View {
                         ContentUnavailableView {
                             Label {
                                 Text(copy.title)
+                                    .mobileFont(.title2).bold()
                                     .lineLimit(nil)
                                     .fixedSize(horizontal: false, vertical: true)
                             } icon: {
                                 Image(systemName: copy.symbol)
                             }
                         } description: {
-                            Text(emptyDescription).foregroundStyle(AccentTheme.secondaryText)
+                            Text(emptyDescription)
+                                .mobileFont(.callout)
+                                .foregroundStyle(AccentTheme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                         .listRowBackground(Color.clear)
                     }

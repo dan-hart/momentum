@@ -6,6 +6,7 @@ import Foundation
 /// preference; installed-font selections continue to use their original face names.
 public enum BundledAppFont: String, CaseIterable, Identifiable, Sendable {
     case system = ""
+    case atkinsonNext = "AtkinsonHyperlegibleNext-Regular"
     case atkinsonMono = "AtkinsonHyperlegibleMono-Regular"
     case openDyslexic = "OpenDyslexic-Regular"
 
@@ -13,7 +14,8 @@ public enum BundledAppFont: String, CaseIterable, Identifiable, Sendable {
     public var label: String {
         switch self {
         case .system: String(localized: "System Font", table: "Settings", bundle: .module)
-        case .atkinsonMono: "Atkinson Hyperlegible Mono"
+        case .atkinsonNext: "AH Next"
+        case .atkinsonMono: "AH Mono"
         case .openDyslexic: "OpenDyslexic"
         }
     }
@@ -23,6 +25,8 @@ public enum BundledAppFont: String, CaseIterable, Identifiable, Sendable {
     static let resourceNames = [
         "AtkinsonHyperlegibleMono-Regular.ttf", "AtkinsonHyperlegibleMono-Bold.ttf",
         "AtkinsonHyperlegibleMono-Italic.ttf", "AtkinsonHyperlegibleMono-BoldItalic.ttf",
+        "AtkinsonHyperlegibleNext-Regular.ttf", "AtkinsonHyperlegibleNext-Bold.ttf",
+        "AtkinsonHyperlegibleNext-Italic.ttf", "AtkinsonHyperlegibleNext-BoldItalic.ttf",
         "OpenDyslexic-Regular.otf", "OpenDyslexic-Bold.otf",
         "OpenDyslexic-Italic.otf", "OpenDyslexic-BoldItalic.otf",
     ]

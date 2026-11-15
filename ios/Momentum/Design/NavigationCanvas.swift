@@ -12,5 +12,6 @@ extension View {
         scrollEdgeEffectStyle(.soft, for: .top)
             .scrollEdgeEffectHidden(true, for: .bottom)
             .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
+            .momentumNavigationTypography()
     }
 }

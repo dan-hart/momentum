@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import AppKit
+import SwiftUI
 import Testing
 @testable import MomentumKit
 
@@ -15,12 +16,44 @@ import Testing
     }
 
     @Test func bundledFontsResolveInBothAreasWithoutChangingSizes() {
-        for name in ["AtkinsonHyperlegibleMono-Regular", "OpenDyslexic-Regular"] {
+        for choice in BundledAppFont.allCases where choice != .system {
+            let name = choice.rawValue
             let typography = AppTypography(fontName: name, contentSize: 23, interfaceSize: 16)
             #expect(typography.resolvedFont(in: .content).fontName == name)
             #expect(typography.resolvedFont(in: .interface).fontName == name)
             #expect(typography.resolvedFont(in: .content).pointSize == 23)
             #expect(typography.resolvedFont(in: .interface).pointSize == 16)
+        }
+    }
+
+    @MainActor @Test func monoSpacingAppliesAtTheResolvedContentAndInterfaceSizes() throws {
+        let text = Text("Minimum spacing 01234").fixedSize()
+        func size(_ view: some SwiftUI.View) -> CGSize {
+            NSHostingView(rootView: view).fittingSize
+        }
+
+        let suite = "momentum-font-spacing-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(16.0, forKey: PrefKey.interfaceFontSize)
+        for choice in [BundledAppFont.atkinsonMono, .atkinsonNext, .system] {
+            defaults.set(choice.rawValue, forKey: PrefKey.appFontName)
+            let typography = AppTypography(fontName: choice.rawValue, contentSize: 23, interfaceSize: 16)
+            for (area, role) in [(FontArea.content, FontRole.body), (.interface, .caption), (.interface, .body)] {
+                let font = typography.font(in: area, role: role)
+                let baseline = size(text.font(font))
+                let styled = area == .interface && role == .body
+                    ? size(text.momentumTypography().defaultAppStorage(defaults))
+                    : size(text.appFont(role, area: area).environment(\.appTypography, typography))
+                #expect(abs(styled.height - baseline.height) < 0.1)
+                if choice == .atkinsonMono {
+                    let expected = size(text.font(font).tracking(typography.resolvedFont(in: area, role: role).pointSize * -0.025))
+                    #expect(styled.width < baseline.width)
+                    #expect(abs(styled.width - expected.width) < 0.1)
+                } else {
+                    #expect(abs(styled.width - baseline.width) < 0.1)
+                }
+            }
         }
     }
 

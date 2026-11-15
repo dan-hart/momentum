@@ -6,15 +6,25 @@ import SwiftUI
 public enum FontArea: Sendable { case content, interface }
 
 public enum FontRole: Sendable {
-    case body, caption, headline, title, title2, title3
+    case body, caption, footnote, headline, largeTitle, title, title2, title3
 
     var scale: Double {
         switch self {
         case .body, .headline: return 1
         case .caption: return 11.0 / 13
+        case .footnote: return 10.0 / 13
+        case .largeTitle: return 26.0 / 13
         case .title: return 24.0 / 13
         case .title2: return 17.0 / 13
         case .title3: return 15.0 / 13
+        }
+    }
+
+    fileprivate func styled(_ resolvedFont: NSFont) -> Font {
+        let font = Font(resolvedFont)
+        switch self {
+        case .headline, .title, .title2: return font.weight(.semibold)
+        default: return font
         }
     }
 }
@@ -50,11 +60,7 @@ public struct AppTypography: Equatable, Sendable {
     }
 
     public func font(in area: FontArea, role: FontRole = .body) -> Font {
-        let font = Font(resolvedFont(in: area, role: role))
-        switch role {
-        case .headline, .title, .title2: return font.weight(.semibold)
-        default: return font
-        }
+        role.styled(resolvedFont(in: area, role: role))
     }
 
     public static func saveSelection(_ font: NSFont, defaults: UserDefaults = .standard) {
@@ -88,8 +94,8 @@ private struct TypographyEnvironment: ViewModifier {
     func body(content: Content) -> some View {
         let typography = AppTypography(fontName: name, contentSize: contentSize, interfaceSize: interfaceSize)
         content
+            .appFont()
             .environment(\.appTypography, typography)
-            .font(typography.font(in: .interface))
     }
 }
 
@@ -99,7 +105,9 @@ private struct AppFont: ViewModifier {
     let area: FontArea
 
     func body(content: Content) -> some View {
-        content.font(typography.font(in: area, role: role))
+        let font = typography.resolvedFont(in: area, role: role)
+        let spacing = font.fontName.hasPrefix("AtkinsonHyperlegibleMono-") ? font.pointSize * -0.025 : 0
+        content.font(role.styled(font)).tracking(spacing)
     }
 }
 

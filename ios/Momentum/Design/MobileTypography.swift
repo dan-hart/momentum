@@ -7,7 +7,7 @@ import UIKit
 /// Preserve semantic text sizes while applying the selected family and independent
 /// app scale. SwiftUI's relativeTo scaling continues to follow Dynamic Type.
 enum MobileTextStyle: CaseIterable {
-    case body, caption, footnote, callout, headline, title, title2, title3
+    case body, caption, footnote, callout, headline, largeTitle, title, title2, title3
 
     var textStyle: Font.TextStyle {
         switch self {
@@ -16,6 +16,7 @@ enum MobileTextStyle: CaseIterable {
         case .footnote: .footnote
         case .callout: .callout
         case .headline: .headline
+        case .largeTitle: .largeTitle
         case .title: .title
         case .title2: .title2
         case .title3: .title3
@@ -29,6 +30,7 @@ enum MobileTextStyle: CaseIterable {
         case .footnote: .footnote
         case .callout: .callout
         case .headline: .headline
+        case .largeTitle: .largeTitle
         case .title: .title1
         case .title2: .title2
         case .title3: .title3
@@ -47,7 +49,25 @@ enum MobileTypography {
         return name.isEmpty || UIFont(name: name, size: 17) == nil ? nil : name
     }
 
+    static func characterSpacing(for name: String, size: CGFloat) -> CGFloat? {
+        // Tighten Mono by 2.5% of an em, preserving the size of the glyphs.
+        name.hasPrefix("AtkinsonHyperlegibleMono-") ? -size * 0.025 : nil
+    }
 
+    static func navigationFont(name: String?, size: Double, style: MobileTextStyle) -> UIFont {
+        let weight: UIFont.Weight = style == .largeTitle ? .bold : .semibold
+        guard let name,
+              let font = UIFont(name: name, size: size)
+        else { return .systemFont(ofSize: size, weight: weight) }
+
+        // Only promote regular bundled faces for title hierarchy. An installed
+        // face (including an italic or bold selection) stays exactly as chosen.
+        if let choice = BundledAppFont(rawValue: name), choice != .system,
+           let bold = UIFont(name: name.replacingOccurrences(of: "-Regular", with: "-Bold"), size: font.pointSize) {
+            return bold
+        }
+        return font
+    }
 }
 
 private struct MobileFont: ViewModifier {
@@ -67,12 +87,16 @@ private struct MobileFont: ViewModifier {
     func body(content: Content) -> some View {
         let preferences = MobileAppearance(contentScale: contentScale, interfaceScale: interfaceScale)
         let scale = contentArea ? preferences.contentScale : preferences.interfaceScale
-        let font: Font = if let name = MobileTypography.resolvedName(fontName) {
+        let name = MobileTypography.resolvedName(fontName)
+        let font: Font = if let name {
             .custom(name, size: style.baseSize * scale, relativeTo: style.textStyle)
         } else {
             .system(size: scaledSize * scale)
         }
-        content.font(style == .headline ? font.weight(.semibold) : font)
+        let spacing = name.flatMap { MobileTypography.characterSpacing(for: $0, size: scaledSize * scale) }
+        content
+            .font(style == .headline ? font.weight(.semibold) : font)
+            .tracking(spacing ?? 0)
     }
 }
 

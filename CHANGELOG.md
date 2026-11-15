@@ -6,6 +6,18 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.21] - 2026-11-15
+
+### Added
+- Choose the proportional Atkinson Hyperlegible Next font on Linux, macOS, iOS, and Android.
+
+### Changed
+- Tighten Atkinson Hyperlegible Mono character spacing at the original font sizes. Look for AH Mono and AH Next in Appearance, with a link to the Braille Institute’s free fonts.
+
+### Fixed
+- Apply the selected iOS font to navigation titles, Search empty states, and more of Settings.
+- Make the Inbox cleanup icon visible on iOS and Android.
+
 ## [0.4.20] - 2026-11-15
 
 ### Added

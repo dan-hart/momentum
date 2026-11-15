@@ -37,7 +37,7 @@ struct RemindersSettings: View {
                     if state.lists.isEmpty { Text("No reminders lists are available. Create a list in Apple Reminders, then return here.") }
                 }
             } footer: {
-                Text("Automatic import checks your chosen list while Momentum is active and when you reopen it. iOS does not guarantee imports while Momentum is closed. Later edits or completions in either app are not synchronized.")
+                Text("Automatic import checks your chosen list while Momentum is active and when you reopen it. iOS does not guarantee imports while Momentum is closed. Later edits or completions in either app are not synchronized.").mobileFont(.footnote)
             }
             Section {
                 DisclosureGroup("What Gets Imported") {
@@ -68,7 +68,7 @@ struct RemindersSettings: View {
                     }
                 }
             } footer: {
-                Text("Previously imported reminders are skipped, even if you delete their Momentum tasks. Turning this off keeps imported tasks and your selected list.")
+                Text("Previously imported reminders are skipped, even if you delete their Momentum tasks. Turning this off keeps imported tasks and your selected list.").mobileFont(.footnote)
             }
         }
         .navigationTitle("Apple Reminders")

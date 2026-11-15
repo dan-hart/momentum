@@ -14,20 +14,33 @@ struct AppearanceSettingsControls: View {
     @AppStorage(MobileAppearance.interfaceScaleKey) private var interfaceScale = 1.0
     @State private var pickingFont = false
 
+    private static let atkinsonWebsite = URL(string: "https://www.brailleinstitute.org/freefont/")!
 
     var body: some View {
         Group {
             Section {
-                Picker("Font", selection: $fontName) {
-                    ForEach(BundledAppFont.allCases) { choice in
-                        Text(choice.label).tag(choice.rawValue)
+                Menu {
+                    Picker("Font", selection: $fontName) {
+                        ForEach(BundledAppFont.allCases) { choice in
+                            Text(choice.label).tag(choice.rawValue)
+                        }
+                        if BundledAppFont(rawValue: fontName) == nil {
+                            Text(BundledAppFont.customLabel).tag(fontName)
+                        }
                     }
-                    if BundledAppFont(rawValue: fontName) == nil {
-                        Text(BundledAppFont.customLabel).tag(fontName)
+                } label: {
+                    LabeledContent {
+                        Text(BundledAppFont(rawValue: fontName)?.label ?? fontName)
+                            .mobileFont(.callout)
+                            .foregroundStyle(AccentTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } label: {
+                        Text("Font").mobileFont().foregroundStyle(Color.primary)
                     }
-                }.settingsTarget("appearance.font")
+                }
+                .settingsTarget("appearance.font")
                 Button { pickingFont = true } label: {
-                    LabeledContent("Choose Font…", value: BundledAppFont(rawValue: fontName)?.label ?? fontName)
+                    Text("Choose Font…").mobileFont()
                 }
                 Stepper(value: $contentScale, in: MobileAppearance.scaleRange, step: 0.1) {
                     LabeledContent("Task text", value: contentScale.formatted(.percent.precision(.fractionLength(0))))
@@ -36,17 +49,29 @@ struct AppearanceSettingsControls: View {
                     LabeledContent("Interface text", value: interfaceScale.formatted(.percent.precision(.fractionLength(0))))
                 }.settingsTarget("appearance.interface-size")
                 Button("Reset Typography") { fontName = ""; contentScale = 1; interfaceScale = 1 }.settingsTarget("appearance.reset")
-            } header: { Text("Typography").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Typography").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Make room for what matters").mobileFont(content: true)
                     Text("Your tasks, at your pace.").mobileFont(content: true, caption: true).foregroundStyle(AccentTheme.secondaryText)
+                    Divider()
+                    Text("Interface text").mobileFont(.headline)
                 }.padding(.vertical, 8)
-            } header: { Text("Preview").foregroundStyle(AccentTheme.secondaryText) } footer: {
-                Text("Text follows your device's Dynamic Type size. System navigation and controls keep their native styles.")
+            } header: { Text("Preview").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) } footer: {
+                Text("Text follows your device's Dynamic Type size.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
-
+            Section {
+                Text("AH stands for Atkinson Hyperlegible. AH Mono uses fixed-width characters and AH Next uses proportional spacing.")
+                    .mobileFont()
+                    .fixedSize(horizontal: false, vertical: true)
+                Link(destination: Self.atkinsonWebsite) {
+                    Label("Free fonts from Braille Institute", systemImage: "arrow.up.right")
+                        .mobileFont()
+                }
+            } header: {
+                Text("About the AH Fonts").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
+            }
         }
         .momentumNavigationCanvas()
         .sheet(isPresented: $pickingFont) { NativeFontPicker(fontName: $fontName) }

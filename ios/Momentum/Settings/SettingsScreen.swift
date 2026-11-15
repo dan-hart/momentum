@@ -53,7 +53,7 @@ struct SettingsScreen: View {
                 NavigationLink(value: category.id + ".") {
                     Label {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(category.title)
+                            Text(category.title).mobileFont()
                             Text(category.subtitle).mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -64,11 +64,11 @@ struct SettingsScreen: View {
             let results = entries
             ForEach(results, id: \.id) { entry in
                 NavigationLink(value: entry.id) {
-                    VStack(alignment: .leading) { Text(entry.title); Text(entry.category).mobileFont(.caption).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading) { Text(entry.title).mobileFont(); Text(entry.category).mobileFont(.caption).foregroundStyle(.secondary) }
                 }.tag(entry.id)
             }
             if results.isEmpty {
-                Text("No matching settings")
+                Text("No matching settings").mobileFont()
                 Button("Clear search") { query = "" }
             }
         }
@@ -81,6 +81,7 @@ struct SettingsScreen: View {
         }
         .navigationTitle(SettingsDiscovery.categories(platform: .ios).first { $0.id == SettingsDiscovery.category(for: destination) }?.title ?? "Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .momentumNavigationTypography()
     }
     private var entries: [SettingsEntry] {
         SettingsDiscovery.results(query, platform: .ios).filter { $0.id != "integrations.shortcuts" || model.platformCapabilities.showsKeyboardShortcuts }
@@ -139,7 +140,7 @@ struct SettingsSearchResults: View {
             Section("Settings") {
                 ForEach(Array(results.prefix(5)), id: \.id) { entry in
                     Button { destination = entry.id; showingSettings = true } label: {
-                        VStack(alignment: .leading) { Text(entry.title); Text(entry.category).mobileFont(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading) { Text(entry.title).mobileFont(); Text(entry.category).mobileFont(.caption).foregroundStyle(.secondary) }
                     }
                 }
                 if results.count > 5 {
@@ -183,9 +184,9 @@ private struct TaskListSettings: View {
                 AdaptiveSettingsPicker("Upcoming", symbol: "calendar", selection: $range,
                                        options: [("7", "Next 7 Days"), ("30", "Next 30 Days")])
                     .accessibilityIdentifier("settings-range").settingsTarget("tasks.upcoming")
-            } header: { Text("Organization").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Organization").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
             footer: {
-                Text("Upcoming is always grouped by day. Group By applies to Today, projects and tags.")
+                Text("Upcoming is always grouped by day. Group By applies to Today, projects and tags.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
             Section {
@@ -193,7 +194,7 @@ private struct TaskListSettings: View {
                 Toggle(isOn: $autoArchive) {
                     SettingsLabel("Archive completed tasks immediately", symbol: "archivebox.fill").settingsTarget("tasks.archive")
                 }
-            } header: { Text("Completed Tasks").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Completed Tasks").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
         }
         .navigationTitle("Task Lists")
         .momentumNavigationCanvas()
@@ -216,7 +217,7 @@ private struct AppearanceOverview: View {
                 Toggle(isOn: $colorful) {
                     SettingsLabel("Color-code projects and tags", symbol: "tag.fill").settingsTarget("appearance.colors")
                 }
-            } header: { Text("Colors").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Colors").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
             Section {
                 Toggle("Compact rows", isOn: Binding(get: { density == "compact" }, set: { density = $0 ? "compact" : "regular" })).settingsTarget("appearance.compact")
             }
@@ -264,6 +265,7 @@ private struct AdaptiveSettingsPicker: View {
                 VStack(alignment: .leading, spacing: 8) {
                     SettingsLabel(title, symbol: symbol)
                     Text(options.first { $0.id == selection }?.title ?? "")
+                        .mobileFont(.callout)
                         .foregroundStyle(AccentTheme.secondaryText)
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -279,6 +281,7 @@ private struct AdaptiveSettingsPicker: View {
     private var choices: some View {
         ForEach(options) { option in
             Text(option.title)
+                .mobileFont()
                 .fixedSize(horizontal: false, vertical: true)
                 .tag(option.id)
         }

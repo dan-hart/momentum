@@ -71,11 +71,12 @@ Momentum's GPL-3.0-or-later licensing and do not require a paid service.
 
 ## Bundled accessibility fonts
 
-Atkinson Hyperlegible Mono © 2020–2024 The Atkinson Hyperlegible Mono Project
-Authors and OpenDyslexic © Abbie/Abelardo Gonzalez are distributed under the
-SIL Open Font License 1.1. Original regular, bold, italic and bold-italic faces are
-bundled for offline use on all native platforms; the fonts are not relicensed as
-GPL. Full copyright and license text accompanies each native resource bundle.
+Atkinson Hyperlegible Mono and Atkinson Hyperlegible Next © 2020–2024 their
+respective project authors, and OpenDyslexic © Abbie/Abelardo Gonzalez, are
+distributed under the SIL Open Font License 1.1. Each native app bundles the
+original regular, bold, italic and bold-italic faces with the full copyright
+and license text.
 See [font provenance](data/resources/fonts/provenance.json),
-[Atkinson license](data/resources/fonts/AtkinsonHyperlegibleMono-OFL.txt) and
-[OpenDyslexic license](data/resources/fonts/OpenDyslexic-OFL.txt).
+[Atkinson Mono license](data/resources/fonts/AtkinsonHyperlegibleMono-OFL.txt),
+[Atkinson Next license](data/resources/fonts/AtkinsonHyperlegibleNext-OFL.txt)
+and [OpenDyslexic license](data/resources/fonts/OpenDyslexic-OFL.txt).

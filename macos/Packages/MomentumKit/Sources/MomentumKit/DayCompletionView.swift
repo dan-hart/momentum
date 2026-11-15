@@ -17,7 +17,13 @@ public struct DayCompletionView: SwiftUI.View {
         VStack(spacing: 12) {
             Image(systemName: view == .morning ? "sun.max" : view == .tonight ? "moon" : "checkmark.circle")
                 .font(.largeTitle).foregroundStyle(.tint).accessibilityHidden(true)
-            Text(title).font(.title2).accessibilityAddTraits(.isHeader)
+            Text(title)
+                #if os(macOS)
+                .appFont(.title2).fontWeight(.regular)
+                #else
+                .font(.title2)
+                #endif
+                .accessibilityAddTraits(.isHeader)
             if dynamic, let id = message.id {
                 Text(CompletionMessageSelection.text(id: id, locale: locale))
                     .multilineTextAlignment(.center).foregroundStyle(.secondary)

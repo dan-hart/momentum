@@ -8,6 +8,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -99,6 +101,33 @@ class TypographySettingsTest {
         }
     }
 
+    @Test fun typographyCreditsExplainFontChoicesAndLinkToBrailleInstitute() {
+        val app = ApplicationProvider.getApplicationContext<MomentumApplication>()
+        var openedUri: String? = null
+        val uriHandler = object : UriHandler {
+            override fun openUri(uri: String) { openedUri = uri }
+        }
+        compose.setContent {
+            CompositionLocalProvider(LocalUriHandler provides uriHandler) {
+                MomentumTheme(AppSettings(font = NativeFont.AtkinsonHyperlegibleMono, interfaceTextScale = 2f)) {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        TypographySettings(AppSettings(font = NativeFont.AtkinsonHyperlegibleMono)) { }
+                    }
+                }
+            }
+        }
+        compose.onNodeWithText("AH Mono").performScrollTo().assertIsSelected()
+        compose.onNodeWithText("AH Next").performScrollTo().assertIsNotSelected()
+        compose.onNodeWithText(app.getString(R.string.typography_credit)).performScrollTo().assertIsDisplayed()
+        val description = app.getString(R.string.typography_credit_description)
+        compose.onNodeWithText(description).performScrollTo().assertIsDisplayed()
+        val linkLabel = app.getString(R.string.typography_credit_link)
+        compose.onNodeWithText(linkLabel).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasAnyAncestor(hasText(linkLabel)) and hasClickAction(),
+            useUnmergedTree = true).performClick()
+        compose.runOnIdle { assertEquals("https://www.brailleinstitute.org/freefont/", openedUri) }
+    }
+
     @Test fun nativeControlsChangeOnlyTheirAreaAndResetBoth() {
         val app = ApplicationProvider.getApplicationContext<MomentumApplication>()
         var settings by mutableStateOf(AppSettings(compact = true))
@@ -126,6 +155,7 @@ class TypographySettingsTest {
         compose.onNodeWithText(app.getString(R.string.font_monospace)).performScrollTo().performClick()
         compose.runOnIdle { assertEquals(NativeFont.Monospace, settings.font) }
         for ((label, choice) in listOf(R.string.font_atkinson_hyperlegible_mono to NativeFont.AtkinsonHyperlegibleMono,
+            R.string.font_atkinson_hyperlegible_next to NativeFont.AtkinsonHyperlegibleNext,
             R.string.font_opendyslexic to NativeFont.OpenDyslexic)) {
             compose.onNodeWithText(app.getString(label)).performScrollTo().performClick()
             compose.runOnIdle {

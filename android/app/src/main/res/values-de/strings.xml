@@ -250,7 +250,8 @@
     <string name="font_system">Systemschrift</string>
     <string name="font_sans">Serifenlos</string>
     <string name="font_serif">Mit Serifen</string>
-    <string name="font_atkinson_hyperlegible_mono">Atkinson Hyperlegible Mono</string>
+    <string name="font_atkinson_hyperlegible_next">AH Next</string>
+    <string name="font_atkinson_hyperlegible_mono">AH Mono</string>
     <string name="font_opendyslexic">OpenDyslexic</string>
     <string name="font_monospace">Nichtproportional</string>
     <string name="content_text_size">Textgröße der Aufgaben</string>
@@ -259,6 +260,9 @@
     <string name="typography_reset">Textdarstellung zurücksetzen</string>
     <string name="typography_hint">Wähle getrennte Größen für Aufgaben und Bedienelemente. Die Android-Systemtextgröße bleibt wirksam.</string>
     <string name="typography_preview">Ein wenig Platz zum Durchatmen</string>
+    <string name="typography_credit">Über die AH-Schriften</string>
+    <string name="typography_credit_description">AH steht für Atkinson Hyperlegible. Bei AH Mono sind alle Zeichen gleich breit. Bei AH Next hängt die Breite vom jeweiligen Zeichen ab.</string>
+    <string name="typography_credit_link">Kostenlose Schriften vom Braille Institute</string>
     <string name="system_search">Systemweite Aufgabensuche</string>
     <string name="system_search_enabled">Unfertige Titel in der Systemsuche anzeigen</string>
     <string name="system_search_hint">Nur unfertige Aufgabentitel und Links zum Öffnen werden auf diesem Gerät indiziert. Notizen und Sync-Details bleiben privat. Die Ergebnisse hängen vom Launcher ab.</string>

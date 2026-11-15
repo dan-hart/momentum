@@ -676,12 +676,9 @@ mod imp {
             let updating_choice = std::rc::Rc::new(std::cell::Cell::new(false));
             let sync_choice = |row: &adw::ComboRow, saved: &str| {
                 let selected = crate::font_choice::selected_index(saved);
-                let mut labels = vec![
-                    gettext("System"),
-                    crate::font_choice::MONO_FAMILY.to_string(),
-                    crate::font_choice::DYSLEXIC_FAMILY.to_string(),
-                ];
-                if selected == 3 {
+                let mut labels = vec![gettext("System")];
+                labels.extend(crate::font_choice::CURATED_FONTS.map(|(label, _)| label.to_owned()));
+                if selected == crate::font_choice::CUSTOM_INDEX {
                     labels.push(gettext("Custom"));
                 }
                 if row.model().is_none_or(|model| model.n_items() != labels.len() as u32) {

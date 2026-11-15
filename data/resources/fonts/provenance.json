@@ -26,6 +26,30 @@
       "android": "atkinson_hyperlegible_mono_regular.ttf"
     },
     {
+      "file": "AtkinsonHyperlegibleNext-Bold.ttf",
+      "sha256": "994414047df66bb4998d01c1cb1eeb4a2ddc4622d1aa56bbb8adbeca7645b041",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next/7925f50f649b3813257faf2f4c0b381011f434f1/fonts/ttf/AtkinsonHyperlegibleNext-Bold.ttf",
+      "android": "atkinson_hyperlegible_next_bold.ttf"
+    },
+    {
+      "file": "AtkinsonHyperlegibleNext-BoldItalic.ttf",
+      "sha256": "c2d3c596b54d1565ca20d383cdfb127b50b18b500b85a774fd07d4d976cd018b",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next/7925f50f649b3813257faf2f4c0b381011f434f1/fonts/ttf/AtkinsonHyperlegibleNext-BoldItalic.ttf",
+      "android": "atkinson_hyperlegible_next_bold_italic.ttf"
+    },
+    {
+      "file": "AtkinsonHyperlegibleNext-Italic.ttf",
+      "sha256": "b7f8f03ceb28ebadb2de2332b2e869a00e8dbfb5c8e00fdbb06385770c8227e7",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next/7925f50f649b3813257faf2f4c0b381011f434f1/fonts/ttf/AtkinsonHyperlegibleNext-Italic.ttf",
+      "android": "atkinson_hyperlegible_next_italic.ttf"
+    },
+    {
+      "file": "AtkinsonHyperlegibleNext-Regular.ttf",
+      "sha256": "88ed5c31a71584c7772963b02d04bef1eb7e3d2e9c8b9cb204339b1f82cf432c",
+      "source": "https://raw.githubusercontent.com/googlefonts/atkinson-hyperlegible-next/7925f50f649b3813257faf2f4c0b381011f434f1/fonts/ttf/AtkinsonHyperlegibleNext-Regular.ttf",
+      "android": "atkinson_hyperlegible_next_regular.ttf"
+    },
+    {
       "file": "OpenDyslexic-Bold.otf",
       "sha256": "5d690ea4c87ccb0d5d5d81487826a395e9b20a6c1d606f1f262c060d2bef4f03",
       "source": "https://raw.githubusercontent.com/antijingoist/opendyslexic/1824da5c0e41dc3e13ffc7f3a636dcaf695d61b7/compiled/OpenDyslexic-Bold.otf",
@@ -52,6 +76,7 @@
   ],
   "licenses": {
     "OpenDyslexic-OFL.txt": "caafcccfb70fc72458fcbda812ec8f0a06cb300cbabb87eabbb30b946124394b",
-    "AtkinsonHyperlegibleMono-OFL.txt": "1ebb31cf7393164f20d10c1d48406cddb5314feff8465531cf1e4ba37e9dd740"
+    "AtkinsonHyperlegibleMono-OFL.txt": "1ebb31cf7393164f20d10c1d48406cddb5314feff8465531cf1e4ba37e9dd740",
+    "AtkinsonHyperlegibleNext-OFL.txt": "aca6a428580965d2297d1b718042dd427c2a9443ece3b0d02d758e161e0c4030"
   }
 }

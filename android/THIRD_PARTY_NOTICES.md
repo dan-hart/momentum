@@ -14,6 +14,7 @@ Keep existing copyright/license headers and supply corresponding source with bui
 | kotlinx.coroutines 1.11.0 | Apache-2.0 | [Source and license](https://github.com/Kotlin/kotlinx.coroutines) |
 | JNA 5.19.1 | Apache-2.0 or LGPL-2.1-or-later; Apache option used | [Source](https://github.com/java-native-access/jna/tree/5.19.1), [license](https://github.com/java-native-access/jna/blob/5.19.1/LICENSE) |
 | Desugared JDK libraries | GPL-2.0 with Classpath exception and Apache-2.0 portions | [Source and notices](https://github.com/google/desugar_jdk_libs) |
+| Atkinson Hyperlegible Next | SIL Open Font License 1.1 | [Canonical font resources](../data/resources/fonts/), [license](app/src/main/assets/font-licenses/AtkinsonHyperlegibleNext-OFL.txt) |
 | Atkinson Hyperlegible Mono | SIL Open Font License 1.1 | [Canonical font resources](../data/resources/fonts/), [license](app/src/main/assets/font-licenses/AtkinsonHyperlegibleMono-OFL.txt) |
 | OpenDyslexic | SIL Open Font License 1.1 | [Canonical font resources](../data/resources/fonts/), [license](app/src/main/assets/font-licenses/OpenDyslexic-OFL.txt) |
 | JUnit 4 (tests only) | EPL-1.0 | [Source and license](https://github.com/junit-team/junit4) |

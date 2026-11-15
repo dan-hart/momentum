@@ -11,8 +11,8 @@ struct AccentSettings: View {
             Section {
                 AccentChoiceRow(choice: .momentum, selected: $selected,
                                 onSelectionChange: model.accentSelectionDidChange)
-            } header: { Text("Momentum Default").foregroundStyle(AccentTheme.secondaryText) } footer: {
-                Text("Momentum Default stays orange in every appearance. Custom colors adapt for readable text and controls.")
+            } header: { Text("Momentum Default").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) } footer: {
+                Text("Momentum Default stays orange in every appearance. Custom colors adapt for readable text and controls.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
             Section {
@@ -29,7 +29,7 @@ struct AccentSettings: View {
                 Label("Ready for today", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.tint)
                 Text("Body text keeps its system color for readability.").foregroundStyle(Color.primary)
-            } header: { Text("Preview").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Preview").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
         }
         .navigationTitle("Accent Color")
         .momentumNavigationCanvas()

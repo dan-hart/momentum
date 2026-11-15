@@ -31,9 +31,20 @@ public struct MomentumAboutView: View {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     appIcon.frame(width: 72, height: 72).accessibilityHidden(true)
-                    Text("Momentum").font(.largeTitle.bold())
+                    Text("Momentum")
+                        #if os(macOS)
+                        .appFont(.largeTitle).bold()
+                        #else
+                        .font(.largeTitle.bold())
+                        #endif
                     Text(String(localized: "Make room for what matters.", bundle: .module))
-                    Text(MomentumAppDetails.text(platform: platform)).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    Text(MomentumAppDetails.text(platform: platform))
+                        #if os(macOS)
+                        .appFont(.footnote)
+                        #else
+                        .font(.caption)
+                        #endif
+                        .foregroundStyle(.secondary).textSelection(.enabled)
                 }.padding(.vertical, 16)
             }.settingsTarget("about.app")
             Section(String(localized: "Our values", bundle: .module)) {
@@ -89,7 +100,12 @@ public struct MomentumAboutView: View {
     private func notice(_ resource: String, title: String) -> some View {
         DisclosureGroup(title) {
             Text((Bundle.module.url(forResource: resource, withExtension: "txt").flatMap { try? String(contentsOf: $0, encoding: .utf8) }) ?? title)
-                .font(.caption).textSelection(.enabled)
+                #if os(macOS)
+                .appFont(.footnote)
+                #else
+                .font(.caption)
+                #endif
+                .textSelection(.enabled)
         }
     }
 }

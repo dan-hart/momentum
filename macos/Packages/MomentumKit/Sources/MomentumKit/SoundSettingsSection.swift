@@ -23,7 +23,13 @@ public struct SoundSettingsSection: View {
                 Slider(value: Binding(get: { normalizedVolume }, set: { volume = $0 }), in: 0...1).settingsTarget("sounds.volume")
                     .accessibilityLabel(localized("Volume"))
                     .accessibilityValue(normalizedVolume.formatted(.percent.precision(.fractionLength(0))))
-                Text(normalizedVolume.formatted(.percent.precision(.fractionLength(0)))).font(.caption).foregroundStyle(.secondary)
+                Text(normalizedVolume.formatted(.percent.precision(.fractionLength(0))))
+                    #if os(macOS)
+                    .appFont(.footnote)
+                    #else
+                    .font(.caption)
+                    #endif
+                    .foregroundStyle(.secondary)
             }
             if let old = CompletionSoundChoice(rawValue: selected), old.isLegacy {
                 candidate(old, legacy: true)

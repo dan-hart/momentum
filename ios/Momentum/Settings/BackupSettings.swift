@@ -56,7 +56,7 @@ struct BackupSettings: View {
                 .accessibilityIdentifier("backup-export").settingsTarget("data.tasks-export")
                 .disabled(!available)
             } footer: {
-                Text("Backups include your tasks, projects, tags, and repeat schedules. Keep a copy somewhere safe.")
+                Text("Backups include your tasks, projects, tags, and repeat schedules. Keep a copy somewhere safe.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
@@ -86,7 +86,7 @@ struct BackupSettings: View {
                         .foregroundStyle(Color.primary).disabled(!available)
                 }
             } footer: {
-                Text("Restoring replaces all tasks on this device and discards unsynced changes. This cannot be undone.")
+                Text("Restoring replaces all tasks on this device and discards unsynced changes. This cannot be undone.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
@@ -109,8 +109,8 @@ struct BackupSettings: View {
                     Button("Choose Another File", systemImage: "folder") { settingsOnly = true; importing = true }
                         .disabled(!available)
                 }
-            } header: { Text("App settings only") } footer: {
-                Text("Task display, grouping, sorting, archive and sound preferences. Credentials, connections, permissions and device controls stay local.")
+            } header: { Text("App settings only").mobileFont(.footnote) } footer: {
+                Text("Task display, grouping, sorting, archive and sound preferences. Credentials, connections, permissions and device controls stay local.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 

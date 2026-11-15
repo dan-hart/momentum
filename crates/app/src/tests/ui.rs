@@ -2089,13 +2089,16 @@ fn bundled_font_selection_preserves_scales_custom_picker_and_reset() {
         let row = &imp.font_choice_row;
         let curated_model = row.model().unwrap();
         assert_eq!(row.selected(), 0);
-        assert_eq!(row.model().unwrap().n_items(), 3);
+        assert_eq!(row.model().unwrap().n_items(), 4);
         imp.content_scale_row.set_value(75.0);
         imp.interface_scale_row.set_value(250.0);
-        for (index, family) in [
-            (1, crate::font_choice::MONO_FAMILY),
-            (2, crate::font_choice::DYSLEXIC_FAMILY),
+        let labels = curated_model.clone().downcast::<gtk::StringList>().unwrap();
+        for (index, label, family) in [
+            (1, "AH Mono", crate::font_choice::MONO_FAMILY),
+            (2, "OpenDyslexic", crate::font_choice::DYSLEXIC_FAMILY),
+            (3, "AH Next", crate::font_choice::NEXT_FAMILY),
         ] {
+            assert_eq!(labels.string(index).as_deref(), Some(label));
             row.set_selected(index);
             // Selection notification must finish before any model replacement;
             // replacing it synchronously invalidates GTK's active selection.
@@ -2122,15 +2125,15 @@ fn bundled_font_selection_preserves_scales_custom_picker_and_reset() {
         imp.font_button
             .set_font_desc(&gtk::pango::FontDescription::from_string("Cantarell Bold 18"));
         pump();
-        assert_eq!(row.selected(), 3);
-        assert_eq!(row.model().unwrap().n_items(), 4);
+        assert_eq!(row.selected(), crate::font_choice::CUSTOM_INDEX);
+        assert_eq!(row.model().unwrap().n_items(), 5);
         assert!(settings().string("typography-font").contains("Bold"));
         let custom_model = row.model().unwrap();
         row.set_selected(0);
         assert_eq!(row.model().unwrap(), custom_model);
         pump();
         assert!(settings().string("typography-font").is_empty());
-        assert_eq!(row.model().unwrap().n_items(), 3);
+        assert_eq!(row.model().unwrap().n_items(), 4);
         assert_eq!(settings().int("typography-content-scale"), 75);
         // Queued updates resolve the latest persisted choice rather than
         // replaying a stale selection captured by an earlier notification.
@@ -2149,6 +2152,64 @@ fn bundled_font_selection_preserves_scales_custom_picker_and_reset() {
         assert_eq!(settings().int("typography-content-scale"), 100);
         assert_eq!(settings().int("typography-interface-scale"), 100);
         reset_typography_settings();
+    });
+}
+
+#[test]
+fn about_explains_typography_and_links_to_the_braille_institute() {
+    on_gtk(|| {
+        let (win, _) = demo_window();
+        win.present();
+        let prefs = crate::prefs::MomentumPrefs::default();
+        prefs.present(Some(&win));
+        prefs.set_visible_page_name("about");
+        pump();
+
+        let about = prefs.visible_page().expect("About & Help page");
+        let widgets = descendants(about.upcast_ref());
+        let typography = widgets
+            .iter()
+            .filter_map(|widget| widget.downcast_ref::<adw::PreferencesGroup>())
+            .find(|group| group.title() == "Typography")
+            .expect("Typography in About & Help");
+        let description = typography.description().expect("Typography description");
+        for term in [
+            "Atkinson Hyperlegible",
+            "AH Mono",
+            "fixed-width",
+            "AH Next",
+            "proportional",
+        ] {
+            assert!(description.contains(term), "{description}");
+        }
+        let link = descendants(typography.upcast_ref())
+            .into_iter()
+            .find_map(|widget| widget.downcast::<gtk::LinkButton>().ok())
+            .expect("link to the Braille Institute");
+        assert_eq!(link.uri(), "https://www.brailleinstitute.org/freefont/");
+        assert!(link.is_focusable());
+        assert_eq!(link.accessible_role(), gtk::AccessibleRole::Link);
+        let label = link.child().and_downcast::<gtk::Label>().expect("native link label");
+        assert_eq!(label.label(), "Free fonts from Braille Institute");
+        assert!(label.property::<bool>("wrap"));
+        assert!(gtk::test_accessible_has_relation(
+            &link,
+            gtk::AccessibleRelation::LabelledBy
+        ));
+        assert!(link.grab_focus());
+        let activated = std::rc::Rc::new(std::cell::Cell::new(false));
+        link.connect_activate_link({
+            let activated = activated.clone();
+            move |_| {
+                activated.set(true);
+                glib::Propagation::Stop
+            }
+        });
+        link.emit_clicked();
+        assert!(activated.get(), "native link activation");
+        prefs.close();
+        win.close();
+        pump();
     });
 }
 
@@ -2776,6 +2837,69 @@ fn typography_css_provider_accepts_generated_css_at_supported_scales() {
                 *errors.borrow()
             );
         }
+    });
+}
+
+#[test]
+fn typography_mono_tightens_each_native_text_size_without_changing_it() {
+    on_gtk(|| {
+        reset_typography_settings();
+        settings().set_int("typography-content-scale", 175).unwrap();
+        settings().set_int("typography-interface-scale", 125).unwrap();
+
+        let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        crate::typography::register_interface_root(&root);
+        let body = gtk::Label::new(Some("Interface text"));
+        let title = gtk::Label::new(Some("Semantic title"));
+        title.add_css_class("title-1");
+        let task = gtk::Label::new(Some("Task text"));
+        crate::typography::register_content_root(&task);
+        let labels = [&body, &title, &task];
+        for label in labels {
+            root.append(label);
+        }
+        let fixture = gtk::Window::builder().application(&app()).child(&root).build();
+        fixture.present();
+        pump();
+
+        let text_size = |label: &gtk::Label| label.pango_context().font_description().unwrap().size();
+        let spacing = |label: &gtk::Label| {
+            label.layout().attributes().and_then(|attributes| {
+                attributes
+                    .iterator()
+                    .get(gtk::pango::AttrType::LetterSpacing)
+                    .and_then(|attribute| attribute.downcast::<gtk::pango::AttrInt>().ok())
+                    .map(|attribute| attribute.value())
+            })
+        };
+        let original_sizes = labels.map(text_size);
+        assert!(original_sizes[1] > original_sizes[0]);
+        assert!(original_sizes[2] > original_sizes[0]);
+
+        settings()
+            .set_string("typography-font", crate::font_choice::MONO_FAMILY)
+            .unwrap();
+        pump_ms(250);
+        assert_eq!(labels.map(text_size), original_sizes);
+        for (label, size) in labels.into_iter().zip(original_sizes) {
+            let expected = (size as f64 * -0.025).round() as i32;
+            let actual = spacing(label).expect("Pango letter spacing for AH Mono");
+            assert!(
+                (actual - expected).abs() <= 1,
+                "spacing {actual} vs {expected} for {size}"
+            );
+        }
+
+        settings()
+            .set_string("typography-font", crate::font_choice::NEXT_FAMILY)
+            .unwrap();
+        pump_ms(250);
+        assert_eq!(labels.map(text_size), original_sizes);
+        assert_eq!(labels.map(spacing), [None; 3]);
+
+        fixture.close();
+        pump();
+        reset_typography_settings();
     });
 }
 

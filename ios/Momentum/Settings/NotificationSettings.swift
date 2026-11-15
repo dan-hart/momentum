@@ -44,9 +44,9 @@ struct NotificationSettings: View {
                     Text("Permission could not be requested. Try again or open iOS Settings.")
                         .foregroundStyle(AccentTheme.secondaryText)
                 }
-            } header: { Text("Delivery").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Delivery").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
             footer: {
-                Text("Reminders work offline. Focus, notification settings, and iOS may delay delivery.").settingsTarget("notifications.reminders")
+                Text("Reminders work offline. Focus, notification settings, and iOS may delay delivery.").settingsTarget("notifications.reminders").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
@@ -87,6 +87,7 @@ struct NotificationSettings: View {
                             }
                         }
                         .navigationTitle("Include in Summary")
+                        .momentumNavigationTypography()
                     } label: {
                         SettingsLabel("Include in Summary", symbol: "list.bullet")
                     }
@@ -100,9 +101,9 @@ struct NotificationSettings: View {
                             .accessibilityIdentifier("notifications-summary-preview")
                     }
                 }
-            } header: { Text("Daily Overview").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Daily Overview").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
             footer: {
-                Text("The summary skips days when the selected sections are empty. Configure individual reminders on each task.")
+                Text("The summary skips days when the selected sections are empty. Configure individual reminders on each task.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
@@ -125,10 +126,10 @@ struct NotificationSettings: View {
                     Label("The app badge could not be updated. Refresh the schedule to retry.", systemImage: "exclamationmark.triangle")
                 }
             } footer: {
-                Text("Each unfinished parent task counts once. Subtasks are included with their parent; zero hides the badge.")
+                Text("Each unfinished parent task counts once. Subtasks are included with their parent; zero hides the badge.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
                 if badgeMode != DockBadgeMode.none.rawValue && (remindersUpdateBadge || summaryUpdatesBadge) {
-                    Text("When Momentum is closed, notifications use the badge count calculated when they were scheduled.")
+                    Text("When Momentum is closed, notifications use the badge count calculated when they were scheduled.").mobileFont(.footnote)
                         .foregroundStyle(AccentTheme.secondaryText)
                 }
             }
@@ -161,9 +162,9 @@ struct NotificationSettings: View {
                     }
                 }
                 .disabled(notifications.isRefreshing)
-            } header: { Text("Schedule").foregroundStyle(AccentTheme.secondaryText) }
+            } header: { Text("Schedule").mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText) }
             footer: {
-                Text("Momentum plans a limited window ahead. Permission is required for delivery.")
+                Text("Momentum plans a limited window ahead. Permission is required for delivery.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
         }

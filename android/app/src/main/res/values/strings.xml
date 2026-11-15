@@ -250,7 +250,8 @@
     <string name="font_system">System font</string>
     <string name="font_sans">Sans serif</string>
     <string name="font_serif">Serif</string>
-    <string name="font_atkinson_hyperlegible_mono">Atkinson Hyperlegible Mono</string>
+    <string name="font_atkinson_hyperlegible_next">AH Next</string>
+    <string name="font_atkinson_hyperlegible_mono">AH Mono</string>
     <string name="font_opendyslexic">OpenDyslexic</string>
     <string name="font_monospace">Monospace</string>
     <string name="content_text_size">Task text size</string>
@@ -259,6 +260,9 @@
     <string name="typography_reset">Reset text appearance</string>
     <string name="typography_hint">Choose separate sizes for task content and controls. Android system text size stays active.</string>
     <string name="typography_preview">A little room to breathe</string>
+    <string name="typography_credit">About the AH Fonts</string>
+    <string name="typography_credit_description">AH stands for Atkinson Hyperlegible. AH Mono uses fixed-width characters and AH Next uses proportional spacing.</string>
+    <string name="typography_credit_link">Free fonts from Braille Institute</string>
     <string name="system_search">System task search</string>
     <string name="system_search_enabled">Show unfinished titles in system search</string>
     <string name="system_search_hint">Only unfinished task titles and opening links are indexed on this device. Notes and sync details stay private. Results depend on your launcher.</string>

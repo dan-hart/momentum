@@ -16,7 +16,7 @@ struct SettingsLabel: View {
                 .foregroundStyle(.tint).frame(width: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).foregroundStyle(Color.primary)
+                Text(title).mobileFont().foregroundStyle(Color.primary)
                 if let subtitle {
                     Text(subtitle).mobileFont(.footnote).foregroundStyle(AccentTheme.secondaryText)
                 }

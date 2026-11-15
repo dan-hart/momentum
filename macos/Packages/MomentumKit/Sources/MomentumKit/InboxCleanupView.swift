@@ -30,25 +30,38 @@ public struct InboxCleanupInput: Sendable {
 }
 
 public struct InboxCleanupButton: SwiftUI.View {
+    private let foreground: Color?
     private let load: @MainActor () async -> InboxCleanupInput?
     private let apply: @MainActor ([InboxCleanupChange]) async -> Outcome?
     @State private var isReviewing = false
 
-    public init(load: @escaping @MainActor () async -> InboxCleanupInput?,
+    public init(foreground: Color? = nil,
+                load: @escaping @MainActor () async -> InboxCleanupInput?,
                 apply: @escaping @MainActor ([InboxCleanupChange]) async -> Outcome?) {
+        self.foreground = foreground
         self.load = load
         self.apply = apply
     }
 
     public var body: some SwiftUI.View {
         Button { isReviewing = true } label: {
+            #if os(iOS)
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(foreground ?? .white)
+                    .accessibilityHidden(true)
+                Text("Clean Up Inbox", bundle: .module)
+                    .foregroundStyle(foreground ?? .white)
+            }
+            .frame(maxWidth: .infinity, minHeight: 36)
+            #else
             Label {
                 Text("Clean Up Inbox", bundle: .module)
             } icon: {
                 Image(systemName: "sparkles")
             }
-            #if os(iOS)
-            .frame(maxWidth: .infinity, minHeight: 36)
+            .labelStyle(.titleAndIcon)
             #endif
         }
         .buttonStyle(.borderedProminent)
@@ -86,7 +99,7 @@ private struct InboxCleanupReview: SwiftUI.View {
         #if os(macOS)
         VStack(spacing: 0) {
             Text("Review Inbox Cleanup", bundle: .module)
-                .font(.title2.weight(.semibold))
+                .appFont(.title2)
                 .padding()
             content
             Divider()
@@ -168,10 +181,18 @@ private struct InboxCleanupReview: SwiftUI.View {
                                 } icon: {
                                     Image(systemName: "link")
                                 }
+                                #if os(macOS)
+                                .appFont(.caption)
+                                #else
                                 .font(.subheadline)
+                                #endif
                                 ForEach(draft.change.links, id: \.self) { link in
                                     Text(verbatim: link)
+                                        #if os(macOS)
+                                        .appFont(.footnote)
+                                        #else
                                         .font(.caption)
+                                        #endif
                                         .foregroundStyle(.secondary)
                                         .textSelection(.enabled)
                                 }
@@ -193,7 +214,11 @@ private struct InboxCleanupReview: SwiftUI.View {
         let suggested = tags.filter { proposed.contains($0.id) }
         if !suggested.isEmpty {
             Text("Tags to Add", bundle: .module)
+                #if os(macOS)
+                .appFont(.caption)
+                #else
                 .font(.subheadline)
+                #endif
             ForEach(suggested, id: \.id) { tag in
                 HStack {
                     Text(verbatim: tag.title)
