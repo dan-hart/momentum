@@ -123,3 +123,25 @@ Keyboard Access, gestures, system permission prompts or cross-app behavior. Chec
 manually on a disposable simulator when affected and record the exact OS/configuration.
 See [the iOS testing guide](../ios/TESTING.md) and the
 [dated audit](audits/2026-09-16-ios-accessibility.md).
+
+
+## Spoken task journeys for 0.5.0
+
+Use a disposable workspace with three tasks in one list, plus a project and a failing
+sync connection fixture. Run on iOS and macOS with VoiceOver, Android with TalkBack,
+and Linux with Orca. Record exact platform, OS, revision, input method, and the words
+spoken. Mark each journey pass, fail, or unrun.
+
+| Journey | What to listen for or verify |
+| --- | --- |
+| Capture and edit | The title field takes input immediately from the capture action. The field is named. A failed save is announced near the editor, the draft remains, and Retry Save is reachable. |
+| Complete a middle task | The action and task title are clear. Focus follows the next surviving row. Completion and the Undo action can be found without traversing from the top. |
+| Move or delete the last task | Focus follows the previous row, or a useful empty-state or capture control when no rows remain. |
+| Undo | The change reverses. An unchanged surrounding row keeps its position where the platform's list supports it. |
+| Search and recovery | Match source and excerpt are understandable in the task row. Pending sync and the retry action can be found in Settings, with local changes still represented after a failure. |
+
+Repeat completion and movement with the hardware keyboard on desktop and supported
+mobile devices. Include one English and one German run with large text or scaling.
+A component test or accessibility tree establishes the controls and labels exposed
+to the OS. The spoken journey records how the assistive technology actually presents
+them.

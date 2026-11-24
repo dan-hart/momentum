@@ -47,7 +47,7 @@ import com.codedbydan.momentum.core.*
                 ChoiceRow(days.toString(), prefs.upcomingDays == days) { vm.preferences { it.copy(upcomingDays = days) } }
             } }
             TextButton(onClick = { vm.selectAll(); dismiss() }, enabled = state.view != View.Archive) { Text(stringResource(R.string.select_tasks)) }
-            TextButton(onClick = { vm.action { archiveDone() }; dismiss() }, enabled = snapshot.listing.canArchive) { Text(stringResource(R.string.archive_completed)) }
+            TextButton(onClick = { vm.archiveCompleted(); dismiss() }, enabled = snapshot.listing.canArchive) { Text(stringResource(R.string.archive_completed)) }
             TextButton(onClick = { vm.action { undo() }; dismiss() }, enabled = snapshot.canUndo) { Text(stringResource(R.string.undo)) }
             TextButton(onClick = { dismiss(); importText() }, enabled = state.view != View.Archive) { Text(stringResource(R.string.import_text)) }
         } }, confirmButton = { TextButton(dismiss) { Text(stringResource(R.string.close)) } })

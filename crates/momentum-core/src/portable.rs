@@ -3,7 +3,7 @@
 //! Private native preferences. Neither values, consent nor clocks belong in AppData.
 use crate::{CoreError, Engine, GroupBy, Outcome, SortDirection, SortKey};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 const FILE: &str = "portable-settings.json";
@@ -449,53 +449,6 @@ impl Engine {
     }
     pub fn export_settings(&self, path: String) -> Result<Outcome, CoreError> {
         std::fs::write(path, self.portable_settings_json()?)?;
-        Ok(Outcome::changed())
-    }
-    pub fn import_backup_with_settings(&self, path: String, restore_settings: bool) -> Result<Outcome, CoreError> {
-        if !restore_settings {
-            return self.import_backup(path);
-        }
-        let v: Value = serde_json::from_slice(&std::fs::read(path)?).map_err(invalid)?;
-        let data = momentum_model::AppData::from_backup(v.clone()).map_err(invalid)?;
-        let doc = v
-            .get("momentumSettings")
-            .map(|v| Document::parse(&v.to_string()))
-            .transpose()?;
-        #[cfg(feature = "p2p")]
-        let mut nearby = self.p2p.lock().unwrap_or_else(|e| e.into_inner());
-        #[cfg(feature = "p2p")]
-        self.stop_p2p_locked(&mut nearby);
-        let mut g = self.lock();
-        g.sync_generation = g.sync_generation.wrapping_add(1);
-        self.clear_nextcloud_caches();
-        let mut store = g.store.clone();
-        let mut portable = g.portable.clone();
-        if let Some(doc) = doc {
-            portable.stage(doc, &store.meta.client_id);
-        }
-        if portable.payload.document() != g.portable.payload.document() {
-            portable.revision = g.portable.revision.saturating_add(1);
-        }
-        store.state = data;
-        store.pending.clear();
-        store.meta.p2p_restore_epoch = store.meta.p2p_restore_epoch.wrapping_add(1);
-        store.meta.p2p_bootstrapped = true;
-        store.meta.p2p_applied_ops.clear();
-        store.save_with_portable(&portable.bytes()?)?;
-        g.store = store;
-        g.portable = portable;
-        g.undo.clear();
-        apply_preferences(&mut g);
-        g.invalidate();
-        Ok(Outcome::changed())
-    }
-    pub fn export_backup_with_settings(&self, path: String, include_settings: bool) -> Result<Outcome, CoreError> {
-        if !include_settings {
-            return self.export_backup(path);
-        }
-        let g = self.lock();
-        let body = json!({"data":g.store.state,"timestamp":momentum_model::now_ms(),"crossModelVersion":4.5,"momentumSettings":g.portable.payload.document()});
-        std::fs::write(path, serde_json::to_vec_pretty(&body).map_err(invalid)?)?;
         Ok(Outcome::changed())
     }
 }

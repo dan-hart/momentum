@@ -19,6 +19,8 @@ struct TaskFormSheet: SwiftUI.View {
     @State private var newSubtask = ""
     @State private var loaded = false
     @State private var saveError: String?
+    @State private var finished = false
+    @AccessibilityFocusState private var saveErrorFocused: Bool
     @State private var copyFeedback = NoteCopyFeedback()
     @FocusState private var titleFocused: Bool
 
@@ -47,6 +49,15 @@ struct TaskFormSheet: SwiftUI.View {
     var body: some SwiftUI.View {
         VStack(spacing: 0) {
             Form {
+                if let saveError {
+                    Section {
+                        Label(saveError, systemImage: "exclamationmark.circle")
+                            .foregroundStyle(.red)
+                            .accessibilityFocused($saveErrorFocused)
+                            .accessibilityIdentifier("task-editor-error")
+                        Button(String(localized: "Retry Save")) { save() }
+                    }
+                }
                 Section {
                     TextField(String(localized: "Title"), text: $form.title, axis: .vertical)
                         .appFont(.title2, area: .content)
@@ -110,8 +121,7 @@ struct TaskFormSheet: SwiftUI.View {
                     if d.parentId == nil {
                         Section {
                             Button {
-                                save()
-                                state.sheet = .repeatSchedule(id)
+                                if commit() { state.sheet = .repeatSchedule(id) }
                             } label: {
                                 LabeledContent(String(localized: "Repeat")) {
                                     Text(d.repeat.map(Strings.repeatText) ?? String(localized: "Does not repeat"))
@@ -139,6 +149,7 @@ struct TaskFormSheet: SwiftUI.View {
                     }
                     Section {
                         Button(String(localized: "Delete Task"), role: .destructive) {
+                            finished = true
                             dismiss()
                             state.delete([id])
                         }
@@ -169,20 +180,27 @@ struct TaskFormSheet: SwiftUI.View {
                         .disabled(!form.canSave)
                 }
             } else {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) {
+                        finished = true
+                        dismiss()
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Done")) { save() }
                 }
             }
         }
-        .alert("Could not save changes", isPresented: Binding(
-            get: { saveError != nil }, set: { if !$0 { saveError = nil } }
-        )) {
-            Button("OK", role: .cancel) { saveError = nil }
-        } message: {
-            Text(saveError ?? "")
-        }
+        .onChange(of: saveError) { _, error in saveErrorFocused = error != nil }
         .onAppear(perform: load)
-        .onDisappear { copyFeedback.dismiss(); if !isNew { applyEdit() } }
+        .onExitCommand {
+            if isNew { dismiss() } else { save() }
+        }
+        .interactiveDismissDisabled(saveError != nil)
+        .onDisappear {
+            copyFeedback.dismiss()
+            if !isNew && !finished { applyEdit() }
+        }
     }
 
     private func load() {
@@ -197,18 +215,31 @@ struct TaskFormSheet: SwiftUI.View {
     }
 
     private func save() {
+        if commit() { dismiss() }
+    }
+
+    private func commit() -> Bool {
         let outcome: Outcome?
         if isNew {
-            guard form.canSave else { return }
+            guard form.canSave else { return false }
             outcome = state.createTask(form.draft)
         } else {
             outcome = applyEdit()
         }
         if let message = outcome?.message, case .saveFailed(let error) = message {
             saveError = error
-            return
+            return false
         }
-        dismiss()
+        if !isNew, outcome?.changed != true, detail == nil {
+            saveError = String(localized: "This task is archived or no longer available.")
+            return false
+        }
+        saveError = nil
+        if !isNew, outcome?.changed == true {
+            state.toast(String(localized: "Task saved"))
+        }
+        finished = true
+        return true
     }
 
     @discardableResult private func applyEdit() -> Outcome? {

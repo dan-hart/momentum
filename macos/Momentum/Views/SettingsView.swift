@@ -332,7 +332,15 @@ private struct SyncSettings: SwiftUI.View {
                 Section(String(localized: "Status")) {
                     SyncStatusBar().settingsTarget("sync.status")
                         .disabled(connectionTest.isRunning || (method == "nextcloud" && !credentialsSaved))
-                    LabeledContent(String(localized: "Pending changes"), value: "\(state.syncStatus.pendingOps)")
+                    if method == SyncMethod.nextcloud.rawValue {
+                        if state.syncStatus.pendingOps == 0 {
+                            Text(String(localized: "No changes waiting to sync")).foregroundStyle(.secondary)
+                        } else {
+                            Text(String(localized: "Waiting changes are saved on this Mac.")).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text(String(localized: "Changes sync when linked devices are reachable.")).foregroundStyle(.secondary)
+                    }
                     if lastTaskSync > 0 {
                         LabeledContent(String(localized: "Last successful sync")) {
                             Text(Date(timeIntervalSince1970: Double(lastTaskSync) / 1_000), style: .relative)
@@ -566,6 +574,22 @@ private extension SyncSettings {
     }
 }
 
+@MainActor enum BackupRestoreConfirmation {
+    static func confirm(recovery: Bool = false) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = recovery ? String(localized: "Restore Recovery Copy?") : String(localized: "Replace All Tasks?")
+        alert.informativeText = recovery
+            ? String(localized: "Replace your tasks with the previous tasks and unsynced changes. The recovery copy will then hold your current tasks. App settings stay as they are.")
+            : String(localized: "Your current tasks and unsynced changes will be kept in a recovery copy.")
+        let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
+        cancel.keyEquivalent = "\r"
+        let restore = alert.addButton(withTitle: recovery ? String(localized: "Restore Recovery Copy") : String(localized: "Restore Backup"))
+        restore.hasDestructiveAction = true
+        return alert.runModal() == .alertSecondButtonReturn
+    }
+}
+
 private struct BackupSettings: SwiftUI.View {
     @Environment(AppState.self) private var state
     @State private var includeSettings = false
@@ -578,8 +602,15 @@ private struct BackupSettings: SwiftUI.View {
                 Button(String(localized: "Import Backup…")) {
                     let panel = NSOpenPanel()
                     panel.allowedContentTypes = [.json]
-                    if panel.runModal() == .OK, let url = panel.url { state.importBackup(url, restoreSettings: restoreSettings) }
-                }.settingsTarget("data.tasks-import")
+                    if panel.runModal() == .OK, let url = panel.url, BackupRestoreConfirmation.confirm() {
+                        state.importBackup(url, restoreSettings: restoreSettings)
+                    }
+                }.settingsTarget("data.tasks-import").disabled(!state.canRestoreBackup)
+                if state.hasBackupRecovery {
+                    Button(String(localized: "Restore Recovery Copy…")) {
+                        if BackupRestoreConfirmation.confirm(recovery: true) { state.restoreBackupRecovery() }
+                    }.disabled(!state.canRestoreBackup)
+                }
                 Toggle(String(localized: "Include app settings"), isOn: $includeSettings)
                 Button(String(localized: "Export Backup…")) {
                     let panel = NSSavePanel()
@@ -588,7 +619,7 @@ private struct BackupSettings: SwiftUI.View {
                     if panel.runModal() == .OK, let url = panel.url { state.exportBackup(url, includeSettings: includeSettings) }
                 }.settingsTarget("data.tasks-export")
             } footer: {
-                Text(String(localized: "Importing replaces all tasks on this Mac and discards unsynced task changes. App settings are optional; credentials and device controls stay local."))
+                Text(String(localized: "Importing replaces your tasks. A recovery copy keeps the previous tasks and unsynced changes on this Mac."))
             }
             Section(String(localized: "App settings only")) {
                 Button(String(localized: "Import app settings…")) {
@@ -618,5 +649,6 @@ private struct BackupSettings: SwiftUI.View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { state.refreshBackupRecovery() }
     }
 }

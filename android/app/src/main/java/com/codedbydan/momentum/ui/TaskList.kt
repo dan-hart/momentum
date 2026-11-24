@@ -16,6 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.AnnotatedString
@@ -29,7 +31,7 @@ import com.codedbydan.momentum.*
 import com.codedbydan.momentum.core.*
 
 @Composable fun TaskList(state: UiState, vm: MomentumViewModel, modifier: Modifier = Modifier,
-    editRepeatSchedule: (String) -> Unit = {}, menu: (TaskRow) -> Unit) {
+    editRepeatSchedule: (String) -> Unit = {}, preservesSearchFocus: Boolean = false, menu: (TaskRow) -> Unit) {
     val snapshot = state.snapshot
     if(snapshot == null) {
         if(state.loading) { InitialTaskLoading(modifier); return }
@@ -38,9 +40,21 @@ import com.codedbydan.momentum.core.*
         }; return
     }
     val listing = snapshot.listing
+    val listFocus = remember { FocusRequester() }
+    val listState = rememberLazyListState()
+    LaunchedEffect(state.taskFocusRequest, state.taskFocusId, preservesSearchFocus) {
+        val target = state.taskFocusId ?: return@LaunchedEffect
+        if(!preservesSearchFocus && target.isNotEmpty()) {
+            withFrameNanos { }
+            if(listState.layoutInfo.visibleItemsInfo.any { it.key == "t-$target" }) return@LaunchedEffect
+        }
+        if(!preservesSearchFocus) listFocus.requestFocus()
+        vm.acceptTaskFocus(state.taskFocusRequest)
+    }
     LazyColumn(modifier.fillMaxSize().testTag("task-list").taskDropTarget(state.view,
         onTaskIds = { vm.drop(it, state.view); true }, onExternalText = { vm.importText(it, state.view); true },
-        enabled = state.view != View.Archive), contentPadding = PaddingValues(bottom = 96.dp)) {
+        enabled = state.view != View.Archive).focusRequester(listFocus).focusable(),
+        state = listState, contentPadding = PaddingValues(bottom = 96.dp)) {
         if(state.selecting) item("drop-destinations") { TaskDestinations(state, vm) }
         else if(state.view != View.Archive && state.view != View.Search) item("quick-add") { QuickAdd(state, vm) }
         if(state.view == View.Search && state.query.isNotBlank()) item("settings-results") {
@@ -84,7 +98,7 @@ import com.codedbydan.momentum.core.*
             items(section.rows, key = { row -> when(row) { is Row.Task -> "t-${row.row.id}"; is Row.Project -> "p-${row.item.id}"; is Row.Tag -> "g-${row.item.id}" } }) { row ->
                 when(row) {
                     is Row.Task -> if(row.row.occurrence != null) RecurringPreviewItem(row.row, state, editRepeatSchedule)
-                        else Box(Modifier.padding(horizontal = if(calm && period) 12.dp else 0.dp)) { TaskItem(row.row, state, vm, menu) }
+                        else Box(Modifier.padding(horizontal = if(calm && period) 12.dp else 0.dp)) { TaskItem(row.row, state, vm, preservesSearchFocus, menu) }
                     is Row.Project -> ListItem(headlineContent = { TaskContentText {
                         Text(row.item.title, color = nativeLabelInk(row.item.color), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     } }, modifier = Modifier.clickable { vm.navigate(View.Project(row.item.id)) })
@@ -121,14 +135,22 @@ import com.codedbydan.momentum.core.*
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-@Composable private fun TaskItem(row: TaskRow, state: UiState, vm: MomentumViewModel, menu: (TaskRow) -> Unit) {
+@Composable private fun TaskItem(row: TaskRow, state: UiState, vm: MomentumViewModel, preservesSearchFocus: Boolean, menu: (TaskRow) -> Unit) {
     val selected = row.id in state.selected
     val actionDescription = stringResource(if(row.isDone) R.string.reopen else R.string.complete)
     val openDescription = stringResource(R.string.open_task)
     val metadata = taskMetadata(row, state, selected)
     val compact = state.snapshot!!.settings.compact
-    val notes = row.notesPreview.takeUnless { compact }
-    var modifier = Modifier.fillMaxWidth().padding(start = if(row.isSubtask) 20.dp else 0.dp)
+    val match = searchMatchText(row)
+    val notes = row.notesPreview.takeUnless { compact || row.searchMatch?.source == SearchMatchSource.NOTES }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(state.taskFocusRequest, state.taskFocusId, preservesSearchFocus) {
+        if(!preservesSearchFocus && !row.archived && state.taskFocusId == row.id) {
+            focus.requestFocus()
+            vm.acceptTaskFocus(state.taskFocusRequest)
+        }
+    }
+    var modifier = Modifier.fillMaxWidth().padding(start = if(row.isSubtask) 20.dp else 0.dp).focusRequester(focus)
     if(!row.archived) modifier = modifier.combinedClickable(
         onClickLabel = if(state.selecting) stringResource(R.string.select_tasks) else openDescription,
         onClick = { if(state.selecting) vm.select(row.id) else vm.edit(row.id) },
@@ -147,7 +169,7 @@ import com.codedbydan.momentum.core.*
         TaskContentText { Text(row.title, maxLines = if(compact) 2 else 3, overflow = TextOverflow.Ellipsis, color = headlineInk,
             textDecoration = if(row.isDone) TextDecoration.LineThrough else null) }
     }
-    val supporting: (@Composable () -> Unit)? = if(metadata.isNotEmpty() || notes != null) {{
+    val supporting: (@Composable () -> Unit)? = if(metadata.isNotEmpty() || notes != null || match != null) {{
             TaskContentText(taskTypography().bodyMedium) {
                 Column(verticalArrangement = Arrangement.spacedBy(if(compact) 1.dp else 3.dp)) {
                     if(row.overdue) Row(horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -156,6 +178,7 @@ import com.codedbydan.momentum.core.*
                         Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                         Text(stringResource(R.string.overdue), color = MaterialTheme.colorScheme.error)
                     }
+                    match?.let { Text(it, color = supportingInk) }
                     if(metadata.isNotEmpty()) Text(metadata, maxLines = if(compact) 1 else 2, overflow = TextOverflow.Ellipsis)
                     notes?.let { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis, color = supportingInk) }
                 }
@@ -163,7 +186,7 @@ import com.codedbydan.momentum.core.*
         }} else null
     val leading: (@Composable () -> Unit)? = if(!row.archived) {{
             Checkbox(checked = if(state.selecting) selected else row.isDone,
-                onCheckedChange = if(state.selecting) null else {{ vm.action { toggleDone(row.id) } }},
+                onCheckedChange = if(state.selecting) null else {{ vm.action(focusAfter = listOf(row.id)) { toggleDone(row.id) } }},
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics {
                     contentDescription = (if(state.selecting) "" else actionDescription + ": ") + row.title
                 })

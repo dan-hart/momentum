@@ -4,6 +4,17 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-191 — Backup success and replacement recovery
+
+- Severity is high because an unverified or incorrectly selected backup can leave users without the recovery they expect.
+- Across the four apps, compare a completed export with actual readback at the selected destination. Restoring a valid but unintended backup previously depended on the user having exported their current workspace separately.
+- F-079 verifies saved bytes where the destination supports readback. Task replacement includes a private verified recovery copy in the shared durability transaction. Test malformed inputs, failed writes, forced termination, and recovery with pending edits. Platform evidence is recorded in PROGRESS.
+
+## B-192 — Task-action focus and save failure feedback
+
+- Severity is medium. Rebuilding a task list after a completion, move, or deletion can lose the user's navigation position. Some editor failure paths reported outside the form or closed the editor.
+- F-080 and F-081 keep the draft available for retry and choose a nearby row from the previous task order after an explicit mutation. Keyboard and spoken focus acceptance is scoped by platform in PROGRESS.
+
 ## B-190 — iOS navigation, empty states and settings can ignore the app font
 
 - **Feature and severity:** F-022, medium. Reproduced with Atkinson Hyperlegible

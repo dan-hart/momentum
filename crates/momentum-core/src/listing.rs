@@ -6,16 +6,35 @@ use crate::text::*;
 use crate::types::*;
 use momentum_model::*;
 use momentum_store::Store;
+use std::ops::Range;
 
 pub(crate) const SEARCH_LIMIT: usize = 60;
 
 /// Precomputed lowercase haystacks so typing never re-lowercases or re-parses the archive.
 #[derive(Default)]
 pub(crate) struct SearchIndex {
-    tasks: Vec<(String, String)>,      // (task id, haystack)
-    pub archived: Vec<(Task, String)>, // parsed once, newest completion first
-    projects: Vec<(String, String)>,   // (project id, lower title)
-    tags: Vec<(String, String)>,       // (tag id, lower title)
+    tasks: Vec<(String, SearchDocument)>,
+    archived: Vec<(Task, SearchDocument)>, // parsed once, newest completion first
+    projects: Vec<(String, String)>,       // (project id, lower title)
+    tags: Vec<(String, String)>,           // (tag id, lower title)
+}
+
+#[derive(Default)]
+struct SearchDocument {
+    haystack: String,
+    /// Lowercase byte ranges in title, notes, tags and project order.
+    fields: Vec<Range<usize>>,
+}
+
+impl SearchDocument {
+    fn add_field(&mut self, value: &str) {
+        if !self.fields.is_empty() {
+            self.haystack.push('\n');
+        }
+        let start = self.haystack.len();
+        self.haystack.push_str(&value.to_lowercase());
+        self.fields.push(start..self.haystack.len());
+    }
 }
 
 /// Tasks in `archiveYoung` and `archiveOld` (kept in `state.rest` by momentum-sync).
@@ -46,38 +65,31 @@ pub(crate) fn archived_has_task(store: &Store, id: &str) -> bool {
 }
 
 pub(crate) fn build_index(store: &Store) -> SearchIndex {
-    let tag_name = |id: &String| {
-        store
-            .state
-            .tag
-            .entities
-            .get(id)
-            .map(|g| g.title.to_lowercase())
-            .unwrap_or_default()
-    };
-    let hay = |t: &Task| {
-        let mut h = t.title.to_lowercase();
-        if let Some(n) = &t.notes {
-            h.push('\n');
-            h.push_str(&n.to_lowercase());
+    let document = |t: &Task| {
+        let mut doc = SearchDocument::default();
+        doc.add_field(&t.title);
+        if let Some(notes) = &t.notes {
+            doc.add_field(notes);
         }
-        for tag in &t.tag_ids {
-            h.push('\n');
-            h.push_str(&tag_name(tag));
+        for id in &t.tag_ids {
+            if let Some(tag) = store.state.tag.entities.get(id) {
+                doc.add_field(&tag.title);
+            } else {
+                doc.haystack.push('\n');
+            }
         }
-        if let Some(p) = store.state.project.entities.get(&t.project_id) {
-            h.push('\n');
-            h.push_str(&p.title.to_lowercase());
+        if let Some(project) = store.state.project.entities.get(&t.project_id) {
+            doc.add_field(&project.title);
         }
-        h
+        doc
     };
     let mut idx = SearchIndex {
-        tasks: store.state.task.iter().map(|t| (t.id.clone(), hay(t))).collect(),
+        tasks: store.state.task.iter().map(|t| (t.id.clone(), document(t))).collect(),
         archived: archived_tasks(store)
             .into_iter()
             .map(|t| {
-                let h = hay(&t);
-                (t, h)
+                let doc = document(&t);
+                (t, doc)
             })
             .collect(),
         projects: store
@@ -206,6 +218,7 @@ pub(crate) fn task_row(store: &Store, view: &View, t: &Task, archived: bool) -> 
             .map(tag_ref)
             .collect(),
         notes_preview: t.notes.as_deref().and_then(notes_preview),
+        search_match: None,
         reminder: t.remind_at.filter(|_| !t.is_done).map(clock_time),
         done_day,
         sub_task_ids: t.sub_task_ids.clone(),
@@ -629,6 +642,74 @@ pub(crate) fn listing(
     out
 }
 
+/// Choose the field that matches the most query terms, preferring the title in a
+/// tie. The existing search index still decides membership and ordering.
+fn search_task_row(store: &Store, task: &Task, document: &SearchDocument, archived: bool, words: &[String]) -> TaskRow {
+    let mut row = task_row(store, &View::Search, task, archived);
+    let fields = [(SearchMatchSource::Title, task.title.as_str())]
+        .into_iter()
+        .chain(task.notes.as_deref().map(|notes| (SearchMatchSource::Notes, notes)))
+        .chain(row.tags.iter().map(|tag| (SearchMatchSource::Tag, tag.title.as_str())))
+        .chain(
+            row.project
+                .iter()
+                .map(|project| (SearchMatchSource::Project, project.title.as_str())),
+        );
+    let mut best = None;
+    let mut best_count = 0;
+    for ((source, value), range) in fields.zip(&document.fields) {
+        let lower = &document.haystack[range.clone()];
+        let mut count = 0;
+        let mut start = lower.len();
+        let mut end = 0;
+        for word in words {
+            if let Some(offset) = lower.find(word) {
+                count += 1;
+                start = start.min(offset);
+                end = end.max(offset + word.len());
+            }
+        }
+        if count > best_count {
+            best = Some((source, value, start, end));
+            best_count = count;
+        }
+        if count == words.len() {
+            break;
+        }
+    }
+    row.search_match = best.map(|(source, value, start, end)| SearchMatch {
+        source,
+        excerpt: search_excerpt(value, start, end),
+    });
+    row
+}
+
+/// Map lowercase offsets back to the original text, including expansions such as
+/// İ → i + combining dot. Cut only between Unicode scalar values.
+fn search_excerpt(value: &str, start: usize, end: usize) -> String {
+    const LIMIT: usize = 78; // leave room for both ellipses
+    const LEADING_CONTEXT: usize = 24;
+    let mut offset = 0;
+    let mut first = 0;
+    let mut last = 0_usize;
+    for c in value.chars() {
+        offset += c.to_lowercase().map(char::len_utf8).sum::<usize>();
+        first += usize::from(offset <= start);
+        last += 1;
+        if offset >= end {
+            break;
+        }
+    }
+    let len = value.chars().count();
+    let leading = LEADING_CONTEXT.min(LIMIT.saturating_sub(last.saturating_sub(first)));
+    let start = first.saturating_sub(leading).min(len.saturating_sub(LIMIT));
+    let excerpt: String = value.chars().skip(start).take(LIMIT).collect();
+    let single_line = excerpt.split_whitespace().collect::<Vec<_>>().join(" ");
+    let prefix = if start > 0 { "…" } else { "" };
+    let suffix = if start + LIMIT < len { "…" } else { "" };
+    format!("{prefix}{single_line}{suffix}")
+}
+
 /// Global search across tasks (open, done, subtasks, archived), projects and tags: every
 /// word of the query must match somewhere in a haystack.
 pub(crate) fn search(store: &Store, index: &SearchIndex, query: &str) -> Listing {
@@ -647,17 +728,16 @@ pub(crate) fn search(store: &Store, index: &SearchIndex, query: &str) -> Listing
         return out;
     }
     let matches = |h: &str| words.iter().all(|w| h.contains(w.as_str()));
-    let view = View::Search;
-    let mut tasks: Vec<&Task> = index
+    let mut tasks: Vec<_> = index
         .tasks
         .iter()
-        .filter(|(_, h)| matches(h))
-        .filter_map(|(id, _)| store.state.task.entities.get(id))
+        .filter(|(_, doc)| matches(&doc.haystack))
+        .filter_map(|(id, doc)| store.state.task.entities.get(id).map(|task| (task, doc)))
         .collect();
-    tasks.sort_by(|a, b| {
+    tasks.sort_by(|(a, a_doc), (b, b_doc)| {
         a.is_done
             .cmp(&b.is_done)
-            .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
+            .then_with(|| a_doc.haystack[a_doc.fields[0].clone()].cmp(&b_doc.haystack[b_doc.fields[0].clone()]))
     });
     if !tasks.is_empty() {
         let total = tasks.len();
@@ -668,8 +748,8 @@ pub(crate) fn search(store: &Store, index: &SearchIndex, query: &str) -> Listing
             rows: tasks
                 .iter()
                 .take(SEARCH_LIMIT)
-                .map(|t| Row::Task {
-                    row: task_row(store, &view, t, false),
+                .map(|(t, doc)| Row::Task {
+                    row: search_task_row(store, t, doc, false, &words),
                 })
                 .collect(),
             note: (total > SEARCH_LIMIT).then_some(SectionNote {
@@ -711,11 +791,10 @@ pub(crate) fn search(store: &Store, index: &SearchIndex, query: &str) -> Listing
             note: None,
         });
     }
-    let archived: Vec<&Task> = index
+    let archived: Vec<_> = index
         .archived
         .iter()
-        .filter(|(_, h)| matches(h))
-        .map(|(t, _)| t)
+        .filter(|(_, doc)| matches(&doc.haystack))
         .collect();
     if !archived.is_empty() {
         let cap = SEARCH_LIMIT / 2;
@@ -726,8 +805,8 @@ pub(crate) fn search(store: &Store, index: &SearchIndex, query: &str) -> Listing
             rows: archived
                 .iter()
                 .take(cap)
-                .map(|t| Row::Task {
-                    row: task_row(store, &view, t, true),
+                .map(|(t, doc)| Row::Task {
+                    row: search_task_row(store, t, doc, true, &words),
                 })
                 .collect(),
             note: (archived.len() > cap).then_some(SectionNote {

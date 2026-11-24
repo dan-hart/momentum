@@ -264,7 +264,8 @@ struct SyncSettings: View {
                         }
                     } else { LabeledContent("Last Successful Sync") { Text("Never") } }
                     LabeledContent("Linked Devices", value: status.linkedDevices.formatted())
-                    LabeledContent("Pending Changes", value: status.pendingOps.formatted())
+                    Text("Changes sync when linked devices are reachable.")
+                        .foregroundStyle(AccentTheme.secondaryText)
                 }
                 Button { Task { await state.syncNow() } } label: {
                     SyncSettingsLabel("Sync Now", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -321,7 +322,12 @@ struct SyncSettings: View {
                         Text(Date(timeIntervalSince1970: Double(status.lastNextcloudMs) / 1000), format: .dateTime.month().day().hour().minute())
                     }
                 } else { LabeledContent("Last Successful Sync") { Text("Never") } }
-                LabeledContent("Pending Changes", value: status.pendingOps.formatted())
+                LabeledContent("Waiting to sync", value: status.pendingOps.formatted())
+                    .accessibilityIdentifier("pending-sync-changes")
+                if status.pendingOps > 0 {
+                    Text("Waiting changes are saved on this device.")
+                        .foregroundStyle(AccentTheme.secondaryText)
+                }
             }
             Button { Task { await state.syncNow() } } label: {
                 SyncSettingsLabel("Sync Now", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -678,6 +684,11 @@ private struct SyncProviderSettings: View {
         return Date(timeIntervalSince1970: Double(milliseconds) / 1000)
     }
 
+    var pending: UInt32? {
+        guard state.provider == .nextcloud, let count = state.status?.pendingOps, count > 0 else { return nil }
+        return count
+    }
+
     /// The full sentence, for Settings and accessibility.
     func text(now: Date) -> String {
         if syncing { return state.isStopping ? String(localized: "Stopping sync…") : String(localized: "Syncing…") }
@@ -704,9 +715,15 @@ struct SyncStatusLink: View {
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     HStack(spacing: 7) {
                         Image(systemName: presentation.symbol).accessibilityHidden(true)
-                        Text(presentation.text(now: context.date))
-                            .lineLimit(nil)
-                            .fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(presentation.text(now: context.date))
+                            if let pending = presentation.pending {
+                                Text("Waiting to sync: \(pending.formatted())")
+                                    .accessibilityIdentifier("pending-sync-changes")
+                            }
+                        }
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                     .mobileFont(.footnote)
                     .foregroundStyle(presentation.needsAttention ? Color.primary : AccentTheme.secondaryText)
@@ -737,6 +754,7 @@ struct SyncStatusToolbarButton: View {
                 }
             }
             .accessibilityLabel(presentation.text(now: .now))
+            .accessibilityValue(presentation.pending.map { String(localized: "Waiting to sync: \($0.formatted())") } ?? "")
             .accessibilityIdentifier("sync-status-toolbar")
         }
     }

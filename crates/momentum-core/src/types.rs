@@ -282,6 +282,22 @@ pub enum RepeatDescription {
     Repeats,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Enum))]
+pub enum SearchMatchSource {
+    Title,
+    Notes,
+    Tag,
+    Project,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "ffi", derive(uniffi::Record))]
+pub struct SearchMatch {
+    pub source: SearchMatchSource,
+    pub excerpt: String,
+}
+
 /// A task as one list row shows it. Everything is precomputed so a row renders from
 /// this record alone; the rules for what to show (project outside its view, the day
 /// unless the view already says it) are applied here, not in the UI.
@@ -311,6 +327,8 @@ pub struct TaskRow {
     pub tags: Vec<TagRef>,
     /// First non-empty line of the notes, at most 80 characters, with "…" when cut.
     pub notes_preview: Option<String>,
+    /// The best matching field and an excerpt around its matching text in Search.
+    pub search_match: Option<SearchMatch>,
     pub reminder: Option<ClockTime>,
     /// For archived rows: the day the task was completed.
     pub done_day: Option<DayLabel>,
@@ -646,6 +664,8 @@ pub enum Message {
     },
     BackupImported,
     BackupExported,
+    BackupExportVerificationUnavailable,
+    BackupRecoveryRestored,
     Synced {
         ops_uploaded: u32,
     },

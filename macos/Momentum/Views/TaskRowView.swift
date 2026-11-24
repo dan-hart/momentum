@@ -81,6 +81,12 @@ struct TaskRowView: SwiftUI.View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                if let match = Strings.searchMatch(row) {
+                    Text(verbatim: match)
+                        .appFont(.caption, area: .content)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let subtitle = subtitle {
                     subtitle
                         .appFont(.caption, area: .content)

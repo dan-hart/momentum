@@ -999,7 +999,14 @@ impl MomentumPrefs {
             } else {
                 gettext("Not synced yet")
             };
-            format!("{}\n{}: {}", state, gettext("Pending changes"), status.pending_ops)
+            if method == "nextcloud" {
+                format!("{}\n{}: {}", state, gettext("Waiting to sync"), status.pending_ops)
+            } else {
+                format!(
+                    "{state}\n{}",
+                    gettext("Changes sync when linked devices are reachable.")
+                )
+            }
         };
         imp.sync_status_row.set_subtitle(&glib::markup_escape_text(&message));
         let error = method != "off" && owner.imp().sync_error.borrow().is_some();

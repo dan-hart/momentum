@@ -13,6 +13,7 @@ struct TaskActionsMenu: SwiftUI.View {
     var tags: [TagRef] = []
     var onEdit: (() -> Void)?
     var onNewTag: (() -> Void)?
+    var onChanged: ([String]) -> Void = { _ in }
     var onFinished: (TaskSelectionTransitionFeedback) -> Void = { _ in }
 
     /// The clicked row's facts when the menu is for one task: the core's slot rule and
@@ -83,6 +84,7 @@ struct TaskActionsMenu: SwiftUI.View {
     private func act(_ command: TaskCommand) {
         Task {
             let outcome = await model.perform(command)
+            if outcome?.changed == true { onChanged(ids) }
             onFinished(.afterTaskCommand(command, outcome: outcome))
         }
     }
@@ -90,6 +92,7 @@ struct TaskActionsMenu: SwiftUI.View {
     private func act(_ command: OrganizationCommand) {
         Task {
             let outcome = await model.organize(command)
+            if outcome?.changed == true { onChanged(ids) }
             onFinished(.afterOrganization(command, outcome: outcome))
         }
     }

@@ -12,7 +12,8 @@ use gettextrs::{gettext, ngettext};
 use gtk::{gio, glib};
 use momentum_core::{
     AllDone, ClockTime, DayLabel, DayRelation, DayStatus, EmptyState, Engine, EstimateRange, GroupBy, Listing,
-    MonthlyRule, Outcome, RepeatDescription, Row, SectionKind, SectionNote, Slot, TaskGroup, TaskRow, ViewTitle,
+    MonthlyRule, Outcome, RepeatDescription, Row, SearchMatchSource, SectionKind, SectionNote, Slot, TaskGroup,
+    TaskRow, ViewTitle,
 };
 use momentum_model::{day_number, day_str, now_ms, today_str, INBOX_PROJECT_ID};
 use momentum_oplog::Action;
@@ -550,6 +551,29 @@ fn send_background_status_request(
     });
 }
 
+fn task_save_error(group: &adw::PreferencesGroup) -> gtk::Label {
+    let label = gtk::Label::builder()
+        .visible(false)
+        .focusable(true)
+        .wrap(true)
+        .xalign(0.0)
+        .css_classes(["error"])
+        .build();
+    group.add(&label);
+    label
+}
+
+fn show_task_save_error(label: &gtk::Label, out: &Outcome) -> bool {
+    if let Some(message @ momentum_core::Message::SaveFailed { .. }) = &out.message {
+        label.set_text(&crate::messages::text(message));
+        label.set_visible(true);
+        label.grab_focus();
+        true
+    } else {
+        false
+    }
+}
+
 impl MomentumWindow {
     pub fn new(app: &MomentumApplication) -> Self {
         glib::Object::builder().property("application", app).build()
@@ -924,8 +948,8 @@ impl MomentumWindow {
             }),
             act("toggle-done", |w| {
                 if let Some(id) = w.focused_task() {
-                    let out = w.engine().toggle_done(id);
-                    w.apply(out);
+                    let out = w.engine().toggle_done(id.clone());
+                    w.apply_task_mutation(&[id], out);
                 }
             }),
             act("delete-task", |w| {
@@ -1345,6 +1369,11 @@ impl MomentumWindow {
                 }
             )
         };
+        let text = if active && method == "nextcloud" && status.pending_ops > 0 {
+            format!("{text} · {}: {}", gettext("Waiting to sync"), status.pending_ops)
+        } else {
+            text
+        };
         imp.sync_label.set_visible(true);
         imp.sync_label.set_text(&text);
         imp.sync_button.set_visible(active || busy);
@@ -1698,28 +1727,25 @@ impl MomentumWindow {
     /// Move tasks between the plain day and a slot (Morning or Tonight).
     fn toggle_slot(&self, ids: &[String], slot: Slot) {
         let out = self.engine().toggle_slot(ids.to_vec(), slot);
-        if out.changed && self.imp().selecting.get() {
-            self.set_selecting(false);
-        }
-        self.apply(out);
+        self.apply_task_mutation(ids, out);
     }
 
     /// Push tasks to tomorrow (keeps tags; clears any time of day).
     fn move_to_tomorrow(&self, ids: &[String]) {
         let out = self.engine().move_to_tomorrow(ids.to_vec());
-        self.leave_selection_and_apply(out);
+        self.apply_task_mutation(ids, out);
     }
 
     fn move_to_next_week(&self, ids: &[String]) {
         let out = self.engine().move_to_next_week(ids.to_vec());
-        self.leave_selection_and_apply(out);
+        self.apply_task_mutation(ids, out);
     }
 
     /// The context menu's weekday items: `days` after today.
     fn move_in_days(&self, ids: &[String], days: i64) {
         let day = day_str(day_number(&today_str()).unwrap_or(0) + days);
         let out = self.engine().move_to_day(ids.to_vec(), day);
-        self.leave_selection_and_apply(out);
+        self.apply_task_mutation(ids, out);
     }
 
     /// A change made from selection mode ends it when something happened.
@@ -1731,24 +1757,21 @@ impl MomentumWindow {
     }
 
     fn bulk_done(&self) {
-        let out = self.engine().bulk_done(self.selected_ids());
-        self.set_selecting(false);
-        self.apply(out);
+        let ids = self.selected_ids();
+        let out = self.engine().bulk_done(ids.clone());
+        self.apply_task_mutation(&ids, out);
     }
 
     fn bulk_today(&self) {
-        let out = self.engine().plan_for_today(self.selected_ids());
-        if !out.changed {
-            return;
-        }
-        self.set_selecting(false);
-        self.apply(out);
+        let ids = self.selected_ids();
+        let out = self.engine().plan_for_today(ids.clone());
+        self.apply_task_mutation(&ids, out);
     }
 
     fn bulk_delete(&self) {
-        let out = self.engine().bulk_delete(self.selected_ids());
-        self.set_selecting(false);
-        self.apply(out);
+        let ids = self.selected_ids();
+        let out = self.engine().bulk_delete(ids.clone());
+        self.apply_task_mutation(&ids, out);
     }
 
     /// Bulk add a tag: dropdown of tags, or type a new one.
@@ -2236,8 +2259,12 @@ impl MomentumWindow {
             #[weak(rename_to = w)]
             self,
             move |_| {
+                let focus = w.focused_task();
                 if w.engine().undo_batch(batch).changed {
                     w.refresh();
+                    if let Some(id) = focus {
+                        w.focus_task(&id);
+                    }
                 }
             }
         ));
@@ -2245,9 +2272,11 @@ impl MomentumWindow {
     }
 
     /// Add via short syntax and plan for today (quick-add, `--add`, search provider).
-    pub fn add_task_for_today(&self, text: &str) {
+    pub fn add_task_for_today(&self, text: &str) -> bool {
         let out = self.engine().add_task_for_today(text.into());
+        let saved = out.changed;
         self.apply(out);
+        saved
     }
 
     /// URL scheme: title with short syntax, optional notes and due day.
@@ -2287,7 +2316,12 @@ impl MomentumWindow {
     /// Ctrl+Z: undo the most recent undoable change, even after its toast is gone.
     fn undo_last(&self) {
         let out = self.engine().undo();
+        let focus = self.focused_task();
+        let changed = out.changed;
         self.apply(out);
+        if let Some(id) = focus.filter(|_| changed) {
+            self.focus_task(&id);
+        }
     }
 
     /// Text from a drop or a multi-line paste: a URL or a paragraph becomes one task with the
@@ -2365,8 +2399,17 @@ impl MomentumWindow {
     // ---- rendering -------------------------------------------------------
 
     fn archive_done(&self) {
-        let out = self.engine().archive_done();
-        self.apply(out);
+        let engine = self.engine();
+        let done: Vec<_> = self
+            .imp()
+            .rows
+            .borrow()
+            .iter()
+            .filter(|id| engine.task_row((*id).clone()).is_some_and(|row| row.is_done))
+            .cloned()
+            .collect();
+        let out = engine.archive_done();
+        self.apply_task_mutation(&done, out);
     }
 
     fn update_context_actions(&self) {
@@ -2566,10 +2609,11 @@ impl MomentumWindow {
     }
 
     pub fn restore_backup_from(&self, path: String, restore_settings: bool) -> Result<Outcome, String> {
-        let outcome = self
-            .engine()
-            .import_backup_with_settings(path, restore_settings)
-            .map_err(|error| error.to_string())?;
+        let outcome = self.engine().import_backup_with_settings(path, restore_settings);
+        if crate::prefs::sync_method(&self.imp().settings) == "libresync" {
+            self.p2p_apply_setting();
+        }
+        let outcome = outcome.map_err(|error| error.to_string())?;
         if restore_settings {
             self.adopt_imported_app_settings()?;
         } else {
@@ -3073,12 +3117,38 @@ impl MomentumWindow {
                 None => format!("#{name}"),
             });
         }
+        let match_label = t.search_match.as_ref().map(|detail| {
+            let match_text = match detail.source {
+                SearchMatchSource::Title => gettext("Title match: {}"),
+                SearchMatchSource::Notes => gettext("Notes match: {}"),
+                SearchMatchSource::Tag => gettext("Tag match: {}"),
+                SearchMatchSource::Project => gettext("Project match: {}"),
+            }
+            // GTK strings cannot contain an embedded NUL from an imported note.
+            .replacen("{}", &detail.excerpt.replace('\0', " "), 1);
+            match (t.archived, t.is_subtask) {
+                (true, true) => gettext("Archived subtask · {}").replacen("{}", &match_text, 1),
+                (true, false) => gettext("Archived task · {}").replacen("{}", &match_text, 1),
+                (false, true) => gettext("Subtask · {}").replacen("{}", &match_text, 1),
+                (false, false) => match_text,
+            }
+        });
+        let metadata = sub.join("  ·  ");
+        let subtitle = match &match_label {
+            Some(label) if metadata.is_empty() => glib::markup_escape_text(label).into(),
+            Some(label) => format!("{}\n{metadata}", glib::markup_escape_text(label)),
+            None => metadata,
+        };
         let row = adw::ActionRow::builder()
             .title(glib::markup_escape_text(&t.title))
-            .subtitle(sub.join("  ·  "))
+            .subtitle(subtitle)
             .activatable(!t.archived && t.occurrence.is_none())
             .build();
         crate::typography::register_content_root(&row);
+        if let Some(label) = &match_label {
+            row.upcast_ref::<gtk::Widget>()
+                .update_property(&[gtk::accessible::Property::Description(label)]);
+        }
         if self.compact_rows() {
             row.add_css_class("compact-row");
         }
@@ -3624,19 +3694,63 @@ impl MomentumWindow {
     fn drop_task(&self, task_id: &str, dest: &View) -> bool {
         let out = self.engine().drop_tasks(vec![task_id.to_string()], dest.clone());
         let changed = out.changed;
-        self.apply(out);
+        self.apply_task_mutation(&[task_id.to_owned()], out);
         changed
     }
 
     fn set_done(&self, id: &str, done: bool) {
         let out = self.engine().set_done(id.into(), done);
-        self.apply(out);
+        self.apply_task_mutation(&[id.to_owned()], out);
     }
 
     /// HIG: destructive actions get an undo toast rather than a confirmation dialog.
     fn delete_task(&self, id: &str) {
         let out = self.engine().delete_task(id.into());
+        self.apply_task_mutation(&[id.to_owned()], out);
+    }
+
+    /// Prefer the next task in the old order, then the previous task. Capture the
+    /// current order before replacing the list and avoid taking focus on background refresh.
+    fn apply_task_mutation(&self, affected: &[String], out: Outcome) {
+        if !out.changed || affected.is_empty() {
+            self.apply(out);
+            return;
+        }
+        let before: Vec<_> = self
+            .imp()
+            .rows
+            .borrow()
+            .iter()
+            .filter(|id| !id.is_empty() && !id.contains(':'))
+            .cloned()
+            .collect();
+        let focused = self.focused_task().filter(|id| affected.contains(id));
+        let anchor = focused.as_ref().unwrap_or(&affected[0]);
+        let Some(index) = before.iter().position(|id| id == anchor) else {
+            self.apply(out);
+            return;
+        };
+        if self.imp().selecting.get() {
+            self.set_selecting(false);
+        }
         self.apply(out);
+        let rows = self.imp().rows.borrow();
+        let remaining = before[index + 1..]
+            .iter()
+            .chain(before[..index].iter().rev())
+            .find(|id| !affected.contains(id) && rows.contains(id));
+        if let Some(id) = remaining.or_else(|| {
+            rows.iter()
+                .find(|id| !id.is_empty() && !id.contains(':') && !affected.contains(id))
+        }) {
+            self.focus_task(id);
+        } else if rows.contains(anchor) {
+            self.focus_task(anchor);
+        } else if self.imp().search_entry.is_visible() {
+            self.imp().search_entry.grab_focus();
+        } else {
+            self.imp().add_entry.grab_focus();
+        }
     }
 
     /// Ctrl+PageDown / Ctrl+PageUp: step through the sidebar entries.
@@ -4016,6 +4130,7 @@ impl MomentumWindow {
         header.pack_start(&cancel);
         header.pack_end(&create);
         let dialog = self.dialog(&gettext("New Task"), &form, &header);
+        let error = task_save_error(&form.group);
         dialog.set_default_widget(Some(&create));
         form.title.connect_changed(glib::clone!(
             #[weak]
@@ -4041,10 +4156,18 @@ impl MomentumWindow {
             dialog,
             #[strong]
             form,
+            #[weak]
+            error,
+            #[weak]
+            create,
             move |_| {
                 // The view adds its slot or tag, like quick-add does.
                 let view = w.imp().view.borrow().clone();
                 let out = w.engine().create_task(form.into_draft(), view);
+                if show_task_save_error(&error, &out) {
+                    create.set_label(&gettext("Retry Save"));
+                    return;
+                }
                 w.apply(out);
                 dialog.close();
             }
@@ -4053,7 +4176,7 @@ impl MomentumWindow {
         form.title.grab_focus();
     }
 
-    /// Edit dialog: changes are applied when the dialog closes.
+    /// The editor keeps its draft in place until a save succeeds or the user cancels.
     pub fn open_task(&self, id: &str) {
         let Some(t) = self.engine().task_detail(id.to_string()) else {
             return;
@@ -4091,7 +4214,31 @@ impl MomentumWindow {
             form.group.add(&sub);
         }
         form.group.add(&del);
-        let dialog = self.dialog(&gettext("Task"), &form, &adw::HeaderBar::new());
+        let header = adw::HeaderBar::builder()
+            .show_start_title_buttons(false)
+            .show_end_title_buttons(false)
+            .build();
+        let cancel = gtk::Button::with_label(&gettext("Cancel"));
+        let save = gtk::Button::builder()
+            .label(gettext("Save"))
+            .css_classes(["suggested-action"])
+            .build();
+        header.pack_start(&cancel);
+        header.pack_end(&save);
+        let dialog = self.dialog(&gettext("Task"), &form, &header);
+        let error = task_save_error(&form.group);
+        dialog.set_can_close(false);
+        dialog.set_default_widget(Some(&save));
+        cancel.connect_clicked(glib::clone!(
+            #[weak]
+            dialog,
+            move |_| dialog.force_close()
+        ));
+        dialog.connect_close_attempt(glib::clone!(
+            #[weak]
+            save,
+            move |_| save.emit_clicked()
+        ));
         let id = t.id.clone();
         del.connect_clicked(glib::clone!(
             #[weak(rename_to = w)]
@@ -4101,7 +4248,7 @@ impl MomentumWindow {
             #[strong]
             id,
             move |_| {
-                dialog.close();
+                dialog.force_close();
                 w.delete_task(&id);
             }
         ));
@@ -4118,23 +4265,35 @@ impl MomentumWindow {
                 }
             }
         ));
-        dialog.connect_closed(glib::clone!(
+        save.connect_clicked(glib::clone!(
             #[weak(rename_to = w)]
             self,
+            #[weak]
+            dialog,
+            #[weak]
+            save,
+            #[weak]
+            error,
             #[strong]
             form,
             move |_| {
                 let engine = w.engine();
-                if engine.task_detail(id.clone()).is_none() {
+                let out = engine.save_task(id.clone(), form.into_draft());
+                if show_task_save_error(&error, &out) {
+                    save.set_label(&gettext("Retry Save"));
                     return;
                 }
-                // Only the fields that differ become one update; subtasks added meanwhile
-                // still need the list rebuilt.
-                let out = engine.save_task(id.clone(), form.into_draft());
-                if out.changed || out.message.is_some() {
-                    w.apply(out);
-                } else {
-                    w.refresh();
+                if !out.changed && engine.task_detail(id.clone()).is_none() {
+                    error.set_text(&gettext("This task is archived or no longer available."));
+                    error.set_visible(true);
+                    error.grab_focus();
+                    return;
+                }
+                let changed = out.changed;
+                w.apply(out);
+                dialog.force_close();
+                if changed {
+                    w.toast(&gettext("Task saved"));
                 }
             }
         ));
@@ -4342,7 +4501,21 @@ impl MomentumWindow {
         ));
     }
 
+    fn backup_restore_ready(&self) -> bool {
+        if self
+            .visible_dialog()
+            .is_some_and(|dialog| !dialog.is::<crate::prefs::MomentumPrefs>())
+        {
+            self.toast(&gettext("Close the open dialog before restoring a backup"));
+            return false;
+        }
+        true
+    }
+
     pub fn import_backup(&self) {
+        if !self.backup_restore_ready() {
+            return;
+        }
         glib::spawn_future_local(glib::clone!(
             #[weak(rename_to = w)]
             self,
@@ -4361,7 +4534,7 @@ impl MomentumWindow {
                 };
                 let restore_settings = gtk::CheckButton::with_label(&gettext("Restore included app settings"));
                 let confirmation = adw::AlertDialog::builder().heading(gettext("Replace all tasks?"))
-                    .body(gettext("This replaces tasks on this device and discards unsynced task changes. App settings are optional; credentials and device controls stay local."))
+                    .body(gettext("Your current tasks and unsynced changes will be kept in a recovery copy. App settings are optional."))
                     .extra_child(&restore_settings).build();
                 confirmation.add_responses(&[("cancel", &gettext("Cancel")), ("restore", &gettext("Restore Backup"))]);
                 confirmation.set_response_appearance("restore", adw::ResponseAppearance::Destructive);
@@ -4372,6 +4545,41 @@ impl MomentumWindow {
                 match w.restore_backup_from(path.to_string_lossy().into_owned(), restore_settings.is_active()) {
                     Ok(out) => w.apply(out),
                     Err(e) => w.toast(&e.to_string()),
+                }
+            }
+        ));
+    }
+    pub fn restore_backup_recovery(&self) {
+        if !self.backup_restore_ready() {
+            return;
+        }
+        if !self.engine().has_backup_recovery() {
+            self.toast(&gettext("No backup recovery copy is available"));
+            return;
+        }
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = w)]
+            self,
+            async move {
+                let confirmation = adw::AlertDialog::builder()
+                    .heading(gettext("Restore Recovery Copy?"))
+                    .body(gettext("Replace your tasks with the previous tasks and unsynced changes. The recovery copy will then hold your current tasks. App settings stay as they are."))
+                    .build();
+                confirmation.add_responses(&[
+                    ("cancel", &gettext("Cancel")),
+                    ("restore", &gettext("Restore Recovery Copy")),
+                ]);
+                confirmation.set_response_appearance("restore", adw::ResponseAppearance::Destructive);
+                confirmation.set_close_response("cancel");
+                if confirmation.choose_future(Some(&w)).await == "restore" {
+                    let outcome = w.engine().restore_backup_recovery();
+                    if crate::prefs::sync_method(&w.imp().settings) == "libresync" {
+                        w.p2p_apply_setting();
+                    }
+                    match outcome {
+                        Ok(out) => w.apply(out),
+                        Err(error) => w.toast(&error.to_string()),
+                    }
                 }
             }
         ));

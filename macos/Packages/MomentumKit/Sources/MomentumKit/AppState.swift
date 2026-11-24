@@ -79,6 +79,8 @@ public final class AppState {
     public private(set) var toasts: [Toast] = []
     public private(set) var banner: String?
     public private(set) var syncStatus: SyncStatus
+    public private(set) var taskFocusRequest = 0
+    public private(set) var taskFocusID: String?
     public private(set) var isSyncing = false
     public private(set) var nearbySyncing = false
     public private(set) var syncError: String?
@@ -788,39 +790,48 @@ public final class AppState {
 
     // MARK: Completing, deleting
 
+    private func applyTaskMutation(_ outcome: Outcome, affected: [String]) {
+        let before = allRowIds
+        apply(outcome)
+        if outcome.changed, before.contains(where: affected.contains) {
+            taskFocusID = TaskMutationFocus.replacement(before: before, after: allRowIds, affected: affected)
+            taskFocusRequest += 1
+        }
+    }
+
     public func setDone(_ id: String, _ done: Bool) {
-        apply(engine.setDone(id: id, done: done))
+        applyTaskMutation(engine.setDone(id: id, done: done), affected: [id])
     }
     public func toggleDone(_ ids: [String]) {
         guard !ids.isEmpty else { return }
-        apply(ids.count == 1 ? engine.toggleDone(id: ids[0]) : engine.bulkDone(ids: ids))
+        applyTaskMutation(ids.count == 1 ? engine.toggleDone(id: ids[0]) : engine.bulkDone(ids: ids), affected: ids)
     }
     public func delete(_ ids: [String]) {
         guard !ids.isEmpty else { return }
-        apply(ids.count == 1 ? engine.deleteTask(id: ids[0]) : engine.bulkDelete(ids: ids))
+        applyTaskMutation(ids.count == 1 ? engine.deleteTask(id: ids[0]) : engine.bulkDelete(ids: ids), affected: ids)
     }
 
     // MARK: Day moves
 
     public func toggleToday(_ ids: [String]) {
         guard !ids.isEmpty else { return }
-        apply(ids.count == 1 ? engine.toggleToday(id: ids[0]) : engine.planForToday(ids: ids))
+        applyTaskMutation(ids.count == 1 ? engine.toggleToday(id: ids[0]) : engine.planForToday(ids: ids), affected: ids)
     }
     public func toggleSlot(_ ids: [String], _ slot: Slot) {
-        apply(engine.toggleSlot(ids: ids, slot: slot))
+        applyTaskMutation(engine.toggleSlot(ids: ids, slot: slot), affected: ids)
     }
     public func moveToTomorrow(_ ids: [String]) {
-        apply(engine.moveToTomorrow(ids: ids))
+        applyTaskMutation(engine.moveToTomorrow(ids: ids), affected: ids)
     }
     public func moveToNextWeek(_ ids: [String]) {
-        apply(engine.moveToNextWeek(ids: ids))
+        applyTaskMutation(engine.moveToNextWeek(ids: ids), affected: ids)
     }
     /// The context menu's weekday items: `days` after today.
     public func moveInDays(_ ids: [String], _ days: Int64) {
-        apply(engine.moveToDay(ids: ids, day: dayOffset(day: today(), days: days)))
+        applyTaskMutation(engine.moveToDay(ids: ids, day: dayOffset(day: today(), days: days)), affected: ids)
     }
     public func moveToProject(_ ids: [String], _ projectId: String) {
-        apply(engine.moveToProject(ids: ids, projectId: projectId))
+        applyTaskMutation(engine.moveToProject(ids: ids, projectId: projectId), affected: ids)
     }
     public func addTag(_ ids: [String], tagId: String) {
         apply(engine.addTagTo(ids: ids, tagId: tagId))
@@ -831,7 +842,7 @@ public final class AppState {
     @discardableResult
     public func drop(_ ids: [String], on dest: View) -> Bool {
         let out = engine.dropTasks(ids: ids, dest: dest)
-        apply(out)
+        applyTaskMutation(out, affected: ids)
         return out.changed
     }
     @discardableResult
@@ -846,7 +857,8 @@ public final class AppState {
         selection = [id]
     }
     public func archiveDone() {
-        apply(engine.archiveDone())
+        let done = allRowIds.filter { row($0)?.isDone == true }
+        applyTaskMutation(engine.archiveDone(), affected: done)
     }
 
     // MARK: Projects and tags
@@ -1125,15 +1137,38 @@ public final class AppState {
 
     // MARK: Backup
 
+    public var canRestoreBackup: Bool { sheet == nil && !folderCopyInProgress }
+    public private(set) var hasBackupRecovery = false
+
+    public func refreshBackupRecovery() { hasBackupRecovery = engine.hasBackupRecovery() }
+
+    public func restoreBackupRecovery() {
+        guard canRestoreBackup else { return }
+        defer { if selectedSyncMethod == .libresync { applyP2pSetting() } }
+        do {
+            apply(try engine.restoreBackupRecovery())
+            refreshBackupRecovery()
+        } catch { toast(Strings.error(error)) }
+    }
+
     public func importBackup(_ url: URL, restoreSettings: Bool = false) {
+        guard canRestoreBackup else { return }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer {
+            if scoped { url.stopAccessingSecurityScopedResource() }
+            if selectedSyncMethod == .libresync { applyP2pSetting() }
+        }
         do {
             let outcome = try engine.importBackupWithSettings(path: url.path, restoreSettings: restoreSettings)
             apply(outcome)
+            refreshBackupRecovery()
             if restoreSettings { try adoptImportedAppSettings() }
             else { refreshAppSettings() }
         } catch { toast(Strings.error(error)) }
     }
     public func exportBackup(_ url: URL, includeSettings: Bool = false) {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         do {
             if includeSettings {
                 try stageNativeAppSettings(explicit: true)

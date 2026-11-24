@@ -59,6 +59,7 @@ data class Snapshot(
     val settingsSync: SettingsSyncStatus? = null,
     val appSettingsError: String? = null,
     val dayStatus: DayStatus? = null,
+    val hasBackupRecovery: Boolean = false,
 )
 
 /** One engine per application. Disk/FFI work never runs on the Android main thread. */
@@ -134,7 +135,7 @@ class MomentumRepository internal constructor(
         val list = if (resolved == View.Search) search(query) else dayListing!!.listing
         val parents = list.sections.flatMap { it.rows }.filterIsInstance<Row.Task>().mapNotNull { it.row.parentId }.distinct()
             .mapNotNull { id -> taskRow(id)?.title?.let { id to it } }.toMap()
-        Snapshot(list, sidebar(), projects(), tags(), preferences(), appSettings(nativePreferencesForDisplay()), syncStatus(), canUndo(), parents, settingsSyncStatus(), portableError, dayListing?.status)
+        Snapshot(list, sidebar(), projects(), tags(), preferences(), appSettings(nativePreferencesForDisplay()), syncStatus(), canUndo(), parents, settingsSyncStatus(), portableError, dayListing?.status, hasBackupRecovery())
     }!! // Snapshots have unconditional admission and always produce a value.
     suspend fun settings(): AppSettings = read { refreshPortableLocked(this); appSettings(nativePreferencesForDisplay()) }
     private suspend fun nativePreferencesForDisplay(): androidx.datastore.preferences.core.Preferences = try {
@@ -195,6 +196,7 @@ class MomentumRepository internal constructor(
         refreshPortableLocked(this)
         outcome
     }
+    suspend fun restoreRecoveryCopy(): Outcome = read { restoreBackupRecovery() }
     suspend fun updateSettings(settings: AppSettings) = updateSettings { settings }
     suspend fun updateSettings(change: (AppSettings) -> AppSettings) = read {
         refreshPortableLocked(this)

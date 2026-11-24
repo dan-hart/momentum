@@ -1,5 +1,14 @@
 # Momentum progress and handoff
 
+## 2026-11-24 — Momentum 0.5.0 native task workflows (F-079–F-082, B-191–B-192)
+
+- The candidate is based on `4db4338` and changes the shared engine, CLI boundary, and Linux, macOS, iOS, and Android apps. Version 0.5.0 uses Apple build 500. Recovery retains one private copy and reissues recovered pending edits after the current clock. The existing portable backup and sync formats remain compatible.
+- Nextcloud status shows queued local operations. LibreSync reports peer availability context. Editors retain failed drafts and expose retry. Native task actions choose the next surviving row using the old order. Search adds an attributed excerpt without changing which tasks match.
+- Rust workspace, all features and targets except GTK, passed **485 tests** with five opt-in skips. The isolated ARM64 Linux Broadway workspace run passed **631 tests**, including **142 GTK app tests**, with seven opt-in skips. The scopes include destination readback, prior export preservation, process termination and launch, recovery with pending edits, and search context.
+- Portable iOS package passed **175 tests**, and the Release simulator app built and passed the isolated actionable launch probe. MomentumKit passed **273 tests** in serial mode after a parallel run reported three system-font size assertions. The native macOS Release configuration compiled.
+- Android passed **123 JVM tests**, built both debug APKs, passed lint, and passed **six** focused native cases on the disposable API 37/16 KiB emulator. The cases cover editor retry, matching archived notes, capture, backup consent, and restore guards.
+- Spoken VoiceOver, TalkBack, and Orca journeys require separate observation. Use the [0.5.0 spoken runbook](ACCESSIBILITY.md#spoken-task-journeys-for-050), [launch probes](TESTING.md), and [implementation plan](superpowers/plans/2026-11-24-momentum-0.5.0.md) for scoped acceptance and the executable fixtures.
+
 ## 2026-11-15 — 0.4.23 typography (F-022, B-190)
 
 - Atkinson Hyperlegible Next is selectable offline on all four platforms. The

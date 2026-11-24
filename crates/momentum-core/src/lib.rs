@@ -12,6 +12,7 @@
 //! With the `ffi` feature the same types carry UniFFI attributes; `crates/momentum-ffi`
 //! builds the library the Swift package links against.
 
+mod backup;
 pub mod demo;
 mod engine;
 mod folder_migration;

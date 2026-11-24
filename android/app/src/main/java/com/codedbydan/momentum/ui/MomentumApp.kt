@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -70,6 +71,7 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
         var keyboardHelp by remember { mutableStateOf(false) }
         var searchFocusRevision by remember { mutableIntStateOf(0) }
         val searchFocus = remember { FocusRequester() }
+        var searchingWithKeyboard by remember { mutableStateOf(false) }
         val keyboard = rememberAppKeyboardCommands(vm,
             modal = options || rowMenu != null || move != null || tag != null || organization != null ||
                 deletion != null || subtask != null || repeat != null || repeatConfiguration != null || drawer.isOpen || keyboardHelp,
@@ -194,7 +196,8 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
                         if(state.tab == Tab.Settings) SettingsScreen(state, vm)
                         else {
                             if(state.view == View.Search) OutlinedTextField(state.query, vm::search, label = { Text(stringResource(R.string.search)) },
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(searchFocus), singleLine = true,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(searchFocus)
+                                    .onFocusChanged { searchingWithKeyboard = it.isFocused }, singleLine = true,
                                 trailingIcon = { if(state.query.isNotEmpty()) IconButton({ vm.search("") }) { Icon(Icons.Default.Close, stringResource(R.string.close)) } })
                             if(state.view == View.Project("INBOX_PROJECT") && state.snapshot?.listing?.view == state.view &&
                                 !state.selecting && state.editor == null) {
@@ -202,7 +205,8 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
                             }
                             PullToRefreshBox(isRefreshing = state.pullRefreshing,
                                 onRefresh = vm::pullToRefresh, modifier = Modifier.weight(1f)) {
-                                TaskList(state, vm, editRepeatSchedule = { repeatConfiguration = it }) { rowMenu = it }
+                                TaskList(state, vm, preservesSearchFocus = state.view == View.Search && searchingWithKeyboard,
+                                    editRepeatSchedule = { repeatConfiguration = it }) { rowMenu = it }
                             }
                             SyncFooter(state, vm)
                         }
@@ -219,7 +223,7 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
                 Text(row.title, Modifier.padding(20.dp), style = MaterialTheme.typography.titleLarge,
                     maxLines = 3, overflow = TextOverflow.Ellipsis)
                 val ids = listOf(row.id)
-                fun invoke(block: Engine.() -> Outcome) { vm.action(block = block); rowMenu = null }
+                fun invoke(block: Engine.() -> Outcome) { vm.action(focusAfter = ids, block = block); rowMenu = null }
                 ActionRow(R.string.edit_task) { vm.edit(row.id); rowMenu = null }
                 ActionRow(if(row.isDone) R.string.reopen else R.string.complete) { invoke { toggleDone(row.id) } }
                 ActionRow(R.string.today) { invoke { moveToDay(ids, today()) } }
@@ -259,7 +263,7 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     state.snapshot?.projects.orEmpty().forEach { project ->
-                        TextButton({ vm.action { moveToProject(ids, project.id) }; move = null }) {
+                        TextButton({ vm.action(focusAfter = ids) { moveToProject(ids, project.id) }; move = null }) {
                             Text(project.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -317,12 +321,12 @@ private data class OrganizationEdit(val project: Boolean, val id: String?, val t
     Surface(tonalElevation = 3.dp) {
         FlowRow(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(vm::selectAll, modifier = touchTarget) { Text(stringResource(R.string.select_all)) }
-            TextButton({ vm.action { bulkDone(ids) } }, modifier = touchTarget, enabled = ids.isNotEmpty()) { Text(stringResource(R.string.complete)) }
+            TextButton({ vm.action(focusAfter = ids) { bulkDone(ids) } }, modifier = touchTarget, enabled = ids.isNotEmpty()) { Text(stringResource(R.string.complete)) }
             TextButton(move, modifier = touchTarget, enabled = ids.isNotEmpty()) { Text(stringResource(R.string.move_to)) }
             Box {
                 IconButton({ more = true }, modifier = touchTarget, enabled = ids.isNotEmpty()) { Icon(Icons.Default.MoreVert, stringResource(R.string.selection_actions)) }
                 DropdownMenu(more, { more = false }) {
-                    fun invoke(block: Engine.() -> Outcome) { more = false; vm.action(block = block) }
+                    fun invoke(block: Engine.() -> Outcome) { more = false; vm.action(focusAfter = ids, block = block) }
                     DropdownMenuItem({ Text(stringResource(R.string.today)) }, { invoke { planForToday(ids) } })
                     DropdownMenuItem({ Text(stringResource(R.string.morning)) }, { invoke { toggleSlot(ids, Slot.MORNING) } })
                     DropdownMenuItem({ Text(stringResource(R.string.evening)) }, { invoke { toggleSlot(ids, Slot.TONIGHT) } })

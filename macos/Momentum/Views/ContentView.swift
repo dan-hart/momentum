@@ -102,6 +102,8 @@ struct ContentView: SwiftUI.View {
 /// The content column: banner, quick-add, the list, the sync caption, toasts on top.
 struct DetailView: SwiftUI.View {
     @Environment(AppState.self) private var state
+    @Environment(\.appearsActive) private var appearsActive
+    @AccessibilityFocusState private var headingFocus: Bool
 
     var body: some SwiftUI.View {
         VStack(spacing: 0) {
@@ -110,6 +112,12 @@ struct DetailView: SwiftUI.View {
             }
             if !state.isSearching {
                 ListHeading()
+                    .accessibilityFocused($headingFocus)
+                    .onChange(of: state.taskFocusRequest) {
+                        if appearsActive, state.sheet == nil, state.taskFocusID == nil {
+                            headingFocus = true
+                        }
+                    }
                 QuickAddField()
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
@@ -328,6 +336,12 @@ struct SyncStatusBar: SwiftUI.View {
                 }
                 Text(state.syncCaption ?? "").appFont(.caption).foregroundStyle(.secondary)
                     .lineLimit(1)
+                if state.syncAvailable, state.selectedSyncMethod == .nextcloud, state.syncStatus.pendingOps > 0 {
+                    LabeledContent(String(localized: "Waiting to sync"), value: state.syncStatus.pendingOps.formatted())
+                        .appFont(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("pending-sync-changes")
+                }
             }
             Spacer(minLength: 8)
             if state.syncError != nil {

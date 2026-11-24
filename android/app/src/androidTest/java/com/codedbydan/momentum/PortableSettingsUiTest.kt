@@ -99,6 +99,8 @@ class PortableSettingsUiTest {
                 MomentumTheme(state.snapshot?.settings ?: AppSettings()) { SettingsScreen(state, vm) }
             }
             compose.waitUntil(10_000) { vm.state.value.snapshot != null && !vm.state.value.loading }
+            compose.onNodeWithText(app.getString(R.string.settings_data)).performScrollTo().performClick()
+            compose.waitUntil(10_000) { vm.state.value.settingsPage == "data" }
             val include = compose.onNodeWithContentDescription(app.getString(R.string.include_app_settings))
             include.performScrollTo().assertIsOff().performClick(); include.assertIsOn()
             compose.runOnUiThread { vm.prepareImport(Uri.fromFile(backup)) }

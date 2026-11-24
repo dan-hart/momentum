@@ -11,8 +11,8 @@ public struct BackupFile: Equatable, Sendable {
 }
 
 @MainActor @Observable public final class BackupState {
-    public enum Activity: Equatable { case reading, preparingExport, restoring }
-    public enum Completion: Equatable { case exported, restored }
+    public enum Activity: Equatable { case reading, preparingExport, verifyingExport, restoring }
+    public enum Completion: Equatable { case exported, exportedWithoutVerification, restored, recovered }
     public private(set) var selection: BackupFile?
     public private(set) var preparedExport: Data?
     public private(set) var activity: Activity?
@@ -71,26 +71,48 @@ public struct BackupFile: Equatable, Sendable {
             return true
         } catch { report(error); return false }
     }
-    /// nil means the system picker was cancelled; preparing bytes is not a saved export.
-    public func finishExport(_ result: Result<URL, Error>?) {
+    /// A saved document is verified only when the actual destination returns the same bytes.
+    public func finishExport(_ result: Result<URL, Error>?, verify: Bool = true) async {
+        guard let expected = preparedExport else { return }
         preparedExport = nil
-        if let result {
-            switch result {
-            case .success: completion = .exported
-            case .failure(let failure): report(failure)
+        switch result {
+        case .success(let url):
+            guard verify else { completion = .exported; return }
+            activity = .verifyingExport
+            defer { activity = nil }
+            do {
+                let saved = try await BackupFileReader.read(url)
+                if saved.data == expected {
+                    completion = .exported
+                } else {
+                    error = Strings.backupDestinationMismatch
+                }
+            } catch {
+                completion = .exportedWithoutVerification
             }
+        case .failure(let failure): report(failure)
+        case nil: break
         }
     }
     @discardableResult public func restore(operation: @MainActor (BackupFile) async throws -> Void) async -> Bool {
-        guard let file = selection, begin(.restoring) else { return false }
+        guard let file = selection else { return false }
+        return await runRestore(completing: .restored) { try await operation(file) }
+    }
+
+    @discardableResult public func recover(operation: @MainActor () async throws -> Void) async -> Bool {
+        await runRestore(completing: .recovered, operation: operation)
+    }
+
+    private func runRestore(completing result: Completion, operation: @MainActor () async throws -> Void) async -> Bool {
+        guard begin(.restoring) else { return false }
         defer { activity = nil }
         do {
             try Task.checkCancellation()
-            try await operation(file)
+            try await operation()
             // Once the core committed, report that outcome even if the caller's task
             // was subsequently cancelled. Cancellation cannot undo a successful restore.
             selection = nil
-            completion = .restored
+            completion = result
             return true
         } catch { report(error); return false }
     }

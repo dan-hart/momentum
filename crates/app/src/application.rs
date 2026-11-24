@@ -284,6 +284,9 @@ impl MomentumApplication {
             gio::ActionEntry::builder("import")
                 .activate(win(|w| w.import_backup()))
                 .build(),
+            gio::ActionEntry::builder("restore-recovery")
+                .activate(win(|w| w.restore_backup_recovery()))
+                .build(),
             gio::ActionEntry::builder("export")
                 .activate(win(|w| w.export_backup()))
                 .build(),

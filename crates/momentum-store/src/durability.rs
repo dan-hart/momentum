@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 pub(super) const FILES: [&str; 3] = ["state.json", "pending.json", "meta.json"];
 pub(super) const PORTABLE: &str = "portable-settings.json";
+pub(super) const BACKUP_RECOVERY: &str = "backup-recovery.json";
 const JOURNAL: &str = ".momentum-transaction";
 const LOCK: &str = ".momentum-store.lock";
 
@@ -151,9 +152,12 @@ fn journal_manifest(journal: &Path) -> io::Result<Manifest> {
     }
     let manifest: Manifest = serde_json::from_slice(&fs::read(journal.join("manifest.json"))?)?;
     let mut names = std::collections::HashSet::new();
-    if manifest.optional_files.iter().any(|name| name != PORTABLE)
-        || manifest.optional_files.len() > 1
-        || (manifest.portable_only && manifest.optional_files != [PORTABLE])
+    if match manifest.optional_files.as_slice() {
+        [] => false,
+        [one] => one != PORTABLE && one != BACKUP_RECOVERY,
+        [first, second] => first != BACKUP_RECOVERY || second != PORTABLE,
+        _ => true,
+    } || (manifest.portable_only && manifest.optional_files != [PORTABLE])
         || (manifest.initialize_metadata && !manifest.portable_only)
         || manifest.version != 1
         || manifest
@@ -394,24 +398,76 @@ mod tests;
 
 /// Include private portable preferences in the same recovery boundary as tasks.
 pub(super) fn save_with_portable(dir: &Path, images: [Vec<u8>; 3], portable: &[u8]) -> io::Result<()> {
-    save_portable_with_hook(dir, images, portable, |_| {})
+    save_extended(dir, images, None, Some(portable), |_| {})
 }
+pub(super) fn read_backup_recovery(dir: &Path) -> io::Result<Option<Vec<u8>>> {
+    let _lock = lock_dir(dir)?;
+    recover(dir)?;
+    let path = dir.join(BACKUP_RECOVERY);
+    if regular_file(&path)? {
+        return fs::read(path).map(Some);
+    }
+    Ok(None)
+}
+
+pub(super) fn has_backup_recovery(dir: &Path) -> bool {
+    matches!(regular_file(&dir.join(BACKUP_RECOVERY)), Ok(true))
+}
+
+pub(super) fn save_with_recovery(
+    dir: &Path,
+    images: [Vec<u8>; 3],
+    recovery: &[u8],
+    portable: Option<&[u8]>,
+) -> io::Result<()> {
+    save_extended(dir, images, Some(recovery), portable, |_| {})
+}
+
+#[cfg(test)]
 fn save_portable_with_hook(
     dir: &Path,
     images: [Vec<u8>; 3],
     portable: &[u8],
     checkpoint: impl Fn(Step),
 ) -> io::Result<()> {
+    save_extended(dir, images, None, Some(portable), checkpoint)
+}
+
+fn save_extended(
+    dir: &Path,
+    images: [Vec<u8>; 3],
+    recovery: Option<&[u8]>,
+    portable: Option<&[u8]>,
+    checkpoint: impl Fn(Step),
+) -> io::Result<()> {
     let _lock = lock_dir(dir)?;
     recover(dir)?;
-    let journal = prepare(dir, &[PORTABLE])?;
+    let additional: Vec<_> = [(BACKUP_RECOVERY, recovery), (PORTABLE, portable)]
+        .into_iter()
+        .filter_map(|(name, data)| data.map(|data| (name, data)))
+        .collect();
+    let optional_files: Vec<_> = additional.iter().map(|(name, _)| *name).collect();
+    let journal = prepare(dir, &optional_files)?;
     let result = (|| {
         checkpoint(Step::Prepared);
-        for (name, data) in FILES.iter().zip(&images) {
+        for (name, data) in FILES
+            .into_iter()
+            .zip(images.iter().map(Vec::as_slice))
+            .chain(additional)
+        {
             write_synced(&dir.join(format!("{name}.tmp")), data)?;
         }
-        write_synced(&dir.join(format!("{PORTABLE}.tmp")), portable)?;
-        for (index, name) in FILES.into_iter().chain(std::iter::once(PORTABLE)).enumerate() {
+        if let Some(expected) = recovery {
+            // Publish and verify the private copy before changing any live task file.
+            // The undo journal rolls the copy back alongside the tasks on failure.
+            let destination = dir.join(BACKUP_RECOVERY);
+            fs::rename(dir.join(format!("{BACKUP_RECOVERY}.tmp")), &destination)?;
+            sync_dir(dir)?;
+            if fs::read(destination)? != expected {
+                return Err(io::Error::other("backup recovery copy failed verification"));
+            }
+        }
+        for (index, name) in FILES.into_iter().chain(portable.map(|_| PORTABLE)).enumerate() {
             fs::rename(dir.join(format!("{name}.tmp")), dir.join(name))?;
             checkpoint(Step::Replaced(index));
         }
@@ -423,7 +479,7 @@ fn save_portable_with_hook(
         Ok(())
     })();
     if let Err(error) = result {
-        recover(dir).map_err(|_| io::Error::other("portable settings transaction failed; recovery is pending"))?;
+        recover(dir).map_err(|_| io::Error::other("store transaction failed; recovery is pending"))?;
         return Err(error);
     }
     Ok(())

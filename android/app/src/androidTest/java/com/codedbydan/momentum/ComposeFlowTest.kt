@@ -77,7 +77,9 @@ class ComposeFlowTest {
 
     @Test fun archivedTaskHasNoCompletionOrEditingAction() {
         runBlocking {
-            val created = repo.create(TaskDraft("Archived fixture", "INBOX_PROJECT", null, null, null, 0.0, "", emptyList(), emptyList()), View.Today)
+            val notes = "First line\nLook for the ferry"
+            val created = repo.create(TaskDraft("Archived fixture", "INBOX_PROJECT", null, null, null, 0.0,
+                notes, emptyList(), emptyList()), View.Today)
             repo.mutate { setDone(created.id!!, true) }
             repo.mutate { archiveDone() }
         }
@@ -86,6 +88,15 @@ class ComposeFlowTest {
         compose.onNodeWithText("Archived fixture").assertIsDisplayed()
         compose.onNodeWithContentDescription("Reopen task: Archived fixture").assertDoesNotExist()
         compose.onNodeWithContentDescription("Add task").assertDoesNotExist()
+
+        compose.runOnUiThread { vm.tab(Tab.Search); vm.search("ferry") }
+        compose.waitUntil(15_000) {
+            vm.state.value.snapshot?.listing?.sections.orEmpty().any { it.kind == SectionKind.SearchArchived }
+        }
+        val match = app.getString(R.string.search_match_notes, "First line Look for the ferry")
+        val archivedMatch = app.getString(R.string.search_match_archived_task, match)
+        compose.onNodeWithText(archivedMatch).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Reopen task: Archived fixture").assertDoesNotExist()
     }
 
     @Test fun sourceContextSurvivesNavigationBeforeSave() {
@@ -117,11 +128,11 @@ class ComposeFlowTest {
         val blocker = File(directory, ".momentum-transaction")
         blocker.writeText("isolated invalid journal")
         compose.onNodeWithContentDescription(app.getString(R.string.save)).performClick()
-        compose.waitUntil(15_000) { vm.state.value.error != null && !vm.state.value.busy }
+        compose.waitUntil(15_000) { vm.state.value.editorSaveFailed && !vm.state.value.busy }
         compose.onNodeWithText("Retained draft").assertIsDisplayed()
         Assert.assertTrue(runBlocking { repo.read { allTasks() } }.isEmpty())
         blocker.delete()
-        compose.onNodeWithContentDescription(app.getString(R.string.save)).performClick()
+        compose.onNodeWithText(app.getString(R.string.retry_save)).assertIsDisplayed().performClick()
         compose.waitUntil(15_000) { vm.state.value.editor == null && !vm.state.value.loading }
         Assert.assertEquals("Retained draft", runBlocking { repo.read { allTasks() } }.single().title)
     }

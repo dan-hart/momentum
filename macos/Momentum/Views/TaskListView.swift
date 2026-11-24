@@ -14,6 +14,9 @@ struct TaskListView: SwiftUI.View {
     @AppStorage(PrefKey.rowDensity) private var density = "regular"
     @LabelColors private var colorful: Bool
     @FocusState private var listFocused: Bool
+    @AccessibilityFocusState private var accessibleTask: String?
+    @AccessibilityFocusState private var emptyFocused: Bool
+    @Environment(\.appearsActive) private var appearsActive
 
     var body: some SwiftUI.View {
         @Bindable var state = state
@@ -123,6 +126,7 @@ struct TaskListView: SwiftUI.View {
                     if let empty = state.listing.empty, (!state.isSearching || SettingsDiscovery.results(state.searchText, platform: .macos).isEmpty), state.dayStatus.completion != .dayComplete, state.dayStatus.completion != .periodComplete, state.dayStatus.hiddenMorning == 0, state.dayStatus.hiddenEvening == 0 {
                         let copy = Strings.empty(empty, modifier: state.modifier.symbol, syncConfigured: state.prefs.syncConfigured)
                         EmptyTaskListView(copy: copy)
+                            .accessibilityFocused($emptyFocused)
                     }
                 }
                 // Multi-item drag: every selected row lifts when one of them is dragged,
@@ -130,6 +134,14 @@ struct TaskListView: SwiftUI.View {
                 .dragContainer(for: TaskTransfer.self) { ids in state.dragPayload(for: ids) }
                 .dragContainerSelection(state.targets)
                 .focused($listFocused)
+                .onChange(of: state.taskFocusRequest) {
+                    guard appearsActive, state.sheet == nil, !state.isSearching || listFocused else { return }
+                    if listFocused {
+                        state.selection = state.taskFocusID.map { [$0] } ?? []
+                    }
+                    accessibleTask = state.taskFocusID
+                    emptyFocused = state.isSearching && state.taskFocusID == nil
+                }
                 // Selecting a row alone can leave the quick-add field as first responder.
                 .simultaneousGesture(TapGesture().onEnded { listFocused = true })
                 .focusedValue(\.selectAllTasks, { state.selection = Set(state.allRowIds) })
@@ -180,6 +192,7 @@ struct TaskListView: SwiftUI.View {
         switch row {
         case .task(let task):
             TaskRowView(row: task, layout: rowLayout)
+                .accessibilityFocused($accessibleTask, equals: task.id)
                 .tag(task.id)
                 .selectionDisabled(task.occurrence != nil)
         case .project(let item):

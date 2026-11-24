@@ -23,6 +23,8 @@ struct TaskEditor: SwiftUI.View {
     @State private var tags: [TagRef] = []
     @State private var loaded = false
     @State private var busy = false
+    @State private var saving = false
+    @State private var retrySave = false
     @State private var error: String?
     @State private var subtaskTitle = ""
     @State private var showRepeat = false
@@ -32,6 +34,15 @@ struct TaskEditor: SwiftUI.View {
     @FocusState private var focusedField: Field?
     @AccessibilityFocusState private var errorFocused: Bool
 
+    init(worker: EngineWorker, view: MomentumCore.View, taskID: String? = nil,
+         onChange: @escaping @MainActor () -> Void) {
+        self.worker = worker
+        self.view = view
+        self.taskID = taskID
+        self.onChange = onChange
+        _form = State(initialValue: taskID == nil ? TaskFormModel(view: view, projects: []) : TaskFormModel())
+    }
+
     private var editable: Bool { taskID == nil || menu != nil }
     private var estimateInvalid: Bool { form.mobileEstimateInvalid }
     private var valid: Bool { form.mobileCanSave }
@@ -39,7 +50,7 @@ struct TaskEditor: SwiftUI.View {
     var body: some SwiftUI.View {
         NavigationStack {
             Group {
-                if loaded {
+                if loaded || taskID == nil {
                     editorForm
                 } else {
                     ProgressView(String(localized: "Loading task…"))
@@ -109,11 +120,18 @@ struct TaskEditor: SwiftUI.View {
 
     private var editorForm: some SwiftUI.View {
         Form {
+            if saving {
+                Section { ProgressView(String(localized: "Saving task…")) }
+            }
             if let error {
                 Section {
                     AccessibleErrorMessage(error)
                         .accessibilityFocused($errorFocused)
                         .accessibilityIdentifier("task-editor-error")
+                    if retrySave {
+                        Button("Retry Save") { save() }
+                            .disabled(!loaded || !editable || !valid || busy)
+                    }
                 }
             }
             if !editable {
@@ -124,12 +142,15 @@ struct TaskEditor: SwiftUI.View {
                     TextField(String(localized: "Title"), text: $form.title, axis: .vertical)
                         .lineLimit(1...5).focused($focusedField, equals: .title)
                         .accessibilityIdentifier("task-editor-title")
+                        .task {
+                            if taskID == nil { focusedField = .title }
+                        }
                     Picker(String(localized: "Project"), selection: $form.projectId) {
                         ForEach(projects, id: \.id) { Text($0.title).tag($0.id) }
                     }
                     .accessibilityIdentifier("task-editor-project")
                     .accessibilityValue(projects.first(where: { $0.id == form.projectId })?.title ?? "")
-                    .disabled(detail?.parentId != nil)
+                    .disabled(!loaded || detail?.parentId != nil)
                 }
                 scheduleSection
                 Section {
@@ -301,21 +322,17 @@ struct TaskEditor: SwiftUI.View {
             detail = await worker.taskDetail(taskID)
             menu = await worker.taskMenu(taskID)
             if let detail { form = TaskFormModel(detail: detail) }
-        } else {
-            form = TaskFormModel(view: view, projects: projects)
+        } else if form.projectId.isEmpty {
+            form.projectId = projects.first?.id ?? ""
         }
         loaded = true
-        if taskID == nil {
-            // The form is only in the hierarchy after `loaded`; focus on the next turn.
-            Task { @MainActor in focusedField = .title }
-        }
     }
 
     private func save() {
-        guard valid else { return }
+        guard loaded, editable, valid else { return }
         focusedField = nil
         let draft = form.draft
-        mutate(closes: true, acceptsUnchanged: true) {
+        mutate(closes: true, acceptsUnchanged: true, isSave: true) {
             if let taskID { return await worker.saveTask(taskID, draft: draft) }
             return await worker.createTask(draft, view: view)
         }
@@ -356,14 +373,17 @@ struct TaskEditor: SwiftUI.View {
         }
     }
 
-    private func mutate(closes: Bool = false, acceptsUnchanged: Bool = false,
+    private func mutate(closes: Bool = false, acceptsUnchanged: Bool = false, isSave: Bool = false,
                         operation: @escaping @MainActor () async -> Outcome) {
         guard !busy else { return }
         busy = true
+        saving = isSave
+        retrySave = false
         error = nil
         Task { @MainActor in
             let outcome = await operation()
             busy = false
+            saving = false
             if outcome.changed {
                 // Delete and Duplicate return a message and an undo batch like the row
                 // actions do; show them the same way instead of dropping the outcome.
@@ -371,14 +391,20 @@ struct TaskEditor: SwiftUI.View {
                     model.accept(outcome)
                 } else {
                     onChange()
+                    if isSave { model.showFeedback(String(localized: "Task saved")) }
                 }
                 if closes { dismiss() } else if let taskID {
                     detail = await worker.taskDetail(taskID)
                     subtaskTitle = ""
                 }
             } else if acceptsUnchanged && outcome.message == nil {
-                dismiss()
+                if let taskID, await worker.taskMenu(taskID) == nil {
+                    error = String(localized: "This task is archived or no longer available.")
+                } else {
+                    dismiss()
+                }
             } else {
+                retrySave = isSave
                 error = outcome.message.map(Strings.message) ?? String(localized: "The task could not be changed.")
             }
         }

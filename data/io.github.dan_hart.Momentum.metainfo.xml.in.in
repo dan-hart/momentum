@@ -19,19 +19,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.23/data/resources/screenshots/today.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.5.0/data/resources/screenshots/today.png</image>
       <caption>Today view with projects and tags in the sidebar</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.23/data/resources/screenshots/coming-up.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.5.0/data/resources/screenshots/coming-up.png</image>
       <caption>Coming Up: the next days grouped by day</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.23/data/resources/screenshots/new-task.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.5.0/data/resources/screenshots/new-task.png</image>
       <caption>Creating a task with a due day, time, reminder, estimate and tags</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.4.23/data/resources/screenshots/devices.png</image>
+      <image>https://raw.githubusercontent.com/dan-hart/momentum/v0.5.0/data/resources/screenshots/devices.png</image>
       <caption>Sync with nearby devices: link once with a pairing code, no server needed</caption>
     </screenshot>
   </screenshots>
@@ -41,6 +41,18 @@
   <url type="translate">https://github.com/dan-hart/momentum/tree/main/po</url>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.5.0" date="2026-11-24">
+      <description>
+        <p>Verified backups, clearer task and sync feedback, and easier search and capture.</p>
+        <ul>
+          <li>Reopen and verify saved backups, and keep a recovery copy when replacing tasks.</li>
+          <li>Show where a task matched a search, with an excerpt from the matching field.</li>
+          <li>Add reproducible startup measurements and forced-relaunch persistence checks.</li>
+          <li>Show Nextcloud changes waiting to sync and keep task save failures in the editor with a retry action.</li>
+          <li>Prepare capture input earlier and move focus to a nearby task after completing, moving, or deleting a row.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.23" date="2026-11-15">
       <description>
         <p>More accessible font choices and consistent iOS typography.</p>

@@ -23,6 +23,13 @@ extension EngineWorker {
         }
     }
 
+    public func hasBackupRecovery() -> Bool { engine.hasBackupRecovery() }
+
+    public func restoreBackupRecovery() throws -> Outcome {
+        try Task.checkCancellation()
+        return try engine.restoreBackupRecovery()
+    }
+
     public func portableSettingsJSON() throws -> String { try engine.portableSettingsJson() }
     public func stagePortableSettings(_ json: String) throws { _ = try engine.stagePortableSettings(json: json) }
     public func appSettingsSyncStatus() -> SettingsSyncStatus { engine.settingsSyncStatus() }

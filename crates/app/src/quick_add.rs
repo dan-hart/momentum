@@ -50,10 +50,9 @@ pub fn open(app: &MomentumApplication) {
         main,
         move |e| {
             let text = e.text().to_string();
-            if !text.trim().is_empty() {
-                main.add_task_for_today(&text);
+            if text.trim().is_empty() || main.add_task_for_today(&text) {
+                win.close();
             }
-            win.close();
         }
     ));
     let keys = gtk::EventControllerKey::new();
@@ -72,6 +71,6 @@ pub fn open(app: &MomentumApplication) {
         }
     ));
     win.add_controller(keys);
+    gtk::prelude::GtkWindowExt::set_focus(&win, Some(&entry));
     win.present();
-    entry.grab_focus();
 }

@@ -33,7 +33,12 @@ struct QuickAddWindow: SwiftUI.View {
         .frame(width: 520)
         .onChange(of: text) { _, value in DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: !value.isEmpty) }
         .onDisappear { DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: false) }
-        .onAppear { focused = true }
+        .defaultFocus($focused, true)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            guard let window = notification.object as? NSWindow,
+                  window.identifier?.rawValue.hasPrefix("quick-add") == true else { return }
+            focused = true
+        }
         .onExitCommand { dismiss() }
     }
 
@@ -43,7 +48,7 @@ struct QuickAddWindow: SwiftUI.View {
             dismiss()
             return
         }
-        state.addTaskForToday(trimmed)
+        guard state.addTaskForToday(trimmed) else { return }
         text = ""
         dismiss()
     }

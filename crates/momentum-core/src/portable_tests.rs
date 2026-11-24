@@ -312,6 +312,45 @@ fn native_empty_task_and_backup_stores_can_seed_the_compatible_nextcloud_envelop
     }
 }
 #[test]
+fn recovery_reissues_pending_actions_after_nextcloud_publishes_the_imported_image() {
+    let dav = mock_dav::MockDav::start();
+    let settings = nextcloud(&dav);
+    let remote_path = "/remote.php/dav/files/u/legacy/sync-data.json";
+    let (source, dir) = engine();
+    source.add_task("Imported".into(), View::Today);
+    let backup = dir.path().join("restore.json").to_string_lossy().into_owned();
+    source.export_backup(backup.clone()).unwrap();
+
+    let (target, _dir) = engine();
+    target.add_task("Unsynced before restore".into(), View::Today);
+    let old_id = target.with_store(|s| s.pending[0].op.id.clone());
+    target.import_backup(backup).unwrap();
+    assert!(target.sync_nextcloud(settings.clone()).unwrap().uploaded);
+    let imported = dav.raw(remote_path).unwrap();
+    let imported = momentum_sync::decode(std::str::from_utf8(&imported).unwrap(), None).unwrap();
+    assert_eq!(imported.state.task.iter().next().unwrap().title, "Imported");
+
+    target.restore_backup_recovery().unwrap();
+    let actor = target.client_id();
+    let reissued_id = target.with_store(|s| {
+        assert_eq!(s.pending.len(), 1);
+        let operation = &s.pending[0].op;
+        assert_ne!(operation.id, old_id);
+        assert!(operation.v[&actor] > imported.vector_clock[&actor]);
+        operation.id.clone()
+    });
+    assert!(target.sync_nextcloud(settings).unwrap().uploaded);
+    let recovered = dav.raw(remote_path).unwrap();
+    let recovered = momentum_sync::decode(std::str::from_utf8(&recovered).unwrap(), None).unwrap();
+    assert!(recovered.recent_ops.iter().any(|op| op.id == reissued_id));
+    assert!(recovered
+        .state
+        .task
+        .iter()
+        .any(|task| task.title == "Unsynced before restore"));
+    assert_eq!(target.pending_count(), 0);
+}
+#[test]
 fn native_bootstrap_preserves_opaque_configuration_on_upload_and_download() {
     let dav = mock_dav::MockDav::start();
     let (source, dir) = engine();

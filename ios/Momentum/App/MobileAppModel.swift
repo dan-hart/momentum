@@ -441,16 +441,35 @@ struct FeedbackToast: Identifiable, Equatable {
         return try await worker.exportBackup(includeSettings: includeSettings)
     }
 
+    var canRestoreBackup: Bool {
+        !isRestoringBackup && !sync.folderCopyInProgress && !showingAdd && !showingNewProject && activeTaskEditors == 0
+    }
+
+    func hasBackupRecovery() async -> Bool {
+        await worker?.hasBackupRecovery() ?? false
+    }
+
     func restoreBackup(_ file: BackupFile, restoreSettings: Bool = false) async throws {
-        guard let worker else { throw AutomationError.unavailable }
-        guard !isRestoringBackup, !sync.folderCopyInProgress, !showingAdd, !showingNewProject, activeTaskEditors == 0 else {
-            throw CancellationError()
+        try await runBackupRestore(restoreSettings: restoreSettings) { worker in
+            try await worker.restoreBackup(file, restoreSettings: restoreSettings)
         }
+    }
+
+    func restoreBackupRecovery() async throws {
+        try await runBackupRestore { worker in try await worker.restoreBackupRecovery() }
+    }
+
+    private func runBackupRestore(
+        restoreSettings: Bool = false,
+        operation: (EngineWorker) async throws -> Outcome
+    ) async throws {
+        guard let worker else { throw AutomationError.unavailable }
+        guard canRestoreBackup else { throw CancellationError() }
         isRestoringBackup = true
         await sync.suspendForRestore()
         defer { isRestoringBackup = false; sync.resumeAfterRestore() }
-        let outcome = try await worker.restoreBackup(file, restoreSettings: restoreSettings)
-        accept(outcome) // Refresh visible tasks and request normal notification reconciliation.
+        let outcome = try await operation(worker)
+        accept(outcome)
         if restoreSettings { try await adoptImportedAppSettings() }
         else { await refreshAppSettings() }
     }

@@ -4804,3 +4804,161 @@ msgstr "Die Nextcloud-Verbindungsfelder stehen direkt bei der Anbieterauswahl, d
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Keep bulk selection actions separate from task rows on iOS and improve control sizing in compact Android and Linux windows."
 msgstr "Aktionen für mehrere ausgewählte Aufgaben stehen unter iOS getrennt von den Aufgabenzeilen. Die Bedienelemente passen besser in kompakte Android- und Linux-Fenster."
+
+#: data/resources/ui/prefs.blp:334
+msgid "Restore Recovery Copy…"
+msgstr "Wiederherstellungskopie einspielen …"
+
+#: data/resources/ui/prefs.blp:335
+msgid "Recover the tasks and unsynced changes from before the last restore"
+msgstr ""
+"Aufgaben und nicht synchronisierte Änderungen von vor der letzten "
+"Wiederherstellung zurückholen"
+
+#: crates/app/src/messages.rs:63
+msgid "Backup saved and verified"
+msgstr "Sicherung gespeichert und überprüft"
+
+#: crates/app/src/messages.rs:64
+msgid "Backup saved. This location could not be verified."
+msgstr ""
+"Sicherung gespeichert. Dieser Speicherort konnte nicht überprüft werden."
+
+#: crates/app/src/messages.rs:65
+msgid "Recovery copy restored"
+msgstr "Wiederherstellungskopie eingespielt"
+
+#: crates/app/src/prefs.rs:1003 crates/app/src/window.rs:1373
+msgid "Waiting to sync"
+msgstr "Wartet auf Synchronisierung"
+
+#: crates/app/src/prefs.rs:1007
+msgid "Changes sync when linked devices are reachable."
+msgstr ""
+"Änderungen werden synchronisiert, sobald verknüpfte Geräte erreichbar sind."
+
+#: crates/app/src/window.rs:3112
+#, rust-format
+msgid "Title match: {}"
+msgstr "Titeltreffer: {}"
+
+#: crates/app/src/window.rs:3113
+#, rust-format
+msgid "Notes match: {}"
+msgstr "Treffer in Notizen: {}"
+
+#: crates/app/src/window.rs:3114
+#, rust-format
+msgid "Tag match: {}"
+msgstr "Schlagworttreffer: {}"
+
+#: crates/app/src/window.rs:3115
+#, rust-format
+msgid "Project match: {}"
+msgstr "Projekttreffer: {}"
+
+#: crates/app/src/window.rs:3120
+#, rust-format
+msgid "Archived subtask · {}"
+msgstr "Archivierte Unteraufgabe · {}"
+
+#: crates/app/src/window.rs:3121
+#, rust-format
+msgid "Archived task · {}"
+msgstr "Archivierte Aufgabe · {}"
+
+#: crates/app/src/window.rs:3122
+#, rust-format
+msgid "Subtask · {}"
+msgstr "Unteraufgabe · {}"
+
+#: crates/app/src/window.rs:4493
+msgid "Close the open dialog before restoring a backup"
+msgstr ""
+"Schließe den geöffneten Dialog, bevor du eine Sicherung wiederherstellst"
+
+#: crates/app/src/window.rs:4541
+msgid "No backup recovery copy is available"
+msgstr "Keine Wiederherstellungskopie verfügbar"
+
+#: crates/app/src/window.rs:4158 crates/app/src/window.rs:4273
+msgid "Retry Save"
+msgstr "Erneut speichern"
+
+#: crates/app/src/window.rs:4280
+msgid "Task saved"
+msgstr "Aufgabe gespeichert"
+
+#: crates/app/src/window.rs:4521
+msgid ""
+"Your current tasks and unsynced changes will be kept in a recovery copy. App "
+"settings are optional."
+msgstr ""
+"Deine aktuellen Aufgaben und nicht synchronisierten Änderungen werden in "
+"einer Wiederherstellungskopie aufbewahrt. App-Einstellungen sind optional."
+
+#: crates/app/src/window.rs:4549
+msgid "Restore Recovery Copy?"
+msgstr "Wiederherstellungskopie einspielen?"
+
+#: crates/app/src/window.rs:4550
+msgid ""
+"Replace your tasks with the previous tasks and unsynced changes. The "
+"recovery copy will then hold your current tasks. App settings stay as they "
+"are."
+msgstr ""
+"Ersetze deine Aufgaben durch die früheren Aufgaben und nicht "
+"synchronisierten Änderungen. Die Wiederherstellungskopie enthält "
+"anschließend deine aktuellen Aufgaben. Deine App-Einstellungen bleiben "
+"erhalten."
+
+#: crates/app/src/window.rs:4554
+msgid "Restore Recovery Copy"
+msgstr "Wiederherstellungskopie einspielen"
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid ""
+"Verified backups, clearer task and sync feedback, and easier search and "
+"capture."
+msgstr ""
+"Geprüfte Sicherungen, klarere Rückmeldungen zu Aufgaben und Synchronisierung "
+"sowie eine einfachere Suche und Erfassung."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid ""
+"Reopen and verify saved backups, and keep a recovery copy when replacing "
+"tasks."
+msgstr ""
+"Gespeicherte Sicherungen werden erneut geöffnet und geprüft. Beim Ersetzen "
+"von Aufgaben bleibt eine Wiederherstellungskopie erhalten."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid ""
+"Show where a task matched a search, with an excerpt from the matching field."
+msgstr "Suchergebnisse zeigen das passende Feld und einen kurzen Auszug."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
+msgid ""
+"Add reproducible startup measurements and forced-relaunch persistence checks."
+msgstr ""
+"Neue reproduzierbare Startmessungen und Prüfungen der Datenspeicherung nach "
+"einem erzwungenen Neustart."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
+msgid ""
+"Show Nextcloud changes waiting to sync and keep task save failures in the "
+"editor with a retry action."
+msgstr ""
+"Zeigt ausstehende Nextcloud-Änderungen. Bei einem Speicherfehler bleibt der "
+"Editor mit einer Schaltfläche zum erneuten Speichern geöffnet."
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:52
+msgid ""
+"Prepare capture input earlier and move focus to a nearby task after "
+"completing, moving, or deleting a row."
+msgstr ""
+"Die Eingabe steht früher bereit. Nach dem Erledigen, Verschieben oder "
+"Löschen springt der Fokus zur nächsten passenden Aufgabe."
+
+msgid "This task is archived or no longer available."
+msgstr "Diese Aufgabe ist archiviert oder nicht mehr verfügbar."

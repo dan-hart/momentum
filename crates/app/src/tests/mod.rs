@@ -5,4 +5,5 @@
 //! can drive private methods. Run with `build-aux/run-tests.sh` (see docs/TESTING.md).
 pub mod support;
 
+mod launch;
 mod logic;

@@ -17,7 +17,7 @@ use momentum_oplog::Action;
 use momentum_store::Store;
 use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -2441,33 +2441,6 @@ impl Engine {
         active
     }
 
-    /// Import a task backup: replaces local state, drops pending ops.
-    pub fn import_backup(&self, path: String) -> Result<Outcome, CoreError> {
-        let data = std::fs::read(Path::new(&path))?;
-        let v: Value = serde_json::from_slice(&data).map_err(|e| CoreError::Invalid { message: e.to_string() })?;
-        let d = AppData::from_backup(v).map_err(|e| CoreError::Invalid { message: e.to_string() })?;
-        // Hold provider admission until replacement commits. A stopped runtime may
-        // still have queued events, but its store guard rejects all of them.
-        #[cfg(feature = "p2p")]
-        let mut nearby = self.p2p.lock().unwrap_or_else(|e| e.into_inner());
-        #[cfg(feature = "p2p")]
-        self.stop_p2p_locked(&mut nearby);
-        let mut g = self.lock();
-        g.sync_generation = g.sync_generation.wrapping_add(1);
-        g.store.replace_state(d)?;
-        self.clear_nextcloud_caches();
-        g.invalidate();
-        g.undo.clear();
-        Ok(changed_with(Message::BackupImported, None))
-    }
-    pub fn export_backup(&self, path: String) -> Result<Outcome, CoreError> {
-        let body = {
-            let g = self.lock();
-            json!({"data": g.store.state, "timestamp": now_ms(), "crossModelVersion": 4.5})
-        };
-        std::fs::write(Path::new(&path), serde_json::to_vec_pretty(&body).unwrap())?;
-        Ok(changed_with(Message::BackupExported, None))
-    }
     /// Another process (`mo` without a running app, a second instance) wrote the store:
     /// reload it if it differs. Skipped while a sync is running.
     pub fn reload_from_disk(&self) -> bool {

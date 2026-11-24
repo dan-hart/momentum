@@ -62,6 +62,22 @@ import java.time.format.FormatStyle
     SectionKind.SearchArchived -> stringResource(R.string.search_archived)
 }
 
+@Composable fun searchMatchText(row: TaskRow): String? {
+    val detail = row.searchMatch ?: return null
+    val label = stringResource(when (detail.source) {
+        SearchMatchSource.TITLE -> R.string.search_match_title
+        SearchMatchSource.NOTES -> R.string.search_match_notes
+        SearchMatchSource.TAG -> R.string.search_match_tag
+        SearchMatchSource.PROJECT -> R.string.search_match_project
+    }, detail.excerpt)
+    return when {
+        row.archived && row.isSubtask -> stringResource(R.string.search_match_archived_subtask, label)
+        row.archived -> stringResource(R.string.search_match_archived_task, label)
+        row.isSubtask -> stringResource(R.string.search_match_subtask, label)
+        else -> label
+    }
+}
+
 @Composable fun dayText(day: DayLabel): String {
     val locale = LocalLocale.current.platformLocale
     return when(day.relation) {
@@ -111,6 +127,8 @@ import java.time.format.FormatStyle
     is Message.RepeatSaved -> R.string.repeat_saved
     Message.BackupImported -> R.string.backup_restored
     Message.BackupExported -> R.string.backup_exported
+    Message.BackupExportVerificationUnavailable -> R.string.backup_export_unverified
+    Message.BackupRecoveryRestored -> R.string.backup_recovery_restored
     is Message.Synced -> R.string.sync
     is Message.LinkedWith -> R.string.linked
     Message.Linking -> R.string.linking

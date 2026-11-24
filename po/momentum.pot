@@ -4618,3 +4618,141 @@ msgstr ""
 #: data/io.github.dan_hart.Momentum.metainfo.xml.in.in
 msgid "Keep bulk selection actions separate from task rows on iOS and improve control sizing in compact Android and Linux windows."
 msgstr ""
+
+#: data/resources/ui/prefs.blp:334
+msgid "Restore Recovery Copy…"
+msgstr ""
+
+#: data/resources/ui/prefs.blp:335
+msgid "Recover the tasks and unsynced changes from before the last restore"
+msgstr ""
+
+#: crates/app/src/messages.rs:63
+msgid "Backup saved and verified"
+msgstr ""
+
+#: crates/app/src/messages.rs:64
+msgid "Backup saved. This location could not be verified."
+msgstr ""
+
+#: crates/app/src/messages.rs:65
+msgid "Recovery copy restored"
+msgstr ""
+
+#: crates/app/src/prefs.rs:1003 crates/app/src/window.rs:1373
+msgid "Waiting to sync"
+msgstr ""
+
+#: crates/app/src/prefs.rs:1007
+msgid "Changes sync when linked devices are reachable."
+msgstr ""
+
+#: crates/app/src/window.rs:3112
+#, rust-format
+msgid "Title match: {}"
+msgstr ""
+
+#: crates/app/src/window.rs:3113
+#, rust-format
+msgid "Notes match: {}"
+msgstr ""
+
+#: crates/app/src/window.rs:3114
+#, rust-format
+msgid "Tag match: {}"
+msgstr ""
+
+#: crates/app/src/window.rs:3115
+#, rust-format
+msgid "Project match: {}"
+msgstr ""
+
+#: crates/app/src/window.rs:3120
+#, rust-format
+msgid "Archived subtask · {}"
+msgstr ""
+
+#: crates/app/src/window.rs:3121
+#, rust-format
+msgid "Archived task · {}"
+msgstr ""
+
+#: crates/app/src/window.rs:3122
+#, rust-format
+msgid "Subtask · {}"
+msgstr ""
+
+#: crates/app/src/window.rs:4493
+msgid "Close the open dialog before restoring a backup"
+msgstr ""
+
+#: crates/app/src/window.rs:4541
+msgid "No backup recovery copy is available"
+msgstr ""
+
+#: crates/app/src/window.rs:4158 crates/app/src/window.rs:4273
+msgid "Retry Save"
+msgstr ""
+
+#: crates/app/src/window.rs:4280
+msgid "Task saved"
+msgstr ""
+
+#: crates/app/src/window.rs:4521
+msgid ""
+"Your current tasks and unsynced changes will be kept in a recovery copy. App "
+"settings are optional."
+msgstr ""
+
+#: crates/app/src/window.rs:4549
+msgid "Restore Recovery Copy?"
+msgstr ""
+
+#: crates/app/src/window.rs:4550
+msgid ""
+"Replace your tasks with the previous tasks and unsynced changes. The "
+"recovery copy will then hold your current tasks. App settings stay as they "
+"are."
+msgstr ""
+
+#: crates/app/src/window.rs:4554
+msgid "Restore Recovery Copy"
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:46
+msgid ""
+"Verified backups, clearer task and sync feedback, and easier search and "
+"capture."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:48
+msgid ""
+"Reopen and verify saved backups, and keep a recovery copy when replacing "
+"tasks."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:49
+msgid ""
+"Show where a task matched a search, with an excerpt from the matching field."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:50
+msgid ""
+"Add reproducible startup measurements and forced-relaunch persistence checks."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:51
+msgid ""
+"Show Nextcloud changes waiting to sync and keep task save failures in the "
+"editor with a retry action."
+msgstr ""
+
+#: data/io.github.dan_hart.Momentum.metainfo.xml.in.in:52
+msgid ""
+"Prepare capture input earlier and move focus to a nearby task after "
+"completing, moving, or deleting a row."
+msgstr ""
+
+#: crates/app/src/window.rs
+msgid "This task is archived or no longer available."
+msgstr ""

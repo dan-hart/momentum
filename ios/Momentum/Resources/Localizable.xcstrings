@@ -1,6 +1,166 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Task saved": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe gespeichert"
+          }
+        }
+      }
+    },
+    "Retry Save": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut speichern"
+          }
+        }
+      }
+    },
+    "Waiting to sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wartet auf Synchronisierung"
+          }
+        }
+      }
+    },
+    "Changes sync when linked devices are reachable.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen werden synchronisiert, sobald verknüpfte Geräte erreichbar sind."
+          }
+        }
+      }
+    },
+    "Waiting to sync: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wartet auf Synchronisierung: %@"
+          }
+        }
+      }
+    },
+    "Waiting changes are saved on this device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausstehende Änderungen sind auf diesem Gerät gespeichert."
+          }
+        }
+      }
+    },
+    "Saving task…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe wird gespeichert …"
+          }
+        }
+      }
+    },
+    "Restore Recovery Copy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungskopie einspielen"
+          }
+        }
+      }
+    },
+    "Restore Recovery Copy?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungskopie einspielen?"
+          }
+        }
+      }
+    },
+    "Restoring replaces your tasks. A recovery copy keeps the previous tasks and unsynced changes on this device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Aufgaben werden ersetzt. Eine Wiederherstellungskopie bewahrt die bisherigen Aufgaben und nicht synchronisierten Änderungen auf diesem Gerät auf."
+          }
+        }
+      }
+    },
+    "Verifying Backup…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung wird überprüft …"
+          }
+        }
+      }
+    },
+    "Recovery Copy Restored": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungskopie eingespielt"
+          }
+        }
+      }
+    },
+    "Backup Saved and Verified": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung gespeichert und überprüft"
+          }
+        }
+      }
+    },
+    "Backup saved. This location could not be verified.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung gespeichert. Dieser Speicherort konnte nicht überprüft werden."
+          }
+        }
+      }
+    },
+    "“%@” will replace all tasks on this device. Your current tasks and unsynced changes will be kept in the recovery copy.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ersetzt alle Aufgaben auf diesem Gerät. Deine aktuellen Aufgaben und nicht synchronisierten Änderungen werden in der Wiederherstellungskopie aufbewahrt."
+          }
+        }
+      }
+    },
+    "Replace your tasks with the previous tasks and unsynced changes. The recovery copy will then hold your current tasks. App settings stay as they are.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ersetze deine Aufgaben durch die früheren Aufgaben und nicht synchronisierten Änderungen. Die Wiederherstellungskopie enthält anschließend deine aktuellen Aufgaben. Deine App-Einstellungen bleiben erhalten."
+          }
+        }
+      }
+    },
     "%lld selected" : {
       "localizations" : {
         "de" : {

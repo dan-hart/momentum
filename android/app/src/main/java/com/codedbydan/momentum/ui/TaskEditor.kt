@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -85,6 +86,7 @@ internal data class NotesCopyActions(
     fun close() { if(!state.busy) { if(draft.hasContent) discard = true else vm.dismissEditor() } }
     Dialog(onDismissRequest = ::close, properties = DialogProperties(usePlatformDefaultWidth = expanded, decorFitsSystemWindows = false)) {
         val editorView = LocalView.current
+        val keyboard = LocalSoftwareKeyboardController.current
         Surface(Modifier.fillMaxSize()) {
             Scaffold(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).imePadding().editorKeyboardShortcuts(vm,
                 canSave = draft.problem() == null && !state.editorUnavailable,
@@ -101,6 +103,17 @@ internal data class NotesCopyActions(
                 Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     CaptureStatus(state)
                     DraftRecoveryStatus(state, vm)
+                    if(state.editorSaving) {
+                        Text(stringResource(R.string.saving_task), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                    }
+                    if(state.editorSaveFailed) {
+                        Text(stringResource(R.string.save_failed), color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive })
+                        OutlinedButton(vm::saveEditor, enabled = draft.problem() == null && !state.busy) {
+                            Text(stringResource(R.string.retry_save))
+                        }
+                    }
                     if(state.editorCapacityError) Text(stringResource(R.string.draft_edit_capacity), color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive })
                     if(state.editorError) Text(stringResource(R.string.invalid_editor), color = MaterialTheme.colorScheme.error,
@@ -225,7 +238,9 @@ internal data class NotesCopyActions(
                 }
             }
         }
-        LaunchedEffect(Unit) { if(draft.id == null) focus.requestFocus() }
+        LaunchedEffect(Unit) {
+            if(draft.id == null && focus.requestFocus()) keyboard?.show()
+        }
     }
     if(discard) AlertDialog(onDismissRequest = { if(!state.busy) discard = false }, title = { Text(stringResource(R.string.discard_title)) },
         text = { Text(stringResource(R.string.discard_hint)) },

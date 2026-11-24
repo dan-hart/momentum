@@ -6,6 +6,17 @@ All notable changes to Momentum are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-24
+
+### Added
+- Reopen and verify saved backups, and keep a recovery copy when replacing tasks.
+- Show where a task matched a search, with an excerpt from the matching field.
+- Add reproducible startup measurements and forced-relaunch persistence checks.
+
+### Changed
+- Show Nextcloud changes waiting to sync and keep task save failures in the editor with a retry action.
+- Prepare capture input earlier and move focus to a nearby task after completing, moving, or deleting a row.
+
 ## [0.4.23] - 2026-11-15
 
 ### Added

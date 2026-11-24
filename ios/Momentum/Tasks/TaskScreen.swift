@@ -96,6 +96,14 @@ struct TaskScreen: SwiftUI.View {
         let ids = snapshot?.tasks.filter { !$0.archived && selection.contains($0.id) }.map(\.id) ?? []
         return ids.count == 1 ? MenuRequest(id: ids[0], revision: model.revision) : nil
     }
+    private enum TaskFocusFallback: Hashable { case empty, add }
+    @AccessibilityFocusState private var taskFocusFallback: TaskFocusFallback?
+    @AccessibilityFocusState private var focusedTaskID: String?
+    @State private var focusRequest: FocusRequest?
+    private struct FocusRequest {
+        let before: [String]
+        let affected: [String]
+    }
     @FocusState private var searchFocused: Bool
     private enum TaskSheet: Identifiable {
         case edit(String), repeatSchedule(String), repeatConfiguration(String), moveToProject([String])
@@ -203,6 +211,7 @@ struct TaskScreen: SwiftUI.View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .listRowBackground(Color.clear)
+                        .accessibilityFocused($taskFocusFallback, equals: .empty)
                     }
                     if CompletedListPresentation.resolve(view: view, completion: snapshot.dayStatus.completion) == .dayCompletion {
                         DayCompletionView(view: view, completion: snapshot.dayStatus.completion)
@@ -457,6 +466,20 @@ struct TaskScreen: SwiftUI.View {
             let transaction = startupTransition.transaction
             onSnapshotAssignment(startupTransition, transaction)
             withTransaction(transaction) { snapshot = result }
+            if let request = focusRequest {
+                focusRequest = nil
+                let taskOrder = result.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id)
+                let target = TaskMutationFocus.replacement(before: request.before, after: taskOrder, affected: request.affected)
+                // The target must be mounted after the List diff.
+                await Task.yield()
+                if isVisible && !searchFocused && !Task.isCancelled {
+                    let showsEmpty = result.listing.empty != nil
+                        && result.dayStatus.completion != .dayComplete && result.dayStatus.completion != .periodComplete
+                        && result.dayStatus.hiddenMorning == 0 && result.dayStatus.hiddenEvening == 0
+                    if let target { focusedTaskID = target }
+                    else { taskFocusFallback = showsEmpty ? .empty : .add }
+                }
+            }
             let completedPeriod = (view == .morning || view == .tonight)
                 && (result.dayStatus.completion == .periodComplete || result.dayStatus.completion == .dayComplete)
             guard result.viewExists || completedPeriod else {
@@ -499,6 +522,7 @@ struct TaskScreen: SwiftUI.View {
                     .onDisappear { model.activeTaskEditors = max(0, model.activeTaskEditors - 1) }
             case .moveToProject(let ids):
                 MoveToProjectSheet(ids: ids, projects: snapshot?.projects ?? []) {
+                    queueFocus(affected: ids)
                     transitionSelection(to: [], editing: false, feedback: .coveredBySuccess)
                 }
                     .onAppear { model.activeTaskEditors += 1 }
@@ -510,6 +534,7 @@ struct TaskScreen: SwiftUI.View {
     private var addTaskButton: some SwiftUI.View {
         FloatingAddTaskButton { model.add(in: view) }
             .disabled(model.worker == nil)
+            .accessibilityFocused($taskFocusFallback, equals: .add)
     }
 
     private var selectionActions: some SwiftUI.View {
@@ -526,6 +551,7 @@ struct TaskScreen: SwiftUI.View {
                 TaskActionsMenu(ids: snapshot?.tasks.filter { selection.contains($0.id) }.map(\.id) ?? [],
                                 projects: snapshot?.projects ?? [], tags: snapshot?.tags ?? [],
                                 onNewTag: { requestTag(selection.sorted()) },
+                                onChanged: queueFocus,
                                 onFinished: {
                                     transitionSelection(to: [], editing: false, feedback: $0)
                                 })
@@ -550,6 +576,7 @@ struct TaskScreen: SwiftUI.View {
             let content = TaskRowContent(
                 task: task, parentTitle: parentTitle,
                 presentation: editMode.isEditing ? .selection : .browsing,
+                focus: editMode.isEditing ? nil : $focusedTaskID,
                 toggle: { act(.complete([task.id], !task.isDone)) },
                 open: { taskSheet = .edit(task.id) }
             )
@@ -574,7 +601,8 @@ struct TaskScreen: SwiftUI.View {
                         TaskActionsMenu(ids: [task.id], row: task, projects: snapshot.projects,
                                         tags: snapshot.tags,
                                         onEdit: { taskSheet = .edit(task.id) },
-                                        onNewTag: { requestTag([task.id]) })
+                                        onNewTag: { requestTag([task.id]) },
+                                        onChanged: queueFocus)
                     }
                 }
                 .swipeActions(edge: .trailing) {
@@ -615,17 +643,48 @@ struct TaskScreen: SwiftUI.View {
         return AccentTheme.ink(hex: color)
     }
 
+    private func queueFocus(affected: [String]) {
+        guard isVisible, !searchFocused, !affected.isEmpty else { return }
+        let before = snapshot?.tasks.filter { !$0.archived && $0.occurrence == nil }.map(\.id) ?? []
+        guard before.contains(where: affected.contains) else { return }
+        focusRequest = FocusRequest(before: before, affected: affected)
+    }
+
+    private func performWithFocus(_ command: TaskCommand) async -> Outcome? {
+        let outcome = await model.perform(command)
+        if outcome?.changed == true {
+            switch command {
+            case .complete(let ids, _), .delete(let ids): queueFocus(affected: ids)
+            case .archive:
+                queueFocus(affected: snapshot?.tasks.filter(\.isDone).map(\.id) ?? [])
+            case .add, .undo: break
+            }
+        }
+        return outcome
+    }
+
     private func act(_ command: TaskCommand) {
-        Task { await model.perform(command) }
+        Task { _ = await performWithFocus(command) }
     }
 
     private func organize(_ command: OrganizationCommand) {
-        Task { await model.organize(command) }
+        Task {
+            guard await model.organize(command)?.changed == true else { return }
+            switch command {
+            case .today(let ids), .toggleToday(let ids), .slot(let ids, _), .tomorrow(let ids),
+                 .day(let ids, _), .nextWeek(let ids), .project(let ids, _), .drop(let ids, _):
+                queueFocus(affected: ids)
+            case .removeToday(let id):
+                queueFocus(affected: [id])
+            default: break
+            }
+        }
     }
 
     private func moveSelection(_ ids: [String], to destination: MomentumCore.View) {
         Task { @MainActor in
             guard await model.organize(.drop(ids, destination))?.changed == true else { return }
+            queueFocus(affected: ids)
             transitionSelection(to: [], editing: false, feedback: .coveredBySuccess)
         }
     }
@@ -642,7 +701,7 @@ struct TaskScreen: SwiftUI.View {
 
     private func performSelectionAction(_ command: TaskCommand) {
         Task { @MainActor in
-            let outcome = await model.perform(command)
+            let outcome = await performWithFocus(command)
             transitionSelection(to: [], editing: false,
                                 feedback: .afterTaskCommand(command, outcome: outcome))
         }
@@ -768,6 +827,7 @@ struct TaskRowContent: SwiftUI.View {
     let task: TaskRow
     var parentTitle: String? = nil
     var presentation: TaskRowPresentation = .browsing
+    var focus: AccessibilityFocusState<String?>.Binding? = nil
     let toggle: () -> Void
     let open: () -> Void
     @AppStorage(PrefKey.colorfulLabels) private var colorful = true
@@ -808,17 +868,25 @@ struct TaskRowContent: SwiftUI.View {
                     .accessibilityLabel(actionLabel(Text(task.title)))
                     .accessibilityValue(accessibleDetails)
             } else {
-                Button(action: open) {
-                    details
-                        .frame(minHeight: density.minimumRowHeight)
-                        .contentShape(Rectangle())
+                if let focus {
+                    openButton.accessibilityFocused(focus, equals: task.id)
+                } else {
+                    openButton
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(actionLabel(Text("Open \(task.title)")))
-                .accessibilityValue(accessibleDetails)
             }
         }
         .padding(.leading, task.isSubtask ? 20 : 0)
+    }
+
+    private var openButton: some SwiftUI.View {
+        Button(action: open) {
+            details
+                .frame(minHeight: density.minimumRowHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(actionLabel(Text("Open \(task.title)")))
+        .accessibilityValue(accessibleDetails)
     }
 
     private var details: some SwiftUI.View {
@@ -834,6 +902,13 @@ struct TaskRowContent: SwiftUI.View {
                     .foregroundStyle(task.isDone || task.archived ? AccentTheme.secondaryText : Color.primary)
                 if task.occurrence != nil {
                     Text("Recurring preview")
+                        .mobileFont(content: true, caption: true)
+                        .foregroundStyle(AccentTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityHidden(true)
+                }
+                if let match = Strings.searchMatch(task) {
+                    Text(verbatim: match)
                         .mobileFont(content: true, caption: true)
                         .foregroundStyle(AccentTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -874,6 +949,7 @@ struct TaskRowContent: SwiftUI.View {
     // a single spoken value rather than separate, undersized row elements.
     private var accessibleDetails: Text {
         var values = TaskSubtitle.parts(for: task).map { Text($0.text) }
+        if let match = Strings.searchMatch(task) { values.insert(Text(verbatim: match), at: 0) }
         if task.notesPreview != nil { values.append(Text("Has notes")) }
         if let reminder = task.reminder { values.append(Text("Reminder at \(Strings.time(reminder))")) }
         return values.enumerated().reduce(Text("")) { result, item in

@@ -25,6 +25,8 @@ struct BackupSettings: View {
     @State private var importing = false
     @State private var exporting = false
     @State private var confirmingRestore = false
+    @State private var confirmingRecovery = false
+    @State private var hasRecovery = false
     @State private var includeSettings = false
     @State private var restoreSettings = false
     @State private var settingsOnly = false
@@ -70,6 +72,14 @@ struct BackupSettings: View {
                 }
                 .accessibilityIdentifier("backup-import").settingsTarget("data.tasks-import")
                 .disabled(!available)
+                if hasRecovery {
+                    Button(role: .destructive) { confirmingRecovery = true } label: {
+                        Label("Restore Recovery Copy", systemImage: "clock.arrow.circlepath")
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("backup-recover")
+                    .disabled(!available || !model.canRestoreBackup)
+                }
                 if let selected = state.selection {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Selected Backup").mobileFont(.caption).foregroundStyle(AccentTheme.secondaryText)
@@ -86,7 +96,7 @@ struct BackupSettings: View {
                         .foregroundStyle(Color.primary).disabled(!available)
                 }
             } footer: {
-                Text("Restoring replaces all tasks on this device and discards unsynced changes. This cannot be undone.").mobileFont(.footnote)
+                Text("Restoring replaces your tasks. A recovery copy keeps the previous tasks and unsynced changes on this device.").mobileFont(.footnote)
                     .foregroundStyle(AccentTheme.secondaryText)
             }
 
@@ -119,6 +129,7 @@ struct BackupSettings: View {
                     switch activity {
                     case .reading: ProgressView("Reading Backup…")
                     case .preparingExport: ProgressView("Preparing Backup…")
+                    case .verifyingExport: ProgressView("Verifying Backup…")
                     case .restoring: ProgressView("Restoring Backup…")
                     }
                 }
@@ -135,8 +146,13 @@ struct BackupSettings: View {
             if let completion = state.completion {
                 Section {
                     Group {
-                        if completion == .restored { Label("Backup Restored", systemImage: "checkmark.circle.fill") }
-                        else { Label("Backup Saved", systemImage: "checkmark.circle.fill") }
+                        switch completion {
+                        case .restored: Label("Backup Restored", systemImage: "checkmark.circle.fill")
+                        case .recovered: Label("Recovery Copy Restored", systemImage: "checkmark.circle.fill")
+                        case .exported: Label("Backup Saved and Verified", systemImage: "checkmark.circle.fill")
+                        case .exportedWithoutVerification:
+                            Label("Backup saved. This location could not be verified.", systemImage: "info.circle")
+                        }
                     }
                         .foregroundStyle(.primary)
                         .accessibilityIdentifier("backup-status")
@@ -161,7 +177,15 @@ struct BackupSettings: View {
         .navigationBarTitleDisplayMode(.inline)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: state.completion)
         .onChange(of: state.error) { _, error in if error != nil { statusFocused = true } }
-        .onChange(of: state.completion) { _, completion in if completion != nil { statusFocused = true } }
+        .task {
+            hasRecovery = await model.hasBackupRecovery()
+        }
+        .onChange(of: state.completion) { _, completion in
+            if completion != nil { statusFocused = true }
+            if completion == .restored || completion == .recovered {
+                Task { hasRecovery = await model.hasBackupRecovery() }
+            }
+        }
         .onChange(of: settingsState.error) { _, error in if error != nil { statusFocused = true } }
         .onChange(of: settingsState.completion) { _, completion in if completion != nil { statusFocused = true } }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json], allowsMultipleSelection: false) { result in
@@ -179,18 +203,27 @@ struct BackupSettings: View {
             }
         }
         .fileExporter(isPresented: $exporting, document: document, contentTypes: [.json],
-                      defaultFilename: String(localized: "Momentum Backup"), onCompletion: { state.finishExport($0) },
-                      onCancellation: { state.finishExport(nil) })
+                      defaultFilename: String(localized: "Momentum Backup"), onCompletion: { result in Task { await state.finishExport(result) } },
+                      onCancellation: { Task { await state.finishExport(nil) } })
         .fileExporter(isPresented: $exportingSettings, document: document, contentTypes: [.json],
-                      defaultFilename: "momentum-settings", onCompletion: { settingsState.finishExport($0) },
-                      onCancellation: { settingsState.finishExport(nil) })
+                      defaultFilename: "momentum-settings", onCompletion: { result in Task { await settingsState.finishExport(result, verify: false) } },
+                      onCancellation: { Task { await settingsState.finishExport(nil) } })
         .alert("Replace All Tasks?", isPresented: $confirmingRestore) {
             Button("Restore Backup", role: .destructive) {
                 Task { await state.restore { try await model.restoreBackup($0, restoreSettings: restoreSettings) } }
             }
+            .disabled(!model.canRestoreBackup)
             Button("Cancel", role: .cancel) { state.discardSelection() }
         } message: {
-            Text("“\(state.selection?.name ?? "")” will replace all tasks on this device. Unsynced changes will be lost. This cannot be undone.")
+            Text("“\(state.selection?.name ?? "")” will replace all tasks on this device. Your current tasks and unsynced changes will be kept in the recovery copy.")
+        }
+        .alert("Restore Recovery Copy?", isPresented: $confirmingRecovery) {
+            Button("Restore Recovery Copy", role: .destructive) {
+                Task { await state.recover { try await model.restoreBackupRecovery() } }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Replace your tasks with the previous tasks and unsynced changes. The recovery copy will then hold your current tasks. App settings stay as they are.")
         }
     }
 }

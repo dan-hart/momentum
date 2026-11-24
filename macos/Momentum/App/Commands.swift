@@ -42,7 +42,7 @@ struct MomentumCommands: Commands {
             Button(String(localized: "Quick Add…")) { WindowOpener.shared.open?("quick-add") }
                 .keyboardShortcut(shortcut(.quickAdd))
             Divider()
-            Button(String(localized: "Import Backup…")) { importBackup() }
+            Button(String(localized: "Import Backup…")) { importBackup() }.disabled(!state.canRestoreBackup)
             Button(String(localized: "Export Backup…")) { exportBackup() }
         }
 
@@ -190,7 +190,7 @@ struct MomentumCommands: Commands {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.title = String(localized: "Import Momentum backup")
-        if panel.runModal() == .OK, let url = panel.url {
+        if panel.runModal() == .OK, let url = panel.url, BackupRestoreConfirmation.confirm() {
             state.importBackup(url)
         }
     }

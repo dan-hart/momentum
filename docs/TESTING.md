@@ -496,24 +496,104 @@ See the [dated audit](audits/2026-09-16-ios-accessibility.md) for findings and
 verification limits.
 
 
+## Launch to actionable Today (F-005/F-044)
+
+Measure a cold **process** with normal OS caches. Seed 10 and 1,000 synthetic Today
+tasks outside the timed interval. Use five samples per size and compare medians on
+the same host, runtime, build configuration, and probe. Keep the target clock and
+calendar day aligned with the fixture host. Use the timings as trend evidence.
+
+```sh
+MOMENTUM_TEST_BROADWAY=1 build-aux/test.sh -p momentum measure_actionable_launch -- --ignored --nocapture
+build-aux/measure-launch.py ios --app /path/to/Momentum.app --target SIMULATOR_UDID --confirm-disposable
+build-aux/measure-launch.py android --app /path/to/app-debug.apk --target emulator-5554 --confirm-disposable
+build-aux/measure-launch.py macos --app /path/to/Momentum.app --confirm-disposable
+```
+
+The GTK measurement runs the real application/window classes in a new test process
+using the existing headless Broadway environment, memory-only preferences and an
+isolated store. It requires a mapped synthetic task row and an editable capture
+field. Its reported wall time includes test-process startup and exit. The probe
+observes native widget mapping before compositor presentation.
+
+The native launcher waits for an enabled capture control and a synthetic task row
+through AXe, Android UI Automator, or macOS Accessibility. The JSON contains raw
+samples, the median, launch command wall time, probe counts, runtime and app hash.
+Accessibility polling adds latency, particularly the Android hierarchy dump. Use
+the samples to compare equivalent runs. Output contains timing and build metadata
+for the disposable target.
+
+- iOS needs an explicitly selected booted disposable simulator and AXe. See the
+  [iOS first-project touch instructions](#ios-first-project-touch-regression) for AXe's
+  process-scoped Xcode selection. The launcher installs the supplied app and seeds a
+  temporary folder inside its simulator data container.
+- Android needs an explicitly selected English disposable emulator without Momentum
+  installed. The launcher installs the supplied Debug APK and cleans only its
+  synthetic store and hierarchy file after force-stopping that package.
+- macOS needs an isolated desktop and user with default Momentum settings and native
+  Accessibility access for the probe. Run it in that desktop only, with its disposable
+  data directory.
+
+The snapshot-only iOS test remains available through `MomentumPerformanceTests`.
+List readiness checks capture availability. Native keyboard focus, hardware input and
+assistive-technology acceptance require the separate interaction checks.
+
+2026-11-24 evidence on the 0.5.0 dirty worktree from `4db4338`:
+
+| Runtime and probe | Median at 10 tasks | Median at 1,000 tasks |
+|---|---:|---:|
+| ARM64 Ubuntu 26.04.1, GTK 4.22.4 / libadwaita 1.9.1, Broadway | 97.1 ms | 954.6 ms |
+| ARM64 Android API 37, 16 KiB, Debug APK, UI Automator | 3,397.9 ms | 3,376.6 ms |
+| iOS 26.5 simulator, Release app, AXe through Xcode 27.2 | 1,509.1 ms | 2,465.4 ms |
+
+Five samples per size passed on all three runtimes. Android includes hierarchy
+settling and dump overhead. Android APK SHA-256
+`dc4dbe89ffe467e3c803e5addbd1c8f8f1ea81e80308b17722b0b5dac6e0e14f`.
+iOS executable SHA-256
+`5bb519879ec25e587f98ce755543627303b169b69187eb4a2f10cb90ebd218a5`.
+The macOS probe compiled and passed its checker self-test. The macOS timing lane
+still needs an isolated desktop and user.
+
 ## Interrupted store writes
 
-`cargo test -p momentum-store` runs a child process that exits without destructors at every
-journal publication/file-replacement/commit boundary. Reopening must return either
-all three old files or all three committed files. Additional fixtures cover a failed
-later write, interrupted first save, invalid/incomplete recovery records and safe
-cleanup. `momentum-core::transport_tests` checks that failed import preserves live
-state/undo and `mo` checks its normal JSON error boundary.
+```sh
+cargo test -p momentum-store process_interruption_
+cargo test -p momentum-core --test process_termination
+```
+
+The parent terminates the store writer with SIGKILL on Unix at six checkpoints from
+journal publication through commit. Reopening must recover the complete old image
+before commit and the complete new image after it. A second test kills a backup
+replacement after its recovery copy and first live file have changed, then after
+commit. The recovered task image and recovery copy must describe one generation.
+
+The core subprocess cases kill after acknowledged compound capture/completion,
+backup export/import and private backup recovery. They reopen the persisted store
+without the writer, checking the tasks and pending edits. The sync case waits until
+the child sends a GET to a disposable loopback WebDAV socket, kills the child
+before a response, then retries against the same endpoint. It checks that the edit
+stays pending until success, the success timestamp stays unset, one upload occurs,
+and a fresh peer downloads the task. The test environment needs loopback sockets.
+
+Additional fixtures cover a failed later write, interrupted first save,
+invalid/incomplete recovery records and safe cleanup.
+`momentum-core::transport_tests` checks failed import preservation of live state/undo.
+`mo` checks its normal JSON error boundary.
 
 The private `.momentum-transaction` directory is an undo record, not a user backup.
 Its versioned manifest lists only the existing store filenames. It is published and
 synced before any live file is replaced; all replacement files and their parent are
 synced before the journal is atomically retired. Opening retries recovery before any
 client can write. Only reserved UUID-named preparation/retirement directories are
-cleaned up; unknown, malformed or incomplete active journals are preserved. One owner
-must serialize writes; this does not introduce cross-process locking or alter the
-backup/sync JSON schemas. Hardware power-loss and disk-controller guarantees are not
-established by process-exit tests.
+cleaned up. Unknown, malformed or incomplete active journals are preserved. Loads and
+writes use the same cross-process store lock, which the operating system releases after
+the writer dies. The backup and sync JSON schemas are unchanged. Hardware power-loss,
+disk-controller guarantees and native app lifecycle handling remain separate checks.
+
+2026-11-24 host evidence on the 0.5.0 dirty worktree from `4db4338`: the focused store
+termination filter passed three tests, including six task transaction checkpoints and
+two backup checkpoints. The core integration executable passed all three acceptance
+cases and its subprocess entry point on macOS with loopback enabled.
 
 `LifecycleTests.failedBootstrapPreservesDataAndAllowsRetry` and the native
 `StoreRecoveryIntegrationTests` use isolated data to verify checked iOS startup and

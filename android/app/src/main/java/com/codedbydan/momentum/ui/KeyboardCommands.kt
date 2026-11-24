@@ -106,7 +106,7 @@ internal val LocalKeyboardCommandBridge = staticCompositionLocalOf<KeyboardComma
                 KeyboardAction.SelectAll -> vm.selectAll()
                 KeyboardAction.DeselectAll -> vm.cancelSelection()
                 KeyboardAction.Open -> vm.edit(ids.single())
-                KeyboardAction.Done -> vm.action { if(ids.size == 1) toggleDone(ids.single()) else bulkDone(ids) }
+                KeyboardAction.Done -> vm.action(focusAfter = ids) { if(ids.size == 1) toggleDone(ids.single()) else bulkDone(ids) }
                 KeyboardAction.Duplicate -> vm.action { duplicateTask(ids.single()) }
                 KeyboardAction.CopyTitle -> scope.launch {
                     try { PrivateClipboard.copy(context, clipboardTitle, rows.single { it.id == ids.single() }.title) }
@@ -114,14 +114,14 @@ internal val LocalKeyboardCommandBridge = staticCompositionLocalOf<KeyboardComma
                     catch(_: ClipboardUriUnsupportedException) { vm.reportError(IllegalStateException(clipboardUnsupported)) }
                     catch(_: Exception) { vm.reportError(IllegalStateException(clipboardFailure)) }
                 }
-                KeyboardAction.Delete -> vm.action { bulkDelete(ids) }
-                KeyboardAction.Archive -> vm.action { archiveDone() }
+                KeyboardAction.Delete -> vm.action(focusAfter = ids) { bulkDelete(ids) }
+                KeyboardAction.Archive -> vm.archiveCompleted()
                 KeyboardAction.Undo -> vm.action { undo() }
-                KeyboardAction.PlanToday -> vm.action { if(ids.size == 1) toggleToday(ids.single()) else planForToday(ids) }
-                KeyboardAction.Morning -> vm.action { toggleSlot(ids, Slot.MORNING) }
-                KeyboardAction.Evening -> vm.action { toggleSlot(ids, Slot.TONIGHT) }
-                KeyboardAction.Tomorrow -> vm.action { moveToTomorrow(ids) }
-                KeyboardAction.NextWeek -> vm.action { moveToNextWeek(ids) }
+                KeyboardAction.PlanToday -> vm.action(focusAfter = ids) { if(ids.size == 1) toggleToday(ids.single()) else planForToday(ids) }
+                KeyboardAction.Morning -> vm.action(focusAfter = ids) { toggleSlot(ids, Slot.MORNING) }
+                KeyboardAction.Evening -> vm.action(focusAfter = ids) { toggleSlot(ids, Slot.TONIGHT) }
+                KeyboardAction.Tomorrow -> vm.action(focusAfter = ids) { moveToTomorrow(ids) }
+                KeyboardAction.NextWeek -> vm.action(focusAfter = ids) { moveToNextWeek(ids) }
                 KeyboardAction.Move -> move(ids)
                 KeyboardAction.Repeat -> repeat(ids.single())
                 KeyboardAction.NudgeUp -> vm.action { nudge(ids.single(), -1, state.view) }

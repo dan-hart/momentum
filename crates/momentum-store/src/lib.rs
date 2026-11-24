@@ -143,6 +143,44 @@ impl Store {
             portable,
         )
     }
+    /// Keep user-facing exports from overwriting live store and recovery files.
+    pub fn protects_backup_destination(&self, path: &std::path::Path) -> std::io::Result<bool> {
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            return Ok(false);
+        };
+        let protected = name.starts_with(".momentum-")
+            || durability::FILES
+                .into_iter()
+                .chain([durability::PORTABLE, durability::BACKUP_RECOVERY])
+                .any(|file| name == file || name.strip_prefix(file).is_some_and(|suffix| suffix.ends_with(".tmp")));
+        if !protected {
+            return Ok(false);
+        }
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or_else(|| std::path::Path::new("."));
+        Ok(std::fs::canonicalize(parent)? == std::fs::canonicalize(&self.dir)?)
+    }
+    pub fn has_backup_recovery(&self) -> bool {
+        durability::has_backup_recovery(&self.dir)
+    }
+    pub fn read_backup_recovery(&self) -> std::io::Result<Option<Vec<u8>>> {
+        durability::read_backup_recovery(&self.dir)
+    }
+    /// Commit the replacement and its verified private recovery copy together.
+    pub fn save_with_backup_recovery(&self, recovery: &[u8], portable: Option<&[u8]>) -> std::io::Result<()> {
+        durability::save_with_recovery(
+            &self.dir,
+            [
+                serde_json::to_vec(&self.state)?,
+                serde_json::to_vec(&self.pending)?,
+                serde_json::to_vec(&self.meta)?,
+            ],
+            recovery,
+            portable,
+        )
+    }
     /// Durably replace only private settings under the same recovery/owner lock.
     pub fn save_portable(&self, portable: &[u8]) -> std::io::Result<()> {
         durability::save_portable_only(&self.dir, portable, &self.meta)

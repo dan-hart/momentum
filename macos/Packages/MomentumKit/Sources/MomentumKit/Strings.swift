@@ -7,6 +7,23 @@ import Foundation
 import MomentumCore
 
 public enum Strings {
+    public static func searchMatch(_ row: TaskRow) -> String? {
+        guard let detail = row.searchMatch else { return nil }
+        let excerpt = detail.excerpt
+        let label = switch detail.source {
+        case .title: String(localized: "Title match: \(excerpt)", bundle: .module)
+        case .notes: String(localized: "Notes match: \(excerpt)", bundle: .module)
+        case .tag: String(localized: "Tag match: \(excerpt)", bundle: .module)
+        case .project: String(localized: "Project match: \(excerpt)", bundle: .module)
+        }
+        return switch (row.archived, row.isSubtask) {
+        case (true, true): String(localized: "Archived subtask · \(label)", bundle: .module)
+        case (true, false): String(localized: "Archived task · \(label)", bundle: .module)
+        case (false, true): String(localized: "Subtask · \(label)", bundle: .module)
+        case (false, false): label
+        }
+    }
+
     // MARK: Days and times
 
     private static let dayFormatterNoYear: DateFormatter = {
@@ -329,7 +346,10 @@ public enum Strings {
         case .repeatSaved(let description): return repeatText(description)
         case .saveFailed(let error): return String(localized: "Could not save changes: \(error)", bundle: .module)
         case .backupImported: return String(localized: "Backup imported", bundle: .module)
-        case .backupExported: return String(localized: "Backup exported", bundle: .module)
+        case .backupExported: return String(localized: "Backup saved and verified", bundle: .module)
+        case .backupExportVerificationUnavailable:
+            return String(localized: "Backup saved. This location could not be verified.", bundle: .module)
+        case .backupRecoveryRestored: return String(localized: "Recovery copy restored", bundle: .module)
         case .synced(let n): return String(localized: "Synced (\(n)↑)", bundle: .module)
         case .linkedWith(let name): return String(localized: "Linked with \(name)", bundle: .module)
         case .linking: return String(localized: "Linking…", bundle: .module)
@@ -420,6 +440,10 @@ public enum Strings {
         case .archived: return String(localized: "Archive", bundle: .module)
         default: return String(localized: "Change", bundle: .module)
         }
+    }
+
+    public static var backupDestinationMismatch: String {
+        String(localized: "The saved file differs from your backup. Export again to another location.", bundle: .module)
     }
 
     public static func error(_ e: Error) -> String {

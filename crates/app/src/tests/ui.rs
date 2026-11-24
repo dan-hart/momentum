@@ -852,7 +852,7 @@ fn overdue_rows_show_a_warning_and_explicit_label_without_changing_grouping() {
 fn search_finds_tasks_notes_projects_and_tags_after_the_debounce() {
     on_gtk(|| {
         let (win, _dir) = demo_window();
-        win.add_task_with_notes("Quiet title", Some("needle in the notes"), None);
+        win.add_task_with_notes("Quiet title", Some("Earlier detail\nneedle in the notes"), None);
         let noted = id_of(&win, "Quiet title");
         win.go_to(View::Search);
         win.set_search_query("orca");
@@ -861,6 +861,14 @@ fn search_finds_tasks_notes_projects_and_tags_after_the_debounce() {
         win.set_search_query("needle");
         pump_ms(700);
         assert!(row_ids(&win).contains(&noted), "notes are searched");
+        let row = descendants(win.imp().task_box.upcast_ref())
+            .into_iter()
+            .find(|widget| widget.widget_name() == noted)
+            .unwrap()
+            .downcast::<adw::ActionRow>()
+            .unwrap();
+        let subtitle = row.subtitle().unwrap_or_default();
+        assert!(subtitle.starts_with("Notes match: ") && subtitle.contains("needle in the notes"));
         win.set_search_query("gnome");
         pump_ms(700);
         let all: Vec<String> = win.imp().rows.borrow().clone();
@@ -2604,6 +2612,48 @@ fn rejected_native_settings_keep_a_local_retry_without_overwriting_unseen_values
         prefs.close();
         win.destroy();
         reset_settings();
+    });
+}
+
+#[test]
+fn recovery_confirmation_preserves_open_drafts_and_restores_pending_tasks() {
+    on_gtk(|| {
+        let (win, directory) = empty_window();
+        let backup = directory.join("fixture.json").to_string_lossy().into_owned();
+        win.engine().export_backup(backup.clone()).unwrap();
+        win.add_task("Unsynced task");
+        let original = id_of(&win, "Unsynced task");
+        let pending = win.engine().pending_count();
+        win.apply(win.restore_backup_from(backup, false).unwrap());
+        assert!(!row_ids(&win).contains(&original));
+        assert_eq!(win.engine().pending_count(), 0);
+        win.present();
+        win.new_task_dialog();
+        pump();
+        let editor = win.visible_dialog().expect("open draft");
+        win.restore_backup_recovery();
+        pump();
+        assert_eq!(win.visible_dialog(), Some(editor.clone()));
+        assert_eq!(win.engine().pending_count(), 0);
+        editor.force_close();
+        pump_ms(300);
+
+        win.restore_backup_recovery();
+        pump();
+        let confirmation = win.visible_dialog().unwrap().downcast::<adw::AlertDialog>().unwrap();
+        assert_eq!(confirmation.heading().as_deref(), Some("Restore Recovery Copy?"));
+        assert_eq!(win.engine().pending_count(), 0);
+        let restore = descendants(confirmation.upcast_ref())
+            .into_iter()
+            .filter_map(|widget| widget.downcast::<gtk::Button>().ok())
+            .find(|button| button.label().as_deref() == Some("Restore Recovery Copy"))
+            .expect("destructive restore button");
+        restore.emit_clicked();
+        pump();
+        assert!(row_ids(&win).contains(&original));
+        assert_eq!(win.engine().pending_count(), pending);
+        win.destroy();
+        std::fs::remove_dir_all(directory).unwrap();
     });
 }
 

@@ -1300,11 +1300,19 @@ fn search_finds_tasks_notes_projects_and_tags() {
         "notes are searched"
     );
     let l = e.search("gnome".into());
+    assert!(l.sections[0].rows.iter().any(|row| matches!(
+        row, Row::Task { row } if row.search_match.as_ref().is_some_and(|detail|
+            detail.source == SearchMatchSource::Tag && detail.excerpt == "gnome")
+    )));
     assert!(
         l.sections.iter().any(|s| s.kind == SectionKind::SearchTags),
         "tag results are listed"
     );
     let l = e.search("home".into());
+    assert!(l.sections[0].rows.iter().any(|row| matches!(
+        row, Row::Task { row } if row.search_match.as_ref().is_some_and(|detail|
+            detail.source == SearchMatchSource::Project && detail.excerpt == "Home")
+    )));
     assert!(l.sections.iter().any(|s| s.kind == SectionKind::SearchProjects));
     let l = e.search("zzz-nothing".into());
     assert!(row_ids(&l).is_empty());
@@ -1323,6 +1331,82 @@ fn search_finds_tasks_notes_projects_and_tags() {
     assert_eq!(q.len(), 1);
     assert!(e.quick_matches("zzz".into()).is_empty());
     assert!(e.quick_matches("needle".into()).is_empty(), "titles only");
+}
+
+#[test]
+fn search_notes_excerpt_contains_a_late_unicode_match() {
+    let (e, _d) = empty();
+    let notes = format!(
+        "First line\n{}\nİzmir 🥾 Überfahrt\n{}",
+        "é".repeat(100),
+        "海".repeat(120)
+    );
+    e.add_task_with_notes("Travel".into(), Some(notes), None);
+    let result = e.search("zmir überfahrt".into());
+    let Row::Task { row } = &result.sections[0].rows[0] else {
+        panic!("expected task");
+    };
+    let detail = row.search_match.as_ref().expect("search match");
+    assert_eq!(detail.source, SearchMatchSource::Notes);
+    assert!(detail.excerpt.contains("İzmir 🥾 Überfahrt"));
+    assert!(detail.excerpt.starts_with('…') && detail.excerpt.ends_with('…'));
+    assert!(detail.excerpt.chars().count() <= 80);
+    assert!(!detail.excerpt.contains('\n'));
+    assert_eq!(row.notes_preview.as_deref(), Some("First line"));
+    let inbox = e.listing(View::project(INBOX_PROJECT_ID), 60);
+    assert!(inbox
+        .sections
+        .iter()
+        .flat_map(|section| &section.rows)
+        .any(|entry| matches!(entry, Row::Task { row } if row.title == "Travel" && row.search_match.is_none())));
+
+    e.set_done(row.id.clone(), true);
+    e.archive_done();
+    let archived = e.search("zmir überfahrt".into());
+    assert_eq!(archived.sections[0].kind, SectionKind::SearchArchived);
+    assert!(matches!(
+        &archived.sections[0].rows[0],
+        Row::Task { row: archived_row } if archived_row.id == row.id
+            && archived_row.archived && archived_row.search_match.as_ref() == Some(detail)
+    ));
+}
+
+#[test]
+fn search_title_matches_keep_subtask_and_archive_context() {
+    let (e, _d) = empty();
+    e.add_task("Trip planning".into(), View::Search);
+    let parent = id_of(&e, "Trip planning");
+    e.add_subtask(parent.clone(), "Find the ferry".into());
+    let child = id_of(&e, "Find the ferry");
+
+    for archived in [false, true] {
+        if archived {
+            e.set_done(child.clone(), true);
+            e.set_done(parent.clone(), true);
+            e.archive_done();
+        }
+        let result = e.search("FERRY".into());
+        let section = &result.sections[0];
+        let expected = if archived {
+            SectionKind::SearchArchived
+        } else {
+            SectionKind::SearchTasks
+        };
+        assert_eq!(section.kind, expected);
+        let Row::Task { row } = &section.rows[0] else {
+            panic!("expected task");
+        };
+        assert_eq!(row.id, child);
+        assert!(row.is_subtask);
+        assert_eq!(row.archived, archived);
+        assert_eq!(
+            row.search_match,
+            Some(SearchMatch {
+                source: SearchMatchSource::Title,
+                excerpt: "Find the ferry".to_string(),
+            })
+        );
+    }
 }
 
 #[test]
@@ -2115,6 +2199,55 @@ fn backup_import_and_export_round_trip() {
         fresh.import_backup("/nonexistent/x.json".into()),
         Err(CoreError::Io { .. })
     ));
+}
+
+#[test]
+fn recovery_restores_pending_actions_after_reopen() {
+    let (source, source_dir) = empty();
+    let path = source_dir.path().join("export.json").to_string_lossy().into_owned();
+    source.add_task("incoming".into(), View::Today);
+    source.export_backup(path.clone()).unwrap();
+
+    let (target, _target_dir) = empty();
+    target.add_task("unsynced original".into(), View::Today);
+    let original = id_of(&target, "unsynced original");
+    let pending = target.with_store(|s| serde_json::to_value(&s.pending[0].action).unwrap());
+    let old_operation = target.with_store(|s| s.pending[0].op.id.clone());
+    target.import_backup(path).unwrap();
+    assert!(!has_task(&target, &original));
+    assert_eq!(target.pending_count(), 0);
+    target.add_task("unsynced after restore".into(), View::Today);
+    let after = id_of(&target, "unsynced after restore");
+    let target_path = target.data_dir();
+    drop(target);
+
+    let reopened = Engine::open_checked(target_path).unwrap();
+    assert!(reopened.has_backup_recovery());
+    reopened.restore_backup_recovery().unwrap();
+    assert!(has_task(&reopened, &original));
+    assert!(!has_task(&reopened, &after));
+    reopened.with_store(|s| {
+        assert_eq!(serde_json::to_value(&s.pending[0].action).unwrap(), pending);
+        assert_ne!(s.pending[0].op.id, old_operation);
+    });
+    reopened.restore_backup_recovery().unwrap();
+    assert!(has_task(&reopened, &after));
+    assert_eq!(reopened.pending_count(), 1);
+}
+
+#[test]
+fn snapshot_failure_aborts_replacement_before_displacing_pending_edits() {
+    let (source, source_dir) = empty();
+    let path = source_dir.path().join("export.json").to_string_lossy().into_owned();
+    source.add_task("incoming".into(), View::Today);
+    source.export_backup(path.clone()).unwrap();
+    let (target, _target_dir) = empty();
+    target.add_task("kept".into(), View::Today);
+    let id = id_of(&target, "kept");
+    std::fs::create_dir(std::path::Path::new(&target.data_dir()).join("backup-recovery.json")).unwrap();
+    assert!(target.import_backup(path).is_err());
+    assert!(has_task(&target, &id));
+    assert_eq!(target.pending_count(), 1);
 }
 
 #[test]

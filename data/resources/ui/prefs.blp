@@ -329,6 +329,13 @@ template $MomentumPrefs: Adw.PreferencesDialog {
         action-name: "app.export";
       }
 
+      Adw.ActionRow {
+        activatable: true;
+        title: _("Restore Recovery Copy…");
+        subtitle: _("Recover the tasks and unsynced changes from before the last restore");
+        action-name: "app.restore-recovery";
+      }
+
       Adw.ButtonRow settings_export_row {
         title: _("Export app settings…");
         start-icon-name: "document-save-symbolic";

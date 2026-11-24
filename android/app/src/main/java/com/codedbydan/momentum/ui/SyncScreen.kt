@@ -17,10 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -201,7 +201,14 @@ import java.time.format.FormatStyle
             val last = if (settings.provider == SyncProvider.Nextcloud) sync.lastNextcloudMs else sync.lastNearbyMs
             Text(if (last == 0uL) stringResource(R.string.sync_never) else stringResource(R.string.last_sync,
                 Instant.ofEpochMilli(last.toLong()).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(locale))))
-            Text(pluralStringResource(R.plurals.pending_changes, sync.pendingOps.toInt(), sync.pendingOps.toInt()))
+            if(settings.provider == SyncProvider.Nextcloud) {
+                Text(stringResource(R.string.waiting_to_sync, sync.pendingOps.toLong()),
+                    modifier = Modifier.testTag("pending-sync-changes"))
+                if(sync.pendingOps > 0u) Text(stringResource(R.string.waiting_changes_saved),
+                    style = MaterialTheme.typography.bodySmall)
+            } else {
+                Text(stringResource(R.string.nearby_waiting_hint), style = MaterialTheme.typography.bodySmall)
+            }
             Button(
                 onClick = { platform.syncNow(); vm.refresh() },
                 enabled = !status.syncing && !status.migratingFolder && (settings.provider != SyncProvider.Nextcloud || matchesSaved),

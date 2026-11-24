@@ -1,6 +1,46 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Backup saved and verified": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung gespeichert und überprüft"
+          }
+        }
+      }
+    },
+    "Backup saved. This location could not be verified.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung gespeichert. Dieser Speicherort konnte nicht überprüft werden."
+          }
+        }
+      }
+    },
+    "Recovery copy restored": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungskopie eingespielt"
+          }
+        }
+      }
+    },
+    "The saved file differs from your backup. Export again to another location.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die gespeicherte Datei weicht von der Sicherung ab. Exportiere sie erneut an einen anderen Speicherort."
+          }
+        }
+      }
+    },
     "Clean Up Inbox": {
       "localizations": {
         "de": {
@@ -5383,6 +5423,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nimm dir einen Moment und genieße den Freiraum."
+          }
+        }
+      }
+    },
+    "Title match: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titeltreffer: %@"
+          }
+        }
+      }
+    },
+    "Notes match: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Treffer in Notizen: %@"
+          }
+        }
+      }
+    },
+    "Tag match: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlagworttreffer: %@"
+          }
+        }
+      }
+    },
+    "Project match: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projekttreffer: %@"
+          }
+        }
+      }
+    },
+    "Archived subtask · %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivierte Unteraufgabe · %@"
+          }
+        }
+      }
+    },
+    "Archived task · %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivierte Aufgabe · %@"
+          }
+        }
+      }
+    },
+    "Subtask · %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unteraufgabe · %@"
           }
         }
       }

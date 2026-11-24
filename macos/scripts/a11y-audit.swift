@@ -56,6 +56,31 @@ guard let windows = attribute(root, kAXWindowsAttribute) as? [AXUIElement], !win
     fputs("No readable windows. Open a Momentum window or sheet first.\n", stderr)
     exit(2)
 }
+if args.contains("--launch-ready") {
+    // The benchmark samples only its explicit PID and returns a readiness bit.
+    // Keep task titles and the rest of the accessibility tree out of the output.
+    let prefix = "Momentum launch fixture "
+    var capture = false
+    var task = false
+    var visited = Set<CFHashCode>()
+    func findControls(_ element: AXUIElement, depth: Int) {
+        guard depth < 60, !(capture && task), visited.insert(CFHash(element)).inserted else { return }
+        if attribute(element, kAXEnabledAttribute) as? Bool != false {
+            let role = text(element, kAXRoleAttribute)
+            let names = [kAXTitleAttribute, kAXDescriptionAttribute, "AXPlaceholderValue"].map { text(element, $0) }
+            if role == "AXTextField" && names.contains("Add a task") { capture = true }
+            if role == "AXCheckBox" && names.contains(where: { $0.hasPrefix("Done: " + prefix) }) { task = true }
+        }
+        // Tables can expose thousands of children, but only visible rows can be used.
+        let children = (attribute(element, kAXVisibleRowsAttribute) as? [AXUIElement])
+            ?? (attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? [])
+        for child in children where !(capture && task) { findControls(child, depth: depth + 1) }
+    }
+    for window in windows where !(capture && task) { findControls(window, depth: 0) }
+    if capture && task { print("momentum-launch-ready") }
+    exit(0)
+}
+
 var visited = Set<CFHashCode>()
 var problems = 0
 var controls = 0

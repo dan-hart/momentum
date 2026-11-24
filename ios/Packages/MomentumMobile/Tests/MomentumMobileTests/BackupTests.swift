@@ -88,23 +88,38 @@ import Testing
         #expect(calls == 0)
     }
 
-    @Test func exportSuccessIsReportedOnlyAfterTheSystemSaves() async {
+    @Test func exportSuccessIsReportedOnlyAfterTheSystemSaves() async throws {
         let state = BackupState()
         #expect(await state.prepareExport { Data("fixture".utf8) })
         #expect(state.completion == nil)
         #expect(state.preparedExport != nil)
-        state.finishExport(nil)
+        await state.finishExport(nil)
         #expect(state.preparedExport == nil)
         #expect(state.completion == nil)
         #expect(state.error == nil)
         #expect(await state.prepareExport { Data() })
-        state.finishExport(.failure(CocoaError(.fileWriteOutOfSpace)))
+        await state.finishExport(.failure(CocoaError(.fileWriteOutOfSpace)))
         #expect(state.error != nil)
         #expect(state.completion == nil)
-        #expect(await state.prepareExport { Data() })
-        state.finishExport(.success(URL(fileURLWithPath: "/fixture.json")))
+        let data = Data("exported".utf8)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        try data.write(to: url)
+        #expect(await state.prepareExport { data })
+        await state.finishExport(.success(url))
         #expect(state.error == nil)
         #expect(state.completion == .exported)
+
+        #expect(await state.prepareExport { Data("different".utf8) })
+        await state.finishExport(.success(url))
+        #expect(state.completion == nil)
+        #expect(state.error != nil)
+
+        try FileManager.default.removeItem(at: url)
+        #expect(await state.prepareExport { data })
+        await state.finishExport(.success(url))
+        #expect(state.error == nil)
+        #expect(state.completion == .exportedWithoutVerification)
     }
 
     @Test func loadedFileCapturesStableBytesAndMissingFileClearsSelection() async throws {

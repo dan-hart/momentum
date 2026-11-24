@@ -45,6 +45,13 @@
     <string name="empty_list">No tasks in this list</string>
     <string name="completed">Completed</string>
     <string name="overdue">Overdue</string>
+    <string name="search_match_title">Title match: %1$s</string>
+    <string name="search_match_notes">Notes match: %1$s</string>
+    <string name="search_match_tag">Tag match: %1$s</string>
+    <string name="search_match_project">Project match: %1$s</string>
+    <string name="search_match_archived_subtask">Archived subtask · %1$s</string>
+    <string name="search_match_archived_task">Archived task · %1$s</string>
+    <string name="search_match_subtask">Subtask · %1$s</string>
     <string name="search_archived">Archived tasks</string>
     <string name="show_more">Show more</string>
     <string name="options">View options</string>
@@ -114,7 +121,7 @@
     <string name="export_backup">Export backup</string>
     <string name="import_backup">Restore backup…</string>
     <string name="restore_title">Replace local tasks?</string>
-    <string name="restore_hint">This replaces your tasks with the selected backup and clears pending sync changes. Export a backup first if you want to keep this copy.</string>
+    <string name="restore_hint">This replaces your tasks. A recovery copy keeps the previous tasks and unsynced changes on this device.</string>
     <string name="restore">Replace tasks</string>
     <string name="draft_restore_hint">Save or cancel the open task draft before restoring a backup.</string>
     <string name="about">About</string>
@@ -170,7 +177,7 @@
     <string name="action_changed">Tasks updated</string>
     <string name="action_undone">Action undone</string>
     <string name="action_archived">Completed tasks archived</string>
-    <string name="backup_exported">Backup saved</string>
+    <string name="backup_exported">Backup saved and verified</string>
     <string name="backup_restored">Backup restored</string>
     <string name="nothing_undo">Nothing to undo</string>
     <string name="manual_only">Choose Manual order to reorder tasks.</string>
@@ -327,4 +334,16 @@
     <string name="nextcloud_folder_hint">The shared folder contains Momentum sync data. Use the same folder on every device; changing this field does not copy existing server data.</string>
     <string name="sync_timing_heading">Automatic and background sync</string>
     <string name="sync_timing_hint">Automatic sync keeps tasks up to date while using the app. Background sync also allows scheduled exchanges when Android permits them.</string>
+    <string name="backup_export_unverified">Backup saved. This location could not be verified.</string>
+    <string name="backup_export_mismatch">The saved file differs from your backup. Export again to another location.</string>
+    <string name="backup_recovery_restored">Recovery copy restored</string>
+    <string name="restore_recovery">Restore Recovery Copy</string>
+    <string name="restore_recovery_title">Restore recovery copy?</string>
+    <string name="restore_recovery_hint">Replace your tasks with the previous tasks and unsynced changes. The recovery copy will then hold your current tasks. App settings stay as they are.</string>
+    <string name="saving_task">Saving task…</string>
+    <string name="retry_save">Retry Save</string>
+    <string name="waiting_to_sync">Waiting to sync: %1$d</string>
+    <string name="waiting_changes_saved">Waiting changes are saved on this device.</string>
+    <string name="nearby_waiting_hint">Changes sync when linked devices are reachable.</string>
+    <string name="task_saved">Task saved</string>
 </resources>

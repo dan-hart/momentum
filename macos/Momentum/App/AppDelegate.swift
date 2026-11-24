@@ -178,7 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let w = NSApp.windows.first(where: { $0.identifier?.rawValue.hasPrefix("quick-add") == true }) {
             w.makeKeyAndOrderFront(nil)
         } else {
-            WindowOpener.shared.open?("quick-add")
+            WindowOpener.shared.requestQuickAdd()
         }
     }
 
@@ -202,7 +202,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @MainActor
 final class WindowOpener {
     static let shared = WindowOpener()
-    var open: ((String) -> Void)?
+    private var quickAddPending = false
+    var open: ((String) -> Void)? {
+        didSet {
+            guard quickAddPending, open != nil else { return }
+            quickAddPending = false
+            Task { @MainActor in self.requestQuickAdd() }
+        }
+    }
+
+    func requestQuickAdd() {
+        if let open { open("quick-add") }
+        else { quickAddPending = true }
+    }
 }
 
 /// The Services menu entry: "New Momentum Task" from selected text in any app.

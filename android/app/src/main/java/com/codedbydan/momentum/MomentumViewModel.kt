@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.InputStream
+import java.io.IOException
 import java.util.UUID
 
 enum class Tab { Today, Upcoming, Search, Settings }
@@ -37,6 +38,8 @@ data class UiState(
     val settingsFeedback: Int? = null,
     val editor: EditorDraft? = null,
     val editorError: Boolean = false,
+    val editorSaving: Boolean = false,
+    val editorSaveFailed: Boolean = false,
     val importReady: Boolean = false,
     val importPreparing: Boolean = false,
     val settingsPage: String = "main",
@@ -48,6 +51,8 @@ data class UiState(
     val draftRecoveryPending: Boolean = false,
     val restoring: Boolean = false,
     val queuedCaptures: Int = 0,
+    val taskFocusRequest: Int = 0,
+    val taskFocusId: String? = null,
 )
 
 class MomentumViewModel(
@@ -77,6 +82,16 @@ class MomentumViewModel(
     ))
     val state: StateFlow<UiState> = mutable.asStateFlow()
     private var request = 0L
+    private data class TaskFocusPlan(val view: View, val query: String, val before: List<String>, val affected: Set<String>)
+    private var taskFocusPlan: TaskFocusPlan? = null
+
+    private fun Snapshot?.taskOrder(): List<String> = this?.listing?.sections.orEmpty()
+        .flatMap { it.rows.filterIsInstance<Row.Task>() }
+        .map { it.row }.filter { !it.archived && it.occurrence == null }.map { it.id }
+
+    fun acceptTaskFocus(request: Int) {
+        mutable.update { if(it.taskFocusRequest == request) it.copy(taskFocusId = null) else it }
+    }
     private var archiveLimit = 100u
     private var importFile: File? = null
     private var importPreparation: Job? = null
@@ -159,11 +174,19 @@ class MomentumViewModel(
         viewModelScope.launch {
             try {
                 val snapshot = repository.snapshot(route, query, archiveLimit)
-                if (version == request) mutable.update {
-                    it.copy(snapshot = snapshot, view = snapshot.listing.view, loading = false, pullRefreshing = false,
-                        selected = it.selected.intersect(snapshot.listing.sections.flatMap { section ->
-                            section.rows.filterIsInstance<Row.Task>().map { row -> row.row.id }
-                        }.toSet()))
+                if (version == request) {
+                    val focus = taskFocusPlan?.takeIf { it.view == route && it.query == query }
+                    taskFocusPlan = null
+                    mutable.update {
+                        val updated = it.copy(snapshot = snapshot, view = snapshot.listing.view, loading = false, pullRefreshing = false,
+                            selected = it.selected.intersect(snapshot.listing.sections.flatMap { section ->
+                                section.rows.filterIsInstance<Row.Task>().map { row -> row.row.id }
+                            }.toSet()))
+                        if(focus != null && it.tab != Tab.Settings && it.editor == null) {
+                            updated.copy(taskFocusRequest = it.taskFocusRequest + 1,
+                                taskFocusId = replacementTaskFocus(focus.before, snapshot.taskOrder(), focus.affected) ?: "")
+                        } else updated
+                    }
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -175,11 +198,12 @@ class MomentumViewModel(
     }
     fun navigate(view: View, tab: Tab = when(view) { View.Upcoming -> Tab.Upcoming; View.Search -> Tab.Search; else -> Tab.Today }) {
         archiveLimit = 100u
+        taskFocusPlan = null
         saved["view"] = viewKey(view); saved["context"] = when(view) { is View.Project -> view.id; is View.Tag -> view.id; else -> "" }
         saved["tab"] = tab.name
         if(tab == Tab.Today) { saved["today-view"] = viewKey(view); saved["today-context"] = saved.get<String>("context") }
         mutable.update { it.copy(tab = tab, view = view, selected = emptySet(), selecting = false,
-            snapshot = null, pullRefreshing = false) }
+            snapshot = null, pullRefreshing = false, taskFocusId = null) }
         refresh()
     }
     fun tab(tab: Tab) {
@@ -226,7 +250,13 @@ class MomentumViewModel(
         state.copy(selecting = true, selected = ids.toSet().intersect(shown))
     }
     fun cancelSelection() = mutable.update { it.copy(selecting = false, selected = emptySet()) }
-    fun drop(ids: List<String>, destination: View) = action {
+    fun archiveCompleted(): Job {
+        val done = mutable.value.snapshot?.listing?.sections.orEmpty().flatMap { it.rows }
+            .filterIsInstance<Row.Task>().map { it.row }.filter { it.isDone }.map { it.id }
+        return action(focusAfter = done) { archiveDone() }
+    }
+
+    fun drop(ids: List<String>, destination: View) = action(focusAfter = ids) {
         if(isTaskIdList(ids.joinToString("\n"))) dropTasks(ids, destination) else Outcome(false, null, null, false)
     }
     fun reorder(ids: List<String>, before: String, destination: View) = action {
@@ -278,12 +308,20 @@ class MomentumViewModel(
         val destination = mutable.value.view
         return action(onSuccess) { addTask(text, destination) }.also { quickAddJob = it }
     }
-    fun action(onSuccess: () -> Unit = {}, block: Engine.() -> Outcome) = viewModelScope.launch {
-        if(mutable.value.restoring) return@launch
+    fun action(onSuccess: () -> Unit = {}, focusAfter: List<String> = emptyList(),
+        block: Engine.() -> Outcome) = viewModelScope.launch {
+        val origin = mutable.value
+        if(origin.restoring) return@launch
         try {
             val outcome = repository.mutate(block)
             if (outcome.message is Message.SaveFailed) mutable.update { it.copy(error = (outcome.message as Message.SaveFailed).error) }
             else {
+                if(outcome.changed && focusAfter.isNotEmpty() && origin.view == mutable.value.view && origin.query == mutable.value.query) {
+                    val before = origin.snapshot.taskOrder()
+                    if(before.any { it in focusAfter }) {
+                        taskFocusPlan = TaskFocusPlan(origin.view, origin.query, before, focusAfter.toSet())
+                    }
+                }
                 mutable.update { it.copy(notice = outcome, error = null, selecting = false, selected = emptySet()) }
                 notifyChanges()
                 refresh()
@@ -356,7 +394,7 @@ class MomentumViewModel(
         if(draftId == null) draftId = UUID.randomUUID().toString()
         saved["editor-id"] = draftId
         saved.remove<String>("editor")
-        mutable.update { it.copy(editor = draft, editorError = false, editorUnavailable = false, editorCapacityError = false) }
+        mutable.update { it.copy(editor = draft, editorError = false, editorSaveFailed = false, editorUnavailable = false, editorCapacityError = false) }
         persistJob?.cancel()
         persistJob = viewModelScope.launch {
             delay(100)
@@ -460,7 +498,7 @@ class MomentumViewModel(
         }
         saved.remove<String>("editor")
         saved.remove<String>("editor-view"); saved.remove<String>("editor-context")
-        mutable.update { it.copy(editor = null, editorError = false, editorCapacityError = false) }
+        mutable.update { it.copy(editor = null, editorError = false, editorSaveFailed = false, editorCapacityError = false) }
         resumeCapture()
     }
     private fun resumeCapture() {
@@ -522,7 +560,7 @@ class MomentumViewModel(
     private fun commitEditor(close: Boolean, onSaved: (String) -> Unit) = viewModelScope.launch {
         val editor = mutable.value.editor ?: return@launch
         if (mutable.value.busy) return@launch
-        mutable.update { it.copy(busy = true) }
+        mutable.update { it.copy(busy = true, editorSaving = true, editorSaveFailed = false, error = null) }
         try {
             val draft = repository.draft(editor)
             if (draft == null) mutable.update { it.copy(editorError = true) }
@@ -533,15 +571,24 @@ class MomentumViewModel(
                 if(editor.id != null && !outcome.changed && repository.read { taskRow(editor.id)?.archived != false }) {
                     mutable.update { it.copy(editorUnavailable = true, error = getApplication<Application>().getString(R.string.task_unavailable)) }
                 }
-                else if (outcome.message is Message.SaveFailed) mutable.update { it.copy(error = (outcome.message as Message.SaveFailed).error) }
+                else if (outcome.message is Message.SaveFailed) mutable.update { it.copy(editorSaveFailed = true) }
                 else if(id != null) {
                     mutable.update { it.copy(busy = false) }
                     if(close) dismissEditor() else setEditor(editor.copy(id = id))
-                    mutable.update { it.copy(notice = outcome, error = null) }; notifyChanges(); refresh(); onSaved(id)
+                    mutable.update {
+                        it.copy(notice = outcome, error = null,
+                            settingsFeedback = if(editor.id != null && outcome.changed && close) R.string.task_saved else it.settingsFeedback)
+                    }
+                    notifyChanges(); refresh(); onSaved(id)
                 }
             }
-        } catch(e: Exception) { fail(e) }
-        finally { mutable.update { it.copy(busy = false) } }
+        } catch(e: CancellationException) {
+            throw e
+        } catch(_: Exception) {
+            mutable.update { it.copy(editorSaveFailed = true) }
+        } finally {
+            mutable.update { it.copy(busy = false, editorSaving = false) }
+        }
     }
     fun preferences(change: (com.codedbydan.momentum.core.Preferences) -> com.codedbydan.momentum.core.Preferences) = viewModelScope.launch {
         try { repository.updatePreferences(change); notifyChanges(); refresh() } catch(e: Exception) { fail(e) }
@@ -605,17 +652,24 @@ class MomentumViewModel(
     }
     fun export(uri: Uri, includeSettings: Boolean = false, settingsOnly: Boolean = false) = viewModelScope.launch {
         try {
-            withContext(Dispatchers.IO) {
-                val file = File(getApplication<Application>().cacheDir, "export-${UUID.randomUUID()}.json")
+            val notice = withContext(Dispatchers.IO) {
+                val application = getApplication<Application>()
+                val resolver = application.contentResolver
+                val file = File(application.cacheDir, "export-${UUID.randomUUID()}.json")
                 try {
                     if(settingsOnly) repository.exportAppSettings(file) else repository.exportBackup(file, includeSettings)
-                    getApplication<Application>().contentResolver.openOutputStream(uri, "wt").use { output ->
+                    resolver.openOutputStream(uri, "wt").use { output ->
                         requireNotNull(output)
                         file.inputStream().use { it.copyTo(output) }
                     }
+                    if(settingsOnly) null else when(verifyBackupDestination(file) { resolver.openInputStream(uri) }) {
+                        BackupDestination.Verified -> Outcome(false, Message.BackupExported, null, false)
+                        BackupDestination.ReadbackUnavailable -> Outcome(false, Message.BackupExportVerificationUnavailable, null, false)
+                        BackupDestination.Mismatch -> throw IOException(application.getString(R.string.backup_export_mismatch))
+                    }
                 } finally { file.delete() }
             }
-            mutable.update { it.copy(notice = if(settingsOnly) null else Outcome(false, Message.BackupExported, null, false),
+            mutable.update { it.copy(notice = notice,
                 settingsFeedback = if(settingsOnly) R.string.app_settings_exported else null, error = null) }
         } catch(e: Exception) { fail(e) }
     }
@@ -671,14 +725,28 @@ class MomentumViewModel(
     }
     fun restore(restoreSettings: Boolean = false) {
         val file = importFile ?: return
-        if(mutable.value.editor != null || mutable.value.editorLoading || mutable.value.busy) return
+        runBackupRestore {
+            val outcome = repository.restoreBackup(file, restoreSettings)
+            if(importFile === file) { file.delete(); importFile = null }
+            mutable.update { it.copy(importReady = false) }
+            outcome
+        }
+    }
+
+    fun restoreRecoveryCopy() {
+        if(mutable.value.importPreparing || mutable.value.importReady) return
+        runBackupRestore { repository.restoreRecoveryCopy() }
+    }
+
+    private fun runBackupRestore(operation: suspend () -> Outcome) {
+        val current = mutable.value
+        if(current.editor != null || current.editorLoading || current.draftRecoveryPending || current.busy) return
         mutable.update { it.copy(busy = true, restoring = true) }
         viewModelScope.launch {
             try {
                 pauseForRestore()
-                val outcome = repository.restoreBackup(file, restoreSettings)
-                if(importFile === file) { file.delete(); importFile = null }
-                mutable.update { it.copy(notice = outcome, error = null, importReady = false) }
+                val outcome = operation()
+                mutable.update { it.copy(notice = outcome, error = null) }
                 refresh()
             } catch(e: Exception) { fail(e) }
             finally {

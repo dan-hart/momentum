@@ -109,6 +109,8 @@ import Testing
         #expect(search.tasks.allSatisfy { $0.archived && $0.isSubtask })
         #expect(search.parentTitles == [alpha: "Alpha", beta: "Beta"])
         for child in search.tasks {
+            #expect(child.searchMatch?.source == .title)
+            #expect(child.searchMatch?.excerpt == "Review")
             #expect(await worker.taskDetail(child.id) == nil)
             #expect(!(await worker.perform(.complete([child.id], false))).changed)
         }

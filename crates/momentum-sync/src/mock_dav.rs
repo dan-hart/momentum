@@ -47,7 +47,10 @@ fn etag(body: &[u8]) -> String {
 
 impl MockDav {
     pub fn start() -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        Self::serve(TcpListener::bind("127.0.0.1:0").unwrap())
+    }
+
+    pub fn serve(listener: TcpListener) -> Self {
         let url = format!("http://{}", listener.local_addr().unwrap());
         let files: Arc<Mutex<HashMap<String, Vec<u8>>>> = Default::default();
         let puts = Arc::new(AtomicUsize::new(0));

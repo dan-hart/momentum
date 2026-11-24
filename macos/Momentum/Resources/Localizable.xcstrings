@@ -1,6 +1,156 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "This task is archived or no longer available.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Aufgabe ist archiviert oder nicht mehr verfügbar."
+          }
+        }
+      }
+    },
+    "Task saved": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgabe gespeichert"
+          }
+        }
+      }
+    },
+    "Retry Save": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut speichern"
+          }
+        }
+      }
+    },
+    "Waiting to sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wartet auf Synchronisierung"
+          }
+        }
+      }
+    },
+    "Changes sync when linked devices are reachable.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen werden synchronisiert, sobald verknüpfte Geräte erreichbar sind."
+          }
+        }
+      }
+    },
+    "No changes waiting to sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Änderungen warten auf Synchronisierung"
+          }
+        }
+      }
+    },
+    "Waiting changes are saved on this Mac.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausstehende Änderungen sind auf diesem Mac gespeichert."
+          }
+        }
+      }
+    },
+    "Restore Recovery Copy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungskopie einspielen"
+          }
+        }
+      }
+    },
+    "Restore Recovery Copy…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungskopie einspielen …"
+          }
+        }
+      }
+    },
+    "Restore Recovery Copy?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellungskopie einspielen?"
+          }
+        }
+      }
+    },
+    "Replace All Tasks?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Aufgaben ersetzen?"
+          }
+        }
+      }
+    },
+    "Restore Backup": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung wiederherstellen"
+          }
+        }
+      }
+    },
+    "Your current tasks and unsynced changes will be kept in a recovery copy.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine aktuellen Aufgaben und nicht synchronisierten Änderungen werden in einer Wiederherstellungskopie aufbewahrt."
+          }
+        }
+      }
+    },
+    "Importing replaces your tasks. A recovery copy keeps the previous tasks and unsynced changes on this Mac.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Import ersetzt deine Aufgaben. Eine Wiederherstellungskopie bewahrt die bisherigen Aufgaben und nicht synchronisierten Änderungen auf diesem Mac auf."
+          }
+        }
+      }
+    },
+    "Replace your tasks with the previous tasks and unsynced changes. The recovery copy will then hold your current tasks. App settings stay as they are.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ersetze deine Aufgaben durch die früheren Aufgaben und nicht synchronisierten Änderungen. Die Wiederherstellungskopie enthält anschließend deine aktuellen Aufgaben. Deine App-Einstellungen bleiben erhalten."
+          }
+        }
+      }
+    },
     "About the AH Fonts": {
       "localizations": {
         "en": {

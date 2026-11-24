@@ -51,6 +51,9 @@ import java.time.format.FormatStyle
     }
     var includeSettings by rememberSaveable { mutableStateOf(false) }
     var restoreSettings by rememberSaveable { mutableStateOf(false) }
+    var confirmRecovery by rememberSaveable { mutableStateOf(false) }
+    val draftBlocksRestore = state.editor != null || state.editorLoading || state.draftRecoveryPending
+    val canRestore = !draftBlocksRestore && !state.busy
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { it?.let { uri -> vm.export(uri, includeSettings) } }
     val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let { uri -> vm.prepareImport(uri) } }
     val settingsExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { it?.let { uri -> vm.export(uri, settingsOnly = true) } }
@@ -159,6 +162,12 @@ import java.time.format.FormatStyle
         TransferCheck(R.string.include_app_settings, includeSettings, !state.busy) { includeSettings = it }
         SettingAnchor(R.string.export_backup) { OutlinedButton({ export.launch("momentum-backup.json") }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.export_backup)) } }
         SettingAnchor(R.string.import_backup) { OutlinedButton({ restore.launch(arrayOf("application/json", "text/plain")) }, Modifier.fillMaxWidth(), enabled = state.editor == null) { Text(stringResource(R.string.import_backup)) } }
+        if(snapshot.hasBackupRecovery) OutlinedButton(
+            onClick = { confirmRecovery = true },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = canRestore && !state.importPreparing && !state.importReady,
+        ) { Text(stringResource(R.string.restore_recovery)) }
+        if(state.restoring && !state.importReady) LinearProgressIndicator(Modifier.fillMaxWidth())
         Text(stringResource(R.string.app_settings_scope), style = MaterialTheme.typography.bodyMedium)
         SettingAnchor(R.string.export_app_settings) { OutlinedButton({ settingsExport.launch("momentum-settings.json") }, Modifier.fillMaxWidth(), enabled = !state.busy) { Text(stringResource(R.string.export_app_settings)) } }
         SettingAnchor(R.string.import_app_settings) { OutlinedButton({ settingsImport.launch(arrayOf("application/json", "text/plain")) }, Modifier.fillMaxWidth(), enabled = !state.busy && !state.importPreparing) { Text(stringResource(R.string.import_app_settings)) } }
@@ -173,9 +182,19 @@ import java.time.format.FormatStyle
         confirmButton = { TextButton({ confirmSearch = false; scope.launch { vm.platform.setSystemSearch(true); vm.refresh() } }) {
             Text(stringResource(R.string.system_search_confirm))
         } }, dismissButton = { TextButton({ confirmSearch = false }) { Text(stringResource(R.string.cancel)) } })
+    if(page == "data" && confirmRecovery) AlertDialog(
+        onDismissRequest = { confirmRecovery = false },
+        title = { Text(stringResource(R.string.restore_recovery_title)) },
+        text = { Text(stringResource(R.string.restore_recovery_hint)) },
+        confirmButton = { TextButton({
+            confirmRecovery = false
+            vm.restoreRecoveryCopy()
+        }, enabled = canRestore) { Text(stringResource(R.string.restore_recovery)) } },
+        dismissButton = { TextButton({ confirmRecovery = false }) { Text(stringResource(R.string.cancel)) } },
+    )
     if(state.importReady) AlertDialog(onDismissRequest = vm::cancelImport, title = { Text(stringResource(R.string.restore_title)) },
-        text = { Column { Text(stringResource(if(state.editor == null) R.string.restore_hint else R.string.draft_restore_hint)); TransferCheck(R.string.restore_app_settings, restoreSettings, !state.restoring) { restoreSettings = it }; if(state.restoring) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp)) } },
-        confirmButton = { TextButton({ vm.restore(restoreSettings) }, enabled = state.editor == null && !state.editorLoading && !state.busy) { Text(stringResource(R.string.restore)) } },
+        text = { Column { Text(stringResource(if(draftBlocksRestore) R.string.draft_restore_hint else R.string.restore_hint)); TransferCheck(R.string.restore_app_settings, restoreSettings, !state.restoring) { restoreSettings = it }; if(state.restoring) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp)) } },
+        confirmButton = { TextButton({ vm.restore(restoreSettings) }, enabled = canRestore) { Text(stringResource(R.string.restore)) } },
         dismissButton = { TextButton(vm::cancelImport, enabled = !state.restoring) { Text(stringResource(R.string.cancel)) } })
 }
 

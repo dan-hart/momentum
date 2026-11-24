@@ -45,6 +45,13 @@
     <string name="empty_list">Keine Aufgaben in dieser Liste</string>
     <string name="completed">Erledigt</string>
     <string name="overdue">Überfällig</string>
+    <string name="search_match_title">Titeltreffer: %1$s</string>
+    <string name="search_match_notes">Treffer in Notizen: %1$s</string>
+    <string name="search_match_tag">Schlagworttreffer: %1$s</string>
+    <string name="search_match_project">Projekttreffer: %1$s</string>
+    <string name="search_match_archived_subtask">Archivierte Unteraufgabe · %1$s</string>
+    <string name="search_match_archived_task">Archivierte Aufgabe · %1$s</string>
+    <string name="search_match_subtask">Unteraufgabe · %1$s</string>
     <string name="search_archived">Archivierte Aufgaben</string>
     <string name="show_more">Mehr anzeigen</string>
     <string name="options">Ansichtsoptionen</string>
@@ -114,7 +121,7 @@
     <string name="export_backup">Sicherung exportieren</string>
     <string name="import_backup">Sicherung wiederherstellen…</string>
     <string name="restore_title">Lokale Aufgaben ersetzen?</string>
-    <string name="restore_hint">Dies ersetzt deine Aufgaben durch die gewählte Sicherung und entfernt ausstehende Sync-Änderungen. Exportiere zuerst eine Sicherung, um diese Kopie zu behalten.</string>
+    <string name="restore_hint">Deine Aufgaben werden ersetzt. Eine Wiederherstellungskopie bewahrt die bisherigen Aufgaben und nicht synchronisierten Änderungen auf diesem Gerät auf.</string>
     <string name="restore">Aufgaben ersetzen</string>
     <string name="draft_restore_hint">Speichere oder verwirf den offenen Aufgabenentwurf, bevor du eine Sicherung wiederherstellst.</string>
     <string name="about">Über</string>
@@ -170,7 +177,7 @@
     <string name="action_changed">Aufgaben geändert</string>
     <string name="action_undone">Aktion rückgängig gemacht</string>
     <string name="action_archived">Erledigte Aufgaben archiviert</string>
-    <string name="backup_exported">Sicherung gespeichert</string>
+    <string name="backup_exported">Sicherung gespeichert und überprüft</string>
     <string name="backup_restored">Sicherung wiederhergestellt</string>
     <string name="nothing_undo">Nichts rückgängig zu machen</string>
     <string name="manual_only">Wähle Manuelle Reihenfolge, um Aufgaben umzusortieren.</string>
@@ -327,4 +334,16 @@
     <string name="nextcloud_folder_hint">Der gemeinsame Ordner enthält die Momentum-Sync-Daten. Verwende auf jedem Gerät denselben Ordner. Eine Änderung dieses Felds kopiert keine vorhandenen Serverdaten.</string>
     <string name="sync_timing_heading">Automatischer Sync und Hintergrund-Sync</string>
     <string name="sync_timing_hint">Automatischer Sync hält Aufgaben während der App-Nutzung aktuell. Hintergrund-Sync erlaubt zusätzlich geplante Abgleiche, wenn Android sie zulässt.</string>
+    <string name="backup_export_unverified">Sicherung gespeichert. Dieser Speicherort konnte nicht überprüft werden.</string>
+    <string name="backup_export_mismatch">Die gespeicherte Datei weicht von der Sicherung ab. Exportiere sie erneut an einen anderen Speicherort.</string>
+    <string name="backup_recovery_restored">Wiederherstellungskopie eingespielt</string>
+    <string name="restore_recovery">Wiederherstellungskopie einspielen</string>
+    <string name="restore_recovery_title">Wiederherstellungskopie einspielen?</string>
+    <string name="restore_recovery_hint">Ersetze deine Aufgaben durch die früheren Aufgaben und nicht synchronisierten Änderungen. Die Wiederherstellungskopie enthält anschließend deine aktuellen Aufgaben. Deine App-Einstellungen bleiben erhalten.</string>
+    <string name="saving_task">Aufgabe wird gespeichert …</string>
+    <string name="retry_save">Erneut speichern</string>
+    <string name="waiting_to_sync">Wartet auf Synchronisierung: %1$d</string>
+    <string name="waiting_changes_saved">Ausstehende Änderungen sind auf diesem Gerät gespeichert.</string>
+    <string name="nearby_waiting_hint">Änderungen werden synchronisiert, sobald verknüpfte Geräte erreichbar sind.</string>
+    <string name="task_saved">Aufgabe gespeichert</string>
 </resources>

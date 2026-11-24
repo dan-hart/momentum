@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codedbydan.momentum.MomentumViewModel
@@ -37,8 +38,14 @@ import java.time.format.FormatStyle
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.sync), onClick = vm::openSync).padding(horizontal = 20.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if(status.syncing) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                Text(text, style = MaterialTheme.typography.labelMedium,
-                    color = if(status.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                Column {
+                    Text(text, style = MaterialTheme.typography.labelMedium,
+                        color = if(status.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                    if(snapshot.settings.provider == SyncProvider.Nextcloud && snapshot.sync.pendingOps > 0u) {
+                        Text(stringResource(R.string.waiting_to_sync, snapshot.sync.pendingOps.toLong()),
+                            modifier = Modifier.testTag("pending-sync-footer"), style = MaterialTheme.typography.labelMedium)
+                    }
+                }
             }
         }
         if(status.statusPersistenceError != null) {

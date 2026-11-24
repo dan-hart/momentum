@@ -42,11 +42,27 @@ fn crash_writer_child() {
         Step::Durable,
         Step::Committed,
     ];
-    save_with_hook(Path::new(&dir), image(&store), |step| {
+    let hold_for_kill = |step| {
         if step == stages[checkpoint] {
-            std::process::exit(77);
+            // Keep the real transaction and its OS lock live until the parent
+            // terminates this process, with no destructor or graceful shutdown.
+            fs::write(Path::new(&dir).join("kill-ready"), []).unwrap();
+            loop {
+                std::thread::park();
+            }
         }
-    })
+    };
+    if std::env::var_os("MOMENTUM_DURABILITY_FIXTURE_BACKUP").is_some() {
+        save_extended(
+            Path::new(&dir),
+            image(&store),
+            Some(b"new recovery"),
+            None,
+            hold_for_kill,
+        )
+    } else {
+        save_with_hook(Path::new(&dir), image(&store), hold_for_kill)
+    }
     .unwrap();
     panic!("requested interruption point was not reached");
 }
@@ -59,18 +75,7 @@ fn process_interruption_recovers_one_complete_generation_at_every_commit_boundar
         add(&mut before, "Before");
         before.save().unwrap();
         let before_image = image(&before);
-        let child = std::process::Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", "durability::tests::crash_writer_child", "--test-threads=1"])
-            .env("MOMENTUM_DURABILITY_FIXTURE_DIR", dir.path())
-            .env("MOMENTUM_DURABILITY_FIXTURE_POINT", checkpoint.to_string())
-            .output()
-            .unwrap();
-        assert_eq!(
-            child.status.code(),
-            Some(77),
-            "child did not exit at checkpoint {checkpoint}: {}",
-            String::from_utf8_lossy(&child.stderr)
-        );
+        kill_writer_at(dir.path(), checkpoint, false);
         let recovered = Store::try_load(dir.path().to_path_buf()).unwrap();
         if checkpoint < 5 {
             assert_eq!(
@@ -92,6 +97,71 @@ fn process_interruption_recovers_one_complete_generation_at_every_commit_boundar
             image(&recovered),
             "recovery is idempotent"
         );
+    }
+}
+
+fn kill_writer_at(dir: &Path, checkpoint: usize, backup: bool) {
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command
+        .args(["--exact", "durability::tests::crash_writer_child", "--test-threads=1"])
+        .env("MOMENTUM_DURABILITY_FIXTURE_DIR", dir)
+        .env("MOMENTUM_DURABILITY_FIXTURE_POINT", checkpoint.to_string())
+        .stdout(std::process::Stdio::null())
+        .env_remove("MOMENTUM_DURABILITY_FIXTURE_BACKUP");
+    if backup {
+        command.env("MOMENTUM_DURABILITY_FIXTURE_BACKUP", "1");
+    }
+    let mut child = command.spawn().unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    let ready = loop {
+        if dir.join("kill-ready").is_file() {
+            break true;
+        }
+        if child.try_wait().unwrap().is_some() || std::time::Instant::now() >= deadline {
+            break false;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    };
+    let killed = child.kill();
+    let status = child.wait().unwrap();
+    assert!(ready, "child did not reach checkpoint {checkpoint}");
+    killed.unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        assert_eq!(status.signal(), Some(9));
+    }
+    assert!(!status.success());
+}
+
+#[test]
+fn process_interruption_recovers_backup_copy_and_task_image_together() {
+    for checkpoint in [1, 5] {
+        let dir = tempfile::tempdir().unwrap();
+        let mut before = Store::load(dir.path().to_path_buf());
+        add(&mut before, "Before");
+        before.save_with_backup_recovery(b"old recovery", None).unwrap();
+        let initial = image(&before);
+        kill_writer_at(dir.path(), checkpoint, true);
+        assert_ne!(fs::read(dir.path().join("state.json")).unwrap(), initial[0]);
+        assert_eq!(fs::read(dir.path().join(BACKUP_RECOVERY)).unwrap(), b"new recovery");
+        if checkpoint == 1 {
+            assert_eq!(fs::read(dir.path().join("pending.json")).unwrap(), initial[1]);
+            assert!(dir.path().join(JOURNAL).is_dir());
+        }
+
+        let reopened = Store::try_load(dir.path().to_path_buf()).unwrap();
+        if checkpoint == 1 {
+            assert_eq!(image(&reopened), initial);
+            assert_eq!(fs::read(dir.path().join(BACKUP_RECOVERY)).unwrap(), b"old recovery");
+        } else {
+            assert_eq!(reopened.state.task.ids.len(), 2);
+            assert_eq!(reopened.pending.len(), 2);
+            assert_eq!(reopened.meta.last_nextcloud_ms, 99);
+            assert_eq!(fs::read(dir.path().join(BACKUP_RECOVERY)).unwrap(), b"new recovery");
+        }
+        assert_eq!(on_disk(dir.path()), image(&reopened));
+        assert!(!dir.path().join(JOURNAL).exists());
     }
 }
 
