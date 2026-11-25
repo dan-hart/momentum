@@ -4,6 +4,13 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-194 — Translation regression expects obsolete backup copy
+
+- Linux CI failed during native callback extraction because the expected message
+  still described discarding unsynced changes after F-079 introduced recovery.
+- The extraction test now requires both current confirmation messages. The
+  callback suite and POT completeness check pass locally.
+
 ## B-193 — Mac App Sandbox requires access to the backup export folder
 
 - Applies to the new Mac TestFlight channel (F-083). The existing verified backup

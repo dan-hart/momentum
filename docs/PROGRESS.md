@@ -1,5 +1,12 @@
 # Momentum progress and handoff
 
+## 2026-11-25 — 0.5.0 translation CI (B-194)
+
+- GitHub Actions failed the Linux callback extraction test at `d792edd`. The
+  fixture still expected the pre-recovery backup confirmation. The regression
+  now checks both current confirmations, and all four local extraction tests
+  and the POT completeness check pass.
+
 ## 2026-11-25 — macOS TestFlight (F-083, B-193)
 
 - Added the sandboxed native beta project with separate task storage and Keychain
