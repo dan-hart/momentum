@@ -23,7 +23,7 @@ def main(app, version, build):
             raise SystemExit(f"Unexpected {key} in Mac TestFlight archive: {info.get(key)!r}")
     if info.get("SUFeedURL"):
         raise SystemExit("Mac TestFlight archive has a Sparkle feed")
-    for path in ("Frameworks/Sparkle.framework", "MacOS/mo", "MacOS/MomentumRelaunch"):
+    for path in ("Resources/Info.plist", "Frameworks/Sparkle.framework", "MacOS/mo", "MacOS/MomentumRelaunch"):
         if (contents / path).exists():
             raise SystemExit(f"TestFlight must not ship {path}")
     executable = contents / "MacOS" / info["CFBundleExecutable"]

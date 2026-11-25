@@ -22,6 +22,7 @@ class TestFlightProjectTests(unittest.TestCase):
             beta = (macos / "MomentumTestFlight.xcodeproj/project.pbxproj").read_text()
             self.assertIn("Sparkle in Frameworks", stable)
             self.assertIn("Bundle mo command line companion", stable)
+            self.assertNotIn("Info.plist in Resources", beta)
             self.assertNotIn("Sparkle in Frameworks", beta)
             self.assertNotIn("Bundle mo command line companion", beta)
             scheme = (macos / "MomentumTestFlight.xcodeproj/xcshareddata/xcschemes/Momentum.xcscheme").read_text()

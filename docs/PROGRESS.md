@@ -7,13 +7,16 @@
   now checks both current confirmations, and all four local extraction tests
   and the POT completeness check pass.
 
-## 2026-11-25 — macOS TestFlight (F-083, B-193)
+## 2026-11-25 — macOS TestFlight (F-083, B-193, B-195)
 
 - Added the sandboxed native beta project with separate task storage and Keychain
   service. Mac TestFlight handles beta updates. The direct-download project
   retains Sparkle and the bundled CLI.
 - App Store Connect has a macOS 0.5.0 draft on the existing app record. The
   existing Internal Testers group has automatic access to eligible builds.
+- Apple's initial validation rejected the duplicate plist in app Resources.
+  The generated-project regression reproduced the problem and passed after
+  excluding the stable plist from bundle resources.
 - Local checks at `8091329` with the pipeline changes verify both generated
   projects, an unsigned universal Release archive and its startup probe, the
   stable Debug app build, and 273 MomentumKit tests. Hosted signing, Apple

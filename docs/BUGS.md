@@ -4,6 +4,14 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-195 — Mac TestFlight package included a second Info.plist
+
+- App Store Connect rejected Mac build 500 with a shared executable path
+  because the separately generated beta project copied the stable project’s
+  Info.plist into app Resources.
+- XcodeGen now excludes the app source plist from resources. Generation and
+  archive checks reject a duplicate. See PROGRESS for upload status.
+
 ## B-194 — Translation regression expects obsolete backup copy
 
 - Linux CI failed during native callback extraction because the expected message

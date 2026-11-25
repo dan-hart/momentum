@@ -53,7 +53,7 @@ targets:
     platform: macOS
     sources:
       - path: Momentum
-        excludes: ["**/.DS_Store"]
+        excludes: ["**/.DS_Store", "Info.plist"]
     dependencies:
       - target: MomentumRelaunch
         link: false
