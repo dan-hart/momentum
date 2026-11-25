@@ -1,5 +1,18 @@
 # Momentum progress and handoff
 
+## 2026-11-25 — macOS TestFlight (F-083, B-193)
+
+- Added the sandboxed native beta project with separate task storage and Keychain
+  service. Mac TestFlight handles beta updates. The direct-download project
+  retains Sparkle and the bundled CLI.
+- App Store Connect has a macOS 0.5.0 draft on the existing app record. The
+  existing Internal Testers group has automatic access to eligible builds.
+- Local checks at `8091329` with the pipeline changes verify both generated
+  projects, an unsigned universal Release archive and its startup probe, the
+  stable Debug app build, and 273 MomentumKit tests. Hosted signing, Apple
+  processing, native TestFlight installation, and sandboxed backup export and
+  restore still require a live run.
+
 ## 2026-11-24 — Momentum 0.5.0 native task workflows (F-079–F-082, B-191–B-192)
 
 - The candidate is based on `4db4338` and changes the shared engine, CLI boundary, and Linux, macOS, iOS, and Android apps. Version 0.5.0 uses Apple build 500. Recovery retains one private copy and reissues recovered pending edits after the current clock. The existing portable backup and sync formats remain compatible.

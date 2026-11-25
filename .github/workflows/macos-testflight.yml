@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: macOS TestFlight
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-testflight
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'dan-hart/momentum'
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: macos-testflight
+    env:
+      ASC_APP_ID: "6821523171"
+      TESTFLIGHT_INTERNAL_GROUP_ID: "088b7fcb-4b83-43d3-b87a-8acf0caa5a55"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check version metadata
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            python3 build-aux/release.py check --tag "$GITHUB_REF_NAME"
+          else
+            python3 build-aux/release.py check
+          fi
+      - name: Check out LibreSync
+        uses: actions/checkout@v4
+        with:
+          repository: dan-hart/LibreSync
+          ref: v0.6.0
+          path: libresync-src
+          token: ${{ secrets.LIBRESYNC_TOKEN || github.token }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Install build and App Store Connect tools
+        run: brew install xcodegen asc
+      - name: Verify the generated projects and build the core
+        run: |
+          python3 macos/scripts/tests/test_testflight_project.py
+          macos/scripts/build-core.sh
+          (cd macos && xcodegen generate --spec project-testflight.yml)
+      - name: Archive and upload to internal TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY_B64: ${{ secrets.ASC_PRIVATE_KEY_B64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: macos/scripts/publish-testflight.sh

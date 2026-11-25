@@ -213,18 +213,20 @@ public final class AppState {
     }
 
     /// Timers, the store-file watch, the `mo` socket, nearby sync and the first sync.
-    public func startServices() {
+    public func startServices(serveCLI: Bool = true) {
         setApplicationActive(NSApplication.shared.isActive)
         updateDockBadge()
-        prefs.writeCliConfig(to: dataDir)
-        fileWatcher = FileWatcher(file: dataDir.appendingPathComponent("pending.json")) { [weak self] in
-            Task { @MainActor in
-                guard let self, !self.isSyncing, self.engine.reloadFromDisk() else { return }
-                self.refresh()
+        if serveCLI {
+            prefs.writeCliConfig(to: dataDir)
+            fileWatcher = FileWatcher(file: dataDir.appendingPathComponent("pending.json")) { [weak self] in
+                Task { @MainActor in
+                    guard let self, !self.isSyncing, self.engine.reloadFromDisk() else { return }
+                    self.refresh()
+                }
             }
+            try? engine.serveCli(delegate: CliBridge(state: self))
         }
         indexer?.reindex(engine.allTasks())
-        try? engine.serveCli(delegate: CliBridge(state: self))
         tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }

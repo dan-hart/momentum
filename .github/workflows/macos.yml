@@ -85,6 +85,7 @@ jobs:
       - name: Build the app
         run: |
           brew install xcodegen
+          python3 macos/scripts/tests/test_testflight_project.py
           cd macos
           xcodegen generate
           python3 scripts/build-env.py xcodebuild -project Momentum.xcodeproj -scheme Momentum -configuration Debug \

@@ -44,7 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state.indexer = spotlight
         state.sounds = CompletionSound.shared
         // Everything the app reaches outside itself is attached: start the services now.
+        #if MOMENTUM_TESTFLIGHT
+        state.startServices(serveCLI: false)
+        #else
         state.startServices()
+        #endif
         MomentumShortcuts.updateAppShortcutParameters()
         hotKeys = GlobalHotKeys(
             quickAdd: { [weak self] in self?.openQuickAdd() },
@@ -69,9 +73,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         updateLoginItem()
+        #if !MOMENTUM_TESTFLIGHT
         DesktopUpdateController.shared.start()
+        #endif
     }
 
+    #if !MOMENTUM_TESTFLIGHT
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         let updater = DesktopUpdateController.shared
         guard updater.channel == .homebrew, updater.busy, !updater.restarting else { return .terminateNow }
@@ -82,6 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.runModal()
         return .terminateCancel
     }
+    #endif
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         !(Self.shared?.prefs.runInBackground ?? false)

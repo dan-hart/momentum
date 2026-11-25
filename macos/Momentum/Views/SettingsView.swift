@@ -613,10 +613,9 @@ private struct BackupSettings: SwiftUI.View {
                 }
                 Toggle(String(localized: "Include app settings"), isOn: $includeSettings)
                 Button(String(localized: "Export Backup…")) {
-                    let panel = NSSavePanel()
-                    panel.allowedContentTypes = [.json]
-                    panel.nameFieldStringValue = "\(today()).json"
-                    if panel.runModal() == .OK, let url = panel.url { state.exportBackup(url, includeSettings: includeSettings) }
+                    BackupExportPanel.choose(filename: "\(today()).json") {
+                        state.exportBackup($0, includeSettings: includeSettings)
+                    }
                 }.settingsTarget("data.tasks-export")
             } footer: {
                 Text(String(localized: "Importing replaces your tasks. A recovery copy keeps the previous tasks and unsynced changes on this Mac."))
@@ -628,10 +627,9 @@ private struct BackupSettings: SwiftUI.View {
                     if panel.runModal() == .OK, let url = panel.url { state.importAppSettings(url) }
                 }.settingsTarget("data.settings-import")
                 Button(String(localized: "Export app settings…")) {
-                    let panel = NSSavePanel()
-                    panel.allowedContentTypes = [.json]
-                    panel.nameFieldStringValue = "momentum-settings.json"
-                    if panel.runModal() == .OK, let url = panel.url { state.exportAppSettings(url) }
+                    BackupExportPanel.choose(filename: "momentum-settings.json") {
+                        state.exportAppSettings($0)
+                    }
                 }.settingsTarget("data.settings-export")
                 if let error = state.appSettingsError {
                     Text(error).foregroundStyle(.red)

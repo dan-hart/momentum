@@ -17,7 +17,9 @@ struct MomentumApp: App {
             print("Momentum release launch verified")
             exit(EXIT_SUCCESS)
         }
+        #if !MOMENTUM_TESTFLIGHT
         Preferences.migrateLegacyDomain()
+        #endif
         Preferences.register()
         Preferences.migrateSyncMethod()
         let engine: Engine
@@ -38,16 +40,30 @@ struct MomentumApp: App {
             engine = Self.openStore()
         }
         // The services wait for the delegate to attach notifications and Spotlight.
-        let s = AppState(engine: engine, services: false, isDemo: isDemo,
+        #if MOMENTUM_TESTFLIGHT
+        let keychain = Keychain(service: "momentum-testflight")
+        #else
+        let keychain = Keychain()
+        #endif
+        let s = AppState(engine: engine, keychain: keychain, services: false, isDemo: isDemo,
                          remindersSource: isDemo ? nil : EventKitRemindersSource())
         _state = State(initialValue: s)
         AppDelegate.shared = s
     }
 
+    private static var storeDirectory: URL {
+        #if MOMENTUM_TESTFLIGHT
+        URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+            .appendingPathComponent("Library/Application Support/momentum-testflight", isDirectory: true)
+        #else
+        DataDirectory.url
+        #endif
+    }
+
     /// Never construct a writable empty app state after a recovery failure.
     private static func openStore() -> Engine {
         while true {
-            do { return try Engine.openChecked(dir: DataDirectory.url.path) }
+            do { return try Engine.openChecked(dir: storeDirectory.path) }
             catch {
                 let alert = NSAlert()
                 alert.alertStyle = .critical

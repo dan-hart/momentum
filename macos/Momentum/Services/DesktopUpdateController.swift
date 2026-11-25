@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import MomentumKit
+
+#if !MOMENTUM_TESTFLIGHT
 import AppKit
 import Combine
-import MomentumKit
 import Observation
 import Sparkle
 
@@ -194,5 +196,7 @@ import Sparkle
         Task { @MainActor in self.latestVersion = version }
     }
 }
+
+#endif
 
 func updateText(_ key: String) -> String { SettingsDiscovery.localized(key) }

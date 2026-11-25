@@ -4,6 +4,16 @@
 main checks and all tagged release/install-channel gates pass; public artifacts and
 channels are verified in PROGRESS. Broader manual/device acceptance remains separate.
 
+## B-193 — Mac App Sandbox requires access to the backup export folder
+
+- Applies to the new Mac TestFlight channel (F-083). The existing verified backup
+  writer stages a sibling file and atomically renames it. The sandbox grant for a
+  single file selected in the Save panel does not cover the sibling.
+- The beta uses a native folder picker and a unique export filename for task
+  backups and settings. The verified writer and stable build's Save panel behavior
+  are shared with the existing code. Test the folder grant, export, and restore on
+  an installed TestFlight build before marking this verified.
+
 ## B-191 — Backup success and replacement recovery
 
 - Severity is high because an unverified or incorrectly selected backup can leave users without the recovery they expect.

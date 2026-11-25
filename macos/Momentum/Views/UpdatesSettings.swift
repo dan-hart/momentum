@@ -3,6 +3,17 @@ import MomentumKit
 import SwiftUI
 
 struct UpdatesSettings: View {
+    #if MOMENTUM_TESTFLIGHT
+    var body: some View {
+        Form {
+            LabeledContent(updateText("Installed version"),
+                           value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+            Text(updateText("Install beta updates in TestFlight."))
+                .foregroundStyle(.secondary)
+        }
+        .formStyle(.grouped)
+    }
+    #else
     @State private var updater = DesktopUpdateController.shared
     @State private var confirmingUpdate = false
     @State private var confirmingRestart = false
@@ -50,4 +61,5 @@ struct UpdatesSettings: View {
                 : updateText("Signed updates aren’t configured for this copy. Download the latest release to update.")
         }
     }
+    #endif
 }

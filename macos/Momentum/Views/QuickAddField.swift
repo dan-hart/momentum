@@ -13,7 +13,9 @@ struct QuickAddField: SwiftUI.View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var text = ""
+    #if !MOMENTUM_TESTFLIGHT
     @State private var updateDraftID = UUID().uuidString
+    #endif
     @State private var completions: [TagCompletion] = []
     @State private var selected = 0
     @State private var added = false
@@ -66,8 +68,10 @@ struct QuickAddField: SwiftUI.View {
             .accessibilityLabel(String(localized: "Add Task"))
             .help(String(localized: "Add Task"))
         }
+        #if !MOMENTUM_TESTFLIGHT
         .onChange(of: text) { _, value in DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: !value.isEmpty) }
         .onDisappear { DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: false) }
+        #endif
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))

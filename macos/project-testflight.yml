@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+include: project.yml
+name: MomentumTestFlight
+packages:REPLACE:
+  MomentumCore:
+    path: Packages/MomentumCore
+  MomentumKit:
+    path: Packages/MomentumKit
+targets:
+  Momentum:
+    dependencies:REPLACE:
+      - package: MomentumCore
+      - package: MomentumKit
+    postBuildScripts:REPLACE: []
+    entitlements:
+      path: MomentumTestFlight.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.network.client: true
+        com.apple.security.network.server: true
+        com.apple.security.personal-information.calendars: true
+    info:
+      path: MomentumTestFlight-Info.plist
+      properties:
+        SUFeedURL: ""
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        ENABLE_APP_SANDBOX: true
+        MOMENTUM_DISTRIBUTION_CHANNEL: testflight
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) MOMENTUM_TESTFLIGHT"

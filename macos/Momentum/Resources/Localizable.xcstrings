@@ -1354,6 +1354,16 @@
         }
       }
     },
+    "Choose a folder for the export" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner für den Export auswählen"
+          }
+        }
+      }
+    },
     "Choose Font…" : {
       "localizations" : {
         "de" : {

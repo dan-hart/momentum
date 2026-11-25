@@ -27,6 +27,7 @@ struct MomentumCommands: Commands {
                 openSettings()
             }
         }
+        #if !MOMENTUM_TESTFLIGHT
         CommandGroup(after: .appInfo) {
             Button(updateText("Check for Updates…")) {
                 SettingsNavigation.shared.open("updates.check")
@@ -34,6 +35,7 @@ struct MomentumCommands: Commands {
                 DesktopUpdateController.shared.check()
             }.disabled(DesktopUpdateController.shared.busy || (DesktopUpdateController.shared.channel == .direct && !DesktopUpdateController.shared.sparkleCanCheck))
         }
+        #endif
         CommandGroup(replacing: .newItem) {
             Button(String(localized: "New Task…")) { state.newTask() }
                 .keyboardShortcut(shortcut(.newTask))
@@ -195,12 +197,8 @@ struct MomentumCommands: Commands {
         }
     }
     private func exportBackup() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "\(today()).json"
-        panel.title = String(localized: "Export backup")
-        if panel.runModal() == .OK, let url = panel.url {
-            state.exportBackup(url)
+        BackupExportPanel.choose(filename: "\(today()).json", title: String(localized: "Export backup")) {
+            state.exportBackup($0)
         }
     }
 }

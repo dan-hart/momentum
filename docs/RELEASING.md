@@ -149,6 +149,34 @@ its temporary decoded key after the job and does not pass signing secrets to ord
 push/PR builds. The bundle alignment fixture uses a separate disposable validation key;
 its APK is never included in the release. Actual store submission needs separate approval.
 
+## macOS TestFlight
+
+The [macOS TestFlight workflow](../.github/workflows/macos-testflight.yml) builds a
+native universal Mac app on version tags. It also supports a manual run from
+the Actions tab after the workflow reaches the default branch. It uses the
+checked-in macOS version and build number and resumes processing if App Store
+Connect already knows that exact Mac build. The upload serves the existing
+**Internal Testers** group on the Momentum Tasks! app record.
+
+Put `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_PRIVATE_KEY_B64` in the GitHub Actions
+`macos-testflight` environment. Use an App Store Connect team key with access
+to upload builds and use cloud-managed signing. The workflow also uses the
+existing `APPLE_TEAM_ID` secret. Restrict the environment to the default branch
+and release tags. The runner creates a temporary `.p8` file for the signing
+and upload step and removes it afterward. The existing notarization credentials
+are for Developer ID releases.
+
+The native beta has its own task store and credential namespace. To try it with
+existing tasks, export a backup from the stable Mac app and import it in the
+beta. Export before switching builds. Both channels use the same bundle ID,
+so plan for TestFlight to replace a copy in the standard Applications location.
+The beta uses TestFlight for updates and has no bundled `mo` companion. Task
+backup and app settings exports ask for a folder and create separate files.
+
+To generate the project locally, run `cd macos && xcodegen generate --spec project-testflight.yml`.
+The `Momentum` scheme in `MomentumTestFlight.xcodeproj` builds the beta.
+The direct-download and Homebrew scheme remains in `Momentum.xcodeproj`.
+
 ## Self-hosted Linux distribution
 
 The user-confirmed Linux shipping channel is the signed Flatpak repository on

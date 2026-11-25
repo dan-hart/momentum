@@ -11,7 +11,9 @@ struct QuickAddWindow: SwiftUI.View {
     @Environment(AppState.self) private var state
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
+    #if !MOMENTUM_TESTFLIGHT
     @State private var updateDraftID = UUID().uuidString
+    #endif
     @FocusState private var focused: Bool
 
     var body: some SwiftUI.View {
@@ -31,8 +33,10 @@ struct QuickAddWindow: SwiftUI.View {
         }
         .padding(16)
         .frame(width: 520)
+        #if !MOMENTUM_TESTFLIGHT
         .onChange(of: text) { _, value in DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: !value.isEmpty) }
         .onDisappear { DesktopUpdateController.shared.setDraft(updateDraftID, hasContent: false) }
+        #endif
         .defaultFocus($focused, true)
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
             guard let window = notification.object as? NSWindow,
