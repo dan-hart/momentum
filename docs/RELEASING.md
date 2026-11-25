@@ -177,6 +177,14 @@ To generate the project locally, run `cd macos && xcodegen generate --spec proje
 The `Momentum` scheme in `MomentumTestFlight.xcodeproj` builds the beta.
 The direct-download and Homebrew scheme remains in `Momentum.xcodeproj`.
 
+For a local fallback upload, archive the beta scheme with automatic signing,
+then use the App Store Connect internal-only export. Run
+`macos/scripts/check-testflight-archive.py` with the app path, version, and
+build number before exporting. It catches the duplicate Resources plist that
+Apple rejected during the first Mac upload. Verify the result in App Store
+Connect using the macOS platform and exact build number. iOS can have the
+same version and build number.
+
 ## Self-hosted Linux distribution
 
 The user-confirmed Linux shipping channel is the signed Flatpak repository on

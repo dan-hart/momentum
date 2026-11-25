@@ -10,7 +10,8 @@ channels are verified in PROGRESS. Broader manual/device acceptance remains sepa
   because the separately generated beta project copied the stable project’s
   Info.plist into app Resources.
 - XcodeGen now excludes the app source plist from resources. Generation and
-  archive checks reject a duplicate. See PROGRESS for upload status.
+  archive checks reject a duplicate. The corrected Mac build 500 passed Apple
+  validation and reached Internal Testers.
 
 ## B-194 — Translation regression expects obsolete backup copy
 

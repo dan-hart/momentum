@@ -5,23 +5,34 @@
 - GitHub Actions failed the Linux callback extraction test at `d792edd`. The
   fixture still expected the pre-recovery backup confirmation. The regression
   now checks both current confirmations, and all four local extraction tests
-  and the POT completeness check pass.
+  and the POT completeness check pass. GitHub Actions also passed this check
+  at `243bae2`.
 
 ## 2026-11-25 — macOS TestFlight (F-083, B-193, B-195)
 
 - Added the sandboxed native beta project with separate task storage and Keychain
   service. Mac TestFlight handles beta updates. The direct-download project
   retains Sparkle and the bundled CLI.
-- App Store Connect has a macOS 0.5.0 draft on the existing app record. The
-  existing Internal Testers group has automatic access to eligible builds.
+- App Store Connect reports native macOS 0.5.0 (500) as `VALID` and
+  `IN_BETA_TESTING` for Internal Testers. The local Xcode upload succeeded
+  after the packaging fix, and readback matched the five approved What to
+  Test bullets. The separate iOS 0.5.0 (500) also remains in beta testing.
 - Apple's initial validation rejected the duplicate plist in app Resources.
   The generated-project regression reproduced the problem and passed after
   excluding the stable plist from bundle resources.
 - Local checks at `8091329` with the pipeline changes verify both generated
   projects, an unsigned universal Release archive and its startup probe, the
-  stable Debug app build, and 273 MomentumKit tests. Hosted signing, Apple
-  processing, native TestFlight installation, and sandboxed backup export and
-  restore still require a live run.
+  stable Debug app build, and 273 MomentumKit tests. Hosted [CI][ci-050],
+  [macOS][mac-050], and [Android][android-050] passed on `243bae2`, including
+  all four Flatpak jobs.
+- Automatic uploads still need the workflow on `main` and an App Store
+  Connect team key in the `macos-testflight` GitHub Actions environment.
+  Native TestFlight installation and sandboxed backup export and restore
+  remain unverified.
+
+[ci-050]: https://github.com/dan-hart/momentum/actions/runs/45626933659
+[mac-050]: https://github.com/dan-hart/momentum/actions/runs/45626933602
+[android-050]: https://github.com/dan-hart/momentum/actions/runs/45626934353
 
 ## 2026-11-24 — Momentum 0.5.0 native task workflows (F-079–F-082, B-191–B-192)
 
